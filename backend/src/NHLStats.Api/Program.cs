@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.IO;
 using System.Text;
+using NHLStats.Application.Interfaces;
+using NHLStats.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +56,14 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddAuthorization();
+
+// Application services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISeasonService, SeasonService>();
+builder.Services.AddScoped<IMatchService, MatchService>();
+builder.Services.AddScoped<IPointReasonService, PointReasonService>();
+builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
 // Configure EF Core to always use SQLite and place DB under HOME/data/nhlstats.db
 var home = Environment.GetEnvironmentVariable("HOME") ?? ".";

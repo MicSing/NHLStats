@@ -153,6 +153,7 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 ---
 
 ### Phase 4: Backend — Core CRUD APIs
+**Status:** Completed — all 7 resource APIs implemented with 43 new integration tests (53 total passing).
 **Goal:** Implement all admin management endpoints (TDD)
 
 For each resource, follow this TDD cycle:
@@ -161,27 +162,27 @@ For each resource, follow this TDD cycle:
 3. Implement service → make unit tests pass
 4. Implement controller → make integration tests pass
 
-- [ ] **Users**: 
-  - [ ] Tests: GET all, GET by id, POST create, PUT update, DELETE/deactivate
-  - [ ] Implement UserService and UsersController
-- [ ] **Teams**: 
-  - [ ] Tests: GET all, GET by id (read-only)
-  - [ ] Implement TeamsController
-- [ ] **Seasons**: 
-  - [ ] Tests: CRUD + assign users, get users for season
-  - [ ] Implement SeasonService and SeasonsController
-- [ ] **Matches**: 
-  - [ ] Tests: CRUD within a season, filter by season
-  - [ ] Implement MatchService and MatchesController
-- [ ] **PointReasons**: 
-  - [ ] Tests: CRUD, cannot delete if in use (deactivate only)
-  - [ ] Implement PointReasonService and PointReasonsController
-- [ ] **MoneyConfig**: 
-  - [ ] Tests: GET current, GET history, POST new (validates EffectiveFrom > previous)
-  - [ ] Implement MoneyConfigService and MoneyConfigController
-- [ ] **Expenses**: 
-  - [ ] Tests: CRUD for group expenses
-  - [ ] Implement ExpenseService and ExpensesController
+- [x] **Users**: 
+  - [x] Tests: GET all, GET by id, POST create, PUT update, DELETE/deactivate
+  - [x] Implement UserService and UsersController
+- [x] **Teams**: 
+  - [x] Tests: GET all, GET by id (read-only)
+  - [x] Implement TeamsController
+- [x] **Seasons**: 
+  - [x] Tests: CRUD + assign users, get users for season
+  - [x] Implement SeasonService and SeasonsController
+- [x] **Matches**: 
+  - [x] Tests: CRUD within a season, filter by season
+  - [x] Implement MatchService and MatchesController
+- [x] **PointReasons**: 
+  - [x] Tests: CRUD, cannot delete if in use (deactivate only)
+  - [x] Implement PointReasonService and PointReasonsController
+- [x] **MoneyConfig**: 
+  - [x] Tests: GET current, GET history, POST new (validates EffectiveFrom > previous)
+  - [x] Implement MoneyConfigService and MoneyConfigController
+- [x] **Expenses**: 
+  - [x] Tests: CRUD for group expenses
+  - [x] Implement ExpenseService and ExpensesController
 
 ---
 
