@@ -64,6 +64,7 @@ builder.Services.AddScoped<IPointReasonService, PointReasonService>();
 builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
+builder.Services.AddScoped<IUserMatchService, UserMatchService>();
 
 // Configure EF Core to always use SQLite and place DB under HOME/data/nhlstats.db
 var home = Environment.GetEnvironmentVariable("HOME") ?? ".";

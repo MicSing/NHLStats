@@ -206,25 +206,26 @@ For each resource, follow this TDD cycle:
 ---
 
 ### Phase 6: Backend — Match Scoring APIs
+**Status:** Completed — UserMatchService, 4 controllers (UserMatches, Points, Goals, Penalties), and 17 integration tests all passing (86 total).
 **Goal:** Implement point/goal/penalty tracking per user per match (TDD)
 
-- [ ] **Write UserMatch tests first:**
-  - [ ] Test: Create UserMatch with MatchId links to match
-  - [ ] Test: Create UserMatch with MatchId = null (aggregated) requires SeasonId
-  - [ ] Test: User must be in SeasonUser to create UserMatch
-- [ ] **Write UserMatchPoint tests:**
-  - [ ] Test: Add point entry increments TotalPlus or TotalMinus based on PointReason.IsPositive
-  - [ ] Test: Edit point entry recalculates totals
-  - [ ] Test: Delete point entry recalculates totals
-- [ ] **Write UserMatchGoal tests:**
-  - [ ] Test: Add goal with RosterPlayerId from correct season
-  - [ ] Test: Add goal with RosterPlayerId from wrong season returns error
-- [ ] **Write UserMatchPenalty tests:**
-  - [ ] Test: Add penalty with RosterPlayerId from correct season
-- [ ] **Write initialize-users tests:**
-  - [ ] Test: Initialize creates UserMatch for all SeasonUsers not already in match
-- [ ] Implement services → make unit tests pass
-- [ ] Implement controllers → make integration tests pass
+- [x] **Write UserMatch tests first:**
+  - [x] Test: Create UserMatch with MatchId links to match
+  - [x] Test: Create UserMatch with MatchId = null (aggregated) requires SeasonId
+  - [x] Test: User must be in SeasonUser to create UserMatch
+- [x] **Write UserMatchPoint tests:**
+  - [x] Test: Add point entry increments TotalPlus or TotalMinus based on PointReason.IsPositive
+  - [x] Test: Edit point entry recalculates totals
+  - [x] Test: Delete point entry recalculates totals
+- [x] **Write UserMatchGoal tests:**
+  - [x] Test: Add goal with RosterPlayerId from correct season
+  - [x] Test: Add goal with RosterPlayerId from wrong season returns error
+- [x] **Write UserMatchPenalty tests:**
+  - [x] Test: Add penalty with RosterPlayerId from correct season
+- [x] **Write initialize-users tests:**
+  - [x] Test: Initialize creates UserMatch for all SeasonUsers not already in match
+- [x] Implement services → make unit tests pass
+- [x] Implement controllers → make integration tests pass
 
 ---
 
