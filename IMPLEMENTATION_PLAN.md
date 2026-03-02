@@ -253,21 +253,22 @@ For each resource, follow this TDD cycle:
 ---
 
 ### Phase 8: Frontend — Project Setup & Auth
+**Status:** Completed — React Router, AuthContext, LoginPage, ProtectedRoute, and 23 frontend tests all passing.
 **Goal:** Set up React app with routing and authentication (TDD)
 
-- [ ] **Write auth tests first:**
-  - [ ] Test: AuthContext provides user state and login/logout functions
-  - [ ] Test: Login form submits credentials and stores JWT
-  - [ ] Test: Login form shows error on invalid credentials
-  - [ ] Test: Protected route redirects to login when not authenticated
-  - [ ] Test: Protected route renders content when authenticated
-  - [ ] Test: API client includes auth header when token exists
-- [ ] Configure React Router
-- [ ] Create auth context and JWT token management → make tests pass
-- [ ] Build Login page → make tests pass
-- [ ] Implement protected routes → make tests pass
-- [ ] Set up API client (axios/fetch with auth headers) → make tests pass
-- [ ] Configure Tailwind with dark theme, cyan/orange accents
+- [x] **Write auth tests first:**
+  - [x] Test: AuthContext provides user state and login/logout functions
+  - [x] Test: Login form submits credentials and stores JWT
+  - [x] Test: Login form shows error on invalid credentials
+  - [x] Test: Protected route redirects to login when not authenticated
+  - [x] Test: Protected route renders content when authenticated
+  - [x] Test: API client includes auth header when token exists
+- [x] Configure React Router
+- [x] Create auth context and JWT token management → make tests pass
+- [x] Build Login page → make tests pass
+- [x] Implement protected routes → make tests pass
+- [x] Set up API client (fetch with auth headers) → make tests pass
+- [x] Configure Tailwind with dark theme, cyan/orange accents
 
 ---
 
