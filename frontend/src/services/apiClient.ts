@@ -1,4 +1,6 @@
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5000'
+// Empty string = relative URLs, so the Vite dev proxy (or same-origin in prod) handles routing.
+// Override with VITE_API_BASE_URL for deployments that host API on a different domain.
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
 function getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
