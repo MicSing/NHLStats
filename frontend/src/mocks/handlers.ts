@@ -24,12 +24,92 @@ const mockSeasons = [
         status: 'Active',
         parentSeasonId: null,
     },
+    {
+        id: 2,
+        name: '2024-25',
+        hostedTeamId: 2,
+        hostedTeamName: 'Edmonton Oilers',
+        startedOn: '2024-10-01T00:00:00',
+        status: 'Upcoming',
+        parentSeasonId: null,
+    },
 ]
 
 const mockSeasonDetail = {
     ...mockSeasons[0],
     users: [mockUsers[0]],
 }
+
+const mockMatches = [
+    {
+        id: 10,
+        seasonId: 1,
+        homeTeamId: 1,
+        homeTeamName: 'Boston Bruins',
+        awayTeamId: 2,
+        awayTeamName: 'Edmonton Oilers',
+        homeScore: 3,
+        awayScore: 2,
+        matchDate: '2023-10-15T00:00:00',
+    },
+]
+
+const mockUserMatchesForMatch = [
+    { id: 1, userId: 1, userName: 'Player One', matchId: 10, seasonId: 1, totalPlus: 2, totalMinus: 1 },
+]
+
+const mockAggregatedUserMatches = [
+    { id: 2, userId: 1, userName: 'Player One', matchId: null, seasonId: 1, totalPlus: 5, totalMinus: 3 },
+]
+
+const mockPoints = [
+    { id: 1, userMatchId: 1, pointReasonId: 1, pointReasonName: 'Penalty', isPositive: false, count: 1 },
+]
+
+const mockGoals = [
+    { id: 1, userMatchId: 1, rosterPlayerId: 1, playerFirstName: 'Connor', playerSurname: 'McDavid', count: 1 },
+]
+
+const mockPenalties: object[] = []
+
+const mockSeasonStats = [
+    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
+]
+
+const mockTopScorer = {
+    rosterPlayerId: 1,
+    firstName: 'Connor',
+    surname: 'McDavid',
+    teamShortName: 'EDM',
+    count: 10,
+}
+
+const mockTopPenalized = {
+    rosterPlayerId: 1,
+    firstName: 'Connor',
+    surname: 'McDavid',
+    teamShortName: 'EDM',
+    count: 3,
+}
+
+const mockWeekGroups = [
+    {
+        weekNumber: 1,
+        matches: [
+            {
+                matchId: 10,
+                weekNumber: 1,
+                matchDate: '2023-10-15T00:00:00',
+                homeTeamId: 1,
+                homeTeamName: 'Boston Bruins',
+                awayTeamId: 2,
+                awayTeamName: 'Edmonton Oilers',
+                homeScore: 3,
+                awayScore: 2,
+            },
+        ],
+    },
+]
 
 const mockRosterPlayers = [
     {
@@ -273,5 +353,183 @@ export const handlers = [
 
     rest.delete(`${BASE}/api/expenses/:id`, (_req, res, ctx) => {
         return res(ctx.status(204))
+    }),
+
+    // ── Matches ──────────────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/seasons/:seasonId/matches/:matchId/usermatches`, (req, res, ctx) => {
+        if (Number(req.params.matchId) === 10) return res(ctx.json(mockUserMatchesForMatch))
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:seasonId/matches/:matchId/usermatches/initialize`, (_req, res, ctx) => {
+        return res(ctx.json({ created: 1 }))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:seasonId/matches/:matchId/usermatches`, async (req, res, ctx) => {
+        const body = await req.json() as { userId: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, userId: body.userId, userName: 'Player One', matchId: Number(req.params.matchId), seasonId: Number(req.params.seasonId), totalPlus: 0, totalMinus: 0 }),
+        )
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/matches/:id`, (req, res, ctx) => {
+        const match = mockMatches.find((m) => m.id === Number(req.params.id))
+        return match ? res(ctx.json(match)) : res(ctx.status(404))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/matches`, (_req, res, ctx) => {
+        return res(ctx.json(mockMatches))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:seasonId/matches`, async (req, res, ctx) => {
+        const body = await req.json() as { homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number; matchDate: string }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, seasonId: Number(req.params.seasonId), ...body, homeTeamName: null, awayTeamName: null }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/seasons/:seasonId/matches/:id`, async (req, res, ctx) => {
+        const body = await req.json() as { homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number; matchDate: string }
+        return res(ctx.json({ id: Number(req.params.id), seasonId: Number(req.params.seasonId), ...body, homeTeamName: null, awayTeamName: null }))
+    }),
+
+    rest.delete(`${BASE}/api/seasons/:seasonId/matches/:id`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── Season Stats ──────────────────────────────────────────────────────────
+    // NOTE: more-specific paths first so they don't get swallowed by the generic :id handler
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/weekly`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockWeekGroups))
+        return res(ctx.json([]))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/top-scorers`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockTopScorer))
+        return res(ctx.status(204))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/top-penalized`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockTopPenalized))
+        return res(ctx.status(204))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockSeasonStats))
+        return res(ctx.json([]))
+    }),
+
+    // ── Aggregated UserMatches ────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/seasons/:seasonId/usermatches`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockAggregatedUserMatches))
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:seasonId/usermatches`, async (req, res, ctx) => {
+        const body = await req.json() as { userId: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, userId: body.userId, userName: 'Player One', matchId: null, seasonId: Number(req.params.seasonId), totalPlus: 0, totalMinus: 0 }),
+        )
+    }),
+
+    // ── UserMatch resource ────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/usermatches/:id`, (req, res, ctx) => {
+        const um = mockUserMatchesForMatch.find((u) => u.id === Number(req.params.id))
+            ?? mockAggregatedUserMatches.find((u) => u.id === Number(req.params.id))
+        return um ? res(ctx.json(um)) : res(ctx.status(404))
+    }),
+
+    rest.delete(`${BASE}/api/usermatches/:id`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── UserMatch Points ──────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/usermatches/:userMatchId/points`, (req, res, ctx) => {
+        if (Number(req.params.userMatchId) === 1) return res(ctx.json(mockPoints))
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/usermatches/:userMatchId/points`, async (req, res, ctx) => {
+        const body = await req.json() as { pointReasonId: number; count: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, userMatchId: Number(req.params.userMatchId), pointReasonId: body.pointReasonId, pointReasonName: 'Penalty', isPositive: false, count: body.count }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/usermatches/:userMatchId/points/:pointId`, async (req, res, ctx) => {
+        const body = await req.json() as { pointReasonId: number; count: number }
+        return res(ctx.json({ id: Number(req.params.pointId), userMatchId: Number(req.params.userMatchId), ...body, pointReasonName: 'Penalty', isPositive: false }))
+    }),
+
+    rest.delete(`${BASE}/api/usermatches/:userMatchId/points/:pointId`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── UserMatch Goals ───────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/usermatches/:userMatchId/goals`, (req, res, ctx) => {
+        if (Number(req.params.userMatchId) === 1) return res(ctx.json(mockGoals))
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/usermatches/:userMatchId/goals`, async (req, res, ctx) => {
+        const body = await req.json() as { rosterPlayerId: number; count: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, userMatchId: Number(req.params.userMatchId), rosterPlayerId: body.rosterPlayerId, playerFirstName: 'Connor', playerSurname: 'McDavid', count: body.count }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/usermatches/:userMatchId/goals/:goalId`, async (req, res, ctx) => {
+        const body = await req.json() as { rosterPlayerId: number; count: number }
+        return res(ctx.json({ id: Number(req.params.goalId), userMatchId: Number(req.params.userMatchId), ...body, playerFirstName: 'Connor', playerSurname: 'McDavid' }))
+    }),
+
+    rest.delete(`${BASE}/api/usermatches/:userMatchId/goals/:goalId`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── UserMatch Penalties ───────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/usermatches/:userMatchId/penalties`, (req, res, ctx) => {
+        if (Number(req.params.userMatchId) === 1) return res(ctx.json(mockPenalties))
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/usermatches/:userMatchId/penalties`, async (req, res, ctx) => {
+        const body = await req.json() as { rosterPlayerId: number; count: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, userMatchId: Number(req.params.userMatchId), rosterPlayerId: body.rosterPlayerId, playerFirstName: 'Connor', playerSurname: 'McDavid', count: body.count }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/usermatches/:userMatchId/penalties/:penaltyId`, async (req, res, ctx) => {
+        const body = await req.json() as { rosterPlayerId: number; count: number }
+        return res(ctx.json({ id: Number(req.params.penaltyId), userMatchId: Number(req.params.userMatchId), ...body, playerFirstName: 'Connor', playerSurname: 'McDavid' }))
+    }),
+
+    rest.delete(`${BASE}/api/usermatches/:userMatchId/penalties/:penaltyId`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── Global Stats ──────────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/stats/earnings`, (_req, res, ctx) => {
+        return res(ctx.json({
+            userEarnings: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75 }],
+            totalCollected: 0.75,
+            totalExpenses: 80.0,
+            balance: -79.25,
+        }))
     }),
 ]

@@ -1,0 +1,205 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import type { Season } from '../types/season'
+import type { WeekGroup, UserSeasonStats, TopRosterPlayer } from '../types/stats'
+import type { UserMatch } from '../types/userMatch'
+import apiClient from '../services/apiClient'
+import SeasonSelector from '../components/SeasonSelector'
+
+export default function SeasonPage() {
+    const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>()
+    const navigate = useNavigate()
+    const seasonId = seasonIdParam ? Number(seasonIdParam) : null
+
+    const [seasons, setSeasons] = useState<Season[]>([])
+    const [weekGroups, setWeekGroups] = useState<WeekGroup[]>([])
+    const [stats, setStats] = useState<UserSeasonStats[]>([])
+    const [topScorer, setTopScorer] = useState<TopRosterPlayer | null>(null)
+    const [topPenalized, setTopPenalized] = useState<TopRosterPlayer | null>(null)
+    const [aggregatedEntries, setAggregatedEntries] = useState<UserMatch[]>([])
+    const [loadingSeasons, setLoadingSeasons] = useState(true)
+    const [loadingData, setLoadingData] = useState(false)
+
+    useEffect(() => {
+        apiClient
+            .get<Season[]>('/api/seasons')
+            .then(setSeasons)
+            .finally(() => setLoadingSeasons(false))
+    }, [])
+
+    useEffect(() => {
+        if (!seasonId) return
+
+        setLoadingData(true)
+
+        Promise.all([
+            apiClient.get<WeekGroup[]>(`/api/seasons/${seasonId}/stats/weekly`),
+            apiClient.get<UserSeasonStats[]>(`/api/seasons/${seasonId}/stats`),
+            apiClient
+                .get<TopRosterPlayer | null>(`/api/seasons/${seasonId}/stats/top-scorers`)
+                .catch(() => null),
+            apiClient
+                .get<TopRosterPlayer | null>(`/api/seasons/${seasonId}/stats/top-penalized`)
+                .catch(() => null),
+            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/usermatches`),
+        ])
+            .then(([weeks, seasonStats, scorer, penalized, aggregated]) => {
+                setWeekGroups(weeks)
+                setStats(seasonStats)
+                setTopScorer(scorer)
+                setTopPenalized(penalized)
+                setAggregatedEntries(aggregated)
+            })
+            .finally(() => setLoadingData(false))
+    }, [seasonId])
+
+    const handleSeasonChange = (id: number | null) => {
+        if (id === null) navigate('/seasons')
+        else navigate(`/seasons/${id}`)
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-900 text-white p-6">
+            <div className="max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                    <h1 className="text-2xl font-bold text-cyan-400">Season Overview</h1>
+                    {!loadingSeasons && (
+                        <SeasonSelector
+                            seasons={seasons}
+                            selectedId={seasonId}
+                            onChange={handleSeasonChange}
+                        />
+                    )}
+                </div>
+
+                {!seasonId && (
+                    <p className="text-gray-400">Select a season to view details.</p>
+                )}
+
+                {seasonId && loadingData && <p>Loading…</p>}
+
+                {seasonId && !loadingData && (
+                    <>
+                        {/* User Stats Table */}
+                        {stats.length > 0 && (
+                            <section className="mb-8" aria-label="User stats">
+                                <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                    Player Stats
+                                </h2>
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-gray-400 border-b border-gray-700">
+                                            <th className="pb-2">Player</th>
+                                            <th className="pb-2">+</th>
+                                            <th className="pb-2">−</th>
+                                            <th className="pb-2">Earnings</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {stats.map((s) => (
+                                            <tr key={s.userId} className="border-b border-gray-800">
+                                                <td className="py-2">{s.userName}</td>
+                                                <td className="py-2 text-green-400">{s.totalPlus}</td>
+                                                <td className="py-2 text-red-400">{s.totalMinus}</td>
+                                                <td className="py-2">${s.earnings.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </section>
+                        )}
+
+                        {/* Top Players */}
+                        {(topScorer ?? topPenalized) && (
+                            <section className="mb-8 flex gap-6" aria-label="Top players">
+                                {topScorer && (
+                                    <div className="bg-gray-800 rounded p-4">
+                                        <h3 className="text-sm text-gray-400 mb-1">Top Scorer</h3>
+                                        <p className="font-semibold">
+                                            {topScorer.firstName} {topScorer.surname}
+                                        </p>
+                                        <p className="text-sm text-gray-400">
+                                            {topScorer.teamShortName} · {topScorer.count} goals
+                                        </p>
+                                    </div>
+                                )}
+                                {topPenalized && (
+                                    <div className="bg-gray-800 rounded p-4">
+                                        <h3 className="text-sm text-gray-400 mb-1">
+                                            Most Penalized
+                                        </h3>
+                                        <p className="font-semibold">
+                                            {topPenalized.firstName} {topPenalized.surname}
+                                        </p>
+                                        <p className="text-sm text-gray-400">
+                                            {topPenalized.teamShortName} · {topPenalized.count}{' '}
+                                            penalties
+                                        </p>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        {/* Weekly Matches */}
+                        {weekGroups.length > 0 && (
+                            <section aria-label="Weekly matches">
+                                <h2 className="text-lg font-semibold mb-4 text-cyan-300">
+                                    Matches by Week
+                                </h2>
+                                {weekGroups.map((group) => (
+                                    <div key={group.weekNumber} className="mb-6">
+                                        <h3 className="text-sm text-gray-400 mb-2 border-b border-gray-700 pb-1">
+                                            Week {group.weekNumber}
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {group.matches.map((m) => (
+                                                <Link
+                                                    key={m.matchId}
+                                                    to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                    className="flex items-center justify-between bg-gray-800 rounded px-4 py-3 hover:bg-gray-700"
+                                                >
+                                                    <span>
+                                                        {m.homeTeamName} vs {m.awayTeamName}
+                                                    </span>
+                                                    <span className="font-mono text-lg">
+                                                        {m.homeScore} – {m.awayScore}
+                                                    </span>
+                                                    <span className="text-sm text-gray-400">
+                                                        {new Date(m.matchDate).toLocaleDateString()}
+                                                    </span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+                        )}
+
+                        {/* Aggregated Entries */}
+                        {aggregatedEntries.length > 0 && (
+                            <section className="mt-8" aria-label="Aggregated entries">
+                                <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                    Aggregated Entries
+                                </h2>
+                                <div className="space-y-2">
+                                    {aggregatedEntries.map((um) => (
+                                        <div
+                                            key={um.id}
+                                            className="bg-gray-800 rounded px-4 py-3 flex items-center justify-between"
+                                        >
+                                            <span>{um.userName}</span>
+                                            <span className="text-sm text-gray-400">
+                                                +{um.totalPlus} / −{um.totalMinus}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    )
+}

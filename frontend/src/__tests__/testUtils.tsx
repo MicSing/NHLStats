@@ -18,3 +18,18 @@ export function renderWithProviders(
         </AuthProvider>,
     )
 }
+
+export function renderWithoutAuth(
+    ui: ReactElement,
+    { route = '/' }: { route?: string } = {},
+): RenderResult {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return render(
+        <AuthProvider>
+            <MemoryRouter initialEntries={[route]}>
+                {ui}
+            </MemoryRouter>
+        </AuthProvider>,
+    )
+}

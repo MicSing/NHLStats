@@ -1,0 +1,51 @@
+export interface UserMatch {
+    id: number
+    userId: number
+    userName: string | null
+    matchId: number | null
+    seasonId: number
+    totalPlus: number
+    totalMinus: number
+}
+
+export interface UserMatchPoint {
+    id: number
+    userMatchId: number
+    pointReasonId: number
+    pointReasonName: string | null
+    isPositive: boolean
+    count: number
+}
+
+export interface UserMatchGoal {
+    id: number
+    userMatchId: number
+    rosterPlayerId: number
+    playerFirstName: string | null
+    playerSurname: string | null
+    count: number
+}
+
+export interface UserMatchPenalty {
+    id: number
+    userMatchId: number
+    rosterPlayerId: number
+    playerFirstName: string | null
+    playerSurname: string | null
+    count: number
+}
+
+export interface CreateUserMatchPointDto {
+    pointReasonId: number
+    count: number
+}
+
+export interface CreateUserMatchGoalDto {
+    rosterPlayerId: number
+    count: number
+}
+
+export interface CreateUserMatchPenaltyDto {
+    rosterPlayerId: number
+    count: number
+}

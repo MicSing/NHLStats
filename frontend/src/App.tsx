@@ -9,13 +9,21 @@ import RosterPage from './pages/admin/RosterPage'
 import PointReasonsPage from './pages/admin/PointReasonsPage'
 import MoneyConfigPage from './pages/admin/MoneyConfigPage'
 import ExpensesPage from './pages/admin/ExpensesPage'
+import SeasonPage from './pages/SeasonPage'
+import MatchPage from './pages/MatchPage'
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/seasons" element={<SeasonPage />} />
+          <Route path="/seasons/:seasonId" element={<SeasonPage />} />
+          <Route path="/seasons/:seasonId/matches/:matchId" element={<MatchPage />} />
+
+          {/* Admin routes (auth-gated) */}
           <Route
             path="/admin"
             element={
@@ -32,7 +40,8 @@ function App() {
             <Route path="money-config" element={<MoneyConfigPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/login" replace />} />
+
+          <Route path="*" element={<Navigate to="/seasons" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

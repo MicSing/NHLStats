@@ -311,28 +311,29 @@ For each admin page, follow this TDD cycle:
 ---
 
 ### Phase 10: Frontend — Season & Match Pages
+**Status:** Completed — SeasonSelector, SeasonPage, MatchPage implemented with 24 new tests (98 total frontend tests passing).
 **Goal:** Build the core match tracking UI (TDD)
 
-- [ ] **Write Season selector tests:**
-  - [ ] Test: Dropdown renders all seasons
-  - [ ] Test: Selecting season updates URL/state
-- [ ] Implement SeasonSelector → make tests pass
+- [x] **Write Season selector tests:**
+  - [x] Test: Dropdown renders all seasons
+  - [x] Test: Selecting season updates URL/state
+- [x] Implement SeasonSelector → make tests pass
 
-- [ ] **Write Season overview page tests:**
-  - [ ] Test: Groups matches by week with visual separation
-  - [ ] Test: Shows aggregated entries section when data exists
-  - [ ] Test: User stats table shows correct totals
-  - [ ] Test: Top roster player columns show correct players
-- [ ] Implement SeasonPage → make tests pass
+- [x] **Write Season overview page tests:**
+  - [x] Test: Groups matches by week with visual separation
+  - [x] Test: Shows aggregated entries section when data exists
+  - [x] Test: User stats table shows correct totals
+  - [x] Test: Top roster player columns show correct players
+- [x] Implement SeasonPage → make tests pass
 
-- [ ] **Write Match detail page tests:**
-  - [ ] Test: Renders all user entries for match
-  - [ ] Test: Point entry form submits with PointReason and count
-  - [ ] Test: Goal form shows season roster in dropdown
-  - [ ] Test: Penalty form shows season roster in dropdown
-  - [ ] Test: Edit controls hidden when not authenticated
-  - [ ] Test: Edit controls visible when authenticated
-- [ ] Implement MatchPage → make tests pass
+- [x] **Write Match detail page tests:**
+  - [x] Test: Renders all user entries for match
+  - [x] Test: Point entry form submits with PointReason and count
+  - [x] Test: Goal form shows season roster in dropdown
+  - [x] Test: Penalty form shows season roster in dropdown
+  - [x] Test: Edit controls hidden when not authenticated
+  - [x] Test: Edit controls visible when authenticated
+- [x] Implement MatchPage → make tests pass 
 
 ---
 

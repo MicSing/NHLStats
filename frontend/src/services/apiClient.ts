@@ -15,6 +15,10 @@ async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`)
     }
+    // 204 No Content — return null (typed as T, callers should use T | null)
+    if (response.status === 204) {
+        return null as T
+    }
     return response.json() as Promise<T>
 }
 
