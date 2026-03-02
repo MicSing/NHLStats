@@ -21,6 +21,17 @@ public class MatchesTests : ApiTestBase
         return body.GetProperty("id").GetInt32();
     }
 
+    private async Task<JsonElement> CreateMatchAsync(HttpClient client, int seasonId, int homeTeamId = 1, int awayTeamId = 2)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId,
+            awayTeamId
+        });
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
     // ── GET /api/seasons/{seasonId}/matches ─────────────────────────────────
 
     [Fact]
@@ -38,7 +49,7 @@ public class MatchesTests : ApiTestBase
     // ── POST /api/seasons/{seasonId}/matches ────────────────────────────────
 
     [Fact]
-    public async Task Create_match_returns_201()
+    public async Task Create_match_returns_201_with_auto_match_number_and_null_date()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Match Create Season");
@@ -46,10 +57,7 @@ public class MatchesTests : ApiTestBase
         var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
         {
             homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 3,
-            awayScore = 2,
-            matchDate = "2024-01-10T20:00:00"
+            awayTeamId = 2
         });
 
         resp.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -57,8 +65,24 @@ public class MatchesTests : ApiTestBase
         body.GetProperty("seasonId").GetInt32().Should().Be(seasonId);
         body.GetProperty("homeTeamId").GetInt32().Should().Be(1);
         body.GetProperty("awayTeamId").GetInt32().Should().Be(2);
-        body.GetProperty("homeScore").GetInt32().Should().Be(3);
-        body.GetProperty("awayScore").GetInt32().Should().Be(2);
+        body.GetProperty("homeScore").GetInt32().Should().Be(0);
+        body.GetProperty("awayScore").GetInt32().Should().Be(0);
+        body.GetProperty("matchNumber").GetInt32().Should().Be(1);
+        body.GetProperty("matchDate").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("completionType").GetInt32().Should().Be(0); // None
+    }
+
+    [Fact]
+    public async Task Create_match_auto_increments_match_number()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Number Season");
+
+        var first = await CreateMatchAsync(client, seasonId, 1, 2);
+        var second = await CreateMatchAsync(client, seasonId, 3, 4);
+
+        first.GetProperty("matchNumber").GetInt32().Should().Be(1);
+        second.GetProperty("matchNumber").GetInt32().Should().Be(2);
     }
 
     [Fact]
@@ -68,10 +92,7 @@ public class MatchesTests : ApiTestBase
         var resp = await client.PostAsJsonAsync("/api/seasons/1/matches", new
         {
             homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 0,
-            awayScore = 0,
-            matchDate = "2024-01-10T20:00:00"
+            awayTeamId = 2
         });
         resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -79,20 +100,12 @@ public class MatchesTests : ApiTestBase
     // ── PUT /api/seasons/{seasonId}/matches/{id} ────────────────────────────
 
     [Fact]
-    public async Task Update_match_returns_200()
+    public async Task Update_match_sets_completion_type_and_date()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Match Update Season");
 
-        var createResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
-        {
-            homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 0,
-            awayScore = 0,
-            matchDate = "2024-01-15T20:00:00"
-        });
-        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
         var matchId = created.GetProperty("id").GetInt32();
 
         var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
@@ -101,12 +114,15 @@ public class MatchesTests : ApiTestBase
             awayTeamId = 4,
             homeScore = 5,
             awayScore = 1,
-            matchDate = "2024-01-15T20:00:00"
+            matchDate = "2024-01-15T20:00:00",
+            completionType = 2  // Overtime
         });
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
         updated.GetProperty("homeScore").GetInt32().Should().Be(5);
         updated.GetProperty("homeTeamId").GetInt32().Should().Be(3);
+        updated.GetProperty("completionType").GetInt32().Should().Be(2);
+        updated.GetProperty("matchDate").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 
     // ── DELETE /api/seasons/{seasonId}/matches/{id} ─────────────────────────
@@ -117,15 +133,7 @@ public class MatchesTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Match Delete Season");
 
-        var createResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
-        {
-            homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 0,
-            awayScore = 0,
-            matchDate = "2024-01-20T20:00:00"
-        });
-        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
         var matchId = created.GetProperty("id").GetInt32();
 
         var deleteResp = await client.DeleteAsync($"/api/seasons/{seasonId}/matches/{matchId}");
@@ -144,17 +152,53 @@ public class MatchesTests : ApiTestBase
         var season1Id = await CreateSeasonAsync(client, "Season A");
         var season2Id = await CreateSeasonAsync(client, "Season B");
 
-        await client.PostAsJsonAsync($"/api/seasons/{season1Id}/matches", new
-        {
-            homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 1,
-            awayScore = 0,
-            matchDate = "2024-02-01T20:00:00"
-        });
+        await CreateMatchAsync(client, season1Id, 1, 2);
 
         var resp = await client.GetAsync($"/api/seasons/{season2Id}/matches");
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetArrayLength().Should().Be(0);
+    }
+
+    // ── Batch create ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task BatchCreate_assigns_sequential_match_numbers()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Batch Season");
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/batch", new[]
+        {
+            new { homeTeamId = 1, awayTeamId = 2 },
+            new { homeTeamId = 3, awayTeamId = 4 },
+            new { homeTeamId = 5, awayTeamId = 6 },
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(3);
+        body[0].GetProperty("matchNumber").GetInt32().Should().Be(1);
+        body[1].GetProperty("matchNumber").GetInt32().Should().Be(2);
+        body[2].GetProperty("matchNumber").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task BatchCreate_rolls_back_entirely_on_invalid_team_id()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Batch Rollback Season");
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/batch", new[]
+        {
+            new { homeTeamId = 1, awayTeamId = 2 },
+            new { homeTeamId = 99999, awayTeamId = 2 },  // invalid team
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Nothing should have been persisted
+        var getResp = await client.GetAsync($"/api/seasons/{seasonId}/matches");
+        var matches = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        matches.GetArrayLength().Should().Be(0);
     }
 }

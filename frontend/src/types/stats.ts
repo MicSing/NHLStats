@@ -45,3 +45,10 @@ export interface AllTimeEarnings {
     totalExpenses: number
     balance: number
 }
+
+export interface UserSeasonTotals {
+    userId: number
+    userName: string
+    totalGoals: number
+    totalPenalties: number
+}

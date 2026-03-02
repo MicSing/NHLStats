@@ -17,14 +17,14 @@ describe('ExpensesPage', () => {
     test('renders amounts for each expense', async () => {
         renderWithProviders(<ExpensesPage />)
         await screen.findByText('Pizza party')
-        expect(screen.getByText('50.00 zł')).toBeInTheDocument()
-        expect(screen.getByText('30.00 zł')).toBeInTheDocument()
+        expect(screen.getByText('50.00 €')).toBeInTheDocument()
+        expect(screen.getByText('30.00 €')).toBeInTheDocument()
     })
 
     test('renders total row', async () => {
         renderWithProviders(<ExpensesPage />)
         await screen.findByText('Pizza party')
-        expect(screen.getByText('80.00 zł')).toBeInTheDocument()
+        expect(screen.getByText('80.00 €')).toBeInTheDocument()
         expect(screen.getByText('Total')).toBeInTheDocument()
     })
 

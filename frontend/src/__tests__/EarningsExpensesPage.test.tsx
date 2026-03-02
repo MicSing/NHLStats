@@ -5,6 +5,7 @@ import EarningsExpensesPage from '../pages/EarningsExpensesPage'
 // MSW handlers already provide:
 //   GET /api/stats/earnings → { userEarnings: [{ userId:1, userName:'Player One', totalPlus:5, totalMinus:3, totalEarnings:0.75 }], totalCollected:0.75, totalExpenses:80.0, balance:-79.25 }
 //   GET /api/expenses → [{ id:1, description:'Pizza party', amount:50.0, date:'2023-10-05T00:00:00' }, { id:2, description:'Trophy', amount:30.0, date:'2023-10-10T00:00:00' }]
+// Note: EarningsExpensesPage uses € (euro) as the currency symbol.
 
 // ── Earnings Table ──────────────────────────────────────────────────────────
 
@@ -14,9 +15,9 @@ describe('EarningsExpensesPage — earnings table', () => {
         await waitFor(() => expect(screen.getByText('Player One')).toBeInTheDocument())
 
         const row = screen.getByText('Player One').closest('tr')!
-        expect(row).toHaveTextContent('5')      // totalPlus
-        expect(row).toHaveTextContent('3')      // totalMinus
-        expect(row).toHaveTextContent('$0.75')  // totalEarnings
+        expect(row).toHaveTextContent('5')       // totalPlus
+        expect(row).toHaveTextContent('3')       // totalMinus
+        expect(row).toHaveTextContent('0.75 €')   // totalEarnings
     })
 
     test('totals row sums all users', async () => {
@@ -26,9 +27,9 @@ describe('EarningsExpensesPage — earnings table', () => {
         const table = screen.getByTestId('earnings-table')
         const tfoot = table.querySelector('tfoot')!
         expect(tfoot).toHaveTextContent('Total')
-        expect(tfoot).toHaveTextContent('5')      // sum of totalPlus
-        expect(tfoot).toHaveTextContent('3')      // sum of totalMinus
-        expect(tfoot).toHaveTextContent('$0.75')  // sum of totalEarnings
+        expect(tfoot).toHaveTextContent('5')       // sum of totalPlus
+        expect(tfoot).toHaveTextContent('3')       // sum of totalMinus
+        expect(tfoot).toHaveTextContent('0.75 €')   // sum of totalEarnings
     })
 
     test('handles users with no data gracefully', async () => {
@@ -45,8 +46,8 @@ describe('EarningsExpensesPage — expenses table', () => {
         await waitFor(() => expect(screen.getByText('Pizza party')).toBeInTheDocument())
 
         expect(screen.getByText('Trophy')).toBeInTheDocument()
-        expect(screen.getByText('$50.00')).toBeInTheDocument()
-        expect(screen.getByText('$30.00')).toBeInTheDocument()
+        expect(screen.getByText('50.00 €')).toBeInTheDocument()
+        expect(screen.getByText('30.00 €')).toBeInTheDocument()
         expect(screen.getByText('2023-10-05')).toBeInTheDocument()
         expect(screen.getByText('2023-10-10')).toBeInTheDocument()
     })
@@ -57,7 +58,7 @@ describe('EarningsExpensesPage — expenses table', () => {
 
         const table = screen.getByTestId('expenses-table')
         const tfoot = table.querySelector('tfoot')!
-        expect(tfoot).toHaveTextContent('$80.00')
+        expect(tfoot).toHaveTextContent('80.00 €')
     })
 })
 
@@ -78,9 +79,9 @@ describe('EarningsExpensesPage — balance summary', () => {
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
         const summary = screen.getByTestId('balance-summary')
-        // totalCollected = 0.75 → "$0.75"
-        within(summary).getByText('$0.75')
-        // balance = 0.75 − 80 = −79.25 → "−$79.25"
-        within(summary).getByText('-$79.25')
+        // totalCollected = 0.75 → "0.75 €"
+        within(summary).getByText('0.75 €')
+        // balance = 0.75 − 80 = −79.25 → "-79.25 €"
+        within(summary).getByText('-79.25 €')
     })
 })

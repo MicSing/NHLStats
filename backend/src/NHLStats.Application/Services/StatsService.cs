@@ -34,7 +34,7 @@ public class StatsService : IStatsService
     }
 
     private static decimal CalculateEarnings(MoneyConfig config, int totalPlus, int totalMinus) =>
-        totalPlus * config.PositivePointValue + totalMinus * config.NegativePointValue;
+        Math.Max(0m, totalMinus * config.NegativePointValue - totalPlus * config.PositivePointValue);
 
     // ─── Season stats ─────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ public class StatsService : IStatsService
                 var totalMinus = g.Sum(um => um.TotalMinus);
                 var earnings = g.Sum(um =>
                 {
-                    // For specific matches use MatchDate; for aggregated entries use SeasonStartedOn
+                    // For specific matches use MatchDate (if set); for aggregated or unplayed matches use SeasonStartedOn
                     var date = um.Match?.MatchDate ?? season?.StartedOn ?? DateTime.MinValue;
                     var config = GetEffectiveConfig(moneyConfigs, date);
                     return config == null ? 0m : CalculateEarnings(config, um.TotalPlus, um.TotalMinus);
@@ -78,13 +78,13 @@ public class StatsService : IStatsService
         var matches = await _db.Matches
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
-            .Where(m => m.SeasonId == seasonId)
+            .Where(m => m.SeasonId == seasonId && m.MatchDate != null)
             .OrderBy(m => m.MatchDate)
             .ToListAsync();
 
         // Assign sequential week numbers: each distinct date (day) gets the next number
         var distinctDates = matches
-            .Select(m => m.MatchDate.Date)
+            .Select(m => m.MatchDate!.Value.Date)
             .Distinct()
             .OrderBy(d => d)
             .ToList();
@@ -95,8 +95,8 @@ public class StatsService : IStatsService
 
         var weeklyMatches = matches.Select(m => new WeeklyMatchDto(
             m.Id,
-            dateToWeek[m.MatchDate.Date],
-            m.MatchDate,
+            dateToWeek[m.MatchDate!.Value.Date],
+            m.MatchDate.Value,
             m.HomeTeamId,
             m.HomeTeam?.Name,
             m.AwayTeamId,
@@ -196,8 +196,8 @@ public class StatsService : IStatsService
                 var earnings = g.Sum(um =>
                 {
                     DateTime date;
-                    if (um.Match != null)
-                        date = um.Match.MatchDate;
+                    if (um.Match?.MatchDate != null)
+                        date = um.Match.MatchDate.Value;
                     else if (seasons.TryGetValue(um.SeasonId, out var season))
                         date = season.StartedOn;
                     else
@@ -215,5 +215,44 @@ public class StatsService : IStatsService
         var balance = totalCollected - totalExpenses;
 
         return new AllTimeEarningsDto(userEarnings, totalCollected, totalExpenses, balance);
+    }
+
+    // ─── Per-user goals & penalties totals for a season ──────────────────────
+
+    public async Task<IEnumerable<UserSeasonTotalsDto>> GetUserSeasonTotalsAsync(int seasonId)
+    {
+        // Load user name lookup
+        var users = await _db.Users.ToDictionaryAsync(u => u.Id, u => u.Name);
+
+        // Goals by user
+        var goalsByUser = await _db.UserMatchGoals
+            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .GroupBy(g => g.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Total = g.Sum(x => x.Count) })
+            .ToListAsync();
+
+        // Penalties by user
+        var penaltiesByUser = await _db.UserMatchPenalties
+            .Where(p => p.UserMatch!.SeasonId == seasonId)
+            .GroupBy(p => p.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Total = g.Sum(x => x.Count) })
+            .ToListAsync();
+
+        // Merge by userId
+        var allUserIds = goalsByUser.Select(g => g.UserId)
+            .Union(penaltiesByUser.Select(p => p.UserId))
+            .Distinct();
+
+        var goalsLookup = goalsByUser.ToDictionary(g => g.UserId, g => g.Total);
+        var penaltiesLookup = penaltiesByUser.ToDictionary(p => p.UserId, p => p.Total);
+
+        return allUserIds
+            .Select(uid => new UserSeasonTotalsDto(
+                uid,
+                users.TryGetValue(uid, out var name) ? name : "",
+                goalsLookup.TryGetValue(uid, out var g) ? g : 0,
+                penaltiesLookup.TryGetValue(uid, out var p) ? p : 0))
+            .OrderBy(t => t.UserName)
+            .ToList();
     }
 }

@@ -35,6 +35,22 @@ public class MatchesController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("batch")]
+    public async Task<IActionResult> BatchCreate(int seasonId, CreateMatchDto[] dtos)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        try
+        {
+            var created = await _service.BatchCreateAsync(seasonId, dtos);
+            return Ok(created);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [Authorize]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int seasonId, int id, UpdateMatchDto dto)
     {

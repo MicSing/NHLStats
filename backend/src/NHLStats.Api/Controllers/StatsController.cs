@@ -51,6 +51,15 @@ public class SeasonStatsController : ControllerBase
         if (result == null) return NoContent();
         return Ok(result);
     }
+
+    /// <summary>GET /api/seasons/{seasonId}/stats/user-totals</summary>
+    /// <remarks>Returns per-user total goals and penalties for a season.</remarks>
+    [HttpGet("user-totals")]
+    public async Task<IActionResult> GetUserTotals(int seasonId)
+    {
+        var result = await _stats.GetUserSeasonTotalsAsync(seasonId);
+        return Ok(result);
+    }
 }
 
 // ─── Global stats endpoint ────────────────────────────────────────────────────

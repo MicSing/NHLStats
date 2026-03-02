@@ -5,7 +5,7 @@ import apiClient from '../services/apiClient'
 
 function formatCurrency(value: number): string {
     const abs = Math.abs(value)
-    const str = `€${abs.toFixed(2)}`
+    const str = `${abs.toFixed(2)} €`
     return value < 0 ? `-${str}` : str
 }
 

@@ -24,6 +24,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserMatchPenalty> UserMatchPenalties => Set<UserMatchPenalty>();
     public DbSet<MoneyConfig> MoneyConfigs => Set<MoneyConfig>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<UserPayout> UserPayouts => Set<UserPayout>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Match>(b =>
         {
             b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.SeasonId, x.MatchNumber }).IsUnique();
             b.HasOne(x => x.Season).WithMany(s => s.Matches).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.HomeTeam).WithMany(t => t.HomeMatches).HasForeignKey(x => x.HomeTeamId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.AwayTeam).WithMany(t => t.AwayMatches).HasForeignKey(x => x.AwayTeamId).OnDelete(DeleteBehavior.Restrict);
@@ -116,6 +118,13 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Expense>(b =>
         {
             b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<UserPayout>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Seed data: 32 NHL teams
@@ -176,7 +185,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<MoneyConfig>().HasData(new MoneyConfig
         {
             Id = 1,
-            NegativePointValue = -0.50m,
+            NegativePointValue = 0.50m,
             PositivePointValue = 0.25m,
             EffectiveFrom = new DateTime(2000, 1, 1)
         });

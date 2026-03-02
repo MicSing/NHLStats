@@ -32,4 +32,9 @@ public interface IStatsService
     /// along with total collected, total expenses, and the remaining balance.
     /// </summary>
     Task<AllTimeEarningsDto> GetAllTimeEarningsAsync();
+
+    /// <summary>
+    /// Returns per-user total goals and penalties for a season.
+    /// </summary>
+    Task<IEnumerable<UserSeasonTotalsDto>> GetUserSeasonTotalsAsync(int seasonId);
 }

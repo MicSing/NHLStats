@@ -11,15 +11,15 @@ describe('MoneyConfigPage', () => {
     test('renders current config values', async () => {
         renderWithProviders(<MoneyConfigPage />)
         // Current: negativePointValue 0.50, positivePointValue 0.25
-        expect(await screen.findByText(/−0\.50 zł/)).toBeInTheDocument()
-        expect(screen.getByText(/\+0\.25 zł/)).toBeInTheDocument()
+        expect(await screen.findByText(/−0\.50 €/)).toBeInTheDocument()
+        expect(screen.getByText(/\+0\.25 €/)).toBeInTheDocument()
     })
 
     test('renders history table with both entries', async () => {
         renderWithProviders(<MoneyConfigPage />)
-        await screen.findByText(/−0\.50 zł/)
+        await screen.findByText(/−0\.50 €/)
         // history has two entries — check the second one's negative value
-        const cells = screen.getAllByText(/0\.40 zł/)
+        const cells = screen.getAllByText(/0\.40 €/)
         expect(cells.length).toBeGreaterThan(0)
     })
 

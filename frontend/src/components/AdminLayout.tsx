@@ -8,6 +8,8 @@ const navItems = [
     { to: '/admin/point-reasons', label: 'Point Reasons' },
     { to: '/admin/money-config', label: 'Money Config' },
     { to: '/admin/expenses', label: 'Expenses' },
+    { to: '/admin/matches', label: 'Matches' },
+    { to: '/admin/payouts', label: 'Payouts' },
 ]
 
 const publicNavItems = [
@@ -28,8 +30,8 @@ export default function AdminLayout() {
                     <p className="text-xs text-gray-400">Admin Panel</p>
                 </div>
                 <nav className="flex-1 p-2">
-                    <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Admin</p>
-                    {navItems.map((item) => (
+                    <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Menu</p>
+                    {publicNavItems.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}
@@ -43,8 +45,8 @@ export default function AdminLayout() {
                             {item.label}
                         </NavLink>
                     ))}
-                    <p className="px-4 py-1 mt-3 text-xs font-semibold uppercase tracking-wider text-gray-500">View</p>
-                    {publicNavItems.map((item) => (
+                    <p className="px-4 py-1 mt-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Admin</p>
+                    {navItems.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}

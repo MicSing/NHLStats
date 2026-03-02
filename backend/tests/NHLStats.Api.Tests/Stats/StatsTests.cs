@@ -50,16 +50,28 @@ public class StatsTests : ApiTestBase
 
     private async Task<int> CreateMatchAsync(HttpClient client, int seasonId, string matchDate)
     {
+        // Step 1: create with slim DTO (no date or scores)
         var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2
+        });
+        resp.EnsureSuccessStatusCode();
+        var matchId = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        // Step 2: set the date via update so stats/weekly tests can group by date
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {
             homeTeamId = 1,
             awayTeamId = 2,
             homeScore = 0,
             awayScore = 0,
-            matchDate
+            matchDate,
+            completionType = 0
         });
-        resp.EnsureSuccessStatusCode();
-        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        updateResp.EnsureSuccessStatusCode();
+
+        return matchId;
     }
 
     private async Task<int> CreateUserMatchAsync(HttpClient client, int seasonId, int matchId, int userId)

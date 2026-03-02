@@ -49,3 +49,12 @@ public record AllTimeEarningsDto(
     decimal TotalCollected,
     decimal TotalExpenses,
     decimal Balance);
+
+// ─── Per-user goals & penalties totals for a season ──────────────────────────
+
+public record UserSeasonTotalsDto(
+    int UserId,
+    string UserName,
+    int TotalGoals,
+    int TotalPenalties);
+

@@ -6,14 +6,13 @@ import type {
     UserMatchPoint,
     UserMatchGoal,
     UserMatchPenalty,
-    CreateUserMatchPointDto,
-    CreateUserMatchGoalDto,
-    CreateUserMatchPenaltyDto,
 } from '../types/userMatch'
 import type { RosterPlayer } from '../types/roster'
 import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
+import MatchHeaderEditor from '../components/MatchHeaderEditor'
+import UserMatchCard from '../components/UserMatchCard'
 
 interface UserMatchData {
     userMatch: UserMatch
@@ -31,17 +30,6 @@ export default function MatchPage() {
     const [roster, setRoster] = useState<RosterPlayer[]>([])
     const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
-
-    // Per-user-match form state
-    const [pointForms, setPointForms] = useState<
-        Record<number, { pointReasonId: number | ''; count: number }>
-    >({})
-    const [goalForms, setGoalForms] = useState<
-        Record<number, { rosterPlayerId: number | ''; count: number }>
-    >({})
-    const [penaltyForms, setPenaltyForms] = useState<
-        Record<number, { rosterPlayerId: number | ''; count: number }>
-    >({})
 
     const loadAll = async () => {
         if (!seasonId || !matchId) return
@@ -72,19 +60,6 @@ export default function MatchPage() {
             )
 
             setUserMatchData(enriched)
-
-            // Initialise blank form state for each userMatch
-            const ptForms: Record<number, { pointReasonId: number | ''; count: number }> = {}
-            const gForms: Record<number, { rosterPlayerId: number | ''; count: number }> = {}
-            const pForms: Record<number, { rosterPlayerId: number | ''; count: number }> = {}
-            enriched.forEach(({ userMatch: um }) => {
-                ptForms[um.id] = { pointReasonId: '', count: 1 }
-                gForms[um.id] = { rosterPlayerId: '', count: 1 }
-                pForms[um.id] = { rosterPlayerId: '', count: 1 }
-            })
-            setPointForms(ptForms)
-            setGoalForms(gForms)
-            setPenaltyForms(pForms)
         } finally {
             setLoading(false)
         }
@@ -94,56 +69,27 @@ export default function MatchPage() {
         void loadAll()
     }, [seasonId, matchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleAddPoint = async (userMatchId: number) => {
-        const form = pointForms[userMatchId]
-        if (!form || form.pointReasonId === '') return
-        await apiClient.post<UserMatchPoint>(`/api/usermatches/${userMatchId}/points`, {
-            pointReasonId: form.pointReasonId,
-            count: form.count,
-        } as CreateUserMatchPointDto)
-        await loadAll()
-    }
-
-    const handleDeletePoint = async (userMatchId: number, pointId: number) => {
-        await apiClient.delete(`/api/usermatches/${userMatchId}/points/${pointId}`)
-        await loadAll()
-    }
-
-    const handleAddGoal = async (userMatchId: number) => {
-        const form = goalForms[userMatchId]
-        if (!form || form.rosterPlayerId === '') return
-        await apiClient.post<UserMatchGoal>(`/api/usermatches/${userMatchId}/goals`, {
-            rosterPlayerId: form.rosterPlayerId,
-            count: form.count,
-        } as CreateUserMatchGoalDto)
-        await loadAll()
-    }
-
-    const handleDeleteGoal = async (userMatchId: number, goalId: number) => {
-        await apiClient.delete(`/api/usermatches/${userMatchId}/goals/${goalId}`)
-        await loadAll()
-    }
-
-    const handleAddPenalty = async (userMatchId: number) => {
-        const form = penaltyForms[userMatchId]
-        if (!form || form.rosterPlayerId === '') return
-        await apiClient.post<UserMatchPenalty>(`/api/usermatches/${userMatchId}/penalties`, {
-            rosterPlayerId: form.rosterPlayerId,
-            count: form.count,
-        } as CreateUserMatchPenaltyDto)
-        await loadAll()
-    }
-
-    const handleDeletePenalty = async (userMatchId: number, penaltyId: number) => {
-        await apiClient.delete(`/api/usermatches/${userMatchId}/penalties/${penaltyId}`)
-        await loadAll()
-    }
-
     const handleInitializeUsers = async () => {
         await apiClient.post(
             `/api/seasons/${seasonId}/matches/${matchId}/usermatches/initialize`,
             {},
         )
+        // Auto-set matchDate to today if currently null
+        if (match && match.matchDate === null) {
+            const today = new Date().toISOString().split('T')[0]
+            const updated = await apiClient.put<Match>(
+                `/api/seasons/${seasonId}/matches/${matchId}`,
+                {
+                    homeTeamId: match.homeTeamId,
+                    awayTeamId: match.awayTeamId,
+                    homeScore: match.homeScore,
+                    awayScore: match.awayScore,
+                    completionType: match.completionType,
+                    matchDate: today,
+                },
+            )
+            setMatch(updated)
+        }
         await loadAll()
     }
 
@@ -172,24 +118,12 @@ export default function MatchPage() {
                 </Link>
 
                 {/* Match header */}
-                <div className="bg-gray-800 rounded-xl p-6 mb-6">
-                    <div className="flex items-center justify-between">
-                        <div className="text-center flex-1">
-                            <p className="text-xl font-bold">{match.homeTeamName}</p>
-                        </div>
-                        <div className="text-center px-6">
-                            <p className="text-4xl font-mono font-bold">
-                                {match.homeScore} – {match.awayScore}
-                            </p>
-                            <p className="text-sm text-gray-400 mt-1">
-                                {new Date(match.matchDate).toLocaleDateString()}
-                            </p>
-                        </div>
-                        <div className="text-center flex-1">
-                            <p className="text-xl font-bold">{match.awayTeamName}</p>
-                        </div>
-                    </div>
-                </div>
+                <MatchHeaderEditor
+                    seasonId={seasonId!}
+                    match={match}
+                    isAuth={!!token}
+                    onSaved={setMatch}
+                />
 
                 {/* Initialize users button (auth only) */}
                 {token && (
@@ -205,266 +139,18 @@ export default function MatchPage() {
 
                 {/* User Match Cards */}
                 <div className="space-y-4">
-                    {userMatchData.map(({ userMatch: um, points, goals, penalties }) => (
-                        <div key={um.id} className="bg-gray-800 rounded-xl p-5">
-                            {/* Card header */}
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-lg font-semibold">{um.userName}</h2>
-                                <div className="flex gap-4 text-sm">
-                                    <span className="text-green-400">+{um.totalPlus}</span>
-                                    <span className="text-red-400">−{um.totalMinus}</span>
-                                </div>
-                            </div>
-
-                            {/* Points section */}
-                            <div className="mb-4">
-                                <h3 className="text-sm font-medium text-gray-400 mb-2">Points</h3>
-                                {points.map((p) => (
-                                    <div
-                                        key={p.id}
-                                        className="flex items-center justify-between text-sm py-1"
-                                    >
-                                        <span>
-                                            {p.pointReasonName} × {p.count}
-                                        </span>
-                                        {token && (
-                                            <button
-                                                aria-label={`delete point ${p.id}`}
-                                                onClick={() =>
-                                                    void handleDeletePoint(um.id, p.id)
-                                                }
-                                                className="text-red-400 hover:text-red-300 text-xs ml-4"
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {token && (
-                                    <form
-                                        aria-label={`add point for ${um.userName}`}
-                                        onSubmit={(e) => {
-                                            e.preventDefault()
-                                            void handleAddPoint(um.id)
-                                        }}
-                                        className="flex gap-2 mt-2"
-                                    >
-                                        <select
-                                            aria-label="point reason"
-                                            value={pointForms[um.id]?.pointReasonId ?? ''}
-                                            onChange={(e) =>
-                                                setPointForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        pointReasonId:
-                                                            e.target.value === ''
-                                                                ? ''
-                                                                : Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm"
-                                        >
-                                            <option value="">Select reason</option>
-                                            {pointReasons.map((r) => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="number"
-                                            aria-label="point count"
-                                            min={1}
-                                            value={pointForms[um.id]?.count ?? 1}
-                                            onChange={(e) =>
-                                                setPointForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        count: Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded text-sm"
-                                        >
-                                            Add
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-
-                            {/* Goals section */}
-                            <div className="mb-4">
-                                <h3 className="text-sm font-medium text-gray-400 mb-2">Goals</h3>
-                                {goals.map((g) => (
-                                    <div
-                                        key={g.id}
-                                        className="flex items-center justify-between text-sm py-1"
-                                    >
-                                        <span>
-                                            {g.playerFirstName} {g.playerSurname} × {g.count}
-                                        </span>
-                                        {token && (
-                                            <button
-                                                aria-label={`delete goal ${g.id}`}
-                                                onClick={() => void handleDeleteGoal(um.id, g.id)}
-                                                className="text-red-400 hover:text-red-300 text-xs ml-4"
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {token && (
-                                    <form
-                                        aria-label={`add goal for ${um.userName}`}
-                                        onSubmit={(e) => {
-                                            e.preventDefault()
-                                            void handleAddGoal(um.id)
-                                        }}
-                                        className="flex gap-2 mt-2"
-                                    >
-                                        <select
-                                            aria-label="goal player"
-                                            value={goalForms[um.id]?.rosterPlayerId ?? ''}
-                                            onChange={(e) =>
-                                                setGoalForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        rosterPlayerId:
-                                                            e.target.value === ''
-                                                                ? ''
-                                                                : Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm"
-                                        >
-                                            <option value="">Select player</option>
-                                            {roster.map((r) => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.firstName} {r.surname}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="number"
-                                            aria-label="goal count"
-                                            min={1}
-                                            value={goalForms[um.id]?.count ?? 1}
-                                            onChange={(e) =>
-                                                setGoalForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        count: Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded text-sm"
-                                        >
-                                            Add
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-
-                            {/* Penalties section */}
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-400 mb-2">
-                                    Penalties
-                                </h3>
-                                {penalties.map((p) => (
-                                    <div
-                                        key={p.id}
-                                        className="flex items-center justify-between text-sm py-1"
-                                    >
-                                        <span>
-                                            {p.playerFirstName} {p.playerSurname} × {p.count}
-                                        </span>
-                                        {token && (
-                                            <button
-                                                aria-label={`delete penalty ${p.id}`}
-                                                onClick={() =>
-                                                    void handleDeletePenalty(um.id, p.id)
-                                                }
-                                                className="text-red-400 hover:text-red-300 text-xs ml-4"
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {token && (
-                                    <form
-                                        aria-label={`add penalty for ${um.userName}`}
-                                        onSubmit={(e) => {
-                                            e.preventDefault()
-                                            void handleAddPenalty(um.id)
-                                        }}
-                                        className="flex gap-2 mt-2"
-                                    >
-                                        <select
-                                            aria-label="penalty player"
-                                            value={penaltyForms[um.id]?.rosterPlayerId ?? ''}
-                                            onChange={(e) =>
-                                                setPenaltyForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        rosterPlayerId:
-                                                            e.target.value === ''
-                                                                ? ''
-                                                                : Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm"
-                                        >
-                                            <option value="">Select player</option>
-                                            {roster.map((r) => (
-                                                <option key={r.id} value={r.id}>
-                                                    {r.firstName} {r.surname}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="number"
-                                            aria-label="penalty count"
-                                            min={1}
-                                            value={penaltyForms[um.id]?.count ?? 1}
-                                            onChange={(e) =>
-                                                setPenaltyForms((prev) => ({
-                                                    ...prev,
-                                                    [um.id]: {
-                                                        ...prev[um.id],
-                                                        count: Number(e.target.value),
-                                                    },
-                                                }))
-                                            }
-                                            className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded text-sm"
-                                        >
-                                            Add
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-                        </div>
+                    {userMatchData.map(({ userMatch, points, goals, penalties }) => (
+                        <UserMatchCard
+                            key={userMatch.id}
+                            userMatch={userMatch}
+                            points={points}
+                            goals={goals}
+                            penalties={penalties}
+                            roster={roster}
+                            pointReasons={pointReasons}
+                            isAuth={!!token}
+                            onChanged={() => void loadAll()}
+                        />
                     ))}
                 </div>
 

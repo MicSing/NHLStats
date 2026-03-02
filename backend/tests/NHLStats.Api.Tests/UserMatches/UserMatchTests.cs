@@ -40,10 +40,7 @@ public class UserMatchTests : ApiTestBase
         var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
         {
             homeTeamId = 1,
-            awayTeamId = 2,
-            homeScore = 0,
-            awayScore = 0,
-            matchDate = "2024-01-10T20:00:00"
+            awayTeamId = 2
         });
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();

@@ -14,8 +14,8 @@ export default function Modal({ title, onClose, children }: ModalProps) {
             aria-labelledby="modal-title"
             className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         >
-            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
-                <div className="flex items-center justify-between mb-4">
+            <div className="bg-gray-800 rounded-lg w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh] mx-4">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 shrink-0">
                     <h2 id="modal-title" className="text-lg font-semibold text-white">
                         {title}
                     </h2>
@@ -27,7 +27,9 @@ export default function Modal({ title, onClose, children }: ModalProps) {
                         ×
                     </button>
                 </div>
-                {children}
+                <div className="overflow-y-auto px-6 py-4 flex-1">
+                    {children}
+                </div>
             </div>
         </div>
     )

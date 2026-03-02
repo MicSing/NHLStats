@@ -105,7 +105,7 @@ export default function ExpensesPage() {
                         <tr key={expense.id} className="border-b border-gray-700/50">
                             <td className="py-3 pr-4">{expense.description ?? '—'}</td>
                             <td className="py-3 pr-4 text-cyan-300">
-                                {expense.amount.toFixed(2)} zł
+                                {expense.amount.toFixed(2)} €
                             </td>
                             <td className="py-3 pr-4 text-gray-300">
                                 {new Date(expense.date).toLocaleDateString()}
@@ -129,7 +129,7 @@ export default function ExpensesPage() {
                     {expenses.length > 0 && (
                         <tr className="border-t border-gray-600 font-semibold">
                             <td className="pt-3 pr-4 text-gray-300">Total</td>
-                            <td className="pt-3 pr-4 text-cyan-300">{total.toFixed(2)} zł</td>
+                            <td className="pt-3 pr-4 text-cyan-300">{total.toFixed(2)} €</td>
                             <td colSpan={2} />
                         </tr>
                     )}
@@ -193,7 +193,7 @@ function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
             />
 
             <label htmlFor="expense-amount" className="block text-sm mb-1 text-gray-300">
-                Amount (zł)
+                Amount (€)
             </label>
             <input
                 id="expense-amount"

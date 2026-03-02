@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NHLStats.Domain;
 
@@ -10,9 +11,11 @@ using NHLStats.Domain;
 namespace NHLStats.Domain.Migrations
 {
     [DbContext(typeof(NhlStatsDbContext))]
-    partial class NhlStatsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302194623_AddMatchNumberAndCompletionType")]
+    partial class AddMatchNumberAndCompletionType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -231,7 +234,7 @@ namespace NHLStats.Domain.Migrations
                         {
                             Id = 1,
                             EffectiveFrom = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            NegativePointValue = 0.50m,
+                            NegativePointValue = -0.50m,
                             PositivePointValue = 0.25m
                         });
                 });
@@ -738,33 +741,6 @@ namespace NHLStats.Domain.Migrations
                     b.ToTable("UserMatchPoints");
                 });
 
-            modelBuilder.Entity("NHLStats.Domain.Entities.UserPayout", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("PaidOn")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SeasonId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SeasonId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserPayouts");
-                });
-
             modelBuilder.Entity("NHLStats.Domain.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -1043,25 +1019,6 @@ namespace NHLStats.Domain.Migrations
                     b.Navigation("PointReason");
 
                     b.Navigation("UserMatch");
-                });
-
-            modelBuilder.Entity("NHLStats.Domain.Entities.UserPayout", b =>
-                {
-                    b.HasOne("NHLStats.Domain.Entities.Season", "Season")
-                        .WithMany()
-                        .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NHLStats.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Season");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Entities.Match", b =>

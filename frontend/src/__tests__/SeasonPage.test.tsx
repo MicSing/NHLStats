@@ -31,16 +31,18 @@ describe('SeasonPage', () => {
     describe('SeasonSelector', () => {
         test('renders all seasons in the dropdown', async () => {
             renderSeasonPage()
-            // Both seasons from the mock fixture should appear
+            // Both seasons from the mock fixture should appear as options
             expect(await screen.findByText('2023-24')).toBeInTheDocument()
             expect(screen.getByText('2024-25')).toBeInTheDocument()
         })
 
-        test('shows prompt to select a season when none is selected', async () => {
+        test('auto-navigates to the latest season on load', async () => {
             renderSeasonPage()
-            expect(
-                await screen.findByText(/select a season to view details/i),
-            ).toBeInTheDocument()
+            // After seasons load the page navigates to the latest season (id=2, 2024-25)
+            const select = await screen.findByRole('combobox', { name: /select season/i })
+            await waitFor(() => {
+                expect((select as HTMLSelectElement).value).toBe('2')
+            })
         })
 
         test('selecting a season loads season data', async () => {
@@ -78,8 +80,9 @@ describe('SeasonPage', () => {
             const statsSection = await screen.findByRole('region', { name: /user stats/i })
             expect(within(statsSection).getByText('Player One')).toBeInTheDocument()
             expect(within(statsSection).getByText('5')).toBeInTheDocument() // totalPlus
-            expect(within(statsSection).getByText('3')).toBeInTheDocument() // totalMinus
-            expect(within(statsSection).getByText('$0.75')).toBeInTheDocument()
+            // totalMinus=3 and totalGoals=3 both appear; use getAllByText
+            expect(within(statsSection).getAllByText('3').length).toBeGreaterThanOrEqual(1)
+            expect(within(statsSection).getByText('0.75 €')).toBeInTheDocument()
         })
 
         test('top roster player columns show correct players', async () => {

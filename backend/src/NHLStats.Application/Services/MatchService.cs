@@ -13,17 +13,17 @@ public class MatchService : IMatchService
     public MatchService(NhlStatsDbContext db) => _db = db;
 
     private static MatchDto ToDto(Match m) => new(
-        m.Id, m.SeasonId,
+        m.Id, m.SeasonId, m.MatchNumber,
         m.HomeTeamId, m.HomeTeam?.Name,
         m.AwayTeamId, m.AwayTeam?.Name,
-        m.HomeScore, m.AwayScore, m.MatchDate);
+        m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
 
     public async Task<IEnumerable<MatchDto>> GetBySeasonAsync(int seasonId) =>
         await _db.Matches
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
             .Where(m => m.SeasonId == seasonId)
-            .OrderBy(m => m.MatchDate)
+            .OrderBy(m => m.MatchNumber)
             .Select(m => ToDto(m))
             .ToListAsync();
 
@@ -38,14 +38,20 @@ public class MatchService : IMatchService
 
     public async Task<MatchDto> CreateAsync(int seasonId, CreateMatchDto dto)
     {
+        var maxNumber = await _db.Matches
+            .Where(m => m.SeasonId == seasonId)
+            .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
+
         var match = new Match
         {
             SeasonId = seasonId,
+            MatchNumber = maxNumber + 1,
             HomeTeamId = dto.HomeTeamId,
             AwayTeamId = dto.AwayTeamId,
-            HomeScore = dto.HomeScore,
-            AwayScore = dto.AwayScore,
-            MatchDate = dto.MatchDate
+            HomeScore = 0,
+            AwayScore = 0,
+            MatchDate = null,
+            CompletionType = CompletionType.None
         };
         _db.Matches.Add(match);
         await _db.SaveChangesAsync();
@@ -65,6 +71,7 @@ public class MatchService : IMatchService
         match.HomeScore = dto.HomeScore;
         match.AwayScore = dto.AwayScore;
         match.MatchDate = dto.MatchDate;
+        match.CompletionType = dto.CompletionType;
         await _db.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
@@ -77,5 +84,55 @@ public class MatchService : IMatchService
         _db.Matches.Remove(match);
         await _db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<CreateMatchDto> dtos)
+    {
+        var dtoList = dtos.ToList();
+
+        // Validate all team IDs upfront
+        var allTeamIds = dtoList
+            .SelectMany(d => new[] { d.HomeTeamId, d.AwayTeamId })
+            .Distinct()
+            .ToList();
+
+        var validTeamIds = await _db.Teams
+            .Where(t => allTeamIds.Contains(t.Id))
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        var invalidIds = allTeamIds.Except(validTeamIds).ToList();
+        if (invalidIds.Count > 0)
+            throw new ArgumentException($"Invalid team IDs: {string.Join(", ", invalidIds)}");
+
+        var startNumber = await _db.Matches
+            .Where(m => m.SeasonId == seasonId)
+            .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
+
+        var matches = dtoList.Select((dto, i) => new Match
+        {
+            SeasonId = seasonId,
+            MatchNumber = startNumber + i + 1,
+            HomeTeamId = dto.HomeTeamId,
+            AwayTeamId = dto.AwayTeamId,
+            HomeScore = 0,
+            AwayScore = 0,
+            MatchDate = null,
+            CompletionType = CompletionType.None
+        }).ToList();
+
+        _db.Matches.AddRange(matches);
+        await _db.SaveChangesAsync();
+
+        // Reload with navigation properties
+        var ids = matches.Select(m => m.Id).ToList();
+        var created = await _db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Where(m => ids.Contains(m.Id))
+            .OrderBy(m => m.MatchNumber)
+            .ToListAsync();
+
+        return created.Select(ToDto);
     }
 }

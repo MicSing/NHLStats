@@ -20,7 +20,13 @@ export default function DashboardPage() {
     useEffect(() => {
         apiClient
             .get<Season[]>('/api/seasons')
-            .then(setSeasons)
+            .then((data) => {
+                const sorted = [...data].sort(
+                    (a, b) => new Date(b.startedOn).getTime() - new Date(a.startedOn).getTime(),
+                )
+                setSeasons(sorted)
+                if (sorted.length > 0) setSelectedSeasonId(sorted[0].id)
+            })
             .finally(() => setLoadingSeasons(false))
 
         apiClient
@@ -100,19 +106,19 @@ export default function DashboardPage() {
                                     <div className="bg-gray-700 rounded p-2">
                                         <p className="text-gray-400">Collected</p>
                                         <p className="text-green-400 font-semibold">
-                                            €{allTimeEarnings.totalCollected.toFixed(2)}
+                                            {allTimeEarnings.totalCollected.toFixed(2)} €
                                         </p>
                                     </div>
                                     <div className="bg-gray-700 rounded p-2">
                                         <p className="text-gray-400">Expenses</p>
                                         <p className="text-red-400 font-semibold">
-                                            €{allTimeEarnings.totalExpenses.toFixed(2)}
+                                            {allTimeEarnings.totalExpenses.toFixed(2)} €
                                         </p>
                                     </div>
                                     <div className="bg-gray-700 rounded p-2">
                                         <p className="text-gray-400">Balance</p>
                                         <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                            €{allTimeEarnings.balance.toFixed(2)}
+                                            {allTimeEarnings.balance.toFixed(2)} €
                                         </p>
                                     </div>
                                 </div>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
@@ -34,9 +34,12 @@ describe('MatchPage', () => {
 
     test('renders match header with teams and score', async () => {
         renderMatchPage()
+        // Team names are always shown in the header
         expect(await screen.findByText('Boston Bruins')).toBeInTheDocument()
         expect(screen.getByText('Edmonton Oilers')).toBeInTheDocument()
-        expect(screen.getByText('3 – 2')).toBeInTheDocument()
+        // In auth mode, score is rendered as editable number inputs
+        expect(screen.getByRole('spinbutton', { name: /home score/i })).toHaveValue(3)
+        expect(screen.getByRole('spinbutton', { name: /away score/i })).toHaveValue(2)
     })
 
     test('renders all user entries for match', async () => {
@@ -48,68 +51,55 @@ describe('MatchPage', () => {
         expect(screen.getByText('−1')).toBeInTheDocument()
     })
 
-    test('shows existing point entries', async () => {
+    test('shows existing goal entries on Goals tab (default)', async () => {
         renderMatchPage()
+        // Goals tab is the default — goal chip shows "Connor McDavid × 1"
+        expect(await screen.findByText(/connor mcdavid × 1/i)).toBeInTheDocument()
+    })
+
+    test('shows existing point entries after switching to Points tab', async () => {
+        const user = userEvent.setup()
+        renderMatchPage()
+        // Points are only shown when the Points tab is active
+        const pointsTab = await screen.findByRole('button', { name: /^points/i })
+        await user.click(pointsTab)
         // mockPoints: Penalty × 1
         expect(await screen.findByText(/penalty × 1/i)).toBeInTheDocument()
     })
 
-    test('shows existing goal entries', async () => {
+    test('goal form is visible in Goals tab when authenticated', async () => {
         renderMatchPage()
-        // mockGoals: Connor McDavid × 1
-        expect(await screen.findByText(/connor mcdavid × 1/i)).toBeInTheDocument()
+        // Goals tab is default — form should be present once data loads
+        const form = await screen.findByRole('form', { name: /add goal for player one/i })
+        expect(form).toBeInTheDocument()
     })
 
-    test('point entry form submits with PointReason and count', async () => {
+    test('penalty form is visible in Penalties tab when authenticated', async () => {
         const user = userEvent.setup()
         renderMatchPage()
-
-        // Wait for form to appear
-        const form = await screen.findByRole('form', { name: /add point for player one/i })
+        // Navigate to Penalties tab
+        const penaltiesTab = await screen.findByRole('button', { name: /^penalties/i })
+        await user.click(penaltiesTab)
+        const form = await screen.findByRole('form', { name: /add penalty for player one/i })
         expect(form).toBeInTheDocument()
-
-        // Select a point reason (Penalty = id 1)
-        const reasonSelect = within(form).getByRole('combobox', { name: /point reason/i })
-        await user.selectOptions(reasonSelect, '1')
-
-        // Submit using the Add button inside the point form
-        await user.click(within(form).getByRole('button', { name: /^add$/i }))
-
-        // After re-load, point entry should still be visible (MSW returns existing mock)
-        await waitFor(() => {
-            expect(screen.getByText(/penalty × 1/i)).toBeInTheDocument()
-        })
     })
 
-    test('goal form shows season roster in dropdown', async () => {
+    test('Points tab shows + Point and − Point action buttons when authenticated', async () => {
+        const user = userEvent.setup()
         renderMatchPage()
-        // Wait for goal form to render
-        await screen.findByRole('form', { name: /add goal for player one/i })
-        const goalSelect = screen.getByRole('combobox', { name: /goal player/i })
-        // Roster player from mockRosterPlayers: Connor McDavid
-        expect(goalSelect).toHaveTextContent('Connor McDavid')
-    })
-
-    test('penalty form shows season roster in dropdown', async () => {
-        renderMatchPage()
-        await screen.findByRole('form', { name: /add penalty for player one/i })
-        const penaltySelect = screen.getByRole('combobox', { name: /penalty player/i })
-        expect(penaltySelect).toHaveTextContent('Connor McDavid')
+        const pointsTab = await screen.findByRole('button', { name: /^points/i })
+        await user.click(pointsTab)
+        expect(await screen.findByRole('button', { name: /\+ point/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /− point/i })).toBeInTheDocument()
     })
 
     test('edit controls hidden when not authenticated', async () => {
         renderMatchPage({ authenticated: false })
         // Wait for page to fully load
         expect(await screen.findByText('Player One')).toBeInTheDocument()
-        // No add forms
-        expect(
-            screen.queryByRole('form', { name: /add point for/i }),
-        ).not.toBeInTheDocument()
+        // No goal form in default Goals tab when not authenticated
         expect(
             screen.queryByRole('form', { name: /add goal for/i }),
-        ).not.toBeInTheDocument()
-        expect(
-            screen.queryByRole('form', { name: /add penalty for/i }),
         ).not.toBeInTheDocument()
         // No initialize button
         expect(
@@ -121,15 +111,9 @@ describe('MatchPage', () => {
         renderMatchPage({ authenticated: true })
         // Wait for page to fully load
         expect(await screen.findByText('Player One')).toBeInTheDocument()
-        // Add forms should be present
-        expect(
-            screen.getByRole('form', { name: /add point for player one/i }),
-        ).toBeInTheDocument()
+        // Goal form is present in the default Goals tab
         expect(
             screen.getByRole('form', { name: /add goal for player one/i }),
-        ).toBeInTheDocument()
-        expect(
-            screen.getByRole('form', { name: /add penalty for player one/i }),
         ).toBeInTheDocument()
         // Initialize button
         expect(

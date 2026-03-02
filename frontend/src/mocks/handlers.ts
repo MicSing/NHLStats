@@ -44,6 +44,7 @@ const mockMatches = [
     {
         id: 10,
         seasonId: 1,
+        matchNumber: 1,
         homeTeamId: 1,
         homeTeamName: 'Boston Bruins',
         awayTeamId: 2,
@@ -51,6 +52,7 @@ const mockMatches = [
         homeScore: 3,
         awayScore: 2,
         matchDate: '2023-10-15T00:00:00',
+        completionType: 1,
     },
 ]
 
@@ -383,17 +385,35 @@ export const handlers = [
         return res(ctx.json(mockMatches))
     }),
 
+    rest.post(`${BASE}/api/seasons/:seasonId/matches/batch`, async (req, res, ctx) => {
+        const body = await req.json() as { homeTeamId: number; awayTeamId: number }[]
+        const created = body.map((b, i) => ({
+            id: 100 + i,
+            seasonId: Number(req.params.seasonId),
+            matchNumber: i + 1,
+            homeTeamId: b.homeTeamId,
+            awayTeamId: b.awayTeamId,
+            homeScore: 0,
+            awayScore: 0,
+            matchDate: null,
+            completionType: 0,
+            homeTeamName: null,
+            awayTeamName: null,
+        }))
+        return res(ctx.json(created))
+    }),
+
     rest.post(`${BASE}/api/seasons/:seasonId/matches`, async (req, res, ctx) => {
-        const body = await req.json() as { homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number; matchDate: string }
+        const body = await req.json() as { homeTeamId: number; awayTeamId: number }
         return res(
             ctx.status(201),
-            ctx.json({ id: 99, seasonId: Number(req.params.seasonId), ...body, homeTeamName: null, awayTeamName: null }),
+            ctx.json({ id: 99, seasonId: Number(req.params.seasonId), matchNumber: 1, ...body, homeScore: 0, awayScore: 0, matchDate: null, completionType: 0, homeTeamName: null, awayTeamName: null }),
         )
     }),
 
     rest.put(`${BASE}/api/seasons/:seasonId/matches/:id`, async (req, res, ctx) => {
-        const body = await req.json() as { homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number; matchDate: string }
-        return res(ctx.json({ id: Number(req.params.id), seasonId: Number(req.params.seasonId), ...body, homeTeamName: null, awayTeamName: null }))
+        const body = await req.json() as { homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number; matchDate: string | null; completionType: number }
+        return res(ctx.json({ id: Number(req.params.id), seasonId: Number(req.params.seasonId), matchNumber: 1, ...body, homeTeamName: null, awayTeamName: null }))
     }),
 
     rest.delete(`${BASE}/api/seasons/:seasonId/matches/:id`, (_req, res, ctx) => {
@@ -519,6 +539,56 @@ export const handlers = [
     }),
 
     rest.delete(`${BASE}/api/usermatches/:userMatchId/penalties/:penaltyId`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    // ── User Season Totals ────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/user-totals`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) {
+            return res(ctx.json([
+                { userId: 1, userName: 'Player One', totalGoals: 3, totalPenalties: 1 },
+            ]))
+        }
+        return res(ctx.json([]))
+    }),
+
+    // ── Payouts ───────────────────────────────────────────────────────────────
+
+    rest.get(`${BASE}/api/seasons/:seasonId/payouts`, (_req, res, ctx) => {
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:seasonId/payouts`, async (req, res, ctx) => {
+        const body = await req.json() as { userId: number; amount: number; paidOn: string }
+        return res(
+            ctx.status(201),
+            ctx.json({
+                id: 99,
+                userId: body.userId,
+                userName: 'Player One',
+                seasonId: Number(req.params.seasonId),
+                amount: body.amount,
+                paidOn: body.paidOn,
+            }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/seasons/:seasonId/payouts/:id`, async (req, res, ctx) => {
+        const body = await req.json() as { amount: number; paidOn: string }
+        return res(
+            ctx.json({
+                id: Number(req.params.id),
+                userId: 1,
+                userName: 'Player One',
+                seasonId: Number(req.params.seasonId),
+                amount: body.amount,
+                paidOn: body.paidOn,
+            }),
+        )
+    }),
+
+    rest.delete(`${BASE}/api/seasons/:seasonId/payouts/:id`, (_req, res, ctx) => {
         return res(ctx.status(204))
     }),
 

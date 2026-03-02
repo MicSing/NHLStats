@@ -31,11 +31,11 @@ export default function EarningsChart({ data }: Props) {
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="userName" tick={{ fill: '#9ca3af', fontSize: 12 }} />
                             <YAxis
-                                tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                                tickFormatter={(v: number) => `${v.toFixed(2)} €`}
                                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                             />
                             <Tooltip
-                                formatter={(v: number) => [`$${v.toFixed(2)}`, 'Earnings']}
+                                formatter={(v: number) => [`${v.toFixed(2)} €`, 'Earnings']}
                                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }}
                             />
                             <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="4 4" />
@@ -56,7 +56,7 @@ export default function EarningsChart({ data }: Props) {
                             <li key={d.userId}>
                                 <span className="font-medium text-white">{d.userName}</span>{' '}
                                 <span className={d.totalEarnings >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                    ${d.totalEarnings.toFixed(2)}
+                                    {d.totalEarnings.toFixed(2)} €
                                 </span>
                             </li>
                         ))}
