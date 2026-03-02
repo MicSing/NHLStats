@@ -12,6 +12,7 @@ import ExpensesPage from './pages/admin/ExpensesPage'
 import SeasonPage from './pages/SeasonPage'
 import MatchPage from './pages/MatchPage'
 import DashboardPage from './pages/DashboardPage'
+import EarningsExpensesPage from './pages/EarningsExpensesPage'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/earnings" element={<EarningsExpensesPage />} />
           <Route path="/seasons" element={<SeasonPage />} />
           <Route path="/seasons/:seasonId" element={<SeasonPage />} />
           <Route path="/seasons/:seasonId/matches/:matchId" element={<MatchPage />} />

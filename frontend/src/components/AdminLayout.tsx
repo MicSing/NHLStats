@@ -13,6 +13,7 @@ const navItems = [
 const publicNavItems = [
     { to: '/dashboard', label: '📊 Dashboard' },
     { to: '/seasons', label: '🏒 Seasons' },
+    { to: '/earnings', label: '💰 Earnings' },
 ]
 
 export default function AdminLayout() {

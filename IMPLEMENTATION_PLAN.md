@@ -355,19 +355,20 @@ For each admin page, follow this TDD cycle:
 ---
 
 ### Phase 12: Frontend — Earnings & Expenses Page
+**Status:** Completed — EarningsExpensesPage implemented with 7 tests all passing (120 total frontend tests passing).
 **Goal:** Build the financial summary page (TDD)
 
-- [ ] **Write earnings table tests:**
-  - [ ] Test: Renders row for each user with Plus, Minus, Earnings, Payouts, Net
-  - [ ] Test: Totals row sums all users
-  - [ ] Test: Handles users with no data
-- [ ] **Write expenses table tests:**
-  - [ ] Test: Renders all expenses with description, amount, date
-  - [ ] Test: Total expenses row shows sum
-- [ ] **Write balance summary tests:**
-  - [ ] Test: Shows Total collected, Total expenses, Remaining
-  - [ ] Test: Remaining = Total collected − Total expenses
-- [ ] Implement EarningsExpensesPage → make tests pass
+- [x] **Write earnings table tests:**
+  - [x] Test: Renders row for each user with Plus, Minus, Earnings, Payouts, Net
+  - [x] Test: Totals row sums all users
+  - [x] Test: Handles users with no data
+- [x] **Write expenses table tests:**
+  - [x] Test: Renders all expenses with description, amount, date
+  - [x] Test: Total expenses row shows sum
+- [x] **Write balance summary tests:**
+  - [x] Test: Shows Total collected, Total expenses, Remaining
+  - [x] Test: Remaining = Total collected − Total expenses
+- [x] Implement EarningsExpensesPage → make tests pass
 
 ---
 
