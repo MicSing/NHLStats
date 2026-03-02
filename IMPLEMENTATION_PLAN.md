@@ -273,6 +273,7 @@ For each resource, follow this TDD cycle:
 ---
 
 ### Phase 9: Frontend — Admin Panel
+**Status:** Completed — all 6 admin pages implemented with 51 new tests (74 total frontend tests passing).
 **Goal:** Build admin management pages (auth-gated) (TDD)
 
 For each admin page, follow this TDD cycle:
@@ -281,24 +282,31 @@ For each admin page, follow this TDD cycle:
 3. Write API integration tests with MSW
 4. Implement component → make tests pass
 
-- [ ] **Users management**:
-  - [ ] Tests: Renders user list, add form submits, edit form populates, deactivate calls API
-  - [ ] Implement UsersPage
-- [ ] **Seasons management**:
-  - [ ] Tests: Renders season list, assign users dropdown, create/edit forms
-  - [ ] Implement SeasonsPage
-- [ ] **Roster management**:
-  - [ ] Tests: Renders roster table, CSV upload triggers import, copy button calls API
-  - [ ] Implement RosterPage
-- [ ] **Point Reasons management**:
-  - [ ] Tests: Renders reasons list, add/edit forms, deactivate toggle
-  - [ ] Implement PointReasonsPage
-- [ ] **Money Config management**:
-  - [ ] Tests: Renders history table, add form with date picker
-  - [ ] Implement MoneyConfigPage
-- [ ] **Expenses management**:
-  - [ ] Tests: Renders expenses list, CRUD operations
-  - [ ] Implement ExpensesPage
+- [x] **Shared infrastructure**:
+  - [x] TypeScript types for all resources (User, Season, Team, RosterPlayer, PointReason, MoneyConfig, Expense)
+  - [x] Expanded MSW handlers for all admin API endpoints
+  - [x] `renderWithProviders` test utility (AuthProvider + MemoryRouter)
+  - [x] `AdminLayout` component (dark sidebar with NavLinks + logout)
+  - [x] `Modal` component (reusable accessible dialog)
+  - [x] Nested `/admin/*` routes in `App.tsx` using `<Outlet>`
+- [x] **Users management**:
+  - [x] Tests: Renders user list, add form submits, edit form populates, deactivate calls API
+  - [x] Implement UsersPage
+- [x] **Seasons management**:
+  - [x] Tests: Renders season list, assign users dropdown, create/edit forms
+  - [x] Implement SeasonsPage
+- [x] **Roster management**:
+  - [x] Tests: Renders roster table, CSV upload triggers import, copy button calls API
+  - [x] Implement RosterPage
+- [x] **Point Reasons management**:
+  - [x] Tests: Renders reasons list, add/edit forms, deactivate toggle
+  - [x] Implement PointReasonsPage
+- [x] **Money Config management**:
+  - [x] Tests: Renders current config card, history table, add form with date picker
+  - [x] Implement MoneyConfigPage
+- [x] **Expenses management**:
+  - [x] Tests: Renders expenses list, total row, CRUD operations
+  - [x] Implement ExpensesPage
 
 ---
 

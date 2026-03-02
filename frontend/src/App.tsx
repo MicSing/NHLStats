@@ -1,7 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
+import UsersPage from './pages/admin/UsersPage'
+import SeasonsPage from './pages/admin/SeasonsPage'
+import RosterPage from './pages/admin/RosterPage'
+import PointReasonsPage from './pages/admin/PointReasonsPage'
+import MoneyConfigPage from './pages/admin/MoneyConfigPage'
+import ExpensesPage from './pages/admin/ExpensesPage'
 
 function App() {
   return (
@@ -13,14 +20,18 @@ function App() {
             path="/admin"
             element={
               <ProtectedRoute>
-                <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-                  <h1 className="text-3xl font-bold text-cyan-400">
-                    Admin Panel
-                  </h1>
-                </div>
+                <AdminLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<Navigate to="/admin/users" replace />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="seasons" element={<SeasonsPage />} />
+            <Route path="roster" element={<RosterPage />} />
+            <Route path="point-reasons" element={<PointReasonsPage />} />
+            <Route path="money-config" element={<MoneyConfigPage />} />
+            <Route path="expenses" element={<ExpensesPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
