@@ -230,24 +230,25 @@ For each resource, follow this TDD cycle:
 ---
 
 ### Phase 7: Backend — Stats & Calculations
+**Status:** Completed — StatsService, SeasonStatsController, StatsController, and 17 integration tests all passing (103 total).
 **Goal:** Implement aggregation and monetary calculation endpoints (TDD)
 
-- [ ] **Write money calculation tests first:**
-  - [ ] Test: Earnings uses rate active at match date, not current rate
-  - [ ] Test: Match before any MoneyConfig uses first config
-  - [ ] Test: Match after rate change uses new rate
-  - [ ] Test: Aggregated UserMatch (no MatchId) uses season start date for rate
-- [ ] **Write stats aggregation tests:**
-  - [ ] Test: Season stats sums all UserMatch totals for user in season
-  - [ ] Test: Top roster player for goals returns player with most goals
-  - [ ] Test: Top roster player for penalties returns player with most penalties
-  - [ ] Test: All-time earnings aggregates across all seasons
-  - [ ] Test: Balance = Total earnings − Total expenses
-- [ ] **Write weekly grouping tests:**
-  - [ ] Test: Matches on same date get same week number
-  - [ ] Test: Week numbers are sequential by date
-- [ ] Implement StatsService with calculation logic → make tests pass
-- [ ] Implement StatsController → make integration tests pass
+- [x] **Write money calculation tests first:**
+  - [x] Test: Earnings uses rate active at match date, not current rate
+  - [x] Test: Match before any MoneyConfig uses first config
+  - [x] Test: Match after rate change uses new rate
+  - [x] Test: Aggregated UserMatch (no MatchId) uses season start date for rate
+- [x] **Write stats aggregation tests:**
+  - [x] Test: Season stats sums all UserMatch totals for user in season
+  - [x] Test: Top roster player for goals returns player with most goals
+  - [x] Test: Top roster player for penalties returns player with most penalties
+  - [x] Test: All-time earnings aggregates across all seasons
+  - [x] Test: Balance = Total earnings − Total expenses
+- [x] **Write weekly grouping tests:**
+  - [x] Test: Matches on same date get same week number
+  - [x] Test: Week numbers are sequential by date
+- [x] Implement StatsService with calculation logic → make tests pass
+- [x] Implement StatsController (SeasonStatsController + StatsController) → make integration tests pass
 
 ---
 
