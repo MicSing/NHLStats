@@ -73,13 +73,13 @@ export default function MoneyConfigPage() {
                     <div>
                         <p className="text-xs text-gray-400 mb-1">Negative Point Value</p>
                         <p className="text-2xl font-bold text-orange-400">
-                            −{current.negativePointValue.toFixed(2)} zł
+                            −{current.negativePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
                         <p className="text-xs text-gray-400 mb-1">Positive Point Value</p>
                         <p className="text-2xl font-bold text-cyan-400">
-                            +{current.positivePointValue.toFixed(2)} zł
+                            +{current.positivePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
@@ -108,10 +108,10 @@ export default function MoneyConfigPage() {
                                 {new Date(cfg.effectiveFrom).toLocaleDateString()}
                             </td>
                             <td className="py-3 pr-4 text-orange-300">
-                                {cfg.negativePointValue.toFixed(2)} zł
+                                {cfg.negativePointValue.toFixed(2)} €
                             </td>
                             <td className="py-3 text-cyan-300">
-                                {cfg.positivePointValue.toFixed(2)} zł
+                                {cfg.positivePointValue.toFixed(2)} €
                             </td>
                         </tr>
                     ))}
@@ -130,7 +130,7 @@ export default function MoneyConfigPage() {
                             htmlFor="mc-negative"
                             className="block text-sm mb-1 text-gray-300"
                         >
-                            Negative Point Value (zł)
+                            Negative Point Value (€)
                         </label>
                         <input
                             id="mc-negative"
@@ -152,7 +152,7 @@ export default function MoneyConfigPage() {
                             htmlFor="mc-positive"
                             className="block text-sm mb-1 text-gray-300"
                         >
-                            Positive Point Value (zł)
+                            Positive Point Value (€)
                         </label>
                         <input
                             id="mc-positive"
