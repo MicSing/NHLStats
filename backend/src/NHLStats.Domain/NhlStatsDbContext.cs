@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NHLStats.Domain.Entities;
+using NHLStats.Domain.Identity;
 
 namespace NHLStats.Domain;
 
-public class NhlStatsDbContext : DbContext
+public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
 {
     public NhlStatsDbContext(DbContextOptions<NhlStatsDbContext> options) : base(options)
     {

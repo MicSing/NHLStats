@@ -130,20 +130,25 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 
 ---
 
-### Phase 3: Backend — Authentication
+### Phase 3: Backend — Authentication (Completed)
+**Status:** Completed — ASP.NET Identity + JWT fully implemented; 6 integration tests passing (10/10 total).
 **Goal:** Implement ASP.NET Identity with JWT (TDD)
 
-- [ ] **Write auth integration tests first:**
-  - [ ] Test: Register returns 201 and creates user
-  - [ ] Test: Login with valid credentials returns JWT
-  - [ ] Test: Login with invalid credentials returns 401
-  - [ ] Test: Protected endpoint without token returns 401
-  - [ ] Test: Protected endpoint with valid token returns 200
-  - [ ] Test: Read endpoints allow anonymous access
-- [ ] Add ASP.NET Identity entities → make tests pass
-- [ ] Configure JWT authentication → make tests pass
-- [ ] Create Auth controller (Register, Login, Refresh token) → make tests pass
-- [ ] Add `[Authorize]` attributes to write endpoints → make tests pass
+- [x] **Write auth integration tests first:**
+  - [x] Test: Register returns 201 and creates user
+  - [x] Test: Register with duplicate email returns 409
+  - [x] Test: Login with valid credentials returns JWT
+  - [x] Test: Login with invalid credentials returns 401
+  - [x] Test: Protected endpoint without token returns 401
+  - [x] Test: Protected endpoint with valid token returns 200
+- [x] Add ASP.NET Identity entities (`ApplicationUser : IdentityUser`) → make tests pass
+- [x] Configure JWT authentication (HmacSha256, issuer/audience/lifetime) → make tests pass
+- [x] Create Auth controller (Register, Login, Me) → make tests pass
+- [x] Add `[Authorize]` to protected endpoints (`/api/auth/me`) → make tests pass
+- [x] EF migration regenerated clean (single `InitialCreate` with all domain + Identity tables)
+- [x] Admin user seeded at startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars
+- [x] `CustomWebApplicationFactory` with isolated temp-file SQLite for integration tests
+- [x] Upgraded `Microsoft.AspNetCore.Mvc.Testing` to `10.0.0` (required for .NET 10 compatibility)
 
 ---
 
