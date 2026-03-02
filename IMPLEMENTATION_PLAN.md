@@ -187,20 +187,21 @@ For each resource, follow this TDD cycle:
 ---
 
 ### Phase 5: Backend — Roster Management
+**Status:** Completed — RosterPlayerService, RosterController, and 16 integration tests all passing (69 total).
 **Goal:** Implement per-season roster with CSV import and copy functionality (TDD)
 
-- [ ] **Write RosterPlayer tests first:**
-  - [ ] Test: GET roster for season returns only that season's players
-  - [ ] Test: POST creates player linked to season
-  - [ ] Test: CSV import creates multiple players
-  - [ ] Test: CSV import with invalid TeamShortName returns validation error
-  - [ ] Test: Copy from previous season duplicates all players to new season
-  - [ ] Test: Copy when no previous season returns error
-- [ ] Implement RosterPlayerService → make unit tests pass
-- [ ] Implement RosterController → make integration tests pass
-- [ ] **CSV Import**: `POST /api/seasons/{seasonId}/roster/import`
+- [x] **Write RosterPlayer tests first:**
+  - [x] Test: GET roster for season returns only that season's players
+  - [x] Test: POST creates player linked to season
+  - [x] Test: CSV import creates multiple players
+  - [x] Test: CSV import with invalid TeamShortName returns validation error
+  - [x] Test: Copy from previous season duplicates all players to new season
+  - [x] Test: Copy when no previous season returns error
+- [x] Implement RosterPlayerService → make unit tests pass
+- [x] Implement RosterController → make integration tests pass
+- [x] **CSV Import**: `POST /api/seasons/{seasonId}/roster/import`
   - Format: `FirstName,Surname,Position,TeamShortName`
-- [ ] **Copy from previous season**: `POST /api/seasons/{seasonId}/roster/copy/{sourceSeasonId}`
+- [x] **Copy from previous season**: `POST /api/seasons/{seasonId}/roster/copy/{sourceSeasonId}`
 
 ---
 

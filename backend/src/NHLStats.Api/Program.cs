@@ -8,7 +8,6 @@ using System.IO;
 using System.Text;
 using NHLStats.Application.Interfaces;
 using NHLStats.Application.Services;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -64,6 +63,7 @@ builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddScoped<IPointReasonService, PointReasonService>();
 builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 
 // Configure EF Core to always use SQLite and place DB under HOME/data/nhlstats.db
 var home = Environment.GetEnvironmentVariable("HOME") ?? ".";
