@@ -10,6 +10,11 @@ const navItems = [
     { to: '/admin/expenses', label: 'Expenses' },
 ]
 
+const publicNavItems = [
+    { to: '/dashboard', label: '📊 Dashboard' },
+    { to: '/seasons', label: '🏒 Seasons' },
+]
+
 export default function AdminLayout() {
     const { user, logout } = useAuth()
 
@@ -22,7 +27,23 @@ export default function AdminLayout() {
                     <p className="text-xs text-gray-400">Admin Panel</p>
                 </div>
                 <nav className="flex-1 p-2">
+                    <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Admin</p>
                     {navItems.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded mb-1 text-sm ${isActive
+                                    ? 'bg-cyan-700 text-white'
+                                    : 'text-gray-300 hover:bg-gray-700'
+                                }`
+                            }
+                        >
+                            {item.label}
+                        </NavLink>
+                    ))}
+                    <p className="px-4 py-1 mt-3 text-xs font-semibold uppercase tracking-wider text-gray-500">View</p>
+                    {publicNavItems.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}

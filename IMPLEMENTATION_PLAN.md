@@ -338,18 +338,19 @@ For each admin page, follow this TDD cycle:
 ---
 
 ### Phase 11: Frontend — Charts Dashboard
+**Status:** Completed — recharts installed; PlusMinusChart, TopScorersChart, PenaltyLeadersChart, EarningsChart, and DashboardPage implemented with 15 new tests (113 total frontend tests passing).
 **Goal:** Build cross-season visualizations (TDD)
 
-- [ ] Install Recharts
-- [ ] **Write chart component tests:**
-  - [ ] Test: PlusMinusChart renders with correct data points
-  - [ ] Test: TopScorersChart renders bars for each user
-  - [ ] Test: PenaltyLeadersChart renders bars for each user
-  - [ ] Test: EarningsChart renders cumulative line
-  - [ ] Test: Season filter updates chart data
-  - [ ] Test: Charts handle empty data gracefully
-- [ ] Implement chart components → make tests pass
-- [ ] Implement DashboardPage composing all charts
+- [x] Install Recharts
+- [x] **Write chart component tests:**
+  - [x] Test: PlusMinusChart renders with correct data points
+  - [x] Test: TopScorersChart renders bars for each user
+  - [x] Test: PenaltyLeadersChart renders bars for each user
+  - [x] Test: EarningsChart renders cumulative line
+  - [x] Test: Season filter updates chart data
+  - [x] Test: Charts handle empty data gracefully
+- [x] Implement chart components → make tests pass
+- [x] Implement DashboardPage composing all charts
 
 ---
 

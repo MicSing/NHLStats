@@ -71,6 +71,12 @@ export default function SeasonPage() {
                             onChange={handleSeasonChange}
                         />
                     )}
+                    <Link
+                        to="/dashboard"
+                        className="ml-auto text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+                    >
+                        📊 Dashboard
+                    </Link>
                 </div>
 
                 {!seasonId && (
