@@ -9,6 +9,7 @@ const navItems = [
     { to: '/admin/money-config', label: 'Money Config' },
     { to: '/admin/expenses', label: 'Expenses' },
     { to: '/admin/matches', label: 'Matches' },
+    { to: '/admin/aggregated-points', label: 'Aggregated Points' },
     { to: '/admin/payouts', label: 'Payouts' },
 ]
 

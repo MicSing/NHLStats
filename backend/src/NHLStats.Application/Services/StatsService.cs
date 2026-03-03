@@ -33,8 +33,9 @@ public class StatsService : IStatsService
         return active ?? configs.OrderBy(m => m.EffectiveFrom).First();
     }
 
-    private static decimal CalculateEarnings(MoneyConfig config, int totalPlus, int totalMinus) =>
-        Math.Max(0m, totalMinus * config.NegativePointValue - totalPlus * config.PositivePointValue);
+    /// <summary>Raw (unclamped) contribution for one UserMatch entry. Clamp to 0 only at the per-user aggregate level.</summary>
+    private static decimal RawEarnings(MoneyConfig config, int totalPlus, int totalMinus) =>
+        totalMinus * config.NegativePointValue - totalPlus * config.PositivePointValue;
 
     // ─── Season stats ─────────────────────────────────────────────────────────
 
@@ -58,13 +59,16 @@ public class StatsService : IStatsService
             {
                 var totalPlus = g.Sum(um => um.TotalPlus);
                 var totalMinus = g.Sum(um => um.TotalMinus);
-                var earnings = g.Sum(um =>
+                // Sum raw (unclamped) values per UserMatch to respect per-match rates,
+                // then clamp the final total to 0 so plus points in one match can offset
+                // minus points in another (avoids double-counting the floor).
+                var rawEarnings = g.Sum(um =>
                 {
-                    // For specific matches use MatchDate (if set); for aggregated or unplayed matches use SeasonStartedOn
                     var date = um.Match?.MatchDate ?? season?.StartedOn ?? DateTime.MinValue;
                     var config = GetEffectiveConfig(moneyConfigs, date);
-                    return config == null ? 0m : CalculateEarnings(config, um.TotalPlus, um.TotalMinus);
+                    return config == null ? 0m : RawEarnings(config, um.TotalPlus, um.TotalMinus);
                 });
+                var earnings = Math.Max(0m, rawEarnings);
                 return new UserSeasonStatsDto(g.Key.UserId, g.Key.UserName, totalPlus, totalMinus, earnings);
             })
             .OrderByDescending(s => s.Earnings)
@@ -193,7 +197,7 @@ public class StatsService : IStatsService
             {
                 var totalPlus = g.Sum(um => um.TotalPlus);
                 var totalMinus = g.Sum(um => um.TotalMinus);
-                var earnings = g.Sum(um =>
+                var rawEarnings = g.Sum(um =>
                 {
                     DateTime date;
                     if (um.Match?.MatchDate != null)
@@ -204,8 +208,9 @@ public class StatsService : IStatsService
                         date = DateTime.MinValue;
 
                     var config = GetEffectiveConfig(moneyConfigs, date);
-                    return config == null ? 0m : CalculateEarnings(config, um.TotalPlus, um.TotalMinus);
+                    return config == null ? 0m : RawEarnings(config, um.TotalPlus, um.TotalMinus);
                 });
+                var earnings = Math.Max(0m, rawEarnings);
                 return new UserEarningsDto(g.Key.UserId, g.Key.UserName, totalPlus, totalMinus, earnings);
             })
             .OrderByDescending(u => u.TotalEarnings)
