@@ -132,6 +132,14 @@ a:hover {
     @apply bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg px-4 py-2 transition-colors disabled:opacity-50;
   }
 
+  .btn-danger {
+    @apply bg-danger hover:opacity-80 text-white font-semibold rounded-lg px-4 py-2 transition-colors disabled:opacity-50;
+  }
+
+  .btn-warning {
+    @apply bg-warning hover:opacity-80 text-white font-semibold rounded-lg px-4 py-2 transition-colors disabled:opacity-50;
+  }
+
   .btn-ghost {
     @apply bg-transparent hover:bg-border text-text-muted hover:text-text font-medium rounded-lg px-3 py-1.5 transition-colors;
   }

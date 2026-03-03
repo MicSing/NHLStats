@@ -62,11 +62,6 @@ export default function UserMatchCard({
         onChanged()
     }
 
-    const handleDeletePoint = async (pointId: number) => {
-        await apiClient.delete(`/api/usermatches/${um.id}/points/${pointId}`)
-        onChanged()
-    }
-
     const handleDeletePointsByReason = async (ids: number[]) => {
         for (const id of ids) {
             await apiClient.delete(`/api/usermatches/${um.id}/points/${id}`)
@@ -83,8 +78,10 @@ export default function UserMatchCard({
         onChanged()
     }
 
-    const handleDeleteGoal = async (goalId: number) => {
-        await apiClient.delete(`/api/usermatches/${um.id}/goals/${goalId}`)
+    const handleDeleteGoal = async (goalIds: number[]) => {
+        for (const id of goalIds) {
+            await apiClient.delete(`/api/usermatches/${um.id}/goals/${id}`)
+        }
         onChanged()
     }
 
@@ -97,8 +94,10 @@ export default function UserMatchCard({
         onChanged()
     }
 
-    const handleDeletePenalty = async (penaltyId: number) => {
-        await apiClient.delete(`/api/usermatches/${um.id}/penalties/${penaltyId}`)
+    const handleDeletePenalty = async (penaltyIds: number[]) => {
+        for (const id of penaltyIds) {
+            await apiClient.delete(`/api/usermatches/${um.id}/penalties/${id}`)
+        }
         onChanged()
     }
 
@@ -122,13 +121,13 @@ export default function UserMatchCard({
             {/* Tabs */}
             <div className="flex gap-1 border-b border-border mb-3">
                 <button className={tabClass('goals')} onClick={() => setActiveTab('goals')}>
-                    Goals ({goals.length})
+                    Goals ({goals.reduce((s, g) => s + g.count, 0)})
                 </button>
                 <button className={tabClass('penalties')} onClick={() => setActiveTab('penalties')}>
-                    Penalties ({penalties.length})
+                    Penalties ({penalties.reduce((s, p) => s + p.count, 0)})
                 </button>
                 <button className={tabClass('points')} onClick={() => setActiveTab('points')}>
-                    Points ({points.length})
+                    Points ({points.reduce((s, p) => s + p.count, 0)})
                 </button>
             </div>
 
@@ -136,16 +135,34 @@ export default function UserMatchCard({
             {activeTab === 'goals' && (
                 <div>
                     <div className="flex flex-wrap gap-2 mb-2">
-                        {goals.map((g) => (
+                        {Object.values(
+                            goals.reduce<
+                                Record<number, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[] }>
+                            >((acc, g) => {
+                                if (acc[g.rosterPlayerId]) {
+                                    acc[g.rosterPlayerId].totalCount += g.count
+                                    acc[g.rosterPlayerId].ids.push(g.id)
+                                } else {
+                                    acc[g.rosterPlayerId] = {
+                                        rosterPlayerId: g.rosterPlayerId,
+                                        firstName: g.playerFirstName,
+                                        surname: g.playerSurname,
+                                        totalCount: g.count,
+                                        ids: [g.id],
+                                    }
+                                }
+                                return acc
+                            }, {}),
+                        ).map((g) => (
                             <span
-                                key={g.id}
+                                key={g.rosterPlayerId}
                                 className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
                             >
-                                {g.playerFirstName} {g.playerSurname} × {g.count}
+                                {g.firstName} {g.surname} × {g.totalCount}
                                 {isAuth && (
                                     <button
-                                        aria-label={`delete goal ${g.id}`}
-                                        onClick={() => void handleDeleteGoal(g.id)}
+                                        aria-label={`delete goal for player ${g.rosterPlayerId}`}
+                                        onClick={() => void handleDeleteGoal(g.ids)}
                                         className="text-danger hover:opacity-70 ml-1 leading-none"
                                     >
                                         ✕
@@ -202,16 +219,34 @@ export default function UserMatchCard({
             {activeTab === 'penalties' && (
                 <div>
                     <div className="flex flex-wrap gap-2 mb-2">
-                        {penalties.map((p) => (
+                        {Object.values(
+                            penalties.reduce<
+                                Record<number, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[] }>
+                            >((acc, p) => {
+                                if (acc[p.rosterPlayerId]) {
+                                    acc[p.rosterPlayerId].totalCount += p.count
+                                    acc[p.rosterPlayerId].ids.push(p.id)
+                                } else {
+                                    acc[p.rosterPlayerId] = {
+                                        rosterPlayerId: p.rosterPlayerId,
+                                        firstName: p.playerFirstName,
+                                        surname: p.playerSurname,
+                                        totalCount: p.count,
+                                        ids: [p.id],
+                                    }
+                                }
+                                return acc
+                            }, {}),
+                        ).map((p) => (
                             <span
-                                key={p.id}
+                                key={p.rosterPlayerId}
                                 className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
                             >
-                                {p.playerFirstName} {p.playerSurname} × {p.count}
+                                {p.firstName} {p.surname} × {p.totalCount}
                                 {isAuth && (
                                     <button
-                                        aria-label={`delete penalty ${p.id}`}
-                                        onClick={() => void handleDeletePenalty(p.id)}
+                                        aria-label={`delete penalty for player ${p.rosterPlayerId}`}
+                                        onClick={() => void handleDeletePenalty(p.ids)}
                                         className="text-danger hover:opacity-70 ml-1 leading-none"
                                     >
                                         ✕
@@ -258,7 +293,7 @@ export default function UserMatchCard({
                             />
                             <button
                                 type="submit"
-                                className="bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded-lg text-sm font-medium"
+                                className="btn-warning text-sm px-3 py-1"
                             >
                                 + Penalty
                             </button>
@@ -302,8 +337,8 @@ export default function UserMatchCard({
                             <span
                                 key={g.pointReasonId}
                                 className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.isPositive
-                                        ? 'bg-success/20 text-success'
-                                        : 'bg-danger/20 text-danger'
+                                    ? 'bg-success/20 text-success'
+                                    : 'bg-danger/20 text-danger'
                                     }`}
                             >
                                 {g.pointReasonName} × {g.totalCount}
@@ -390,7 +425,7 @@ export default function UserMatchCard({
                                 />
                                 <button
                                     onClick={() => void handleAddPoint(pointForm.pointReasonId)}
-                                    className="bg-danger/20 hover:bg-danger/30 text-danger px-3 py-1 rounded-lg text-sm font-medium"
+                                    className="btn-danger text-sm px-3 py-1"
                                 >
                                     − Point
                                 </button>
