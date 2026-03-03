@@ -81,3 +81,15 @@ public record UserSeasonTotalsDto(
     int TotalGoals,
     int TotalPenalties);
 
+// ─── Plus/minus trend per period (season or week) ───────────────────────────
+
+public record UserPeriodPlusMinusDto(
+    int UserId,
+    string UserName,
+    int TotalPlus,
+    int TotalMinus);
+
+public record PeriodPlusMinusDto(
+    string Label,
+    IEnumerable<UserPeriodPlusMinusDto> Users);
+

@@ -85,3 +85,17 @@ export interface UserSeasonTotals {
     totalGoals: number
     totalPenalties: number
 }
+
+// Plus/minus trend per period (season or week)
+
+export interface UserPeriodPlusMinus {
+    userId: number
+    userName: string
+    totalPlus: number
+    totalMinus: number
+}
+
+export interface PeriodPlusMinus {
+    label: string
+    users: UserPeriodPlusMinus[]
+}

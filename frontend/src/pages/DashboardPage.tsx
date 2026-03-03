@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
-import type { UserSeasonStats, AllTimeEarnings, RosterScorerByUser, RosterPenalizedByUser } from '../types/stats'
+import type { UserSeasonStats, AllTimeEarnings, RosterScorerByUser, RosterPenalizedByUser, PeriodPlusMinus } from '../types/stats'
 import apiClient from '../services/apiClient'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
+import TrendChart from '../components/charts/TrendChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
@@ -15,8 +16,10 @@ export default function DashboardPage() {
     const [rosterScorers, setRosterScorers] = useState<RosterScorerByUser[]>([])
     const [rosterPenalized, setRosterPenalized] = useState<RosterPenalizedByUser[]>([])
     const [allTimeEarnings, setAllTimeEarnings] = useState<AllTimeEarnings | null>(null)
+    const [trendData, setTrendData] = useState<PeriodPlusMinus[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingStats, setLoadingStats] = useState(false)
+    const [loadingTrend, setLoadingTrend] = useState(false)
 
     // Load seasons and all-time earnings on mount
     useEffect(() => {
@@ -37,15 +40,35 @@ export default function DashboardPage() {
             .catch(() => setAllTimeEarnings(null))
     }, [])
 
-    // Load per-season stats when a season is selected
+    // Load per-season stats when a season is selected, or all-seasons aggregated stats
     useEffect(() => {
         if (!selectedSeasonId) {
-            setSeasonStats([])
-            setRosterScorers([])
-            setRosterPenalized([])
+            // "All seasons" — fetch aggregated plus/minus stats and season-level trend
+            setLoadingStats(true)
+            setLoadingTrend(true)
+            apiClient
+                .get<UserSeasonStats[]>('/api/stats/plus-minus')
+                .then((stats) => {
+                    setSeasonStats(stats)
+                    setRosterScorers([])
+                    setRosterPenalized([])
+                })
+                .catch(() => {
+                    setSeasonStats([])
+                    setRosterScorers([])
+                    setRosterPenalized([])
+                })
+                .finally(() => setLoadingStats(false))
+
+            apiClient
+                .get<PeriodPlusMinus[]>('/api/stats/plus-minus-trend')
+                .then(setTrendData)
+                .catch(() => setTrendData([]))
+                .finally(() => setLoadingTrend(false))
             return
         }
         setLoadingStats(true)
+        setLoadingTrend(true)
         Promise.all([
             apiClient.get<UserSeasonStats[]>(`/api/seasons/${selectedSeasonId}/stats`),
             apiClient
@@ -66,6 +89,13 @@ export default function DashboardPage() {
                 setRosterPenalized([])
             })
             .finally(() => setLoadingStats(false))
+
+        // Weekly trend for the selected season (with automatic backfill from previous season)
+        apiClient
+            .get<PeriodPlusMinus[]>(`/api/seasons/${selectedSeasonId}/stats/plus-minus-trend-weekly`)
+            .then(setTrendData)
+            .catch(() => setTrendData([]))
+            .finally(() => setLoadingTrend(false))
     }, [selectedSeasonId])
 
     return (
@@ -144,6 +174,30 @@ export default function DashboardPage() {
                             </>
                         ) : (
                             <EarningsChart data={[]} />
+                        )}
+                    </section>
+                </div>
+
+                {/* Plus / Minus Trend (split into two charts) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <section className="card p-5">
+                        <h2 className="text-sm font-semibold text-primary mb-3">
+                            Plus Trend {selectedSeasonId ? '(by Week)' : '(by Season)'}
+                        </h2>
+                        {loadingTrend ? (
+                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                        ) : (
+                            <TrendChart data={trendData} mode="plus" />
+                        )}
+                    </section>
+                    <section className="card p-5">
+                        <h2 className="text-sm font-semibold text-primary mb-3">
+                            Minus Trend {selectedSeasonId ? '(by Week)' : '(by Season)'}
+                        </h2>
+                        {loadingTrend ? (
+                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                        ) : (
+                            <TrendChart data={trendData} mode="minus" />
                         )}
                     </section>
                 </div>

@@ -48,6 +48,23 @@ public interface IStatsService
     Task<IEnumerable<RosterPenalizedByUserDto>> GetAllPenaltyPlayersByUserAsync(int seasonId);
 
     /// <summary>
+    /// Returns per-user aggregated plus/minus stats across all seasons.
+    /// </summary>
+    Task<IEnumerable<UserSeasonStatsDto>> GetAllSeasonsStatsAsync();
+
+    /// <summary>
+    /// Returns plus/minus per user per season, ordered chronologically.
+    /// Used for trend charts.
+    /// </summary>
+    Task<IEnumerable<PeriodPlusMinusDto>> GetPlusMinusTrendAsync();
+
+    /// <summary>
+    /// Returns plus/minus per user per week for a season.
+    /// When the season has few weeks, backfills from the previous season.
+    /// </summary>
+    Task<IEnumerable<PeriodPlusMinusDto>> GetWeeklyPlusMinusTrendAsync(int seasonId);
+
+    /// <summary>
     /// Returns all-time earnings per user aggregated across every season,
     /// along with total collected, total expenses, and the remaining balance.
     /// </summary>

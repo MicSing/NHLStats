@@ -617,10 +617,41 @@ export const handlers = [
 
     rest.get(`${BASE}/api/stats/earnings`, (_req, res, ctx) => {
         return res(ctx.json({
-            userEarnings: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75 }],
+            userEarnings: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75, totalPaid: 0, remainingBalance: 0.75 }],
             totalCollected: 0.75,
+            canBeCollected: 0.75,
             totalExpenses: 80.0,
             balance: -79.25,
         }))
+    }),
+
+    rest.get(`${BASE}/api/stats/plus-minus`, (_req, res, ctx) => {
+        return res(ctx.json(mockSeasonStats))
+    }),
+
+    rest.get(`${BASE}/api/stats/plus-minus-trend`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                label: '2023-24',
+                users: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3 }],
+            },
+            {
+                label: '2024-25',
+                users: [{ userId: 1, userName: 'Player One', totalPlus: 7, totalMinus: 2 }],
+            },
+        ]))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/plus-minus-trend-weekly`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                label: 'Week 1',
+                users: [{ userId: 1, userName: 'Player One', totalPlus: 2, totalMinus: 1 }],
+            },
+            {
+                label: 'Week 2',
+                users: [{ userId: 1, userName: 'Player One', totalPlus: 3, totalMinus: 2 }],
+            },
+        ]))
     }),
 ]

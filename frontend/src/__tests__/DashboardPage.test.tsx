@@ -33,8 +33,8 @@ const mockRosterPlayers: TopRosterPlayer[] = [
 ]
 
 const mockEarnings: UserEarnings[] = [
-    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75 },
-    { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, totalEarnings: -2.5 },
+    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75, totalPaid: 0, remainingBalance: 0.75 },
+    { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, totalEarnings: -2.5, totalPaid: 0, remainingBalance: 0 },
 ]
 
 // ── PlusMinusChart ──────────────────────────────────────────────────────────

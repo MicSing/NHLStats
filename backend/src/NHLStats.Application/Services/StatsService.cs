@@ -309,6 +309,160 @@ public class StatsService : IStatsService
             .ToList();
     }
 
+    // ─── All-seasons aggregated plus/minus ────────────────────────────────────
+
+    public async Task<IEnumerable<UserSeasonStatsDto>> GetAllSeasonsStatsAsync()
+    {
+        var userMatches = await _db.UserMatches
+            .Include(um => um.User)
+            .Include(um => um.Match)
+            .ToListAsync();
+
+        var seasons = await _db.Seasons.ToDictionaryAsync(s => s.Id);
+
+        var moneyConfigs = await _db.MoneyConfigs
+            .OrderBy(m => m.EffectiveFrom)
+            .ToListAsync();
+
+        return userMatches
+            .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
+            .Select(g =>
+            {
+                var totalPlus = g.Sum(um => um.TotalPlus);
+                var totalMinus = g.Sum(um => um.TotalMinus);
+                var rawEarnings = g.Sum(um =>
+                {
+                    DateTime date;
+                    if (um.Match?.MatchDate != null)
+                        date = um.Match.MatchDate.Value;
+                    else if (seasons.TryGetValue(um.SeasonId, out var season))
+                        date = season.StartedOn;
+                    else
+                        date = DateTime.MinValue;
+
+                    var config = GetEffectiveConfig(moneyConfigs, date);
+                    return config == null ? 0m : RawEarnings(config, um.TotalPlus, um.TotalMinus);
+                });
+                var earnings = Math.Max(0m, rawEarnings);
+                return new UserSeasonStatsDto(g.Key.UserId, g.Key.UserName, totalPlus, totalMinus, earnings);
+            })
+            .OrderByDescending(s => s.Earnings)
+            .ToList();
+    }
+
+    // ─── Plus/minus trend per season ──────────────────────────────────────────
+
+    public async Task<IEnumerable<PeriodPlusMinusDto>> GetPlusMinusTrendAsync()
+    {
+        var allSeasons = await _db.Seasons
+            .OrderBy(s => s.StartedOn)
+            .ToListAsync();
+
+        var userMatches = await _db.UserMatches
+            .Include(um => um.User)
+            .ToListAsync();
+
+        return allSeasons.Select(season =>
+        {
+            var seasonMatches = userMatches.Where(um => um.SeasonId == season.Id);
+            var users = seasonMatches
+                .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
+                .Select(g => new UserPeriodPlusMinusDto(
+                    g.Key.UserId,
+                    g.Key.UserName,
+                    g.Sum(um => um.TotalPlus),
+                    g.Sum(um => um.TotalMinus)))
+                .OrderBy(u => u.UserName)
+                .ToList();
+
+            return new PeriodPlusMinusDto(season.Name, users);
+        }).ToList();
+    }
+
+    // ─── Plus/minus trend per week (with backfill) ────────────────────────────
+
+    private const int MinWeeksDesired = 6;
+
+    public async Task<IEnumerable<PeriodPlusMinusDto>> GetWeeklyPlusMinusTrendAsync(int seasonId)
+    {
+        var season = await _db.Seasons.FindAsync(seasonId);
+        if (season == null) return Enumerable.Empty<PeriodPlusMinusDto>();
+
+        // Build week-grouped user matches for the requested season
+        var currentWeeks = await BuildWeeklyPeriodsAsync(seasonId);
+
+        // If few weeks, backfill from previous season (by StartedOn date)
+        if (currentWeeks.Count < MinWeeksDesired)
+        {
+            var previousSeason = await _db.Seasons
+                .Where(s => s.StartedOn < season.StartedOn)
+                .OrderByDescending(s => s.StartedOn)
+                .FirstOrDefaultAsync();
+
+            if (previousSeason != null)
+            {
+                var prevWeeks = await BuildWeeklyPeriodsAsync(previousSeason.Id);
+                // Take the last N weeks from the previous season to fill up
+                var needed = MinWeeksDesired - currentWeeks.Count;
+                var backfill = prevWeeks.TakeLast(Math.Min(needed, prevWeeks.Count)).ToList();
+
+                // Re-label backfilled weeks to indicate source
+                var relabeled = backfill.Select(w =>
+                    new PeriodPlusMinusDto($"{previousSeason.Name} {w.Label}", w.Users));
+
+                return relabeled.Concat(currentWeeks).ToList();
+            }
+        }
+
+        return currentWeeks;
+    }
+
+    private async Task<List<PeriodPlusMinusDto>> BuildWeeklyPeriodsAsync(int seasonId)
+    {
+        // Load all UserMatches for the season with Match dates and User names
+        var userMatches = await _db.UserMatches
+            .Include(um => um.User)
+            .Include(um => um.Match)
+            .Where(um => um.SeasonId == seasonId && um.Match != null && um.Match.MatchDate != null)
+            .ToListAsync();
+
+        if (userMatches.Count == 0) return new List<PeriodPlusMinusDto>();
+
+        // Determine week numbers: each distinct match date is a sequential week
+        var distinctDates = userMatches
+            .Select(um => um.Match!.MatchDate!.Value.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        var dateToWeek = distinctDates
+            .Select((date, index) => new { date, week = index + 1 })
+            .ToDictionary(x => x.date, x => x.week);
+
+        // Group by week, then by user
+        return dateToWeek
+            .OrderBy(kv => kv.Value)
+            .Select(kv =>
+            {
+                var weekNum = kv.Value;
+                var weekDate = kv.Key;
+                var weekMatches = userMatches.Where(um => um.Match!.MatchDate!.Value.Date == weekDate);
+
+                var users = weekMatches
+                    .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
+                    .Select(g => new UserPeriodPlusMinusDto(
+                        g.Key.UserId,
+                        g.Key.UserName,
+                        g.Sum(um => um.TotalPlus),
+                        g.Sum(um => um.TotalMinus)))
+                    .OrderBy(u => u.UserName)
+                    .ToList();
+
+                return new PeriodPlusMinusDto($"Week {weekNum}", users);
+            })
+            .ToList();
+    }
+
     // ─── All-time earnings ────────────────────────────────────────────────────
 
     public async Task<AllTimeEarningsDto> GetAllTimeEarningsAsync()

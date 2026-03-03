@@ -96,6 +96,15 @@ public class SeasonStatsController : ControllerBase
         var result = await _stats.GetUserSeasonTotalsAsync(seasonId);
         return Ok(result);
     }
+
+    /// <summary>GET /api/seasons/{seasonId}/stats/plus-minus-trend-weekly</summary>
+    /// <remarks>Returns per-user plus/minus per week. Backfills from previous season when current season has few weeks.</remarks>
+    [HttpGet("plus-minus-trend-weekly")]
+    public async Task<IActionResult> GetWeeklyPlusMinusTrend(int seasonId)
+    {
+        var result = await _stats.GetWeeklyPlusMinusTrendAsync(seasonId);
+        return Ok(result);
+    }
 }
 
 // ─── Global stats endpoint ────────────────────────────────────────────────────
@@ -107,6 +116,24 @@ public class StatsController : ControllerBase
     private readonly IStatsService _stats;
 
     public StatsController(IStatsService stats) => _stats = stats;
+
+    /// <summary>GET /api/stats/plus-minus</summary>
+    /// <remarks>Returns per-user aggregated TotalPlus, TotalMinus and Earnings across all seasons.</remarks>
+    [HttpGet("plus-minus")]
+    public async Task<IActionResult> GetAllSeasonsPlusMinus()
+    {
+        var result = await _stats.GetAllSeasonsStatsAsync();
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/stats/plus-minus-trend</summary>
+    /// <remarks>Returns plus/minus net per user per season for trend charting.</remarks>
+    [HttpGet("plus-minus-trend")]
+    public async Task<IActionResult> GetPlusMinusTrend()
+    {
+        var result = await _stats.GetPlusMinusTrendAsync();
+        return Ok(result);
+    }
 
     /// <summary>GET /api/stats/earnings</summary>
     /// <remarks>
