@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
     BarChart,
     Bar,
@@ -11,12 +12,15 @@ import {
 import type { RosterPenalizedByUser } from '../../types/stats'
 
 const USER_COLORS = ['#ef4444', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#ec4899', '#22c55e', '#64748b']
+const TOP_N = 5
 
 interface Props {
     data: RosterPenalizedByUser[]
 }
 
 export default function PenaltyLeadersChart({ data }: Props) {
+    const [showAll, setShowAll] = useState(false)
+
     // Collect all unique users in a stable order (highest total penalty scorer first)
     const allUsers = Array.from(
         new Map(
@@ -41,15 +45,18 @@ export default function PenaltyLeadersChart({ data }: Props) {
             return entry
         })
 
+    const visibleData = showAll ? chartData : chartData.slice(0, TOP_N)
+    const hasMore = chartData.length > TOP_N
+
     return (
         <div role="img" aria-label="penalty leaders chart" className="w-full">
             {data.length === 0 ? (
                 <p className="text-text-muted text-sm text-center py-8">No data available</p>
             ) : (
                 <>
-                    <ResponsiveContainer width="100%" height={Math.max(280, chartData.length * 50)}>
+                    <ResponsiveContainer width="100%" height={Math.max(280, visibleData.length * 50)}>
                         <BarChart
-                            data={chartData}
+                            data={visibleData}
                             layout="vertical"
                             margin={{ top: 10, right: 30, left: 80, bottom: 5 }}
                         >
@@ -79,13 +86,21 @@ export default function PenaltyLeadersChart({ data }: Props) {
                     </ResponsiveContainer>
                     {/* Accessible data summary */}
                     <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
-                        {chartData.map((d) => (
+                        {visibleData.map((d) => (
                             <li key={d.rosterPlayerId as number}>
                                 <span className="font-medium text-white">{d.displayName as string}</span>{' '}
                                 <span className="text-danger">{d.totalCount as number} pen</span>
                             </li>
                         ))}
                     </ul>
+                    {hasMore && (
+                        <button
+                            onClick={() => setShowAll((v) => !v)}
+                            className="mt-3 text-xs text-primary hover:underline w-full text-center"
+                        >
+                            {showAll ? 'Show less' : `Show all ${chartData.length} players`}
+                        </button>
+                    )}
                 </>
             )}
         </div>
