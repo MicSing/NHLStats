@@ -1,0 +1,16 @@
+{
+    "navigationFallback": {
+        "rewrite": "/index.html",
+        "exclude": [
+            "/api/*",
+            "/health",
+            "/*.{js,css,ico,png,svg,jpg,jpeg,gif,woff,woff2,ttf,eot,map}"
+        ]
+    },
+    "globalHeaders": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+    },
+    "mimeTypes": {
+        ".json": "application/json"
+    }
+}

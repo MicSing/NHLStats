@@ -373,16 +373,32 @@ For each admin page, follow this TDD cycle:
 ---
 
 ### Phase 13: Azure Deployment Setup
-**Goal:** Configure Azure resources and CI/CD
+**Status:** Completed — SQLite on App Service (no Azure SQL); GitHub Actions CI/CD; Static Web Apps SPA config; resource provisioning script.
+**Goal:** Configure Azure resources and CI/CD (using SQLite — no Azure SQL required)
 
-- [ ] Create Azure SQL Database
-- [ ] Create Azure App Service (Linux, .NET 10) for backend API
-- [ ] Create Azure Static Web Apps for frontend
-- [ ] Configure connection strings and environment variables
-- [ ] Set up GitHub Actions workflow:
-  - Build and deploy backend to App Service
-  - Build and deploy frontend to Static Web Apps
-- [ ] Configure CORS on backend for frontend domain
+- [x] Create Azure App Service (Linux, .NET 10) for backend API
+  - Free tier (F1) — run `backend/scripts/create_azure_resources.sh`
+  - `WEBSITE_RUN_FROM_PACKAGE=0` ensures writable filesystem
+  - SQLite DB lives at `/home/data/nhlstats.db` (Azure Files persistent volume)
+  - **DB is never in the deploy package → data survives every deployment**
+- [x] Create Azure Static Web Apps for frontend
+  - `frontend/public/staticwebapp.config.json` — SPA routing fallback to `index.html`
+- [x] Configure environment variables via App Service application settings
+  - `Jwt__Secret`, `Jwt__Issuer`, `Jwt__Audience`, `Jwt__ExpiryMinutes`
+  - `ADMIN_EMAIL`, `ADMIN_PASSWORD` (seeds admin on first startup)
+  - `AllowedOrigins` (set to Static Web Apps hostname for CORS)
+- [x] Set up GitHub Actions workflows:
+  - `.github/workflows/backend.yml` — restore → build → test → publish → deploy to App Service
+  - `.github/workflows/frontend.yml` — install → test → build → deploy to Static Web Apps (PR preview environments included)
+- [x] Configure CORS on backend for frontend domain (set via `AllowedOrigins` app setting)
+
+**Required GitHub Secrets:**
+| Secret | Description |
+|--------|-------------|
+| `AZURE_WEBAPP_NAME` | App Service name (e.g. `nhlstats-api`) |
+| `AZURE_WEBAPP_PUBLISH_PROFILE` | Publishing profile XML from portal or CLI |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment token from Static Web Apps |
+| `VITE_API_BASE_URL` | Backend URL (e.g. `https://nhlstats-api.azurewebsites.net`) |
 
 ---
 
