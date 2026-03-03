@@ -11,7 +11,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
-    public DbSet<User> Users => Set<User>();
+    public new DbSet<User> Users => Set<User>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<Season> Seasons => Set<Season>();
     public DbSet<SeasonUser> SeasonUsers => Set<SeasonUser>();
