@@ -67,6 +67,13 @@ export default function UserMatchCard({
         onChanged()
     }
 
+    const handleDeletePointsByReason = async (ids: number[]) => {
+        for (const id of ids) {
+            await apiClient.delete(`/api/usermatches/${um.id}/points/${id}`)
+        }
+        onChanged()
+    }
+
     const handleAddGoal = async () => {
         if (goalForm.rosterPlayerId === '') return
         await apiClient.post<UserMatchGoal>(`/api/usermatches/${um.id}/goals`, {
@@ -264,17 +271,46 @@ export default function UserMatchCard({
             {activeTab === 'points' && (
                 <div>
                     <div className="flex flex-wrap gap-2 mb-2">
-                        {points.map((p) => (
+                        {Object.values(
+                            points.reduce<
+                                Record<
+                                    number,
+                                    {
+                                        pointReasonId: number
+                                        pointReasonName: string | null
+                                        isPositive: boolean
+                                        totalCount: number
+                                        ids: number[]
+                                    }
+                                >
+                            >((acc, p) => {
+                                if (acc[p.pointReasonId]) {
+                                    acc[p.pointReasonId].totalCount += p.count
+                                    acc[p.pointReasonId].ids.push(p.id)
+                                } else {
+                                    acc[p.pointReasonId] = {
+                                        pointReasonId: p.pointReasonId,
+                                        pointReasonName: p.pointReasonName,
+                                        isPositive: p.isPositive,
+                                        totalCount: p.count,
+                                        ids: [p.id],
+                                    }
+                                }
+                                return acc
+                            }, {}),
+                        ).map((g) => (
                             <span
-                                key={p.id}
-                                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${p.isPositive ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
+                                key={g.pointReasonId}
+                                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.isPositive
+                                    ? 'bg-green-900 text-green-200'
+                                    : 'bg-red-900 text-red-200'
                                     }`}
                             >
-                                {p.pointReasonName} × {p.count}
+                                {g.pointReasonName} × {g.totalCount}
                                 {isAuth && (
                                     <button
-                                        aria-label={`delete point ${p.id}`}
-                                        onClick={() => void handleDeletePoint(p.id)}
+                                        aria-label={`delete point reason ${g.pointReasonId}`}
+                                        onClick={() => void handleDeletePointsByReason(g.ids)}
                                         className="hover:opacity-70 ml-1 leading-none"
                                     >
                                         ✕

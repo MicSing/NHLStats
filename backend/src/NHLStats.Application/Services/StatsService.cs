@@ -163,6 +163,64 @@ public class StatsService : IStatsService
                 player.Team?.ShortName, top.Total);
     }
 
+    // ─── All roster players — goals ───────────────────────────────────────────
+
+    public async Task<IEnumerable<TopRosterPlayerDto>> GetAllGoalScorersAsync(int seasonId)
+    {
+        var totals = await _db.UserMatchGoals
+            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .GroupBy(g => g.RosterPlayerId)
+            .Select(g => new { RosterPlayerId = g.Key, Total = g.Sum(x => x.Count) })
+            .OrderByDescending(x => x.Total)
+            .ToListAsync();
+
+        if (totals.Count == 0) return Enumerable.Empty<TopRosterPlayerDto>();
+
+        var playerIds = totals.Select(t => t.RosterPlayerId).ToList();
+        var players = await _db.RosterPlayers
+            .Include(rp => rp.Team)
+            .Where(rp => playerIds.Contains(rp.Id))
+            .ToDictionaryAsync(rp => rp.Id);
+
+        return totals
+            .Where(t => players.ContainsKey(t.RosterPlayerId))
+            .Select(t =>
+            {
+                var p = players[t.RosterPlayerId];
+                return new TopRosterPlayerDto(p.Id, p.FirstName, p.Surname, p.Team?.ShortName, t.Total);
+            })
+            .ToList();
+    }
+
+    // ─── All roster players — penalties ──────────────────────────────────────
+
+    public async Task<IEnumerable<TopRosterPlayerDto>> GetAllPenaltyPlayersAsync(int seasonId)
+    {
+        var totals = await _db.UserMatchPenalties
+            .Where(p => p.UserMatch!.SeasonId == seasonId)
+            .GroupBy(p => p.RosterPlayerId)
+            .Select(g => new { RosterPlayerId = g.Key, Total = g.Sum(x => x.Count) })
+            .OrderByDescending(x => x.Total)
+            .ToListAsync();
+
+        if (totals.Count == 0) return Enumerable.Empty<TopRosterPlayerDto>();
+
+        var playerIds = totals.Select(t => t.RosterPlayerId).ToList();
+        var players = await _db.RosterPlayers
+            .Include(rp => rp.Team)
+            .Where(rp => playerIds.Contains(rp.Id))
+            .ToDictionaryAsync(rp => rp.Id);
+
+        return totals
+            .Where(t => players.ContainsKey(t.RosterPlayerId))
+            .Select(t =>
+            {
+                var p = players[t.RosterPlayerId];
+                return new TopRosterPlayerDto(p.Id, p.FirstName, p.Surname, p.Team?.ShortName, t.Total);
+            })
+            .ToList();
+    }
+
     // ─── All-time earnings ────────────────────────────────────────────────────
 
     public async Task<AllTimeEarningsDto> GetAllTimeEarningsAsync()

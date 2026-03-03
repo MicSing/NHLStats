@@ -7,7 +7,7 @@ import PlusMinusChart from '../components/charts/PlusMinusChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
-import type { UserSeasonStats } from '../types/stats'
+import type { UserSeasonStats, TopRosterPlayer } from '../types/stats'
 import type { UserEarnings } from '../types/stats'
 
 function renderDashboard() {
@@ -25,6 +25,11 @@ function renderDashboard() {
 const mockStats: UserSeasonStats[] = [
     { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
     { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, earnings: -2.5 },
+]
+
+const mockRosterPlayers: TopRosterPlayer[] = [
+    { rosterPlayerId: 1, firstName: 'Player', surname: 'One', teamShortName: null, count: 10 },
+    { rosterPlayerId: 2, firstName: 'Player', surname: 'Two', teamShortName: null, count: 7 },
 ]
 
 const mockEarnings: UserEarnings[] = [
@@ -51,8 +56,8 @@ describe('PlusMinusChart', () => {
 // ── TopScorersChart ─────────────────────────────────────────────────────────
 
 describe('TopScorersChart', () => {
-    test('renders bars for each user', () => {
-        render(<TopScorersChart data={mockStats} />)
+    test('renders bars for each roster player', () => {
+        render(<TopScorersChart data={mockRosterPlayers} />)
         expect(screen.getByRole('img', { name: /top scorers chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
@@ -67,8 +72,8 @@ describe('TopScorersChart', () => {
 // ── PenaltyLeadersChart ─────────────────────────────────────────────────────
 
 describe('PenaltyLeadersChart', () => {
-    test('renders bars for each user', () => {
-        render(<PenaltyLeadersChart data={mockStats} />)
+    test('renders bars for each roster player', () => {
+        render(<PenaltyLeadersChart data={mockRosterPlayers} />)
         expect(screen.getByRole('img', { name: /penalty leaders chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)

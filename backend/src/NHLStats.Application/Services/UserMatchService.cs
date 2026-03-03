@@ -248,17 +248,24 @@ public class UserMatchService : IUserMatchService
             .FirstOrDefaultAsync(p => p.Id == pointId && p.UserMatchId == userMatchId);
         if (point == null) return false;
 
+        _db.UserMatchPoints.Remove(point);
+        await _db.SaveChangesAsync();
+
+        // Recalculate totals from the remaining point rows (avoids incremental drift
+        // and is correct even when called from concurrent requests).
         var userMatch = await _db.UserMatches.FindAsync(userMatchId);
         if (userMatch != null)
         {
-            if (point.PointReason!.IsPositive)
-                userMatch.TotalPlus -= point.Count;
-            else
-                userMatch.TotalMinus -= point.Count;
+            var remaining = await _db.UserMatchPoints
+                .Include(p => p.PointReason)
+                .Where(p => p.UserMatchId == userMatchId)
+                .ToListAsync();
+
+            userMatch.TotalPlus = remaining.Where(p => p.PointReason!.IsPositive).Sum(p => p.Count);
+            userMatch.TotalMinus = remaining.Where(p => !p.PointReason!.IsPositive).Sum(p => p.Count);
+            await _db.SaveChangesAsync();
         }
 
-        _db.UserMatchPoints.Remove(point);
-        await _db.SaveChangesAsync();
         return true;
     }
 

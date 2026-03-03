@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
-import type { UserSeasonStats, AllTimeEarnings } from '../types/stats'
+import type { UserSeasonStats, AllTimeEarnings, TopRosterPlayer } from '../types/stats'
 import apiClient from '../services/apiClient'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
@@ -12,6 +12,8 @@ export default function DashboardPage() {
     const [seasons, setSeasons] = useState<Season[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
     const [seasonStats, setSeasonStats] = useState<UserSeasonStats[]>([])
+    const [rosterScorers, setRosterScorers] = useState<TopRosterPlayer[]>([])
+    const [rosterPenalized, setRosterPenalized] = useState<TopRosterPlayer[]>([])
     const [allTimeEarnings, setAllTimeEarnings] = useState<AllTimeEarnings | null>(null)
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingStats, setLoadingStats] = useState(false)
@@ -39,13 +41,30 @@ export default function DashboardPage() {
     useEffect(() => {
         if (!selectedSeasonId) {
             setSeasonStats([])
+            setRosterScorers([])
+            setRosterPenalized([])
             return
         }
         setLoadingStats(true)
-        apiClient
-            .get<UserSeasonStats[]>(`/api/seasons/${selectedSeasonId}/stats`)
-            .then(setSeasonStats)
-            .catch(() => setSeasonStats([]))
+        Promise.all([
+            apiClient.get<UserSeasonStats[]>(`/api/seasons/${selectedSeasonId}/stats`),
+            apiClient
+                .get<TopRosterPlayer[]>(`/api/seasons/${selectedSeasonId}/stats/roster-scorers`)
+                .catch(() => [] as TopRosterPlayer[]),
+            apiClient
+                .get<TopRosterPlayer[]>(`/api/seasons/${selectedSeasonId}/stats/roster-penalized`)
+                .catch(() => [] as TopRosterPlayer[]),
+        ])
+            .then(([stats, scorers, penalized]) => {
+                setSeasonStats(stats)
+                setRosterScorers(scorers)
+                setRosterPenalized(penalized)
+            })
+            .catch(() => {
+                setSeasonStats([])
+                setRosterScorers([])
+                setRosterPenalized([])
+            })
             .finally(() => setLoadingStats(false))
     }, [selectedSeasonId])
 
@@ -78,21 +97,21 @@ export default function DashboardPage() {
 
                     {/* Top Scorers */}
                     <section className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Top Scorers (+)</h2>
+                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Top Scorers (In-Game Players)</h2>
                         {loadingStats ? (
                             <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
                         ) : (
-                            <TopScorersChart data={seasonStats} />
+                            <TopScorersChart data={rosterScorers} />
                         )}
                     </section>
 
                     {/* Penalty Leaders */}
                     <section className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Penalty Leaders (−)</h2>
+                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Penalty Leaders (In-Game Players)</h2>
                         {loadingStats ? (
                             <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
                         ) : (
-                            <PenaltyLeadersChart data={seasonStats} />
+                            <PenaltyLeadersChart data={rosterPenalized} />
                         )}
                     </section>
 

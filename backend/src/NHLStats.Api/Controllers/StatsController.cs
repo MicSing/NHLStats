@@ -52,6 +52,24 @@ public class SeasonStatsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>GET /api/seasons/{seasonId}/stats/roster-scorers</summary>
+    /// <remarks>Returns all roster players sorted by goals scored descending for the season.</remarks>
+    [HttpGet("roster-scorers")]
+    public async Task<IActionResult> GetRosterScorers(int seasonId)
+    {
+        var result = await _stats.GetAllGoalScorersAsync(seasonId);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/seasons/{seasonId}/stats/roster-penalized</summary>
+    /// <remarks>Returns all roster players sorted by penalties taken descending for the season.</remarks>
+    [HttpGet("roster-penalized")]
+    public async Task<IActionResult> GetRosterPenalized(int seasonId)
+    {
+        var result = await _stats.GetAllPenaltyPlayersAsync(seasonId);
+        return Ok(result);
+    }
+
     /// <summary>GET /api/seasons/{seasonId}/stats/user-totals</summary>
     /// <remarks>Returns per-user total goals and penalties for a season.</remarks>
     [HttpGet("user-totals")]

@@ -7,14 +7,19 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts'
-import type { UserSeasonStats } from '../../types/stats'
+import type { TopRosterPlayer } from '../../types/stats'
 
 interface Props {
-    data: UserSeasonStats[]
+    data: TopRosterPlayer[]
 }
 
 export default function TopScorersChart({ data }: Props) {
-    const sorted = [...data].sort((a, b) => b.totalPlus - a.totalPlus)
+    const chartData = [...data]
+        .sort((a, b) => b.count - a.count)
+        .map((p) => ({
+            ...p,
+            displayName: `${p.firstName} ${p.surname}${p.teamShortName ? ` (${p.teamShortName})` : ''}`,
+        }))
 
     return (
         <div role="img" aria-label="top scorers chart" className="w-full">
@@ -22,31 +27,33 @@ export default function TopScorersChart({ data }: Props) {
                 <p className="text-gray-400 text-sm text-center py-8">No data available</p>
             ) : (
                 <>
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={Math.max(280, chartData.length * 40)}>
                         <BarChart
-                            data={sorted}
+                            data={chartData}
                             layout="vertical"
-                            margin={{ top: 10, right: 30, left: 60, bottom: 5 }}
+                            margin={{ top: 10, right: 30, left: 80, bottom: 5 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                            <XAxis type="number" allowDecimals={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                             <YAxis
-                                dataKey="userName"
+                                dataKey="displayName"
                                 type="category"
-                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                width={80}
                             />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }}
+                                formatter={(value: number) => [`${value} goals`, 'Goals']}
                             />
-                            <Bar dataKey="totalPlus" name="+" fill="#06b6d4" radius={[0, 4, 4, 0]} />
+                            <Bar dataKey="count" name="Goals" fill="#06b6d4" radius={[0, 4, 4, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                     {/* Accessible data summary */}
                     <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-400">
-                        {sorted.map((d) => (
-                            <li key={d.userId}>
-                                <span className="font-medium text-white">{d.userName}</span>{' '}
-                                <span className="text-cyan-400">+{d.totalPlus}</span>
+                        {chartData.map((d) => (
+                            <li key={d.rosterPlayerId}>
+                                <span className="font-medium text-white">{d.displayName}</span>{' '}
+                                <span className="text-cyan-400">{d.count} goals</span>
                             </li>
                         ))}
                     </ul>

@@ -94,6 +94,17 @@ const mockTopPenalized = {
     count: 3,
 }
 
+const mockRosterScorers = [
+    { rosterPlayerId: 1, firstName: 'Connor', surname: 'McDavid', teamShortName: 'EDM', count: 10 },
+    { rosterPlayerId: 2, firstName: 'Nathan', surname: 'MacKinnon', teamShortName: 'COL', count: 8 },
+    { rosterPlayerId: 3, firstName: 'David', surname: 'Pastrnak', teamShortName: 'BOS', count: 6 },
+]
+
+const mockRosterPenalized = [
+    { rosterPlayerId: 4, firstName: 'Tiger', surname: 'Williams', teamShortName: 'VAN', count: 7 },
+    { rosterPlayerId: 5, firstName: 'Zdeno', surname: 'Chara', teamShortName: 'BOS', count: 5 },
+]
+
 const mockWeekGroups = [
     {
         weekNumber: 1,
@@ -436,6 +447,16 @@ export const handlers = [
     rest.get(`${BASE}/api/seasons/:seasonId/stats/top-penalized`, (req, res, ctx) => {
         if (Number(req.params.seasonId) === 1) return res(ctx.json(mockTopPenalized))
         return res(ctx.status(204))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/roster-scorers`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockRosterScorers))
+        return res(ctx.json([]))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/stats/roster-penalized`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockRosterPenalized))
+        return res(ctx.json([]))
     }),
 
     rest.get(`${BASE}/api/seasons/:seasonId/stats`, (req, res, ctx) => {

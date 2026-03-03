@@ -28,6 +28,16 @@ public interface IStatsService
     Task<TopRosterPlayerDto?> GetTopPenaltyPlayerAsync(int seasonId);
 
     /// <summary>
+    /// Returns all roster players sorted by goals scored descending for the season.
+    /// </summary>
+    Task<IEnumerable<TopRosterPlayerDto>> GetAllGoalScorersAsync(int seasonId);
+
+    /// <summary>
+    /// Returns all roster players sorted by penalties taken descending for the season.
+    /// </summary>
+    Task<IEnumerable<TopRosterPlayerDto>> GetAllPenaltyPlayersAsync(int seasonId);
+
+    /// <summary>
     /// Returns all-time earnings per user aggregated across every season,
     /// along with total collected, total expenses, and the remaining balance.
     /// </summary>
