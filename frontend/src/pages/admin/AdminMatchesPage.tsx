@@ -13,7 +13,7 @@ import SearchableSelect from '../../components/SearchableSelect'
 
 function CompletionBadge({ type }: { type: CompletionType }) {
     const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'Not Played', className: 'bg-border text-text-muted' },
+        [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
         [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
         [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
         [CompletionType.Shootout]: { label: 'SO', className: 'bg-warning/20 text-warning' },

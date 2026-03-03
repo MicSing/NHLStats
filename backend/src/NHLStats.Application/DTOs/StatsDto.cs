@@ -1,3 +1,5 @@
+using NHLStats.Domain.Entities;
+
 namespace NHLStats.Application.DTOs;
 
 // ─── Season stats per user ────────────────────────────────────────────────────
@@ -46,10 +48,13 @@ public record WeeklyMatchDto(
     DateTime MatchDate,
     int HomeTeamId,
     string? HomeTeamName,
+    string? HomeTeamShortName,
     int AwayTeamId,
     string? AwayTeamName,
+    string? AwayTeamShortName,
     int HomeScore,
-    int AwayScore);
+    int AwayScore,
+    CompletionType CompletionType);
 
 public record WeekGroupDto(
     int WeekNumber,

@@ -50,10 +50,13 @@ export interface WeeklyMatch {
     matchDate: string
     homeTeamId: number
     homeTeamName: string | null
+    homeTeamShortName: string | null
     awayTeamId: number
     awayTeamName: string | null
+    awayTeamShortName: string | null
     homeScore: number
     awayScore: number
+    completionType: number
 }
 
 export interface WeekGroup {

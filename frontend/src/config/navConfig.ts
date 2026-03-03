@@ -7,6 +7,7 @@ export const publicNavItems = [
 export const adminNavItems = [
     { to: '/admin/users', label: 'Users' },
     { to: '/admin/seasons', label: 'Seasons' },
+    { to: '/admin/teams', label: 'Teams' },
     { to: '/admin/roster', label: 'Roster' },
     { to: '/admin/matches', label: 'Matches' },
     { to: '/admin/aggregated-points', label: 'Aggregated Points' },

@@ -103,10 +103,13 @@ public class StatsService : IStatsService
             m.MatchDate.Value,
             m.HomeTeamId,
             m.HomeTeam?.Name,
+            m.HomeTeam?.ShortName,
             m.AwayTeamId,
             m.AwayTeam?.Name,
+            m.AwayTeam?.ShortName,
             m.HomeScore,
-            m.AwayScore));
+            m.AwayScore,
+            m.CompletionType));
 
         return weeklyMatches
             .GroupBy(m => m.WeekNumber)

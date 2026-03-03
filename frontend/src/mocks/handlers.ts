@@ -115,10 +115,13 @@ const mockWeekGroups = [
                 matchDate: '2023-10-15T00:00:00',
                 homeTeamId: 1,
                 homeTeamName: 'Boston Bruins',
+                homeTeamShortName: 'BOS',
                 awayTeamId: 2,
                 awayTeamName: 'Edmonton Oilers',
+                awayTeamShortName: 'EDM',
                 homeScore: 3,
                 awayScore: 2,
+                completionType: 1,
             },
         ],
     },
@@ -208,6 +211,25 @@ export const handlers = [
     // Teams
     rest.get(`${BASE}/api/teams`, (_req, res, ctx) => {
         return res(ctx.json(mockTeams))
+    }),
+
+    rest.post(`${BASE}/api/teams`, async (req, res, ctx) => {
+        const body = await req.json() as { name: string; shortName: string }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, name: body.name, shortName: body.shortName }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/teams/:id`, async (req, res, ctx) => {
+        const body = await req.json() as { name: string; shortName: string }
+        return res(
+            ctx.json({ id: Number(req.params.id), name: body.name, shortName: body.shortName }),
+        )
+    }),
+
+    rest.delete(`${BASE}/api/teams/:id`, (_req, res, ctx) => {
+        return res(ctx.status(204))
     }),
 
     // Seasons

@@ -8,9 +8,21 @@ import type { Match } from '../types/match'
 import apiClient from '../services/apiClient'
 import SeasonSelector from '../components/SeasonSelector'
 
+// ESPN CDN uses different codes for some NHL teams
+const ESPN_NHL_CODES: Record<string, string> = {
+    LAK: 'la',
+    NJD: 'nj',
+    SJS: 'sj',
+    TBL: 'tb',
+}
+function teamLogoUrl(shortName: string): string {
+    const code = ESPN_NHL_CODES[shortName.toUpperCase()] ?? shortName.toLowerCase()
+    return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
+}
+
 function CompletionBadge({ type }: { type: CompletionType }) {
     const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'Not Played', className: 'bg-border text-text-muted' },
+        [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
         [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
         [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
         [CompletionType.Shootout]: { label: 'SO', className: 'bg-secondary/20 text-secondary' },
@@ -190,32 +202,86 @@ export default function SeasonPage() {
                                 <h2 className="text-lg font-semibold mb-4 text-primary">
                                     Matches by Week
                                 </h2>
-                                {weekGroups.map((group) => (
-                                    <div key={group.weekNumber} className="mb-6">
-                                        <h3 className="text-sm text-text-muted mb-2 border-b border-border pb-1">
-                                            Week {group.weekNumber}
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {group.matches.map((m) => (
-                                                <Link
-                                                    key={m.matchId}
-                                                    to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                    className="flex items-center justify-between card rounded-lg px-4 py-3 hover:bg-surface/80 transition-colors"
-                                                >
-                                                    <span>
-                                                        {m.homeTeamName} vs {m.awayTeamName}
-                                                    </span>
-                                                    <span className="font-mono text-lg">
-                                                        {m.homeScore} – {m.awayScore}
-                                                    </span>
-                                                    <span className="text-sm text-text-muted">
-                                                        {new Date(m.matchDate).toLocaleDateString()}
-                                                    </span>
-                                                </Link>
-                                            ))}
+                                {weekGroups.map((group) => {
+                                    const season = seasons.find((s) => s.id === seasonId)
+                                    const hostedTeamId = season?.hostedTeamId ?? null
+
+                                    return (
+                                        <div key={group.weekNumber} className="mb-6">
+                                            <h3 className="text-sm text-text-muted mb-2 border-b border-border pb-1">
+                                                Week {group.weekNumber}
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {group.matches.map((m) => {
+                                                    const isHome = hostedTeamId != null && m.homeTeamId === hostedTeamId
+                                                    const isAway = hostedTeamId != null && m.awayTeamId === hostedTeamId
+                                                    const hostedScore = isHome ? m.homeScore : isAway ? m.awayScore : null
+                                                    const opponentScore = isHome ? m.awayScore : isAway ? m.homeScore : null
+                                                    const isWin = hostedScore != null && opponentScore != null && hostedScore > opponentScore
+                                                    const isLoss = hostedScore != null && opponentScore != null && hostedScore < opponentScore
+                                                    const completionType = m.completionType as CompletionType
+
+                                                    // Inline background avoids CSS variable opacity issues
+                                                    const bgStyle = {
+                                                        backgroundColor: isWin
+                                                            ? 'rgba(46, 147, 90, 0.18)'
+                                                            : isLoss
+                                                                ? 'rgba(197, 48, 48, 0.18)'
+                                                                : undefined,
+                                                    }
+
+                                                    const homeLogo = teamLogoUrl(m.homeTeamShortName ?? '')
+                                                    const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
+
+                                                    return (
+                                                        <Link
+                                                            key={m.matchId}
+                                                            to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                            className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
+                                                            style={bgStyle}
+                                                        >
+                                                            {/* Home team */}
+                                                            <img
+                                                                src={homeLogo}
+                                                                alt={m.homeTeamShortName ?? ''}
+                                                                className="w-7 h-7 object-contain flex-shrink-0"
+                                                                onError={(e) => {
+                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                }}
+                                                            />
+                                                            <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                {m.homeTeamShortName}
+                                                            </span>
+
+                                                            {/* Score */}
+                                                            <span className="font-mono text-lg">{m.homeScore}</span>
+                                                            <span className="text-text-muted font-mono text-lg">–</span>
+                                                            <span className="font-mono text-lg">{m.awayScore}</span>
+
+                                                            {/* Completion badge */}
+                                                            {completionType !== CompletionType.None && (
+                                                                <CompletionBadge type={completionType} />
+                                                            )}
+
+                                                            {/* Away team */}
+                                                            <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                {m.awayTeamShortName}
+                                                            </span>
+                                                            <img
+                                                                src={awayLogo}
+                                                                alt={m.awayTeamShortName ?? ''}
+                                                                className="w-7 h-7 object-contain flex-shrink-0"
+                                                                onError={(e) => {
+                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                }}
+                                                            />
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </section>
                         )}
 
