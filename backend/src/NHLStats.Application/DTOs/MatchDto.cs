@@ -26,3 +26,17 @@ public record UpdateMatchDto(
     int HomeScore,
     int AwayScore,
     CompletionType CompletionType);
+
+public record BatchUserPointsDto(
+    int UserId,
+    int Plus,
+    int Minus);
+
+public record BatchCreateMatchDto(
+    int HomeTeamId,
+    int AwayTeamId,
+    DateTime? MatchDate = null,
+    int HomeScore = 0,
+    int AwayScore = 0,
+    CompletionType CompletionType = CompletionType.None,
+    IEnumerable<BatchUserPointsDto>? UserPoints = null);

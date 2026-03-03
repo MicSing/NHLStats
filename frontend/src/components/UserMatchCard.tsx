@@ -37,7 +37,11 @@ export default function UserMatchCard({
     onChanged,
 }: Props) {
     const [activeTab, setActiveTab] = useState<Tab>('goals')
-    const [pointForm, setPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
+    const [posPointForm, setPosPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
+        pointReasonId: '',
+        count: 1,
+    })
+    const [negPointForm, setNegPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
         pointReasonId: '',
         count: 1,
     })
@@ -53,11 +57,11 @@ export default function UserMatchCard({
     const positiveReasons = pointReasons.filter((r) => r.isPositive)
     const negativeReasons = pointReasons.filter((r) => !r.isPositive)
 
-    const handleAddPoint = async (reasonId: number | '') => {
+    const handleAddPoint = async (reasonId: number | '', count: number) => {
         if (reasonId === '') return
         await apiClient.post<UserMatchPoint>(`/api/usermatches/${um.id}/points`, {
             pointReasonId: reasonId,
-            count: pointForm.count,
+            count,
         } as CreateUserMatchPointDto)
         onChanged()
     }
@@ -364,9 +368,9 @@ export default function UserMatchCard({
                                         value: r.id,
                                         label: r.name,
                                     }))}
-                                    value={pointForm.pointReasonId}
+                                    value={posPointForm.pointReasonId}
                                     onChange={(v) =>
-                                        setPointForm((prev) => ({
+                                        setPosPointForm((prev) => ({
                                             ...prev,
                                             pointReasonId: v === '' ? '' : Number(v),
                                         }))
@@ -377,9 +381,9 @@ export default function UserMatchCard({
                                     type="number"
                                     aria-label="point count"
                                     min={1}
-                                    value={pointForm.count}
+                                    value={posPointForm.count}
                                     onChange={(e) =>
-                                        setPointForm((prev) => ({
+                                        setPosPointForm((prev) => ({
                                             ...prev,
                                             count: Number(e.target.value),
                                         }))
@@ -387,7 +391,7 @@ export default function UserMatchCard({
                                     className="input w-16 text-center text-sm py-1"
                                 />
                                 <button
-                                    onClick={() => void handleAddPoint(pointForm.pointReasonId)}
+                                    onClick={() => void handleAddPoint(posPointForm.pointReasonId, posPointForm.count)}
                                     className="btn-primary text-sm px-3 py-1"
                                 >
                                     + Point
@@ -401,9 +405,9 @@ export default function UserMatchCard({
                                         value: r.id,
                                         label: r.name,
                                     }))}
-                                    value={pointForm.pointReasonId}
+                                    value={negPointForm.pointReasonId}
                                     onChange={(v) =>
-                                        setPointForm((prev) => ({
+                                        setNegPointForm((prev) => ({
                                             ...prev,
                                             pointReasonId: v === '' ? '' : Number(v),
                                         }))
@@ -414,9 +418,9 @@ export default function UserMatchCard({
                                     type="number"
                                     aria-label="point count"
                                     min={1}
-                                    value={pointForm.count}
+                                    value={negPointForm.count}
                                     onChange={(e) =>
-                                        setPointForm((prev) => ({
+                                        setNegPointForm((prev) => ({
                                             ...prev,
                                             count: Number(e.target.value),
                                         }))
@@ -424,7 +428,7 @@ export default function UserMatchCard({
                                     className="input w-16 text-center text-sm py-1"
                                 />
                                 <button
-                                    onClick={() => void handleAddPoint(pointForm.pointReasonId)}
+                                    onClick={() => void handleAddPoint(negPointForm.pointReasonId, negPointForm.count)}
                                     className="btn-danger text-sm px-3 py-1"
                                 >
                                     − Point

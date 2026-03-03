@@ -20,7 +20,7 @@ public class PointReasonsTests : ApiTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.ValueKind.Should().Be(JsonValueKind.Array);
-        body.GetArrayLength().Should().BeGreaterThanOrEqualTo(8);
+        body.GetArrayLength().Should().BeGreaterThanOrEqualTo(16);
     }
 
     [Fact]

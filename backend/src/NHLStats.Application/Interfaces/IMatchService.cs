@@ -9,5 +9,5 @@ public interface IMatchService
     Task<MatchDto> CreateAsync(int seasonId, CreateMatchDto dto);
     Task<MatchDto?> UpdateAsync(int id, UpdateMatchDto dto);
     Task<bool> DeleteAsync(int id);
-    Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<CreateMatchDto> dtos);
+    Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<BatchCreateMatchDto> dtos);
 }

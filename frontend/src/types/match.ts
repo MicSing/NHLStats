@@ -32,3 +32,19 @@ export interface UpdateMatchDto {
     awayScore: number
     completionType: CompletionType
 }
+
+export interface BatchUserPointsDto {
+    userId: number
+    plus: number
+    minus: number
+}
+
+export interface BatchCreateMatchDto {
+    homeTeamId: number
+    awayTeamId: number
+    matchDate?: string | null
+    homeScore?: number
+    awayScore?: number
+    completionType?: CompletionType
+    userPoints?: BatchUserPointsDto[]
+}

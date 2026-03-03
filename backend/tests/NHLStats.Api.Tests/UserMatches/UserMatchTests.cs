@@ -260,10 +260,10 @@ public class UserMatchTests : ApiTestBase
             new { userId });
         var umId = (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
 
-        // PointReason 4 = "Scoring 10 Goals" (IsPositive=true)
+        // PointReason 12 = "Scoring 10 Goals" (IsPositive=true)
         await client.PostAsJsonAsync(
             $"/api/usermatches/{umId}/points",
-            new { pointReasonId = 4, count = 3 });
+            new { pointReasonId = 12, count = 3 });
 
         var getResp = await client.GetAsync($"/api/usermatches/{umId}");
         var um = await getResp.Content.ReadFromJsonAsync<JsonElement>();

@@ -36,7 +36,7 @@ public class MatchesController : ControllerBase
 
     [Authorize]
     [HttpPost("batch")]
-    public async Task<IActionResult> BatchCreate(int seasonId, CreateMatchDto[] dtos)
+    public async Task<IActionResult> BatchCreate(int seasonId, BatchCreateMatchDto[] dtos)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         try

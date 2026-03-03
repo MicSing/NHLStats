@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Season } from '../../types/season'
+import type { Season, SeasonDetail } from '../../types/season'
 import type { Team } from '../../types/team'
+import type { User } from '../../types/user'
 import { CompletionType } from '../../types/match'
-import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
+import type { Match, CreateMatchDto, UpdateMatchDto, BatchCreateMatchDto } from '../../types/match'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import SearchableSelect from '../../components/SearchableSelect'
@@ -33,17 +34,23 @@ interface ParsedRow {
     awayTeamId: number | null
     homeTeamName: string | null
     awayTeamName: string | null
+    matchDate: string | null
+    homeScore: number | null
+    awayScore: number | null
+    completionType: CompletionType | null
+    playerPoints: { userId: number; plus: number; minus: number }[] | null
     error: string | null
 }
 
 interface BulkMatchCreatorProps {
     seasonId: number
     teams: Team[]
+    seasonUsers: User[]
     onSuccess: () => void
     onClose: () => void
 }
 
-function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCreatorProps) {
+function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: BulkMatchCreatorProps) {
     const [csvText, setCsvText] = useState('')
     const [parsed, setParsed] = useState<ParsedRow[] | null>(null)
     const [perspectiveTeamId, setPerspectiveTeamId] = useState<number | ''>('')
@@ -56,11 +63,15 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
     const perspTeam = perspectiveTeamId !== '' ? (teams.find((t) => t.id === perspectiveTeamId) ?? null) : null
 
     const [t0, t1, t2] = teams
+    const userPointSample = seasonUsers.length > 0
+        ? Array.from({ length: Math.min(seasonUsers.length, 4) }, () => '0, 1').join(', ')
+        : ''
+    const detailSuffix = userPointSample ? `, ${userPointSample}, 4:3, OT, 4.11.2024` : ', 4:3, OT, 4.11.2024'
     const sampleCSV = perspTeam && t0 && t1
-        ? `# ${perspTeam.shortName}'s schedule (single-team format):\n@ ${perspTeam.id !== t0.id ? t0.shortName : t1.shortName}\nvs ${perspTeam.id !== t1.id ? t1.shortName : (t2?.shortName ?? 'BUF')}`
+        ? `# ${perspTeam.shortName}'s schedule:\n@ ${perspTeam.id !== t0.id ? t0.shortName : t1.shortName}${detailSuffix}\nvs ${perspTeam.id !== t1.id ? t1.shortName : (t2?.shortName ?? 'BUF')}${detailSuffix}`
         : t0 && t1
-            ? `${t0.shortName},${t1.shortName}\n${t1.shortName} @ ${t0.shortName}\n${t0.shortName} vs ${t1.shortName}`
-            : 'COL,EDM\nEDM @ COL\nCOL vs EDM'
+            ? `${t1.shortName} @ ${t0.shortName}${detailSuffix}\n${t0.shortName} vs ${t1.shortName}${detailSuffix}`
+            : `EDM @ COL${detailSuffix}\nCOL vs EDM${detailSuffix}`
 
     // Parse one line into resolved home/away raw strings.
     // Single-token forms (@ OPP, vs OPP) need a perspTeam; returns an error string if missing.
@@ -95,25 +106,110 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
     }
 
     const parseCSV = (text: string): ParsedRow[] => {
+        const datePattern = /^\d{1,2}\.\d{1,2}\.\d{4}$/
+        const typePattern = /^(OT|REG|SO|NONE)$/i
+        const scorePattern = /^\d+:\d+$/
+
         return text
             .split('\n')
             .map((line, i) => ({ raw: line.trim(), lineNum: i + 1 }))
             .filter(({ raw }) => raw.length > 0 && !raw.startsWith('#'))
             .map(({ raw, lineNum }) => {
-                const result = parseLine(raw, perspTeam)
+                const parts = raw.split(',').map((p) => p.trim())
+
+                // Detect if last 3 parts encode date / completion type / score
+                const hasDetails =
+                    parts.length >= 4 &&
+                    datePattern.test(parts[parts.length - 1]) &&
+                    typePattern.test(parts[parts.length - 2]) &&
+                    scorePattern.test(parts[parts.length - 3])
+
+                let matchRaw = raw
+                let matchDate: string | null = null
+                let homeScore: number | null = null
+                let awayScore: number | null = null
+                let completionType: CompletionType | null = null
+                let playerPoints: { userId: number; plus: number; minus: number }[] | null = null
+
+                if (hasDetails) {
+                    matchRaw = parts[0]
+
+                    // Parse date D.M.YYYY → ISO
+                    const [d, m, y] = parts[parts.length - 1].split('.')
+                    matchDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T00:00:00`
+
+                    // Parse completion type
+                    const typeStr = parts[parts.length - 2].toUpperCase()
+                    completionType =
+                        typeStr === 'REG' ? CompletionType.RegularTime :
+                            typeStr === 'OT' ? CompletionType.Overtime :
+                                typeStr === 'SO' ? CompletionType.Shootout :
+                                    CompletionType.None
+
+                    // Parse score HOME:AWAY
+                    const [hs, as] = parts[parts.length - 3].split(':')
+                    homeScore = parseInt(hs)
+                    awayScore = parseInt(as)
+
+                    // Player points: everything between matchRaw (index 0) and last 3
+                    const playerParts = parts.slice(1, parts.length - 3)
+                    if (playerParts.length > 0) {
+                        if (playerParts.length % 2 !== 0) {
+                            return {
+                                line: lineNum, homeRaw: matchRaw, awayRaw: '',
+                                homeTeamId: null, awayTeamId: null,
+                                homeTeamName: null, awayTeamName: null,
+                                matchDate, homeScore, awayScore, completionType,
+                                playerPoints: null,
+                                error: `Player points must be in neg/pos pairs — got ${playerParts.length} value(s)`,
+                            }
+                        }
+                        const pairCount = playerParts.length / 2
+                        if (pairCount > seasonUsers.length) {
+                            return {
+                                line: lineNum, homeRaw: matchRaw, awayRaw: '',
+                                homeTeamId: null, awayTeamId: null,
+                                homeTeamName: null, awayTeamName: null,
+                                matchDate, homeScore, awayScore, completionType,
+                                playerPoints: null,
+                                error: `${pairCount} player pairs found but only ${seasonUsers.length} user(s) in season`,
+                            }
+                        }
+                        playerPoints = []
+                        for (let i = 0; i < pairCount; i++) {
+                            const minus = parseInt(playerParts[i * 2])
+                            const plus = parseInt(playerParts[i * 2 + 1])
+                            if (isNaN(minus) || isNaN(plus)) {
+                                return {
+                                    line: lineNum, homeRaw: matchRaw, awayRaw: '',
+                                    homeTeamId: null, awayTeamId: null,
+                                    homeTeamName: null, awayTeamName: null,
+                                    matchDate, homeScore, awayScore, completionType,
+                                    playerPoints: null,
+                                    error: `Invalid points at player ${i + 1}: "${playerParts[i * 2]}", "${playerParts[i * 2 + 1]}"`,
+                                }
+                            }
+                            playerPoints.push({ userId: seasonUsers[i].id, plus, minus })
+                        }
+                    }
+                }
+
+                const result = parseLine(matchRaw, perspTeam)
                 if (!result) {
                     return {
-                        line: lineNum, homeRaw: raw, awayRaw: '',
+                        line: lineNum, homeRaw: matchRaw, awayRaw: '',
                         homeTeamId: null, awayTeamId: null,
                         homeTeamName: null, awayTeamName: null,
-                        error: 'Unrecognised format — use: HOME,AWAY | AWAY @ HOME | HOME vs AWAY | @ OPP | vs OPP',
+                        matchDate, homeScore, awayScore, completionType, playerPoints,
+                        error: 'Unrecognised format — use: AWAY @ HOME | HOME vs AWAY | @ OPP | vs OPP',
                     }
                 }
                 if ('err' in result) {
                     return {
-                        line: lineNum, homeRaw: raw, awayRaw: '',
+                        line: lineNum, homeRaw: matchRaw, awayRaw: '',
                         homeTeamId: null, awayTeamId: null,
                         homeTeamName: null, awayTeamName: null,
+                        matchDate, homeScore, awayScore, completionType, playerPoints,
                         error: result.err,
                     }
                 }
@@ -131,6 +227,7 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                     awayTeamId: awayTeam?.id ?? null,
                     homeTeamName: homeTeam?.name ?? null,
                     awayTeamName: awayTeam?.name ?? null,
+                    matchDate, homeScore, awayScore, completionType, playerPoints,
                     error: errors.length > 0 ? errors.join('; ') : null,
                 }
             })
@@ -170,9 +267,14 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
         setSubmitting(true)
         setError(null)
         try {
-            const dtos: CreateMatchDto[] = validRows.map((r) => ({
+            const dtos: BatchCreateMatchDto[] = validRows.map((r) => ({
                 homeTeamId: r.homeTeamId as number,
                 awayTeamId: r.awayTeamId as number,
+                matchDate: r.matchDate,
+                homeScore: r.homeScore ?? 0,
+                awayScore: r.awayScore ?? 0,
+                completionType: r.completionType ?? CompletionType.None,
+                userPoints: r.playerPoints ?? undefined,
             }))
             await apiClient.post(`/api/seasons/${seasonId}/matches/batch`, dtos)
             onSuccess()
@@ -213,16 +315,38 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                             <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">HOME vs AWAY</td>
                             <td className="text-text-muted">Left side hosts (e.g. <span className="font-mono">COL vs EDM</span>)</td>
                         </tr>
-                        <tr>
-                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">HOME,AWAY</td>
-                            <td className="text-text-muted">Comma — first is home</td>
+                        <tr className="text-text-muted/70">
+                            <td colSpan={2} className="pt-2 pb-0.5 font-semibold uppercase tracking-wider text-text-muted/70">Optional trailing fields (score, type, date &amp; player points)</td>
                         </tr>
+                        <tr>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap" style={{ verticalAlign: 'top' }}>…, SCORE, TYPE, DATE</td>
+                            <td className="text-text-muted">Append score (<span className="font-mono">4:3</span>), type (<span className="font-mono">REG</span>/<span className="font-mono">OT</span>/<span className="font-mono">SO</span>) and date (<span className="font-mono">D.M.YYYY</span>)</td>
+                        </tr>
+                        {seasonUsers.length > 0 && (
+                            <tr>
+                                <td className="font-mono text-primary/80 pr-3 whitespace-nowrap" style={{ verticalAlign: 'top' }}>…, neg, pos, …</td>
+                                <td className="text-text-muted">Before score: one <span className="font-mono">neg, pos</span> pair per player in order below</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
                 <p className="text-text-muted/70 pt-1">
                     Use team short codes (e.g. <span className="font-mono text-text">COL</span>).
                     Lines starting with <span className="font-mono">#</span> are ignored.
                 </p>
+                {seasonUsers.length > 0 && (
+                    <div className="mt-2 border-t border-border/50 pt-2">
+                        <p className="font-semibold text-text-muted/70 uppercase tracking-wider text-xs mb-1">Player column order</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                            {seasonUsers.map((u, i) => (
+                                <span key={u.id} className="font-mono text-xs">
+                                    <span className="text-text-muted/60">{i + 1}.</span>{' '}
+                                    <span className="text-text">{u.name}</span>
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <details className="mt-1">
                     <summary className="cursor-pointer text-primary hover:text-primary/80">
                         Available short names
@@ -309,6 +433,10 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                                     <th className="px-2 py-1">#</th>
                                     <th className="px-2 py-1">Home</th>
                                     <th className="px-2 py-1">Away</th>
+                                    <th className="px-2 py-1">Score</th>
+                                    <th className="px-2 py-1">Type</th>
+                                    <th className="px-2 py-1">Date</th>
+                                    {seasonUsers.length > 0 && <th className="px-2 py-1">Points</th>}
                                     <th className="px-2 py-1">Status</th>
                                 </tr>
                             </thead>
@@ -331,6 +459,26 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                                                 : <span className="text-danger font-mono">{row.awayRaw}</span>
                                             }
                                         </td>
+                                        <td className="px-2 py-1 font-mono text-text-muted">
+                                            {row.homeScore !== null ? `${row.homeScore}:${row.awayScore}` : '—'}
+                                        </td>
+                                        <td className="px-2 py-1">
+                                            {row.completionType !== null
+                                                ? <CompletionBadge type={row.completionType} />
+                                                : <span className="text-text-muted">—</span>}
+                                        </td>
+                                        <td className="px-2 py-1 text-text-muted whitespace-nowrap">
+                                            {row.matchDate
+                                                ? new Date(row.matchDate).toLocaleDateString()
+                                                : '—'}
+                                        </td>
+                                        {seasonUsers.length > 0 && (
+                                            <td className="px-2 py-1">
+                                                {row.playerPoints
+                                                    ? <span className="text-text-muted">{row.playerPoints.map((p) => `${p.minus}/${p.plus}`).join(' ')}</span>
+                                                    : <span className="text-text-muted">—</span>}
+                                            </td>
+                                        )}
                                         <td className="px-2 py-1">
                                             {row.error
                                                 ? <span className="text-danger">{row.error}</span>
@@ -535,6 +683,7 @@ export default function AdminMatchesPage() {
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
+    const [seasonUsers, setSeasonUsers] = useState<User[]>([])
     const [matches, setMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingMatches, setLoadingMatches] = useState(false)
@@ -578,8 +727,15 @@ export default function AdminMatchesPage() {
 
     const handleSeasonChange = (id: number | '') => {
         setSelectedSeasonId(id)
-        if (id !== '') void loadMatches(id)
-        else setMatches([])
+        if (id !== '') {
+            void loadMatches(id)
+            apiClient.get<SeasonDetail>(`/api/seasons/${id}`)
+                .then((d) => setSeasonUsers(d.users))
+                .catch(() => setSeasonUsers([]))
+        } else {
+            setMatches([])
+            setSeasonUsers([])
+        }
     }
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -773,6 +929,7 @@ export default function AdminMatchesPage() {
                     <BulkMatchCreator
                         seasonId={selectedSeasonId as number}
                         teams={teams}
+                        seasonUsers={seasonUsers}
                         onSuccess={() => {
                             setShowBulkModal(false)
                             void loadMatches(selectedSeasonId as number)

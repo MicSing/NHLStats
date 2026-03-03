@@ -86,7 +86,7 @@ public class MatchService : IMatchService
         return true;
     }
 
-    public async Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<CreateMatchDto> dtos)
+    public async Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<BatchCreateMatchDto> dtos)
     {
         var dtoList = dtos.ToList();
 
@@ -115,14 +115,58 @@ public class MatchService : IMatchService
             MatchNumber = startNumber + i + 1,
             HomeTeamId = dto.HomeTeamId,
             AwayTeamId = dto.AwayTeamId,
-            HomeScore = 0,
-            AwayScore = 0,
-            MatchDate = null,
-            CompletionType = CompletionType.None
+            HomeScore = dto.HomeScore,
+            AwayScore = dto.AwayScore,
+            MatchDate = dto.MatchDate,
+            CompletionType = dto.CompletionType
         }).ToList();
 
         _db.Matches.AddRange(matches);
         await _db.SaveChangesAsync();
+
+        // Create UserMatch records for player points
+        var userMatches = new List<UserMatch>();
+        for (int i = 0; i < dtoList.Count; i++)
+        {
+            var dto = dtoList[i];
+            var match = matches[i];
+            if (dto.UserPoints != null)
+            {
+                foreach (var up in dto.UserPoints)
+                {
+                    userMatches.Add(new UserMatch
+                    {
+                        UserId = up.UserId,
+                        MatchId = match.Id,
+                        SeasonId = seasonId,
+                        TotalPlus = up.Plus,
+                        TotalMinus = up.Minus
+                    });
+                }
+            }
+        }
+        if (userMatches.Count > 0)
+        {
+            _db.UserMatches.AddRange(userMatches);
+            await _db.SaveChangesAsync();
+
+            // Create UserMatchPoint records so reasons are visible in the UI.
+            // Negative points → PointReason Id=1 ("Penalty", IsPositive=false)
+            // Positive points → PointReason Id=9 ("Penalty", IsPositive=true)
+            var pointEntries = new List<UserMatchPoint>();
+            foreach (var um in userMatches)
+            {
+                if (um.TotalMinus > 0)
+                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 1, Count = um.TotalMinus });
+                if (um.TotalPlus > 0)
+                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 9, Count = um.TotalPlus });
+            }
+            if (pointEntries.Count > 0)
+            {
+                _db.UserMatchPoints.AddRange(pointEntries);
+                await _db.SaveChangesAsync();
+            }
+        }
 
         // Reload with navigation properties
         var ids = matches.Select(m => m.Id).ToList();
