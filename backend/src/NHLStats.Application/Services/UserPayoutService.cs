@@ -12,6 +12,21 @@ public class UserPayoutService : IUserPayoutService
 
     public UserPayoutService(NhlStatsDbContext db) => _db = db;
 
+    public async Task<IEnumerable<UserPayoutDto>> GetAllAsync()
+    {
+        return await _db.UserPayouts
+            .Include(p => p.User)
+            .OrderByDescending(p => p.PaidOn)
+            .Select(p => new UserPayoutDto(
+                p.Id,
+                p.UserId,
+                p.User != null ? p.User.Name : "",
+                p.SeasonId,
+                p.Amount,
+                p.PaidOn))
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<UserPayoutDto>> GetBySeasonAsync(int seasonId)
     {
         return await _db.UserPayouts

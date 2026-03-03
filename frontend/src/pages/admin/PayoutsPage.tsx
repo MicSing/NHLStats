@@ -103,14 +103,14 @@ export default function PayoutsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Payouts</h1>
+                <h1 className="text-2xl font-bold text-primary">Payouts</h1>
                 <div className="flex items-center gap-3">
                     <select
                         value={selectedSeasonId ?? ''}
                         onChange={(e) =>
                             setSelectedSeasonId(e.target.value ? Number(e.target.value) : null)
                         }
-                        className="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm"
+                        className="bg-border border border-border rounded px-3 py-1 text-sm"
                     >
                         <option value="">Select season…</option>
                         {seasons.map((s) => (
@@ -122,7 +122,7 @@ export default function PayoutsPage() {
                     {selectedSeasonId && (
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded text-sm"
+                            className="bg-primary hover:bg-primary-hover px-3 py-1 rounded text-sm"
                         >
                             + Add Payout
                         </button>
@@ -130,19 +130,19 @@ export default function PayoutsPage() {
                 </div>
             </div>
 
-            {error && <p className="text-red-400 mb-4">{error}</p>}
+            {error && <p className="text-danger mb-4">{error}</p>}
 
             {!selectedSeasonId && (
-                <p className="text-gray-400">Select a season to view payouts.</p>
+                <p className="text-text-muted">Select a season to view payouts.</p>
             )}
 
-            {selectedSeasonId && loading && <p className="text-gray-400">Loading…</p>}
+            {selectedSeasonId && loading && <p className="text-text-muted">Loading…</p>}
 
             {selectedSeasonId && !loading && (
                 <>
-                    <div className="overflow-x-auto rounded-lg border border-gray-700">
+                    <div className="overflow-x-auto rounded-lg border border-border">
                         <table className="w-full text-sm">
-                            <thead className="bg-gray-800 text-gray-300 uppercase text-xs tracking-wider">
+                            <thead className="bg-surface text-text uppercase text-xs tracking-wider">
                                 <tr>
                                     <th className="text-left px-4 py-3">Player</th>
                                     <th className="text-right px-4 py-3">Amount</th>
@@ -150,12 +150,12 @@ export default function PayoutsPage() {
                                     <th className="px-4 py-3"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-700">
+                            <tbody className="divide-y divide-border">
                                 {payouts.length === 0 ? (
                                     <tr>
                                         <td
                                             colSpan={4}
-                                            className="text-center py-6 text-gray-500"
+                                            className="text-center py-6 text-text-muted/70"
                                         >
                                             No payouts for this season.
                                         </td>
@@ -164,25 +164,25 @@ export default function PayoutsPage() {
                                     payouts.map((p) => (
                                         <tr
                                             key={p.id}
-                                            className="bg-gray-900 hover:bg-gray-800 transition-colors"
+                                            className="bg-bg hover:bg-surface transition-colors"
                                         >
                                             <td className="px-4 py-3 font-medium">{p.userName}</td>
-                                            <td className="px-4 py-3 text-right text-green-400">
+                                            <td className="px-4 py-3 text-right text-success">
                                                 {p.amount.toFixed(2)} €
                                             </td>
-                                            <td className="px-4 py-3 text-gray-300">
+                                            <td className="px-4 py-3 text-text">
                                                 {p.paidOn.split('T')[0]}
                                             </td>
                                             <td className="px-4 py-3 text-right space-x-2">
                                                 <button
                                                     onClick={() => openEdit(p)}
-                                                    className="text-cyan-400 hover:text-cyan-300 text-xs"
+                                                    className="text-primary hover:text-primary/80 text-xs"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => void handleDelete(p.id)}
-                                                    className="text-red-400 hover:text-red-300 text-xs"
+                                                    className="text-danger hover:text-danger/80 text-xs"
                                                 >
                                                     Delete
                                                 </button>
@@ -192,10 +192,10 @@ export default function PayoutsPage() {
                                 )}
                             </tbody>
                             {payouts.length > 0 && (
-                                <tfoot className="bg-gray-800 border-t-2 border-gray-600 font-semibold text-sm">
+                                <tfoot className="bg-surface border-t-2 border-border font-semibold text-sm">
                                     <tr>
-                                        <td className="px-4 py-3 text-gray-200">Total</td>
-                                        <td className="px-4 py-3 text-right text-green-300">
+                                        <td className="px-4 py-3 text-text">Total</td>
+                                        <td className="px-4 py-3 text-right text-success">
                                             {totalAmount.toFixed(2)} €
                                         </td>
                                         <td colSpan={2}></td>
@@ -212,14 +212,14 @@ export default function PayoutsPage() {
                 <Modal title="Add Payout" onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Player</label>
+                            <label className="block text-sm text-text-muted mb-1">Player</label>
                             <select
                                 required
                                 value={addForm.userId || ''}
                                 onChange={(e) =>
                                     setAddForm((f) => ({ ...f, userId: Number(e.target.value) }))
                                 }
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                                className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             >
                                 <option value="">Select player…</option>
                                 {users.map((u) => (
@@ -230,7 +230,7 @@ export default function PayoutsPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Amount (€)</label>
+                            <label className="block text-sm text-text-muted mb-1">Amount (€)</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -239,11 +239,11 @@ export default function PayoutsPage() {
                                 onChange={(e) =>
                                     setAddForm((f) => ({ ...f, amount: Number(e.target.value) }))
                                 }
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                                className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Paid On</label>
+                            <label className="block text-sm text-text-muted mb-1">Paid On</label>
                             <input
                                 type="date"
                                 required
@@ -251,20 +251,20 @@ export default function PayoutsPage() {
                                 onChange={(e) =>
                                     setAddForm((f) => ({ ...f, paidOn: e.target.value }))
                                 }
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                                className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 type="button"
                                 onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-sm"
+                                className="px-4 py-2 rounded bg-border hover:bg-border/80 text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 text-sm"
+                                className="px-4 py-2 rounded bg-primary hover:bg-primary-hover text-sm"
                             >
                                 Add
                             </button>
@@ -281,7 +281,7 @@ export default function PayoutsPage() {
                 >
                     <form onSubmit={(e) => void handleEdit(e)} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Amount (€)</label>
+                            <label className="block text-sm text-text-muted mb-1">Amount (€)</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -290,11 +290,11 @@ export default function PayoutsPage() {
                                 onChange={(e) =>
                                     setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))
                                 }
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                                className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Paid On</label>
+                            <label className="block text-sm text-text-muted mb-1">Paid On</label>
                             <input
                                 type="date"
                                 required
@@ -302,20 +302,20 @@ export default function PayoutsPage() {
                                 onChange={(e) =>
                                     setEditForm((f) => ({ ...f, paidOn: e.target.value }))
                                 }
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                                className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 type="button"
                                 onClick={() => setEditPayout(null)}
-                                className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-sm"
+                                className="px-4 py-2 rounded bg-border hover:bg-border/80 text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 text-sm"
+                                className="px-4 py-2 rounded bg-primary hover:bg-primary-hover text-sm"
                             >
                                 Save
                             </button>

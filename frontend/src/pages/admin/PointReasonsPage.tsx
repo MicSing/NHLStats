@@ -71,10 +71,10 @@ export default function PointReasonsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Point Reasons</h1>
+                <h1 className="text-2xl font-bold text-primary">Point Reasons</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm font-medium"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
                     Add Reason
                 </button>
@@ -82,7 +82,7 @@ export default function PointReasonsPage() {
 
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                    <tr className="text-left border-b border-border text-text-muted">
                         <th className="pb-2 pr-4">Name</th>
                         <th className="pb-2 pr-4">Type</th>
                         <th className="pb-2 pr-4">Status</th>
@@ -91,13 +91,13 @@ export default function PointReasonsPage() {
                 </thead>
                 <tbody>
                     {reasons.map((reason) => (
-                        <tr key={reason.id} className="border-b border-gray-700/50">
+                        <tr key={reason.id} className="border-b border-border/50">
                             <td className="py-3 pr-4">{reason.name}</td>
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${reason.isPositive
-                                            ? 'bg-cyan-900 text-cyan-300'
-                                            : 'bg-orange-900 text-orange-300'
+                                            ? 'bg-primary/20 text-primary'
+                                            : 'bg-warning/20 text-warning'
                                         }`}
                                 >
                                     {reason.isPositive ? 'Positive' : 'Negative'}
@@ -106,8 +106,8 @@ export default function PointReasonsPage() {
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${reason.isActive
-                                            ? 'bg-green-800 text-green-200'
-                                            : 'bg-gray-700 text-gray-400'
+                                            ? 'bg-success/20 text-success'
+                                            : 'bg-border text-text-muted'
                                         }`}
                                 >
                                     {reason.isActive ? 'Active' : 'Inactive'}
@@ -116,14 +116,14 @@ export default function PointReasonsPage() {
                             <td className="py-3 flex gap-2">
                                 <button
                                     onClick={() => openEdit(reason)}
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
                                     Edit
                                 </button>
                                 {reason.isActive && (
                                     <button
                                         onClick={() => void handleDeactivate(reason)}
-                                        className="text-xs bg-orange-800 hover:bg-orange-700 px-3 py-1 rounded"
+                                        className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
                                     >
                                         Deactivate
                                     </button>
@@ -198,58 +198,58 @@ function PointReasonForm({
 }: PointReasonFormProps) {
     return (
         <form onSubmit={onSubmit}>
-            <label htmlFor="pr-name" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="pr-name" className="label">
                 Name
             </label>
             <input
                 id="pr-name"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                 value={name}
                 onChange={(e) => onNameChange(e.target.value)}
                 required
             />
 
             <fieldset className="mb-4">
-                <legend className="text-sm text-gray-300 mb-2">Type</legend>
-                <label className="flex items-center gap-2 mb-1 text-sm text-gray-300 cursor-pointer">
+                <legend className="text-sm text-text mb-2">Type</legend>
+                <label className="flex items-center gap-2 mb-1 text-sm text-text cursor-pointer">
                     <input
                         type="radio"
                         name="pr-type"
                         checked={!isPositive}
                         onChange={() => onIsPositiveChange(false)}
-                        className="accent-orange-400"
+                        className="accent-[var(--color-warning)]"
                     />
                     Negative
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
                     <input
                         type="radio"
                         name="pr-type"
                         checked={isPositive}
                         onChange={() => onIsPositiveChange(true)}
-                        className="accent-cyan-400"
+                        className="accent-[var(--color-primary)]"
                     />
                     Positive
                 </label>
             </fieldset>
 
             {showIsActive && (
-                <label className="flex items-center gap-2 mb-4 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 mb-4 text-sm text-text cursor-pointer">
                     <input
                         type="checkbox"
                         checked={isActive}
                         onChange={(e) => onIsActiveChange(e.target.checked)}
-                        className="accent-cyan-500"
+                        className="accent-[var(--color-primary)]"
                     />
                     Active
                 </label>
             )}
 
             <div className="flex gap-2 justify-end">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm bg-gray-700 rounded">
+                <button type="button" onClick={onCancel} className="btn-ghost text-sm">
                     Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded">
+                <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
                     Save
                 </button>
             </div>

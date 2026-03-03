@@ -69,10 +69,10 @@ export default function UsersPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Users</h1>
+                <h1 className="text-2xl font-bold text-primary">Users</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm font-medium"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
                     Add User
                 </button>
@@ -80,7 +80,7 @@ export default function UsersPage() {
 
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                    <tr className="text-left border-b border-border text-text-muted">
                         <th className="pb-2 pr-4">Name</th>
                         <th className="pb-2 pr-4">Status</th>
                         <th className="pb-2">Actions</th>
@@ -88,13 +88,13 @@ export default function UsersPage() {
                 </thead>
                 <tbody>
                     {users.map((user) => (
-                        <tr key={user.id} className="border-b border-gray-700/50">
+                        <tr key={user.id} className="border-b border-border/50">
                             <td className="py-3 pr-4">{user.name}</td>
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${user.isActive
-                                            ? 'bg-green-800 text-green-200'
-                                            : 'bg-gray-700 text-gray-400'
+                                            ? 'bg-success/20 text-success'
+                                            : 'bg-border text-text-muted'
                                         }`}
                                 >
                                     {user.isActive ? 'Active' : 'Inactive'}
@@ -103,14 +103,14 @@ export default function UsersPage() {
                             <td className="py-3 flex gap-2">
                                 <button
                                     onClick={() => openEdit(user)}
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
                                     Edit
                                 </button>
                                 {user.isActive && (
                                     <button
                                         onClick={() => void handleDeactivate(user)}
-                                        className="text-xs bg-orange-800 hover:bg-orange-700 px-3 py-1 rounded"
+                                        className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
                                     >
                                         Deactivate
                                     </button>
@@ -127,13 +127,13 @@ export default function UsersPage() {
                     <form onSubmit={(e) => void handleAdd(e)}>
                         <label
                             htmlFor="add-user-name"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Name
                         </label>
                         <input
                             id="add-user-name"
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             required
@@ -142,13 +142,13 @@ export default function UsersPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 text-sm bg-gray-700 rounded"
+                                className="btn-ghost text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded"
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
                                 Save
                             </button>
@@ -163,23 +163,23 @@ export default function UsersPage() {
                     <form onSubmit={(e) => void handleEdit(e)}>
                         <label
                             htmlFor="edit-user-name"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Name
                         </label>
                         <input
                             id="edit-user-name"
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             required
                         />
-                        <label className="flex items-center gap-2 mb-4 text-sm text-gray-300 cursor-pointer">
+                        <label className="flex items-center gap-2 mb-4 text-sm text-text cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={editIsActive}
                                 onChange={(e) => setEditIsActive(e.target.checked)}
-                                className="accent-cyan-500"
+                                className="accent-[var(--color-primary)]"
                             />
                             Active
                         </label>
@@ -187,13 +187,13 @@ export default function UsersPage() {
                             <button
                                 type="button"
                                 onClick={() => setEditUser(null)}
-                                className="px-4 py-2 text-sm bg-gray-700 rounded"
+                                className="btn-ghost text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded"
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
                                 Save
                             </button>

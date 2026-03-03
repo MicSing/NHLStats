@@ -130,23 +130,23 @@ export default function AdminAggregatedPointsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Aggregated Points</h1>
+                <h1 className="text-2xl font-bold text-primary">Aggregated Points</h1>
             </div>
 
-            <p className="text-sm text-gray-400 mb-6">
+            <p className="text-sm text-text-muted mb-6">
                 Aggregated points are season-level entries not tied to a specific match — use them
                 for bonus points, manual adjustments, or pre-season carryovers.
             </p>
 
             {/* Season selector */}
             <div className="mb-6">
-                <label className="block text-sm mb-1 text-gray-300">Season</label>
+                <label className="label">Season</label>
                 <select
                     value={selectedSeasonId}
                     onChange={(e) =>
                         handleSeasonChange(e.target.value === '' ? '' : Number(e.target.value))
                     }
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white min-w-48"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
                     <option value="">Select a season…</option>
                     {seasons.map((s) => (
@@ -157,7 +157,7 @@ export default function AdminAggregatedPointsPage() {
                 </select>
             </div>
 
-            {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+            {error && <p className="text-danger text-sm mb-4">{error}</p>}
 
             {selectedSeasonId !== '' && loadingEntries && <p>Loading entries…</p>}
 
@@ -166,15 +166,15 @@ export default function AdminAggregatedPointsPage() {
                     {/* Existing entries */}
                     {entries.length > 0 && (
                         <section className="mb-8">
-                            <h2 className="text-base font-semibold text-gray-300 mb-3">
+                            <h2 className="text-base font-semibold text-text mb-3">
                                 Existing Entries
                             </h2>
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                                    <tr className="text-left border-b border-border text-text-muted">
                                         <th className="pb-2 pr-4">Player</th>
-                                        <th className="pb-2 pr-4 text-green-400">+</th>
-                                        <th className="pb-2 pr-4 text-red-400">−</th>
+                                        <th className="pb-2 pr-4 text-success">+</th>
+                                        <th className="pb-2 pr-4 text-danger">−</th>
                                         <th className="pb-2 pr-4">Points</th>
                                         <th className="pb-2">Actions</th>
                                     </tr>
@@ -183,18 +183,18 @@ export default function AdminAggregatedPointsPage() {
                                     {entries.map((entry) => (
                                         <tr
                                             key={entry.userMatch.id}
-                                            className="border-b border-gray-700/50"
+                                            className="border-b border-border/50"
                                         >
                                             <td className="py-3 pr-4">
                                                 {entry.userMatch.userName}
                                             </td>
-                                            <td className="py-3 pr-4 text-green-400 font-mono">
+                                            <td className="py-3 pr-4 text-success font-mono">
                                                 {entry.userMatch.totalPlus}
                                             </td>
-                                            <td className="py-3 pr-4 text-red-400 font-mono">
+                                            <td className="py-3 pr-4 text-danger font-mono">
                                                 {entry.userMatch.totalMinus}
                                             </td>
-                                            <td className="py-3 pr-4 text-gray-400">
+                                            <td className="py-3 pr-4 text-text-muted">
                                                 {entry.points.length} point{entry.points.length !== 1 ? 's' : ''}
                                                 {entry.goals.length > 0 && `, ${entry.goals.length} goal entry`}
                                                 {entry.penalties.length > 0 && `, ${entry.penalties.length} penalty entry`}
@@ -204,7 +204,7 @@ export default function AdminAggregatedPointsPage() {
                                                     <>
                                                         <button
                                                             onClick={() => setManageEntry(entry)}
-                                                            className="text-xs bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded"
+                                                            className="text-xs bg-primary hover:bg-primary-hover px-3 py-1 rounded"
                                                         >
                                                             Manage
                                                         </button>
@@ -229,21 +229,21 @@ export default function AdminAggregatedPointsPage() {
                     {/* Users without an entry */}
                     {usersWithoutEntry.length > 0 && (
                         <section>
-                            <h2 className="text-base font-semibold text-gray-300 mb-3">
+                            <h2 className="text-base font-semibold text-text mb-3">
                                 Add Entry For…
                             </h2>
                             <div className="space-y-2">
                                 {usersWithoutEntry.map((u) => (
                                     <div
                                         key={u.id}
-                                        className="flex items-center justify-between bg-gray-800 rounded px-4 py-3"
+                                        className="flex items-center justify-between bg-surface rounded px-4 py-3"
                                     >
                                         <span className="text-sm">{u.name}</span>
                                         {isAuth && (
                                             <button
                                                 onClick={() => void handleCreate(u.id)}
                                                 disabled={creating === u.id}
-                                                className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded disabled:opacity-50"
+                                                className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded disabled:opacity-50"
                                             >
                                                 {creating === u.id ? 'Creating…' : '+ Create Entry'}
                                             </button>
@@ -255,7 +255,7 @@ export default function AdminAggregatedPointsPage() {
                     )}
 
                     {entries.length === 0 && usersWithoutEntry.length === 0 && (
-                        <p className="text-gray-400 text-sm">No users are assigned to this season.</p>
+                        <p className="text-text-muted text-sm">No users are assigned to this season.</p>
                     )}
                 </>
             )}

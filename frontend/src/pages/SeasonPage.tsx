@@ -10,10 +10,10 @@ import SeasonSelector from '../components/SeasonSelector'
 
 function CompletionBadge({ type }: { type: CompletionType }) {
     const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'Not Played', className: 'bg-gray-600 text-gray-300' },
-        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-green-800 text-green-300' },
-        [CompletionType.Overtime]: { label: 'OT', className: 'bg-yellow-800 text-yellow-300' },
-        [CompletionType.Shootout]: { label: 'SO', className: 'bg-orange-800 text-orange-300' },
+        [CompletionType.None]: { label: 'Not Played', className: 'bg-border text-text-muted' },
+        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
+        [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
+        [CompletionType.Shootout]: { label: 'SO', className: 'bg-secondary/20 text-secondary' },
     }
     const { label, className } = map[type] ?? map[CompletionType.None]
     return (
@@ -89,11 +89,11 @@ export default function SeasonPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="min-h-screen bg-bg text-text p-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
-                    <h1 className="text-2xl font-bold text-cyan-400">Season Overview</h1>
+                    <h1 className="text-2xl font-bold text-primary">Season Overview</h1>
                     {!loadingSeasons && (
                         <SeasonSelector
                             seasons={seasons}
@@ -103,14 +103,14 @@ export default function SeasonPage() {
                     )}
                     <Link
                         to="/dashboard"
-                        className="ml-auto text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+                        className="ml-auto text-sm text-text-muted hover:text-primary transition-colors"
                     >
                         📊 Dashboard
                     </Link>
                 </div>
 
                 {!seasonId && (
-                    <p className="text-gray-400">Select a season to view details.</p>
+                    <p className="text-text-muted">Select a season to view details.</p>
                 )}
 
                 {seasonId && loadingData && <p>Loading…</p>}
@@ -120,12 +120,12 @@ export default function SeasonPage() {
                         {/* User Stats Table */}
                         {stats.length > 0 && (
                             <section className="mb-8" aria-label="User stats">
-                                <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                <h2 className="text-lg font-semibold mb-3 text-primary/80">
                                     Player Stats
                                 </h2>
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="text-left text-gray-400 border-b border-gray-700">
+                                        <tr className="text-left text-text-muted border-b border-border">
                                             <th className="pb-2">Player</th>
                                             <th className="pb-2">+</th>
                                             <th className="pb-2">−</th>
@@ -138,12 +138,12 @@ export default function SeasonPage() {
                                         {stats.map((s) => {
                                             const totals = userTotals.find((t) => t.userId === s.userId)
                                             return (
-                                                <tr key={s.userId} className="border-b border-gray-800">
+                                                <tr key={s.userId} className="border-b border-border">
                                                     <td className="py-2">{s.userName}</td>
-                                                    <td className="py-2 text-green-400">{s.totalPlus}</td>
-                                                    <td className="py-2 text-red-400">{s.totalMinus}</td>
-                                                    <td className="py-2 text-cyan-400">{totals?.totalGoals ?? 0}</td>
-                                                    <td className="py-2 text-orange-400">{totals?.totalPenalties ?? 0}</td>
+                                                    <td className="py-2 text-success">{s.totalPlus}</td>
+                                                    <td className="py-2 text-danger">{s.totalMinus}</td>
+                                                    <td className="py-2 text-primary">{totals?.totalGoals ?? 0}</td>
+                                                    <td className="py-2 text-warning">{totals?.totalPenalties ?? 0}</td>
                                                     <td className="py-2">{s.earnings.toFixed(2)} €</td>
                                                 </tr>
                                             )
@@ -157,25 +157,25 @@ export default function SeasonPage() {
                         {(topScorer ?? topPenalized) && (
                             <section className="mb-8 flex gap-6" aria-label="Top players">
                                 {topScorer && (
-                                    <div className="bg-gray-800 rounded p-4">
-                                        <h3 className="text-sm text-gray-400 mb-1">Top Scorer</h3>
+                                    <div className="card p-4">
+                                        <h3 className="text-sm text-text-muted mb-1">Top Scorer</h3>
                                         <p className="font-semibold">
                                             {topScorer.firstName} {topScorer.surname}
                                         </p>
-                                        <p className="text-sm text-gray-400">
+                                        <p className="text-sm text-text-muted">
                                             {topScorer.teamShortName} · {topScorer.count} goals
                                         </p>
                                     </div>
                                 )}
                                 {topPenalized && (
-                                    <div className="bg-gray-800 rounded p-4">
-                                        <h3 className="text-sm text-gray-400 mb-1">
+                                    <div className="card p-4">
+                                        <h3 className="text-sm text-text-muted mb-1">
                                             Most Penalized
                                         </h3>
                                         <p className="font-semibold">
                                             {topPenalized.firstName} {topPenalized.surname}
                                         </p>
-                                        <p className="text-sm text-gray-400">
+                                        <p className="text-sm text-text-muted">
                                             {topPenalized.teamShortName} · {topPenalized.count}{' '}
                                             penalties
                                         </p>
@@ -187,12 +187,12 @@ export default function SeasonPage() {
                         {/* Weekly Matches */}
                         {weekGroups.length > 0 && (
                             <section aria-label="Weekly matches">
-                                <h2 className="text-lg font-semibold mb-4 text-cyan-300">
+                                <h2 className="text-lg font-semibold mb-4 text-primary">
                                     Matches by Week
                                 </h2>
                                 {weekGroups.map((group) => (
                                     <div key={group.weekNumber} className="mb-6">
-                                        <h3 className="text-sm text-gray-400 mb-2 border-b border-gray-700 pb-1">
+                                        <h3 className="text-sm text-text-muted mb-2 border-b border-border pb-1">
                                             Week {group.weekNumber}
                                         </h3>
                                         <div className="space-y-2">
@@ -200,7 +200,7 @@ export default function SeasonPage() {
                                                 <Link
                                                     key={m.matchId}
                                                     to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                    className="flex items-center justify-between bg-gray-800 rounded px-4 py-3 hover:bg-gray-700"
+                                                    className="flex items-center justify-between card rounded-lg px-4 py-3 hover:bg-surface/80 transition-colors"
                                                 >
                                                     <span>
                                                         {m.homeTeamName} vs {m.awayTeamName}
@@ -208,7 +208,7 @@ export default function SeasonPage() {
                                                     <span className="font-mono text-lg">
                                                         {m.homeScore} – {m.awayScore}
                                                     </span>
-                                                    <span className="text-sm text-gray-400">
+                                                    <span className="text-sm text-text-muted">
                                                         {new Date(m.matchDate).toLocaleDateString()}
                                                     </span>
                                                 </Link>
@@ -230,12 +230,12 @@ export default function SeasonPage() {
                             return (
                                 <>
                                     <section className="mt-8" aria-label="Up next match">
-                                        <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                        <h2 className="text-lg font-semibold mb-3 text-primary">
                                             Up Next
                                         </h2>
                                         <Link
                                             to={`/seasons/${seasonId}/matches/${upNext.id}`}
-                                            className="block bg-cyan-900/40 border border-cyan-700 rounded-xl px-6 py-5 hover:bg-cyan-900/60"
+                                            className="block card border-primary/40 rounded-xl px-6 py-5 hover:bg-primary/10 transition-colors"
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="text-center flex-1">
@@ -244,10 +244,10 @@ export default function SeasonPage() {
                                                     </p>
                                                 </div>
                                                 <div className="text-center px-6">
-                                                    <p className="text-xs text-gray-400 mb-1">
+                                                    <p className="text-xs text-text-muted mb-1">
                                                         Match #{upNext.matchNumber}
                                                     </p>
-                                                    <p className="text-2xl font-mono text-gray-300">
+                                                    <p className="text-2xl font-mono text-text-muted">
                                                         vs
                                                     </p>
                                                     <CompletionBadge
@@ -265,7 +265,7 @@ export default function SeasonPage() {
 
                                     {upcoming.length > 0 && (
                                         <section className="mt-6" aria-label="Upcoming matches">
-                                            <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                            <h2 className="text-lg font-semibold mb-3 text-primary">
                                                 Upcoming
                                             </h2>
                                             <div className="space-y-2">
@@ -273,9 +273,9 @@ export default function SeasonPage() {
                                                     <Link
                                                         key={m.id}
                                                         to={`/seasons/${seasonId}/matches/${m.id}`}
-                                                        className="flex items-center justify-between bg-gray-800 rounded px-4 py-3 hover:bg-gray-700"
+                                                        className="flex items-center justify-between card rounded-lg px-4 py-3 hover:bg-surface/80 transition-colors"
                                                     >
-                                                        <span className="text-xs text-gray-500 w-8">
+                                                        <span className="text-xs text-text-muted w-8">
                                                             #{m.matchNumber}
                                                         </span>
                                                         <span className="flex-1">
@@ -296,17 +296,17 @@ export default function SeasonPage() {
                         {/* Aggregated Entries */}
                         {aggregatedEntries.length > 0 && (
                             <section className="mt-8" aria-label="Aggregated entries">
-                                <h2 className="text-lg font-semibold mb-3 text-cyan-300">
+                                <h2 className="text-lg font-semibold mb-3 text-primary">
                                     Aggregated Entries
                                 </h2>
                                 <div className="space-y-2">
                                     {aggregatedEntries.map((um) => (
                                         <div
                                             key={um.id}
-                                            className="bg-gray-800 rounded px-4 py-3 flex items-center justify-between"
+                                            className="card rounded-lg px-4 py-3 flex items-center justify-between"
                                         >
                                             <span>{um.userName}</span>
-                                            <span className="text-sm text-gray-400">
+                                            <span className="text-sm text-text-muted">
                                                 +{um.totalPlus} / −{um.totalMinus}
                                             </span>
                                         </div>

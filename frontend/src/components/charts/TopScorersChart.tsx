@@ -5,29 +5,49 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
+    Legend,
     ResponsiveContainer,
 } from 'recharts'
-import type { TopRosterPlayer } from '../../types/stats'
+import type { RosterScorerByUser } from '../../types/stats'
+
+const USER_COLORS = ['#06b6d4', '#f97316', '#a855f7', '#22c55e', '#eab308', '#ec4899', '#14b8a6', '#64748b']
 
 interface Props {
-    data: TopRosterPlayer[]
+    data: RosterScorerByUser[]
 }
 
 export default function TopScorersChart({ data }: Props) {
+    // Collect all unique users in a stable order (highest total scorer first)
+    const allUsers = Array.from(
+        new Map(
+            data
+                .flatMap((p) => p.userCounts)
+                .sort((a, b) => b.count - a.count)
+                .map((uc) => [uc.userId, uc.userName] as [number, string]),
+        ).entries(),
+    ).map(([userId, userName]) => ({ userId, userName }))
+
     const chartData = [...data]
-        .sort((a, b) => b.count - a.count)
-        .map((p) => ({
-            ...p,
-            displayName: `${p.firstName} ${p.surname}${p.teamShortName ? ` (${p.teamShortName})` : ''}`,
-        }))
+        .sort((a, b) => b.totalCount - a.totalCount)
+        .map((p) => {
+            const entry: Record<string, unknown> = {
+                displayName: `${p.firstName} ${p.surname}${p.teamShortName ? ` (${p.teamShortName})` : ''}`,
+                rosterPlayerId: p.rosterPlayerId,
+                totalCount: p.totalCount,
+            }
+            for (const uc of p.userCounts) {
+                entry[uc.userName] = uc.count
+            }
+            return entry
+        })
 
     return (
         <div role="img" aria-label="top scorers chart" className="w-full">
             {data.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">No data available</p>
+                <p className="text-text-muted text-sm text-center py-8">No data available</p>
             ) : (
                 <>
-                    <ResponsiveContainer width="100%" height={Math.max(280, chartData.length * 40)}>
+                    <ResponsiveContainer width="100%" height={Math.max(280, chartData.length * 50)}>
                         <BarChart
                             data={chartData}
                             layout="vertical"
@@ -43,17 +63,26 @@ export default function TopScorersChart({ data }: Props) {
                             />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }}
-                                formatter={(value: number) => [`${value} goals`, 'Goals']}
+                                formatter={(value: number | undefined, name: string | undefined) => [`${value ?? 0} goals`, name ?? '']}
                             />
-                            <Bar dataKey="count" name="Goals" fill="#06b6d4" radius={[0, 4, 4, 0]} />
+                            <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+                            {allUsers.map((u, i) => (
+                                <Bar
+                                    key={u.userId}
+                                    dataKey={u.userName}
+                                    stackId="goals"
+                                    fill={USER_COLORS[i % USER_COLORS.length]}
+                                    radius={i === allUsers.length - 1 ? [0, 4, 4, 0] : undefined}
+                                />
+                            ))}
                         </BarChart>
                     </ResponsiveContainer>
                     {/* Accessible data summary */}
-                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-400">
+                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
                         {chartData.map((d) => (
-                            <li key={d.rosterPlayerId}>
-                                <span className="font-medium text-white">{d.displayName}</span>{' '}
-                                <span className="text-cyan-400">{d.count} goals</span>
+                            <li key={d.rosterPlayerId as number}>
+                                <span className="font-medium text-white">{d.displayName as string}</span>{' '}
+                                <span className="text-primary">{d.totalCount as number} goals</span>
                             </li>
                         ))}
                     </ul>

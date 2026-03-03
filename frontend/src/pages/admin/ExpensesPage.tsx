@@ -82,10 +82,10 @@ export default function ExpensesPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Expenses</h1>
+                <h1 className="text-2xl font-bold text-primary">Expenses</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm font-medium"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
                     Add Expense
                 </button>
@@ -93,7 +93,7 @@ export default function ExpensesPage() {
 
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                    <tr className="text-left border-b border-border text-text-muted">
                         <th className="pb-2 pr-4">Description</th>
                         <th className="pb-2 pr-4">Amount</th>
                         <th className="pb-2 pr-4">Date</th>
@@ -102,18 +102,18 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody>
                     {expenses.map((expense) => (
-                        <tr key={expense.id} className="border-b border-gray-700/50">
+                        <tr key={expense.id} className="border-b border-border/50">
                             <td className="py-3 pr-4">{expense.description ?? '—'}</td>
-                            <td className="py-3 pr-4 text-cyan-300">
+                            <td className="py-3 pr-4 text-primary/80">
                                 {expense.amount.toFixed(2)} €
                             </td>
-                            <td className="py-3 pr-4 text-gray-300">
+                            <td className="py-3 pr-4 text-text">
                                 {new Date(expense.date).toLocaleDateString()}
                             </td>
                             <td className="py-3 flex gap-2">
                                 <button
                                     onClick={() => openEdit(expense)}
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
                                     Edit
                                 </button>
@@ -127,9 +127,9 @@ export default function ExpensesPage() {
                         </tr>
                     ))}
                     {expenses.length > 0 && (
-                        <tr className="border-t border-gray-600 font-semibold">
-                            <td className="pt-3 pr-4 text-gray-300">Total</td>
-                            <td className="pt-3 pr-4 text-cyan-300">{total.toFixed(2)} €</td>
+                        <tr className="border-t border-border font-semibold">
+                            <td className="pt-3 pr-4 text-text">Total</td>
+                            <td className="pt-3 pr-4 text-primary/80">{total.toFixed(2)} €</td>
                             <td colSpan={2} />
                         </tr>
                     )}
@@ -137,7 +137,7 @@ export default function ExpensesPage() {
             </table>
 
             {expenses.length === 0 && (
-                <p className="text-gray-400 text-sm mt-4">No expenses recorded yet.</p>
+                <p className="text-text-muted text-sm mt-4">No expenses recorded yet.</p>
             )}
 
             {/* Add modal */}
@@ -181,18 +181,18 @@ function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
 
     return (
         <form onSubmit={onSubmit}>
-            <label htmlFor="expense-description" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="expense-description" className="label">
                 Description
             </label>
             <input
                 id="expense-description"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.description ?? ''}
                 onChange={(e) => set({ description: e.target.value || null })}
                 placeholder="Optional"
             />
 
-            <label htmlFor="expense-amount" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="expense-amount" className="label">
                 Amount (€)
             </label>
             <input
@@ -200,29 +200,29 @@ function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
                 type="number"
                 step="0.01"
                 min="0"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.amount}
                 onChange={(e) => set({ amount: parseFloat(e.target.value) || 0 })}
                 required
             />
 
-            <label htmlFor="expense-date" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="expense-date" className="label">
                 Date
             </label>
             <input
                 id="expense-date"
                 type="date"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                 value={form.date}
                 onChange={(e) => set({ date: e.target.value })}
                 required
             />
 
             <div className="flex gap-2 justify-end">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm bg-gray-700 rounded">
+                <button type="button" onClick={onCancel} className="btn-ghost text-sm">
                     Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded">
+                <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
                     Save
                 </button>
             </div>

@@ -12,17 +12,17 @@ export default function Modal({ title, onClose, children }: ModalProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
         >
-            <div className="bg-gray-800 rounded-lg w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh] mx-4">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 shrink-0">
-                    <h2 id="modal-title" className="text-lg font-semibold text-white">
+            <div className="card w-full max-w-2xl shadow-card-hover flex flex-col max-h-[90vh] mx-4">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                    <h2 id="modal-title" className="text-lg font-semibold text-text">
                         {title}
                     </h2>
                     <button
                         onClick={onClose}
                         aria-label="Close modal"
-                        className="text-gray-400 hover:text-white text-2xl leading-none"
+                        className="text-text-muted hover:text-text text-2xl leading-none transition-colors"
                     >
                         ×
                     </button>

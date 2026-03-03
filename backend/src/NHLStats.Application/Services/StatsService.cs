@@ -192,6 +192,50 @@ public class StatsService : IStatsService
             .ToList();
     }
 
+    // ─── All roster players — goals broken down by user ────────────────────────
+
+    public async Task<IEnumerable<RosterScorerByUserDto>> GetAllGoalScorersByUserAsync(int seasonId)
+    {
+        var rawData = await _db.UserMatchGoals
+            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .GroupBy(g => new { g.RosterPlayerId, g.UserMatch!.UserId })
+            .Select(g => new { g.Key.RosterPlayerId, g.Key.UserId, Total = g.Sum(x => x.Count) })
+            .ToListAsync();
+
+        if (rawData.Count == 0) return Enumerable.Empty<RosterScorerByUserDto>();
+
+        var playerIds = rawData.Select(x => x.RosterPlayerId).Distinct().ToList();
+        var userIds = rawData.Select(x => x.UserId).Distinct().ToList();
+
+        var players = await _db.RosterPlayers
+            .Include(rp => rp.Team)
+            .Where(rp => playerIds.Contains(rp.Id))
+            .ToDictionaryAsync(rp => rp.Id);
+
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Name);
+
+        return rawData
+            .GroupBy(x => x.RosterPlayerId)
+            .Where(g => players.ContainsKey(g.Key))
+            .Select(g =>
+            {
+                var p = players[g.Key];
+                var totalCount = g.Sum(x => x.Total);
+                var userCounts = g
+                    .Select(x => new UserGoalCountDto(
+                        x.UserId,
+                        users.TryGetValue(x.UserId, out var name) ? name : "",
+                        x.Total))
+                    .OrderByDescending(uc => uc.Count)
+                    .ToList();
+                return new RosterScorerByUserDto(p.Id, p.FirstName, p.Surname, p.Team?.ShortName, totalCount, userCounts);
+            })
+            .OrderByDescending(x => x.TotalCount)
+            .ToList();
+    }
+
     // ─── All roster players — penalties ──────────────────────────────────────
 
     public async Task<IEnumerable<TopRosterPlayerDto>> GetAllPenaltyPlayersAsync(int seasonId)
@@ -218,6 +262,50 @@ public class StatsService : IStatsService
                 var p = players[t.RosterPlayerId];
                 return new TopRosterPlayerDto(p.Id, p.FirstName, p.Surname, p.Team?.ShortName, t.Total);
             })
+            .ToList();
+    }
+
+    // ─── All roster players — penalties broken down by user ──────────────────
+
+    public async Task<IEnumerable<RosterPenalizedByUserDto>> GetAllPenaltyPlayersByUserAsync(int seasonId)
+    {
+        var rawData = await _db.UserMatchPenalties
+            .Where(p => p.UserMatch!.SeasonId == seasonId)
+            .GroupBy(p => new { p.RosterPlayerId, p.UserMatch!.UserId })
+            .Select(g => new { g.Key.RosterPlayerId, g.Key.UserId, Total = g.Sum(x => x.Count) })
+            .ToListAsync();
+
+        if (rawData.Count == 0) return Enumerable.Empty<RosterPenalizedByUserDto>();
+
+        var playerIds = rawData.Select(x => x.RosterPlayerId).Distinct().ToList();
+        var userIds = rawData.Select(x => x.UserId).Distinct().ToList();
+
+        var players = await _db.RosterPlayers
+            .Include(rp => rp.Team)
+            .Where(rp => playerIds.Contains(rp.Id))
+            .ToDictionaryAsync(rp => rp.Id);
+
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Name);
+
+        return rawData
+            .GroupBy(x => x.RosterPlayerId)
+            .Where(g => players.ContainsKey(g.Key))
+            .Select(g =>
+            {
+                var p = players[g.Key];
+                var totalCount = g.Sum(x => x.Total);
+                var userCounts = g
+                    .Select(x => new UserPenaltyCountDto(
+                        x.UserId,
+                        users.TryGetValue(x.UserId, out var name) ? name : "",
+                        x.Total))
+                    .OrderByDescending(uc => uc.Count)
+                    .ToList();
+                return new RosterPenalizedByUserDto(p.Id, p.FirstName, p.Surname, p.Team?.ShortName, totalCount, userCounts);
+            })
+            .OrderByDescending(x => x.TotalCount)
             .ToList();
     }
 
@@ -249,6 +337,12 @@ public class StatsService : IStatsService
         var totalExpenses = (decimal)(await _db.Expenses
             .SumAsync(e => (double?)e.Amount) ?? 0.0);
 
+        // Payouts per user (all seasons) — loaded into memory to avoid SQLite decimal Sum limitation
+        var allPayouts = await _db.UserPayouts.ToListAsync();
+        var payoutsByUser = allPayouts
+            .GroupBy(p => p.UserId)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
+
         var userEarnings = userMatches
             .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
             .Select(g =>
@@ -268,16 +362,18 @@ public class StatsService : IStatsService
                     var config = GetEffectiveConfig(moneyConfigs, date);
                     return config == null ? 0m : RawEarnings(config, um.TotalPlus, um.TotalMinus);
                 });
-                var earnings = Math.Max(0m, rawEarnings);
-                return new UserEarningsDto(g.Key.UserId, g.Key.UserName, totalPlus, totalMinus, earnings);
+                var paid = payoutsByUser.TryGetValue(g.Key.UserId, out var p) ? p : 0m;
+                var remaining = Math.Max(0m, rawEarnings - paid);
+                return new UserEarningsDto(g.Key.UserId, g.Key.UserName, totalPlus, totalMinus, rawEarnings, paid, remaining);
             })
             .OrderByDescending(u => u.TotalEarnings)
             .ToList();
 
-        var totalCollected = userEarnings.Sum(u => u.TotalEarnings);
+        var totalCollected = payoutsByUser.Values.Sum();
+        var canBeCollected = userEarnings.Sum(u => u.RemainingBalance);
         var balance = totalCollected - totalExpenses;
 
-        return new AllTimeEarningsDto(userEarnings, totalCollected, totalExpenses, balance);
+        return new AllTimeEarningsDto(userEarnings, totalCollected, canBeCollected, totalExpenses, balance);
     }
 
     // ─── Per-user goals & penalties totals for a season ──────────────────────

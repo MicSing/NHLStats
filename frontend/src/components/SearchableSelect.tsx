@@ -83,9 +83,9 @@ export default function SearchableSelect({
         <div ref={containerRef} className={`relative ${className}`}>
             <div
                 onClick={handleOpen}
-                className="flex items-center justify-between bg-gray-700 rounded px-2 py-1 text-sm cursor-pointer min-w-36 border border-gray-600 focus-within:border-cyan-500"
+                className="flex items-center justify-between bg-surface rounded-lg px-3 py-1.5 text-sm cursor-pointer min-w-36 border border-border focus-within:border-primary transition-colors"
             >
-                <span className={selectedLabel ? 'text-white' : 'text-gray-400'}>
+                <span className={selectedLabel ? 'text-text' : 'text-text-muted'}>
                     {selectedLabel || placeholder}
                 </span>
                 <div className="flex items-center gap-1">
@@ -94,17 +94,17 @@ export default function SearchableSelect({
                             type="button"
                             onClick={handleClear}
                             aria-label="clear selection"
-                            className="text-gray-400 hover:text-white text-xs px-1"
+                            className="text-text-muted hover:text-text text-xs px-1"
                         >
                             ✕
                         </button>
                     )}
-                    <span className="text-gray-400 text-xs">▾</span>
+                    <span className="text-text-muted text-xs">▾</span>
                 </div>
             </div>
 
             {open && (
-                <div className="absolute z-50 mt-1 w-full min-w-48 bg-gray-800 border border-gray-600 rounded shadow-lg">
+                <div className="absolute z-50 mt-1 w-full min-w-48 bg-surface border border-border rounded-lg shadow-card">
                     <input
                         ref={inputRef}
                         type="text"
@@ -115,11 +115,11 @@ export default function SearchableSelect({
                         }}
                         onKeyDown={handleKeyDown}
                         placeholder="Search…"
-                        className="w-full bg-gray-700 text-sm px-3 py-2 outline-none border-b border-gray-600"
+                        className="w-full bg-bg text-sm px-3 py-2 outline-none border-b border-border text-text placeholder-text-muted"
                     />
                     <ul className="max-h-48 overflow-y-auto">
                         {filtered.length === 0 ? (
-                            <li className="px-3 py-2 text-sm text-gray-400">No results</li>
+                            <li className="px-3 py-2 text-sm text-text-muted">No results</li>
                         ) : (
                             filtered.map((opt, i) => (
                                 <li
@@ -127,8 +127,8 @@ export default function SearchableSelect({
                                     onMouseDown={() => handleSelect(opt)}
                                     onMouseEnter={() => setHighlighted(i)}
                                     className={`px-3 py-1.5 text-sm cursor-pointer ${i === highlighted
-                                            ? 'bg-cyan-700 text-white'
-                                            : 'hover:bg-gray-700'
+                                            ? 'bg-primary text-white'
+                                            : 'hover:bg-border'
                                         }`}
                                 >
                                     {opt.label}

@@ -118,13 +118,13 @@ export default function SeasonsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Seasons</h1>
+                <h1 className="text-2xl font-bold text-primary">Seasons</h1>
                 <button
                     onClick={() => {
                         resetForm()
                         setShowAddModal(true)
                     }}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm font-medium"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
                     Add Season
                 </button>
@@ -132,7 +132,7 @@ export default function SeasonsPage() {
 
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                    <tr className="text-left border-b border-border text-text-muted">
                         <th className="pb-2 pr-4">Name</th>
                         <th className="pb-2 pr-4">Started</th>
                         <th className="pb-2 pr-4">Status</th>
@@ -142,31 +142,31 @@ export default function SeasonsPage() {
                 </thead>
                 <tbody>
                     {seasons.map((season) => (
-                        <tr key={season.id} className="border-b border-gray-700/50">
+                        <tr key={season.id} className="border-b border-border/50">
                             <td className="py-3 pr-4 font-medium">{season.name}</td>
-                            <td className="py-3 pr-4 text-gray-300">
+                            <td className="py-3 pr-4 text-text">
                                 {new Date(season.startedOn).toLocaleDateString()}
                             </td>
                             <td className="py-3 pr-4">
                                 {season.status && (
-                                    <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                                    <span className="text-xs bg-border text-text px-2 py-1 rounded">
                                         {season.status}
                                     </span>
                                 )}
                             </td>
-                            <td className="py-3 pr-4 text-gray-300">
+                            <td className="py-3 pr-4 text-text">
                                 {season.hostedTeamName ?? '—'}
                             </td>
                             <td className="py-3 flex gap-2">
                                 <button
                                     onClick={() => openEdit(season)}
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
                                     Edit
                                 </button>
                                 <button
                                     onClick={() => void openManageUsers(season)}
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
                                     Users
                                 </button>
@@ -216,7 +216,7 @@ export default function SeasonsPage() {
                 >
                     <ul className="mb-4 space-y-2">
                         {manageSeason.users.length === 0 && (
-                            <li className="text-gray-400 text-sm">No users assigned</li>
+                            <li className="text-text-muted text-sm">No users assigned</li>
                         )}
                         {manageSeason.users.map((u) => (
                             <li
@@ -241,7 +241,7 @@ export default function SeasonsPage() {
                             onChange={(e) =>
                                 setAssignUserId(e.target.value === '' ? '' : Number(e.target.value))
                             }
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+                            className="flex-1 bg-border border border-border rounded px-3 py-2 text-sm"
                         >
                             <option value="">Select user…</option>
                             {allUsers
@@ -255,7 +255,7 @@ export default function SeasonsPage() {
                         <button
                             onClick={() => void handleAssignUser()}
                             disabled={assignUserId === ''}
-                            className="px-3 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded disabled:opacity-50"
+                            className="px-3 py-2 text-sm bg-primary hover:bg-primary-hover rounded disabled:opacity-50"
                         >
                             Assign
                         </button>
@@ -281,46 +281,46 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
 
     return (
         <form onSubmit={onSubmit}>
-            <label htmlFor="season-name" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="season-name" className="label">
                 Name
             </label>
             <input
                 id="season-name"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.name}
                 onChange={(e) => set({ name: e.target.value })}
                 required
             />
 
-            <label htmlFor="season-started-on" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="season-started-on" className="label">
                 Started On
             </label>
             <input
                 id="season-started-on"
                 type="date"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.startedOn}
                 onChange={(e) => set({ startedOn: e.target.value })}
                 required
             />
 
-            <label htmlFor="season-status" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="season-status" className="label">
                 Status
             </label>
             <input
                 id="season-status"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.status ?? ''}
                 onChange={(e) => set({ status: e.target.value || null })}
                 placeholder="e.g. Active, Completed"
             />
 
-            <label htmlFor="season-team" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="season-team" className="label">
                 Hosted By
             </label>
             <select
                 id="season-team"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                 value={form.hostedTeamId ?? ''}
                 onChange={(e) =>
                     set({ hostedTeamId: e.target.value ? Number(e.target.value) : null })
@@ -335,10 +335,10 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
             </select>
 
             <div className="flex gap-2 justify-end">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm bg-gray-700 rounded">
+                <button type="button" onClick={onCancel} className="btn-ghost text-sm">
                     Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded">
+                <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
                     Save
                 </button>
             </div>

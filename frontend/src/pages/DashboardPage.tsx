@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
-import type { UserSeasonStats, AllTimeEarnings, TopRosterPlayer } from '../types/stats'
+import type { UserSeasonStats, AllTimeEarnings, RosterScorerByUser, RosterPenalizedByUser } from '../types/stats'
 import apiClient from '../services/apiClient'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
@@ -12,8 +12,8 @@ export default function DashboardPage() {
     const [seasons, setSeasons] = useState<Season[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
     const [seasonStats, setSeasonStats] = useState<UserSeasonStats[]>([])
-    const [rosterScorers, setRosterScorers] = useState<TopRosterPlayer[]>([])
-    const [rosterPenalized, setRosterPenalized] = useState<TopRosterPlayer[]>([])
+    const [rosterScorers, setRosterScorers] = useState<RosterScorerByUser[]>([])
+    const [rosterPenalized, setRosterPenalized] = useState<RosterPenalizedByUser[]>([])
     const [allTimeEarnings, setAllTimeEarnings] = useState<AllTimeEarnings | null>(null)
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingStats, setLoadingStats] = useState(false)
@@ -49,11 +49,11 @@ export default function DashboardPage() {
         Promise.all([
             apiClient.get<UserSeasonStats[]>(`/api/seasons/${selectedSeasonId}/stats`),
             apiClient
-                .get<TopRosterPlayer[]>(`/api/seasons/${selectedSeasonId}/stats/roster-scorers`)
-                .catch(() => [] as TopRosterPlayer[]),
+                .get<RosterScorerByUser[]>(`/api/seasons/${selectedSeasonId}/stats/roster-scorers-by-user`)
+                .catch(() => [] as RosterScorerByUser[]),
             apiClient
-                .get<TopRosterPlayer[]>(`/api/seasons/${selectedSeasonId}/stats/roster-penalized`)
-                .catch(() => [] as TopRosterPlayer[]),
+                .get<RosterPenalizedByUser[]>(`/api/seasons/${selectedSeasonId}/stats/roster-penalized-by-user`)
+                .catch(() => [] as RosterPenalizedByUser[]),
         ])
             .then(([stats, scorers, penalized]) => {
                 setSeasonStats(stats)
@@ -69,11 +69,11 @@ export default function DashboardPage() {
     }, [selectedSeasonId])
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="min-h-screen bg-bg text-text p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-2xl font-bold text-cyan-400">Dashboard</h1>
+                    <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
                     {!loadingSeasons && (
                         <SeasonSelector
                             seasons={seasons}
@@ -86,57 +86,57 @@ export default function DashboardPage() {
                 {/* Season-specific charts (2-column grid) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     {/* Plus / Minus */}
-                    <section className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Plus / Minus by Player</h2>
+                    <section className="card p-5">
+                        <h2 className="text-sm font-semibold text-primary mb-3">Plus / Minus by Player</h2>
                         {loadingStats ? (
-                            <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
                         ) : (
                             <PlusMinusChart data={seasonStats} />
                         )}
                     </section>
 
                     {/* Top Scorers */}
-                    <section className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Top Scorers (In-Game Players)</h2>
+                    <section className="card p-5">
+                        <h2 className="text-sm font-semibold text-primary mb-3">Top Scorers (In-Game Players)</h2>
                         {loadingStats ? (
-                            <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
                         ) : (
                             <TopScorersChart data={rosterScorers} />
                         )}
                     </section>
 
                     {/* Penalty Leaders */}
-                    <section className="bg-gray-800 rounded-lg p-4">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">Penalty Leaders (In-Game Players)</h2>
+                    <section className="card p-5">
+                        <h2 className="text-sm font-semibold text-primary mb-3">Penalty Leaders (In-Game Players)</h2>
                         {loadingStats ? (
-                            <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
                         ) : (
                             <PenaltyLeadersChart data={rosterPenalized} />
                         )}
                     </section>
 
                     {/* All-Time Earnings */}
-                    <section className="bg-gray-800 rounded-lg p-4" data-testid="earnings-section">
-                        <h2 className="text-sm font-semibold text-cyan-300 mb-3">All-Time Earnings</h2>
+                    <section className="card p-5" data-testid="earnings-section">
+                        <h2 className="text-sm font-semibold text-primary mb-3">All-Time Earnings</h2>
                         {allTimeEarnings ? (
                             <>
                                 <EarningsChart data={allTimeEarnings.userEarnings} />
                                 <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
-                                    <div className="bg-gray-700 rounded p-2">
-                                        <p className="text-gray-400">Collected</p>
-                                        <p className="text-green-400 font-semibold">
+                                    <div className="bg-bg rounded-lg p-2 border border-border">
+                                        <p className="text-text-muted">Collected</p>
+                                        <p className="text-success font-semibold">
                                             {allTimeEarnings.totalCollected.toFixed(2)} €
                                         </p>
                                     </div>
-                                    <div className="bg-gray-700 rounded p-2">
-                                        <p className="text-gray-400">Expenses</p>
-                                        <p className="text-red-400 font-semibold">
+                                    <div className="bg-bg rounded-lg p-2 border border-border">
+                                        <p className="text-text-muted">Expenses</p>
+                                        <p className="text-danger font-semibold">
                                             {allTimeEarnings.totalExpenses.toFixed(2)} €
                                         </p>
                                     </div>
-                                    <div className="bg-gray-700 rounded p-2">
-                                        <p className="text-gray-400">Balance</p>
-                                        <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <div className="bg-bg rounded-lg p-2 border border-border">
+                                        <p className="text-text-muted">Balance</p>
+                                        <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-success' : 'text-danger'}`}>
                                             {allTimeEarnings.balance.toFixed(2)} €
                                         </p>
                                     </div>

@@ -5,7 +5,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ReferenceLine,
     ResponsiveContainer,
 } from 'recharts'
 import type { UserEarnings } from '../../types/stats'
@@ -15,12 +14,12 @@ interface Props {
 }
 
 export default function EarningsChart({ data }: Props) {
-    const sorted = [...data].sort((a, b) => b.totalEarnings - a.totalEarnings)
+    const sorted = [...data].sort((a, b) => b.remainingBalance - a.remainingBalance)
 
     return (
         <div role="img" aria-label="earnings chart" className="w-full">
             {data.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">No data available</p>
+                <p className="text-text-muted text-sm text-center py-8">No data available</p>
             ) : (
                 <>
                     <ResponsiveContainer width="100%" height={280}>
@@ -35,14 +34,13 @@ export default function EarningsChart({ data }: Props) {
                                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                             />
                             <Tooltip
-                                formatter={(v: number) => [`${v.toFixed(2)} €`, 'Earnings']}
+                                formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(2)} €`, 'Balance']}
                                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }}
                             />
-                            <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="4 4" />
                             <Line
                                 type="monotone"
-                                dataKey="totalEarnings"
-                                name="Earnings"
+                                dataKey="remainingBalance"
+                                name="Balance"
                                 stroke="#f97316"
                                 strokeWidth={2}
                                 dot={{ fill: '#f97316', r: 4 }}
@@ -51,12 +49,12 @@ export default function EarningsChart({ data }: Props) {
                         </LineChart>
                     </ResponsiveContainer>
                     {/* Accessible data summary */}
-                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-400">
+                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
                         {sorted.map((d) => (
                             <li key={d.userId}>
                                 <span className="font-medium text-white">{d.userName}</span>{' '}
-                                <span className={d.totalEarnings >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                    {d.totalEarnings.toFixed(2)} €
+                                <span className={d.remainingBalance > 0 ? 'text-danger' : 'text-success'}>
+                                    {d.remainingBalance.toFixed(2)} €
                                 </span>
                             </li>
                         ))}

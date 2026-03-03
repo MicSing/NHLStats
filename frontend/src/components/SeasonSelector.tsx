@@ -15,7 +15,7 @@ export default function SeasonSelector({ seasons, selectedId, onChange }: Season
                 const val = e.target.value
                 onChange(val === '' ? null : Number(val))
             }}
-            className="bg-gray-700 text-white rounded px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-cyan-500"
+            className="bg-surface text-text rounded-lg px-3 py-1.5 text-sm border border-border focus:outline-none focus:border-primary transition-colors"
         >
             <option value="">All seasons</option>
             {seasons.map((s) => (

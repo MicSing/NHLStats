@@ -6,6 +6,23 @@ using NHLStats.Application.Interfaces;
 namespace NHLStats.Api.Controllers;
 
 [ApiController]
+[Route("api/payouts")]
+public class AllPayoutsController : ControllerBase
+{
+    private readonly IUserPayoutService _service;
+
+    public AllPayoutsController(IUserPayoutService service) => _service = service;
+
+    /// <summary>GET /api/payouts — all payouts across all seasons</summary>
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _service.GetAllAsync();
+        return Ok(result);
+    }
+}
+
+[ApiController]
 [Route("api/seasons/{seasonId:int}/payouts")]
 public class UserPayoutsController : ControllerBase
 {

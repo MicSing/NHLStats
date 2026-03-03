@@ -1,44 +1,31 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-
-const publicNavItems = [
-    { to: '/dashboard', label: '📊 Dashboard' },
-    { to: '/seasons', label: '🏒 Seasons' },
-    { to: '/earnings', label: '💰 Earnings' },
-]
-
-const adminNavItems = [
-    { to: '/admin/users', label: 'Users' },
-    { to: '/admin/seasons', label: 'Seasons' },
-    { to: '/admin/matches', label: 'Matches' },
-    { to: '/admin/roster', label: 'Roster' },
-    { to: '/admin/point-reasons', label: 'Point Reasons' },
-    { to: '/admin/money-config', label: 'Money Config' },
-    { to: '/admin/expenses', label: 'Expenses' },
-]
+import ThemeToggle from './ThemeToggle'
+import { publicNavItems, adminNavItems } from '../config/navConfig'
 
 export default function PublicLayout() {
     const { isAuthenticated, user, logout } = useAuth()
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white flex">
+        <div className="min-h-screen bg-bg text-text flex">
             {/* Sidebar */}
-            <aside className="w-56 bg-gray-800 flex flex-col shrink-0">
-                <div className="p-4 border-b border-gray-700">
-                    <NavLink to="/" className="text-xl font-bold text-cyan-400">
-                        NHL Stats
+            <aside className="w-60 bg-surface border-r border-border flex flex-col shrink-0">
+                <div className="px-5 py-4 border-b border-border">
+                    <NavLink to="/" className="text-xl font-bold text-primary tracking-tight">
+                        🏒 NHL Stats
                     </NavLink>
+                    <p className="text-xs text-text-muted mt-0.5">Season Tracker</p>
                 </div>
-                <nav className="flex-1 p-2">
-                    <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Menu</p>
+                <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+                    <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Menu</p>
                     {publicNavItems.map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}
                             className={({ isActive }) =>
-                                `block px-4 py-2 rounded mb-1 text-sm ${isActive
-                                    ? 'bg-cyan-700 text-white'
-                                    : 'text-gray-300 hover:bg-gray-700'
+                                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                    ? 'bg-primary text-white'
+                                    : 'text-text-muted hover:bg-border hover:text-text'
                                 }`
                             }
                         >
@@ -49,15 +36,15 @@ export default function PublicLayout() {
                     {/* Admin links — only when logged in */}
                     {isAuthenticated && (
                         <>
-                            <p className="px-4 py-1 mt-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Admin</p>
+                            <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Admin</p>
                             {adminNavItems.map((item) => (
                                 <NavLink
                                     key={item.to}
                                     to={item.to}
                                     className={({ isActive }) =>
-                                        `block px-4 py-2 rounded mb-1 text-sm ${isActive
-                                            ? 'bg-cyan-700 text-white'
-                                            : 'text-gray-300 hover:bg-gray-700'
+                                        `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                            ? 'bg-primary text-white'
+                                            : 'text-text-muted hover:bg-border hover:text-text'
                                         }`
                                     }
                                 >
@@ -67,30 +54,33 @@ export default function PublicLayout() {
                         </>
                     )}
                 </nav>
-                <div className="p-4 border-t border-gray-700">
-                    {isAuthenticated ? (
-                        <>
-                            <p className="text-xs text-gray-400 mb-2 truncate">{user?.email}</p>
-                            <button
-                                onClick={logout}
-                                className="w-full text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                <div className="px-4 py-4 border-t border-border">
+                    <ThemeToggle />
+                    <div className="mt-3">
+                        {isAuthenticated ? (
+                            <>
+                                <p className="text-xs text-text-muted mb-2 truncate">{user?.email}</p>
+                                <button
+                                    onClick={logout}
+                                    className="btn-ghost w-full text-sm"
+                                >
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <NavLink
+                                to="/login"
+                                className="block w-full text-center btn-primary text-sm"
                             >
-                                Logout
-                            </button>
-                        </>
-                    ) : (
-                        <NavLink
-                            to="/login"
-                            className="block w-full text-center text-sm bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded"
-                        >
-                            Sign In
-                        </NavLink>
-                    )}
+                                Sign In
+                            </NavLink>
+                        )}
+                    </div>
                 </div>
             </aside>
 
             {/* Page content */}
-            <main className="flex-1 p-6 overflow-auto">
+            <main className="flex-1 p-6 overflow-auto bg-bg">
                 <Outlet />
             </main>
         </div>

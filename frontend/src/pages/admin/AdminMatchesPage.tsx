@@ -12,10 +12,10 @@ import SearchableSelect from '../../components/SearchableSelect'
 
 function CompletionBadge({ type }: { type: CompletionType }) {
     const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'Not Played', className: 'bg-gray-600 text-gray-300' },
-        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-green-800 text-green-300' },
-        [CompletionType.Overtime]: { label: 'OT', className: 'bg-yellow-800 text-yellow-300' },
-        [CompletionType.Shootout]: { label: 'SO', className: 'bg-orange-800 text-orange-300' },
+        [CompletionType.None]: { label: 'Not Played', className: 'bg-border text-text-muted' },
+        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
+        [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
+        [CompletionType.Shootout]: { label: 'SO', className: 'bg-warning/20 text-warning' },
     }
     const { label, className } = map[type] ?? map[CompletionType.None]
     return (
@@ -187,51 +187,51 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
     return (
         <div className="space-y-4 min-w-[480px]">
             {/* Instructions */}
-            <div className="bg-gray-700/50 rounded p-3 text-xs text-gray-300 space-y-1">
-                <p className="font-semibold text-gray-200">One match per line — formats supported:</p>
+            <div className="bg-surface/50 rounded p-3 text-xs text-text space-y-1">
+                <p className="font-semibold text-text">One match per line — formats supported:</p>
                 <table className="mt-1 w-full border-separate" style={{ borderSpacing: '0 2px' }}>
                     <tbody>
-                        <tr className="text-gray-500">
-                            <td colSpan={2} className="pt-1 pb-0.5 font-semibold uppercase tracking-wider text-gray-500">Single-team (requires "My team" below)</td>
+                        <tr className="text-text-muted/70">
+                            <td colSpan={2} className="pt-1 pb-0.5 font-semibold uppercase tracking-wider text-text-muted/70">Single-team (requires "My team" below)</td>
                         </tr>
                         <tr>
-                            <td className="font-mono text-cyan-300 pr-3 whitespace-nowrap">@ OPP</td>
-                            <td className="text-gray-400">My team travels to OPP — OPP is <span className="text-white">home</span>, my team is away</td>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">@ OPP</td>
+                            <td className="text-text-muted">My team travels to OPP — OPP is <span className="text-white">home</span>, my team is away</td>
                         </tr>
                         <tr>
-                            <td className="font-mono text-cyan-300 pr-3 whitespace-nowrap">vs OPP</td>
-                            <td className="text-gray-400">My team hosts OPP — my team is <span className="text-white">home</span>, OPP is away</td>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">vs OPP</td>
+                            <td className="text-text-muted">My team hosts OPP — my team is <span className="text-white">home</span>, OPP is away</td>
                         </tr>
-                        <tr className="text-gray-500">
-                            <td colSpan={2} className="pt-2 pb-0.5 font-semibold uppercase tracking-wider text-gray-500">Explicit (both teams)</td>
-                        </tr>
-                        <tr>
-                            <td className="font-mono text-cyan-300 pr-3 whitespace-nowrap">AWAY @ HOME</td>
-                            <td className="text-gray-400">Right side is home (e.g. <span className="font-mono">EDM @ COL</span>)</td>
+                        <tr className="text-text-muted/70">
+                            <td colSpan={2} className="pt-2 pb-0.5 font-semibold uppercase tracking-wider text-text-muted/70">Explicit (both teams)</td>
                         </tr>
                         <tr>
-                            <td className="font-mono text-cyan-300 pr-3 whitespace-nowrap">HOME vs AWAY</td>
-                            <td className="text-gray-400">Left side hosts (e.g. <span className="font-mono">COL vs EDM</span>)</td>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">AWAY @ HOME</td>
+                            <td className="text-text-muted">Right side is home (e.g. <span className="font-mono">EDM @ COL</span>)</td>
                         </tr>
                         <tr>
-                            <td className="font-mono text-cyan-300 pr-3 whitespace-nowrap">HOME,AWAY</td>
-                            <td className="text-gray-400">Comma — first is home</td>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">HOME vs AWAY</td>
+                            <td className="text-text-muted">Left side hosts (e.g. <span className="font-mono">COL vs EDM</span>)</td>
+                        </tr>
+                        <tr>
+                            <td className="font-mono text-primary/80 pr-3 whitespace-nowrap">HOME,AWAY</td>
+                            <td className="text-text-muted">Comma — first is home</td>
                         </tr>
                     </tbody>
                 </table>
-                <p className="text-gray-500 pt-1">
-                    Use team short codes (e.g. <span className="font-mono text-gray-200">COL</span>).
+                <p className="text-text-muted/70 pt-1">
+                    Use team short codes (e.g. <span className="font-mono text-text">COL</span>).
                     Lines starting with <span className="font-mono">#</span> are ignored.
                 </p>
                 <details className="mt-1">
-                    <summary className="cursor-pointer text-cyan-400 hover:text-cyan-300">
+                    <summary className="cursor-pointer text-primary hover:text-primary/80">
                         Available short names
                     </summary>
                     <div className="mt-2 grid grid-cols-3 gap-x-4 gap-y-0.5 max-h-32 overflow-y-auto">
                         {teams.map((t) => (
                             <span key={t.id} className="font-mono text-xs">
-                                <span className="text-cyan-300">{t.shortName}</span>
-                                <span className="text-gray-400"> — {t.name}</span>
+                                <span className="text-primary/80">{t.shortName}</span>
+                                <span className="text-text-muted"> — {t.name}</span>
                             </span>
                         ))}
                     </div>
@@ -240,8 +240,8 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
 
             {/* My team selector */}
             <div>
-                <label className="block text-sm mb-1 text-gray-300">
-                    My team <span className="text-gray-500">(required for <span className="font-mono">@ OPP</span> / <span className="font-mono">vs OPP</span> format)</span>
+                <label className="label">
+                    My team <span className="text-text-muted/70">(required for <span className="font-mono">@ OPP</span> / <span className="font-mono">vs OPP</span> format)</span>
                 </label>
                 <select
                     value={perspectiveTeamId}
@@ -250,7 +250,7 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                         setParsed(null)
                         setWarn(false)
                     }}
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white w-full"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                 >
                     <option value="">— not set (explicit formats only) —</option>
                     {teams.map((t) => (
@@ -263,24 +263,24 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
 
             {/* File upload */}
             <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-300">Upload .csv file:</label>
+                <label className="text-sm text-text">Upload .csv file:</label>
                 <input
                     type="file"
                     accept=".csv,text/csv,text/plain"
                     onChange={handleFileUpload}
-                    className="text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600"
+                    className="text-xs text-text file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-border file:text-text hover:file:bg-border/80"
                 />
             </div>
 
             {/* Paste textarea */}
             <div>
-                <label className="block text-sm mb-1 text-gray-300">Or paste CSV:</label>
+                <label className="label">Or paste CSV:</label>
                 <textarea
                     value={csvText}
                     onChange={(e) => { setCsvText(e.target.value); setParsed(null); setWarn(false) }}
                     rows={6}
                     placeholder={`# All three formats work:\n${sampleCSV}`}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-mono text-white resize-y"
+                    className="w-full bg-border border border-border rounded px-3 py-2 text-sm font-mono text-white resize-y"
                 />
             </div>
 
@@ -288,7 +288,7 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                 type="button"
                 onClick={handleParseClick}
                 disabled={!csvText.trim()}
-                className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded text-sm disabled:opacity-50"
+                className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm disabled:opacity-50"
             >
                 Parse
             </button>
@@ -296,16 +296,16 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
             {/* Preview */}
             {parsed !== null && (
                 <div>
-                    <p className="text-sm text-gray-300 mb-2">
-                        <span className="text-green-400 font-semibold">{validRows.length} valid</span>
+                    <p className="text-sm text-text mb-2">
+                        <span className="text-success font-semibold">{validRows.length} valid</span>
                         {invalidRows.length > 0 && (
-                            <span className="text-red-400 font-semibold"> · {invalidRows.length} errors</span>
+                            <span className="text-danger font-semibold"> · {invalidRows.length} errors</span>
                         )}
                     </p>
-                    <div className="max-h-56 overflow-y-auto border border-gray-700 rounded">
+                    <div className="max-h-56 overflow-y-auto border border-border rounded">
                         <table className="w-full text-xs">
-                            <thead className="bg-gray-800 sticky top-0">
-                                <tr className="text-left text-gray-400">
+                            <thead className="bg-surface sticky top-0">
+                                <tr className="text-left text-text-muted">
                                     <th className="px-2 py-1">#</th>
                                     <th className="px-2 py-1">Home</th>
                                     <th className="px-2 py-1">Away</th>
@@ -316,25 +316,25 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                                 {parsed.map((row) => (
                                     <tr
                                         key={row.line}
-                                        className={`border-t border-gray-700 ${row.error ? 'bg-red-900/20' : ''}`}
+                                        className={`border-t border-border ${row.error ? 'bg-danger/20' : ''}`}
                                     >
-                                        <td className="px-2 py-1 text-gray-400 font-mono">{row.line}</td>
+                                        <td className="px-2 py-1 text-text-muted font-mono">{row.line}</td>
                                         <td className="px-2 py-1">
                                             {row.homeTeamName
-                                                ? <span>{row.homeTeamName} <span className="text-gray-500">({row.homeRaw})</span></span>
-                                                : <span className="text-red-400 font-mono">{row.homeRaw}</span>
+                                                ? <span>{row.homeTeamName} <span className="text-text-muted/70">({row.homeRaw})</span></span>
+                                                : <span className="text-danger font-mono">{row.homeRaw}</span>
                                             }
                                         </td>
                                         <td className="px-2 py-1">
                                             {row.awayTeamName
-                                                ? <span>{row.awayTeamName} <span className="text-gray-500">({row.awayRaw})</span></span>
-                                                : <span className="text-red-400 font-mono">{row.awayRaw}</span>
+                                                ? <span>{row.awayTeamName} <span className="text-text-muted/70">({row.awayRaw})</span></span>
+                                                : <span className="text-danger font-mono">{row.awayRaw}</span>
                                             }
                                         </td>
                                         <td className="px-2 py-1">
                                             {row.error
-                                                ? <span className="text-red-400">{row.error}</span>
-                                                : <span className="text-green-400">✓</span>
+                                                ? <span className="text-danger">{row.error}</span>
+                                                : <span className="text-success">✓</span>
                                             }
                                         </td>
                                     </tr>
@@ -351,21 +351,21 @@ function BulkMatchCreator({ seasonId, teams, onSuccess, onClose }: BulkMatchCrea
                 </p>
             )}
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-danger text-sm">{error}</p>}
 
             <div className="flex gap-3 pt-1">
                 <button
                     type="button"
                     onClick={() => void handleCreate()}
                     disabled={submitting || validRows.length === 0}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm disabled:opacity-50"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
                     {warn ? `Yes, Create ${validRows.length} Matches` : `Import ${validRows.length} Matches`}
                 </button>
                 <button
                     type="button"
                     onClick={onClose}
-                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                    className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
                     Cancel
                 </button>
@@ -389,7 +389,7 @@ function CreateMatchForm({ teams, form, onChange, onSubmit, onCancel }: CreateFo
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm mb-1 text-gray-300">Home Team</label>
+                <label className="label">Home Team</label>
                 <SearchableSelect
                     options={teamOptions}
                     value={form.homeTeamId || ''}
@@ -398,7 +398,7 @@ function CreateMatchForm({ teams, form, onChange, onSubmit, onCancel }: CreateFo
                 />
             </div>
             <div>
-                <label className="block text-sm mb-1 text-gray-300">Away Team</label>
+                <label className="label">Away Team</label>
                 <SearchableSelect
                     options={teamOptions}
                     value={form.awayTeamId || ''}
@@ -410,14 +410,14 @@ function CreateMatchForm({ teams, form, onChange, onSubmit, onCancel }: CreateFo
                 <button
                     type="submit"
                     disabled={!form.homeTeamId || !form.awayTeamId}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm disabled:opacity-50"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
                     Create
                 </button>
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                    className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
                     Cancel
                 </button>
@@ -440,7 +440,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm mb-1 text-gray-300">Home Team</label>
+                    <label className="label">Home Team</label>
                     <SearchableSelect
                         options={teamOptions}
                         value={form.homeTeamId || ''}
@@ -449,7 +449,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                     />
                 </div>
                 <div>
-                    <label className="block text-sm mb-1 text-gray-300">Away Team</label>
+                    <label className="label">Away Team</label>
                     <SearchableSelect
                         options={teamOptions}
                         value={form.awayTeamId || ''}
@@ -459,7 +459,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                 </div>
             </div>
             <div>
-                <label className="block text-sm mb-1 text-gray-300">Match Date (optional)</label>
+                <label className="label">Match Date (optional)</label>
                 <input
                     type="datetime-local"
                     value={form.matchDate ? form.matchDate.slice(0, 16) : ''}
@@ -469,39 +469,39 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                             matchDate: e.target.value ? e.target.value + ':00' : null,
                         })
                     }
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white w-full"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm mb-1 text-gray-300">Home Score</label>
+                    <label className="label">Home Score</label>
                     <input
                         type="number"
                         min={0}
                         value={form.homeScore}
                         onChange={(e) => onChange({ ...form, homeScore: Number(e.target.value) })}
-                        className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white w-full"
+                        className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm mb-1 text-gray-300">Away Score</label>
+                    <label className="label">Away Score</label>
                     <input
                         type="number"
                         min={0}
                         value={form.awayScore}
                         onChange={(e) => onChange({ ...form, awayScore: Number(e.target.value) })}
-                        className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white w-full"
+                        className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                     />
                 </div>
             </div>
             <div>
-                <label className="block text-sm mb-1 text-gray-300">Completion</label>
+                <label className="label">Completion</label>
                 <select
                     value={form.completionType}
                     onChange={(e) =>
                         onChange({ ...form, completionType: Number(e.target.value) as CompletionType })
                     }
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white w-full"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                 >
                     <option value={CompletionType.None}>Not Played</option>
                     <option value={CompletionType.RegularTime}>Regular Time</option>
@@ -513,14 +513,14 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                 <button
                     type="submit"
                     disabled={!form.homeTeamId || !form.awayTeamId}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm disabled:opacity-50"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
                     Save
                 </button>
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                    className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
                     Cancel
                 </button>
@@ -626,12 +626,12 @@ export default function AdminMatchesPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Matches</h1>
+                <h1 className="text-2xl font-bold text-primary">Matches</h1>
             </div>
 
             {/* Season selector */}
             <div className="mb-6">
-                <label htmlFor="match-season-select" className="block text-sm mb-1 text-gray-300">
+                <label htmlFor="match-season-select" className="label">
                     Season
                 </label>
                 <select
@@ -640,7 +640,7 @@ export default function AdminMatchesPage() {
                     onChange={(e) =>
                         handleSeasonChange(e.target.value === '' ? '' : Number(e.target.value))
                     }
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white min-w-48"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
                     <option value="">Select a season…</option>
                     {seasons.map((s) => (
@@ -656,13 +656,13 @@ export default function AdminMatchesPage() {
                     <div className="flex gap-2 mb-4">
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm"
+                            className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm"
                         >
                             New Match
                         </button>
                         <button
                             onClick={() => setShowBulkModal(true)}
-                            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                            className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
                             Bulk Create
                         </button>
@@ -673,7 +673,7 @@ export default function AdminMatchesPage() {
                     ) : (
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-left border-b border-gray-700 text-gray-400">
+                                <tr className="text-left border-b border-border text-text-muted">
                                     <th className="pb-2 pr-3">#</th>
                                     <th className="pb-2 pr-3">Match</th>
                                     <th className="pb-2 pr-3">Score</th>
@@ -684,14 +684,14 @@ export default function AdminMatchesPage() {
                             </thead>
                             <tbody>
                                 {matches.map((m) => (
-                                    <tr key={m.id} className="border-b border-gray-700/50">
-                                        <td className="py-3 pr-3 font-mono text-gray-400">
+                                    <tr key={m.id} className="border-b border-border/50">
+                                        <td className="py-3 pr-3 font-mono text-text-muted">
                                             {m.matchNumber}
                                         </td>
                                         <td className="py-3 pr-3">
                                             <Link
                                                 to={`/seasons/${selectedSeasonId}/matches/${m.id}`}
-                                                className="hover:text-cyan-400"
+                                                className="hover:text-primary"
                                             >
                                                 {m.homeTeamName} vs {m.awayTeamName}
                                             </Link>
@@ -701,7 +701,7 @@ export default function AdminMatchesPage() {
                                                 ? `${m.homeScore} – ${m.awayScore}`
                                                 : '—'}
                                         </td>
-                                        <td className="py-3 pr-3 text-gray-300">
+                                        <td className="py-3 pr-3 text-text">
                                             {m.matchDate
                                                 ? new Date(m.matchDate).toLocaleDateString()
                                                 : 'TBD'}
@@ -712,7 +712,7 @@ export default function AdminMatchesPage() {
                                         <td className="py-3 flex gap-2">
                                             <button
                                                 onClick={() => openEdit(m)}
-                                                className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                                className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                             >
                                                 Edit
                                             </button>
@@ -727,7 +727,7 @@ export default function AdminMatchesPage() {
                                 ))}
                                 {matches.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="py-4 text-gray-400 text-center">
+                                        <td colSpan={6} className="py-4 text-text-muted text-center">
                                             No matches yet.
                                         </td>
                                     </tr>

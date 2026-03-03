@@ -18,7 +18,7 @@ export default function PlusMinusChart({ data }: Props) {
     return (
         <div role="img" aria-label="plus minus chart" className="w-full">
             {data.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-8">No data available</p>
+                <p className="text-text-muted text-sm text-center py-8">No data available</p>
             ) : (
                 <>
                     <ResponsiveContainer width="100%" height={280}>
@@ -35,12 +35,12 @@ export default function PlusMinusChart({ data }: Props) {
                         </BarChart>
                     </ResponsiveContainer>
                     {/* Accessible data summary — also picked up by tests */}
-                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-400" aria-hidden="false">
+                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted" aria-hidden="false">
                         {data.map((d) => (
                             <li key={d.userId}>
                                 <span className="font-medium text-white">{d.userName}</span>{' '}
-                                <span className="text-cyan-400">+{d.totalPlus}</span>{' '}
-                                <span className="text-red-400">−{d.totalMinus}</span>
+                                <span className="text-primary">+{d.totalPlus}</span>{' '}
+                                <span className="text-danger">−{d.totalMinus}</span>
                             </li>
                         ))}
                     </ul>

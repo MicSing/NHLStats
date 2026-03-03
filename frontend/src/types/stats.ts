@@ -14,6 +14,36 @@ export interface TopRosterPlayer {
     count: number
 }
 
+export interface UserGoalCount {
+    userId: number
+    userName: string
+    count: number
+}
+
+export interface RosterScorerByUser {
+    rosterPlayerId: number
+    firstName: string
+    surname: string
+    teamShortName: string | null
+    totalCount: number
+    userCounts: UserGoalCount[]
+}
+
+export interface UserPenaltyCount {
+    userId: number
+    userName: string
+    count: number
+}
+
+export interface RosterPenalizedByUser {
+    rosterPlayerId: number
+    firstName: string
+    surname: string
+    teamShortName: string | null
+    totalCount: number
+    userCounts: UserPenaltyCount[]
+}
+
 export interface WeeklyMatch {
     matchId: number
     weekNumber: number
@@ -37,11 +67,14 @@ export interface UserEarnings {
     totalPlus: number
     totalMinus: number
     totalEarnings: number
+    totalPaid: number
+    remainingBalance: number
 }
 
 export interface AllTimeEarnings {
     userEarnings: UserEarnings[]
     totalCollected: number
+    canBeCollected: number
     totalExpenses: number
     balance: number
 }

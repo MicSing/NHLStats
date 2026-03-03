@@ -141,12 +141,12 @@ export default function RosterPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Roster</h1>
+                <h1 className="text-2xl font-bold text-primary">Roster</h1>
             </div>
 
             {/* Season selector */}
             <div className="mb-6">
-                <label htmlFor="roster-season-select" className="block text-sm mb-1 text-gray-300">
+                <label htmlFor="roster-season-select" className="label">
                     Season
                 </label>
                 <select
@@ -155,7 +155,7 @@ export default function RosterPage() {
                     onChange={(e) =>
                         handleSeasonChange(e.target.value === '' ? '' : Number(e.target.value))
                     }
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white min-w-48"
+                    className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
                     <option value="">Select a season…</option>
                     {seasons.map((s) => (
@@ -171,29 +171,29 @@ export default function RosterPage() {
                     <div className="flex gap-2 mb-4">
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm"
+                            className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm"
                         >
                             Add Player
                         </button>
                         <button
                             onClick={() => setShowCsvModal(true)}
-                            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                            className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
                             Import CSV
                         </button>
                         <button
                             onClick={() => setShowCopyModal(true)}
-                            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm"
+                            className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
                             Copy from Season
                         </button>
                     </div>
 
                     {csvResult && (
-                        <p className="mb-4 text-sm text-green-400">
+                        <p className="mb-4 text-sm text-success">
                             Imported {csvResult.imported} player(s).
                             {csvResult.errors.length > 0 && (
-                                <span className="text-orange-400"> {csvResult.errors.join('; ')}</span>
+                                <span className="text-warning"> {csvResult.errors.join('; ')}</span>
                             )}
                         </p>
                     )}
@@ -203,7 +203,7 @@ export default function RosterPage() {
                     ) : (
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-left border-b border-gray-700 text-gray-400">
+                                <tr className="text-left border-b border-border text-text-muted">
                                     <th className="pb-2 pr-4">Name</th>
                                     <th className="pb-2 pr-4">Position</th>
                                     <th className="pb-2 pr-4">Team</th>
@@ -213,17 +213,17 @@ export default function RosterPage() {
                             </thead>
                             <tbody>
                                 {players.map((p) => (
-                                    <tr key={p.id} className="border-b border-gray-700/50">
+                                    <tr key={p.id} className="border-b border-border/50">
                                         <td className="py-3 pr-4">
                                             {p.firstName} {p.surname}
                                         </td>
-                                        <td className="py-3 pr-4 text-gray-300">{p.position ?? '—'}</td>
-                                        <td className="py-3 pr-4 text-gray-300">{p.teamShortName}</td>
+                                        <td className="py-3 pr-4 text-text">{p.position ?? '—'}</td>
+                                        <td className="py-3 pr-4 text-text">{p.teamShortName}</td>
                                         <td className="py-3 pr-4">
                                             <span
                                                 className={`text-xs px-2 py-1 rounded-full ${p.isActive
-                                                        ? 'bg-green-800 text-green-200'
-                                                        : 'bg-gray-700 text-gray-400'
+                                                        ? 'bg-success/20 text-success'
+                                                        : 'bg-border text-text-muted'
                                                     }`}
                                             >
                                                 {p.isActive ? 'Active' : 'Inactive'}
@@ -232,7 +232,7 @@ export default function RosterPage() {
                                         <td className="py-3 flex gap-2">
                                             <button
                                                 onClick={() => openEdit(p)}
-                                                className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded"
+                                                className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                             >
                                                 Edit
                                             </button>
@@ -252,7 +252,7 @@ export default function RosterPage() {
             )}
 
             {selectedSeasonId === '' && (
-                <p className="text-gray-400 text-sm">Select a season to manage its roster.</p>
+                <p className="text-text-muted text-sm">Select a season to manage its roster.</p>
             )}
 
             {/* Add player modal */}
@@ -292,16 +292,16 @@ export default function RosterPage() {
             {showCsvModal && (
                 <Modal title="Import CSV" onClose={() => setShowCsvModal(false)}>
                     <form onSubmit={(e) => void handleCsvImport(e)}>
-                        <p className="text-xs text-gray-400 mb-2">
+                        <p className="text-xs text-text-muted mb-2">
                             Format: <code>FirstName,Surname,Position,TeamShortName</code>
                         </p>
-                        <label htmlFor="csv-content" className="block text-sm mb-1 text-gray-300">
+                        <label htmlFor="csv-content" className="label">
                             CSV Content
                         </label>
                         <textarea
                             id="csv-content"
                             rows={6}
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white text-xs font-mono"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white text-xs font-mono"
                             value={csvContent}
                             onChange={(e) => setCsvContent(e.target.value)}
                             required
@@ -310,13 +310,13 @@ export default function RosterPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowCsvModal(false)}
-                                className="px-4 py-2 text-sm bg-gray-700 rounded"
+                                className="btn-ghost text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded"
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
                                 Import
                             </button>
@@ -331,7 +331,7 @@ export default function RosterPage() {
                     <form onSubmit={(e) => void handleCopyFromSeason(e)}>
                         <label
                             htmlFor="copy-source-season"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Source Season
                         </label>
@@ -341,7 +341,7 @@ export default function RosterPage() {
                             onChange={(e) =>
                                 setCopySourceId(e.target.value === '' ? '' : Number(e.target.value))
                             }
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                             required
                         >
                             <option value="">Select season…</option>
@@ -357,13 +357,13 @@ export default function RosterPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowCopyModal(false)}
-                                className="px-4 py-2 text-sm bg-gray-700 rounded"
+                                className="btn-ghost text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded"
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
                                 Copy
                             </button>
@@ -400,45 +400,45 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
 
     return (
         <form onSubmit={onSubmit}>
-            <label htmlFor="player-first-name" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="player-first-name" className="label">
                 First Name
             </label>
             <input
                 id="player-first-name"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.firstName}
                 onChange={(e) => set({ firstName: e.target.value })}
                 required
             />
 
-            <label htmlFor="player-surname" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="player-surname" className="label">
                 Surname
             </label>
             <input
                 id="player-surname"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.surname}
                 onChange={(e) => set({ surname: e.target.value })}
                 required
             />
 
-            <label htmlFor="player-position" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="player-position" className="label">
                 Position
             </label>
             <input
                 id="player-position"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.position ?? ''}
                 onChange={(e) => set({ position: e.target.value || null })}
                 placeholder="C, LW, RW, D, G"
             />
 
-            <label htmlFor="player-team" className="block text-sm mb-1 text-gray-300">
+            <label htmlFor="player-team" className="label">
                 Team
             </label>
             <select
                 id="player-team"
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.teamId || ''}
                 onChange={(e) => set({ teamId: Number(e.target.value) })}
                 required
@@ -452,22 +452,22 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
             </select>
 
             {showIsActive && (
-                <label className="flex items-center gap-2 mb-4 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 mb-4 text-sm text-text cursor-pointer">
                     <input
                         type="checkbox"
                         checked={isActive}
                         onChange={(e) => set({ isActive: e.target.checked })}
-                        className="accent-cyan-500"
+                        className="accent-[var(--color-primary)]"
                     />
                     Active
                 </label>
             )}
 
             <div className="flex gap-2 justify-end">
-                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm bg-gray-700 rounded">
+                <button type="button" onClick={onCancel} className="btn-ghost text-sm">
                     Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded">
+                <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
                     Save
                 </button>
             </div>

@@ -104,23 +104,23 @@ export default function UserMatchCard({
 
     const tabClass = (tab: Tab) =>
         `px-3 py-1 text-sm rounded-t font-medium transition-colors ${activeTab === tab
-            ? 'bg-gray-700 text-white'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface text-text border-b-2 border-primary'
+            : 'text-text-muted hover:text-text'
         }`
 
     return (
-        <div className="bg-gray-800 rounded-xl p-5">
+        <div className="card p-5">
             {/* Card header */}
             <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold">{um.userName}</h2>
                 <div className="flex gap-4 text-sm">
-                    <span className="text-green-400">+{um.totalPlus}</span>
-                    <span className="text-red-400">−{um.totalMinus}</span>
+                    <span className="text-success">+{um.totalPlus}</span>
+                    <span className="text-danger">−{um.totalMinus}</span>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 border-b border-gray-700 mb-3">
+            <div className="flex gap-1 border-b border-border mb-3">
                 <button className={tabClass('goals')} onClick={() => setActiveTab('goals')}>
                     Goals ({goals.length})
                 </button>
@@ -139,14 +139,14 @@ export default function UserMatchCard({
                         {goals.map((g) => (
                             <span
                                 key={g.id}
-                                className="flex items-center gap-1 bg-gray-700 rounded-full px-3 py-1 text-sm"
+                                className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
                             >
                                 {g.playerFirstName} {g.playerSurname} × {g.count}
                                 {isAuth && (
                                     <button
                                         aria-label={`delete goal ${g.id}`}
                                         onClick={() => void handleDeleteGoal(g.id)}
-                                        className="text-red-400 hover:text-red-300 ml-1 leading-none"
+                                        className="text-danger hover:opacity-70 ml-1 leading-none"
                                     >
                                         ✕
                                     </button>
@@ -185,11 +185,11 @@ export default function UserMatchCard({
                                 onChange={(e) =>
                                     setGoalForm((prev) => ({ ...prev, count: Number(e.target.value) }))
                                 }
-                                className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
+                                className="input w-16 text-center text-sm py-1"
                             />
                             <button
                                 type="submit"
-                                className="bg-cyan-700 hover:bg-cyan-600 px-3 py-1 rounded text-sm"
+                                className="btn-primary text-sm px-3 py-1"
                             >
                                 + Goal
                             </button>
@@ -205,14 +205,14 @@ export default function UserMatchCard({
                         {penalties.map((p) => (
                             <span
                                 key={p.id}
-                                className="flex items-center gap-1 bg-gray-700 rounded-full px-3 py-1 text-sm"
+                                className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
                             >
                                 {p.playerFirstName} {p.playerSurname} × {p.count}
                                 {isAuth && (
                                     <button
                                         aria-label={`delete penalty ${p.id}`}
                                         onClick={() => void handleDeletePenalty(p.id)}
-                                        className="text-red-400 hover:text-red-300 ml-1 leading-none"
+                                        className="text-danger hover:opacity-70 ml-1 leading-none"
                                     >
                                         ✕
                                     </button>
@@ -254,11 +254,11 @@ export default function UserMatchCard({
                                         count: Number(e.target.value),
                                     }))
                                 }
-                                className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
+                                className="input w-16 text-center text-sm py-1"
                             />
                             <button
                                 type="submit"
-                                className="bg-orange-700 hover:bg-orange-600 px-3 py-1 rounded text-sm"
+                                className="bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded-lg text-sm font-medium"
                             >
                                 + Penalty
                             </button>
@@ -302,8 +302,8 @@ export default function UserMatchCard({
                             <span
                                 key={g.pointReasonId}
                                 className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.isPositive
-                                    ? 'bg-green-900 text-green-200'
-                                    : 'bg-red-900 text-red-200'
+                                        ? 'bg-success/20 text-success'
+                                        : 'bg-danger/20 text-danger'
                                     }`}
                             >
                                 {g.pointReasonName} × {g.totalCount}
@@ -323,7 +323,7 @@ export default function UserMatchCard({
                         <div className="space-y-2 mt-2">
                             {/* Positive points */}
                             <div className="flex gap-2 items-center">
-                                <span className="text-xs text-gray-400 w-12 shrink-0">+ Point</span>
+                                <span className="text-xs text-text-muted w-12 shrink-0">+ Point</span>
                                 <SearchableSelect
                                     options={positiveReasons.map((r) => ({
                                         value: r.id,
@@ -349,18 +349,18 @@ export default function UserMatchCard({
                                             count: Number(e.target.value),
                                         }))
                                     }
-                                    className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
+                                    className="input w-16 text-center text-sm py-1"
                                 />
                                 <button
                                     onClick={() => void handleAddPoint(pointForm.pointReasonId)}
-                                    className="bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-sm"
+                                    className="btn-primary text-sm px-3 py-1"
                                 >
                                     + Point
                                 </button>
                             </div>
                             {/* Negative points */}
                             <div className="flex gap-2 items-center">
-                                <span className="text-xs text-gray-400 w-12 shrink-0">− Point</span>
+                                <span className="text-xs text-text-muted w-12 shrink-0">− Point</span>
                                 <SearchableSelect
                                     options={negativeReasons.map((r) => ({
                                         value: r.id,
@@ -386,11 +386,11 @@ export default function UserMatchCard({
                                             count: Number(e.target.value),
                                         }))
                                     }
-                                    className="bg-gray-700 rounded px-2 py-1 text-sm w-16"
+                                    className="input w-16 text-center text-sm py-1"
                                 />
                                 <button
                                     onClick={() => void handleAddPoint(pointForm.pointReasonId)}
-                                    className="bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-sm"
+                                    className="bg-danger/20 hover:bg-danger/30 text-danger px-3 py-1 rounded-lg text-sm font-medium"
                                 >
                                     − Point
                                 </button>

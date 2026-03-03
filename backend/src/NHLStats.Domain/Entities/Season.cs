@@ -13,7 +13,7 @@ public class Season
 
     public Team? HostedTeam { get; set; }
     public Season? ParentSeason { get; set; }
-    public ICollection<SeasonUser>? SeasonUsers { get; set; }
-    public ICollection<Match>? Matches { get; set; }
-    public ICollection<RosterPlayer>? RosterPlayers { get; set; }
+    public ICollection<SeasonUser> SeasonUsers { get; set; } = [];
+    public ICollection<Match> Matches { get; set; } = [];
+    public ICollection<RosterPlayer> RosterPlayers { get; set; } = [];
 }

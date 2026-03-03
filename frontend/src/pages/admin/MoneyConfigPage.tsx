@@ -58,10 +58,10 @@ export default function MoneyConfigPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-cyan-400">Money Config</h1>
+                <h1 className="text-2xl font-bold text-primary">Money Config</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm font-medium"
+                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
                     Add Config
                 </button>
@@ -69,22 +69,22 @@ export default function MoneyConfigPage() {
 
             {/* Current config card */}
             {current && (
-                <div className="bg-gray-800 rounded-lg p-4 mb-6 inline-flex gap-8">
+                <div className="bg-surface rounded-lg p-4 mb-6 inline-flex gap-8">
                     <div>
-                        <p className="text-xs text-gray-400 mb-1">Negative Point Value</p>
-                        <p className="text-2xl font-bold text-orange-400">
+                        <p className="text-xs text-text-muted mb-1">Negative Point Value</p>
+                        <p className="text-2xl font-bold text-warning">
                             −{current.negativePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400 mb-1">Positive Point Value</p>
-                        <p className="text-2xl font-bold text-cyan-400">
+                        <p className="text-xs text-text-muted mb-1">Positive Point Value</p>
+                        <p className="text-2xl font-bold text-primary">
                             +{current.positivePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400 mb-1">Effective From</p>
-                        <p className="text-sm text-gray-300">
+                        <p className="text-xs text-text-muted mb-1">Effective From</p>
+                        <p className="text-sm text-text">
                             {new Date(current.effectiveFrom).toLocaleDateString()}
                         </p>
                     </div>
@@ -92,10 +92,10 @@ export default function MoneyConfigPage() {
             )}
 
             {/* History table */}
-            <h2 className="text-lg font-semibold text-gray-300 mb-3">Rate History</h2>
+            <h2 className="text-lg font-semibold text-text mb-3">Rate History</h2>
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400">
+                    <tr className="text-left border-b border-border text-text-muted">
                         <th className="pb-2 pr-4">Effective From</th>
                         <th className="pb-2 pr-4">Negative (−)</th>
                         <th className="pb-2">Positive (+)</th>
@@ -103,14 +103,14 @@ export default function MoneyConfigPage() {
                 </thead>
                 <tbody>
                     {history.map((cfg) => (
-                        <tr key={cfg.id} className="border-b border-gray-700/50">
+                        <tr key={cfg.id} className="border-b border-border/50">
                             <td className="py-3 pr-4">
                                 {new Date(cfg.effectiveFrom).toLocaleDateString()}
                             </td>
-                            <td className="py-3 pr-4 text-orange-300">
+                            <td className="py-3 pr-4 text-warning">
                                 {cfg.negativePointValue.toFixed(2)} €
                             </td>
-                            <td className="py-3 text-cyan-300">
+                            <td className="py-3 text-primary/80">
                                 {cfg.positivePointValue.toFixed(2)} €
                             </td>
                         </tr>
@@ -123,12 +123,12 @@ export default function MoneyConfigPage() {
                 <Modal title="Add Money Config" onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)}>
                         {addError && (
-                            <p className="text-orange-400 text-sm mb-3">{addError}</p>
+                            <p className="text-warning text-sm mb-3">{addError}</p>
                         )}
 
                         <label
                             htmlFor="mc-negative"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Negative Point Value (€)
                         </label>
@@ -137,7 +137,7 @@ export default function MoneyConfigPage() {
                             type="number"
                             step="0.01"
                             min="0"
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                             value={addForm.negativePointValue}
                             onChange={(e) =>
                                 setAddForm((f) => ({
@@ -150,7 +150,7 @@ export default function MoneyConfigPage() {
 
                         <label
                             htmlFor="mc-positive"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Positive Point Value (€)
                         </label>
@@ -159,7 +159,7 @@ export default function MoneyConfigPage() {
                             type="number"
                             step="0.01"
                             min="0"
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-3 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                             value={addForm.positivePointValue}
                             onChange={(e) =>
                                 setAddForm((f) => ({
@@ -172,14 +172,14 @@ export default function MoneyConfigPage() {
 
                         <label
                             htmlFor="mc-effective-from"
-                            className="block text-sm mb-1 text-gray-300"
+                            className="label"
                         >
                             Effective From
                         </label>
                         <input
                             id="mc-effective-from"
                             type="date"
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 mb-4 text-white"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                             value={addForm.effectiveFrom}
                             onChange={(e) =>
                                 setAddForm((f) => ({ ...f, effectiveFrom: e.target.value }))
@@ -191,13 +191,13 @@ export default function MoneyConfigPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowAddModal(false)}
-                                className="px-4 py-2 text-sm bg-gray-700 rounded"
+                                className="btn-ghost text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 rounded"
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
                                 Save
                             </button>

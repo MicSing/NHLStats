@@ -95,24 +95,24 @@ export default function MatchPage() {
 
     if (loading)
         return (
-            <div className="min-h-screen bg-gray-900 text-white p-6">
-                <p>Loading…</p>
+            <div className="min-h-screen bg-bg text-text p-6">
+                <p className="text-text-muted">Loading…</p>
             </div>
         )
     if (!match)
         return (
-            <div className="min-h-screen bg-gray-900 text-white p-6">
-                <p>Match not found</p>
+            <div className="min-h-screen bg-bg text-text p-6">
+                <p className="text-text-muted">Match not found</p>
             </div>
         )
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="min-h-screen bg-bg text-text p-6">
             <div className="max-w-4xl mx-auto">
                 {/* Back link */}
                 <Link
                     to={`/seasons/${seasonId}`}
-                    className="text-sm text-cyan-400 hover:underline mb-4 inline-block"
+                    className="text-sm text-primary hover:underline mb-4 inline-block"
                 >
                     ← Back to Season
                 </Link>
@@ -130,7 +130,7 @@ export default function MatchPage() {
                     <div className="mb-4">
                         <button
                             onClick={() => void handleInitializeUsers()}
-                            className="text-sm bg-cyan-700 hover:bg-cyan-600 px-4 py-2 rounded"
+                            className="btn-primary text-sm"
                         >
                             Initialize Users
                         </button>
@@ -155,7 +155,7 @@ export default function MatchPage() {
                 </div>
 
                 {userMatchData.length === 0 && (
-                    <p className="text-gray-400 mt-4">No user entries for this match yet.</p>
+                    <p className="text-text-muted mt-4">No user entries for this match yet.</p>
                 )}
             </div>
         </div>
