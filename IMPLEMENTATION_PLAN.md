@@ -90,7 +90,7 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 7. Error In Defense (negative)
 8. Prediction (negative)
 
-**Money Config:** −50¢ per negative point, +25¢ per positive point
+**Money Config:** 50¢ per negative point, 25¢ per positive point
 
 **32 NHL Teams:** All current NHL franchises
 

@@ -294,7 +294,7 @@ public class UserMatchTests : ApiTestBase
         // Update to positive reason (reason 4, count=5)
         var updateResp = await client.PutAsJsonAsync(
             $"/api/usermatches/{umId}/points/{pointId}",
-            new { pointReasonId = 4, count = 5 });
+            new { pointReasonId = 9, count = 5 });
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getResp = await client.GetAsync($"/api/usermatches/{umId}");

@@ -41,7 +41,7 @@ public class MoneyConfigTests : ApiTestBase
         // The seeded config with -0.50 / +0.25 must appear somewhere in history
         var configs = Enumerable.Range(0, body.GetArrayLength()).Select(i => body[i]);
         configs.Should().Contain(c =>
-            c.GetProperty("negativePointValue").GetDecimal() == -0.50m &&
+            c.GetProperty("negativePointValue").GetDecimal() == 0.50m &&
             c.GetProperty("positivePointValue").GetDecimal() == 0.25m);
     }
 

@@ -7,7 +7,7 @@ import PlusMinusChart from '../components/charts/PlusMinusChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
-import type { UserSeasonStats, TopRosterPlayer } from '../types/stats'
+import type { UserSeasonStats, RosterScorerByUser, RosterPenalizedByUser } from '../types/stats'
 import type { UserEarnings } from '../types/stats'
 
 function renderDashboard() {
@@ -27,9 +27,42 @@ const mockStats: UserSeasonStats[] = [
     { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, earnings: -2.5 },
 ]
 
-const mockRosterPlayers: TopRosterPlayer[] = [
-    { rosterPlayerId: 1, firstName: 'Player', surname: 'One', teamShortName: null, count: 10 },
-    { rosterPlayerId: 2, firstName: 'Player', surname: 'Two', teamShortName: null, count: 7 },
+const mockRosterScorers: RosterScorerByUser[] = [
+    {
+        rosterPlayerId: 1,
+        firstName: 'Player',
+        surname: 'One',
+        teamShortName: null,
+        totalCount: 10,
+        userCounts: [{ userId: 1, userName: 'Player One', count: 10 }],
+    },
+    {
+        rosterPlayerId: 2,
+        firstName: 'Player',
+        surname: 'Two',
+        teamShortName: null,
+        totalCount: 7,
+        userCounts: [{ userId: 2, userName: 'Player Two', count: 7 }],
+    },
+]
+
+const mockRosterPenalized: RosterPenalizedByUser[] = [
+    {
+        rosterPlayerId: 1,
+        firstName: 'Player',
+        surname: 'One',
+        teamShortName: null,
+        totalCount: 10,
+        userCounts: [{ userId: 1, userName: 'Player One', count: 10 }],
+    },
+    {
+        rosterPlayerId: 2,
+        firstName: 'Player',
+        surname: 'Two',
+        teamShortName: null,
+        totalCount: 7,
+        userCounts: [{ userId: 2, userName: 'Player Two', count: 7 }],
+    },
 ]
 
 const mockEarnings: UserEarnings[] = [
@@ -57,7 +90,7 @@ describe('PlusMinusChart', () => {
 
 describe('TopScorersChart', () => {
     test('renders bars for each roster player', () => {
-        render(<TopScorersChart data={mockRosterPlayers} />)
+        render(<TopScorersChart data={mockRosterScorers} />)
         expect(screen.getByRole('img', { name: /top scorers chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
@@ -73,7 +106,7 @@ describe('TopScorersChart', () => {
 
 describe('PenaltyLeadersChart', () => {
     test('renders bars for each roster player', () => {
-        render(<PenaltyLeadersChart data={mockRosterPlayers} />)
+        render(<PenaltyLeadersChart data={mockRosterPenalized} />)
         expect(screen.getByRole('img', { name: /penalty leaders chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
