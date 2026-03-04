@@ -35,9 +35,7 @@ jobs:
         working-directory: backend
 
       - name: Publish
-        run: dotnet publish src/NHLStats.Api/NHLStats.Api.csproj \
-          --configuration Release \
-          --output ./publish
+        run: dotnet publish src/NHLStats.Api/NHLStats.Api.csproj --no-restore -p:Configuration=Release --output ./publish
         working-directory: backend
 
       - name: Upload artifact
