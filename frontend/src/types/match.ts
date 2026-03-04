@@ -1,9 +1,11 @@
-export enum CompletionType {
-    None = 0,
-    RegularTime = 1,
-    Overtime = 2,
-    Shootout = 3,
-}
+export const CompletionType = {
+    None: 0,
+    RegularTime: 1,
+    Overtime: 2,
+    Shootout: 3,
+} as const
+
+export type CompletionType = (typeof CompletionType)[keyof typeof CompletionType]
 
 export interface Match {
     id: number

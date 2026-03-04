@@ -105,7 +105,6 @@ export default function TrendChart({ data, mode }: Props) {
     }
 
     const chartDataWithPrediction = [...chartData, predictionEntry]
-    const lineColor = mode === 'plus' ? '#06b6d4' : '#ef4444' // fallback accent
 
     return (
         <div role="img" aria-label={ariaLabel} className="w-full">
