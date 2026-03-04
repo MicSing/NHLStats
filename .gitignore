@@ -4,6 +4,7 @@ obj/
 node_modules/
 .env
 .env.*
+!.env.test
 .vs/
 .vscode/
 *.user
