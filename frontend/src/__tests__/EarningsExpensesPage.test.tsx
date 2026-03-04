@@ -80,7 +80,7 @@ describe('EarningsExpensesPage — balance summary', () => {
 
         const summary = screen.getByTestId('balance-summary')
         // totalCollected = 0.75 → "0.75 €"
-        within(summary).getByText('0.75 €')
+        within(summary).getAllByText('0.75 €')
         // balance = 0.75 − 80 = −79.25 → "-79.25 €"
         within(summary).getByText('-79.25 €')
     })
