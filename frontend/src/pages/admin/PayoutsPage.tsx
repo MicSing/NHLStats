@@ -4,8 +4,10 @@ import type { User } from '../../types/user'
 import type { UserPayout, CreateUserPayoutDto, UpdateUserPayoutDto } from '../../types/payout'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function PayoutsPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [users, setUsers] = useState<User[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
@@ -43,7 +45,7 @@ export default function PayoutsPage() {
                 setUsers(u)
                 if (sorted.length > 0) setSelectedSeasonId(sorted[0].id)
             })
-            .catch(() => setError('Failed to load data'))
+            .catch(() => setError(t('errors.failedToLoadSeasons')))
     }, [])
 
     const loadPayouts = async (seasonId: number) => {
@@ -52,7 +54,7 @@ export default function PayoutsPage() {
             const data = await apiClient.get<UserPayout[]>(`/api/seasons/${seasonId}/payouts`)
             setPayouts(data)
         } catch {
-            setError('Failed to load payouts')
+            setError(t('errors.failedToLoadPayouts'))
         } finally {
             setLoading(false)
         }
@@ -93,7 +95,7 @@ export default function PayoutsPage() {
 
     const handleDelete = async (id: number) => {
         if (!selectedSeasonId) return
-        if (!confirm('Delete this payout?')) return
+        if (!confirm(t('admin.payouts.deleteConfirm'))) return
         await apiClient.delete(`/api/seasons/${selectedSeasonId}/payouts/${id}`)
         await loadPayouts(selectedSeasonId)
     }
@@ -103,7 +105,7 @@ export default function PayoutsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Payouts</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.payouts.title')}</h1>
                 <div className="flex items-center gap-3">
                     <select
                         value={selectedSeasonId ?? ''}
@@ -112,7 +114,7 @@ export default function PayoutsPage() {
                         }
                         className="bg-border border border-border rounded px-3 py-1 text-sm"
                     >
-                        <option value="">Select season…</option>
+                        <option value="">{t('admin.payouts.selectSeason')}</option>
                         {seasons.map((s) => (
                             <option key={s.id} value={s.id}>
                                 {s.name}
@@ -124,7 +126,7 @@ export default function PayoutsPage() {
                             onClick={() => setShowAddModal(true)}
                             className="bg-primary hover:bg-primary-hover px-3 py-1 rounded text-sm"
                         >
-                            + Add Payout
+                            {t('admin.payouts.addPayout')}
                         </button>
                     )}
                 </div>
@@ -133,10 +135,10 @@ export default function PayoutsPage() {
             {error && <p className="text-danger mb-4">{error}</p>}
 
             {!selectedSeasonId && (
-                <p className="text-text-muted">Select a season to view payouts.</p>
+                <p className="text-text-muted">{t('admin.payouts.selectSeasonPrompt')}</p>
             )}
 
-            {selectedSeasonId && loading && <p className="text-text-muted">Loading…</p>}
+            {selectedSeasonId && loading && <p className="text-text-muted">{t('common.loading')}</p>}
 
             {selectedSeasonId && !loading && (
                 <>
@@ -144,9 +146,9 @@ export default function PayoutsPage() {
                         <table className="w-full text-sm">
                             <thead className="bg-surface text-text uppercase text-xs tracking-wider">
                                 <tr>
-                                    <th className="text-left px-4 py-3">Player</th>
-                                    <th className="text-right px-4 py-3">Amount</th>
-                                    <th className="text-left px-4 py-3">Paid On</th>
+                                    <th className="text-left px-4 py-3">{t('admin.payouts.player')}</th>
+                                    <th className="text-right px-4 py-3">{t('admin.payouts.amount')}</th>
+                                    <th className="text-left px-4 py-3">{t('admin.payouts.paidOn')}</th>
                                     <th className="px-4 py-3"></th>
                                 </tr>
                             </thead>
@@ -157,7 +159,7 @@ export default function PayoutsPage() {
                                             colSpan={4}
                                             className="text-center py-6 text-text-muted/70"
                                         >
-                                            No payouts for this season.
+                                            {t('admin.payouts.noPayouts')}
                                         </td>
                                     </tr>
                                 ) : (
@@ -178,13 +180,13 @@ export default function PayoutsPage() {
                                                     onClick={() => openEdit(p)}
                                                     className="text-primary hover:text-primary/80 text-xs"
                                                 >
-                                                    Edit
+                                                    {t('common.edit')}
                                                 </button>
                                                 <button
                                                     onClick={() => void handleDelete(p.id)}
                                                     className="text-danger hover:text-danger/80 text-xs"
                                                 >
-                                                    Delete
+                                                    {t('common.delete')}
                                                 </button>
                                             </td>
                                         </tr>
@@ -194,7 +196,7 @@ export default function PayoutsPage() {
                             {payouts.length > 0 && (
                                 <tfoot className="bg-surface border-t-2 border-border font-semibold text-sm">
                                     <tr>
-                                        <td className="px-4 py-3 text-text">Total</td>
+                                        <td className="px-4 py-3 text-text">{t('admin.payouts.total')}</td>
                                         <td className="px-4 py-3 text-right text-success">
                                             {totalAmount.toFixed(2)} €
                                         </td>
@@ -209,10 +211,10 @@ export default function PayoutsPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Payout" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.payouts.addTitle')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-text-muted mb-1">Player</label>
+                            <label className="block text-sm text-text-muted mb-1">{t('admin.payouts.player')}</label>
                             <select
                                 required
                                 value={addForm.userId || ''}
@@ -221,7 +223,7 @@ export default function PayoutsPage() {
                                 }
                                 className="w-full bg-border border border-border rounded px-3 py-2 text-sm"
                             >
-                                <option value="">Select player…</option>
+                                <option value="">{t('userStats.selectPlayer')}</option>
                                 {users.map((u) => (
                                     <option key={u.id} value={u.id}>
                                         {u.name}
@@ -230,7 +232,7 @@ export default function PayoutsPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-text-muted mb-1">Amount (€)</label>
+                            <label className="block text-sm text-text-muted mb-1">{t('admin.payouts.amountLabel')}</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -243,7 +245,7 @@ export default function PayoutsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-text-muted mb-1">Paid On</label>
+                            <label className="block text-sm text-text-muted mb-1">{t('admin.payouts.paidOn')}</label>
                             <input
                                 type="date"
                                 required
@@ -260,13 +262,13 @@ export default function PayoutsPage() {
                                 onClick={() => setShowAddModal(false)}
                                 className="px-4 py-2 rounded bg-border hover:bg-border/80 text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 rounded bg-primary hover:bg-primary-hover text-sm"
                             >
-                                Add
+                                {t('common.create')}
                             </button>
                         </div>
                     </form>
@@ -276,12 +278,12 @@ export default function PayoutsPage() {
             {/* Edit modal */}
             {editPayout && (
                 <Modal
-                    title={`Edit Payout — ${editPayout.userName}`}
+                    title={t('admin.payouts.editPayout', { name: editPayout.userName })}
                     onClose={() => setEditPayout(null)}
                 >
                     <form onSubmit={(e) => void handleEdit(e)} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-text-muted mb-1">Amount (€)</label>
+                            <label className="block text-sm text-text-muted mb-1">{t('admin.payouts.amountLabel')}</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -294,7 +296,7 @@ export default function PayoutsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-text-muted mb-1">Paid On</label>
+                            <label className="block text-sm text-text-muted mb-1">{t('admin.payouts.paidOn')}</label>
                             <input
                                 type="date"
                                 required
@@ -311,13 +313,13 @@ export default function PayoutsPage() {
                                 onClick={() => setEditPayout(null)}
                                 className="px-4 py-2 rounded bg-border hover:bg-border/80 text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 rounded bg-primary hover:bg-primary-hover text-sm"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>

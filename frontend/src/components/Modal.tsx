@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ModalProps {
     title: string
@@ -7,6 +8,8 @@ interface ModalProps {
 }
 
 export default function Modal({ title, onClose, children }: ModalProps) {
+    const { t } = useTranslation()
+
     return (
         <div
             role="dialog"
@@ -21,7 +24,7 @@ export default function Modal({ title, onClose, children }: ModalProps) {
                     </h2>
                     <button
                         onClick={onClose}
-                        aria-label="Close modal"
+                        aria-label={t('common.close')}
                         className="text-text-muted hover:text-text text-2xl leading-none transition-colors"
                     >
                         ×

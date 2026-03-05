@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { PointReason, CreatePointReasonDto, UpdatePointReasonDto } from '../../types/pointReason'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function PointReasonsPage() {
+    const { t } = useTranslation()
     const [reasons, setReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export default function PointReasonsPage() {
             const data = await apiClient.get<PointReason[]>('/api/pointreasons')
             setReasons(data)
         } catch {
-            setError('Failed to load point reasons')
+            setError(t('errors.failedToLoadPointReasons'))
         } finally {
             setLoading(false)
         }
@@ -65,28 +67,28 @@ export default function PointReasonsPage() {
         await loadReasons()
     }
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Point Reasons</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.pointReasons.title')}</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add Reason
+                    {t('admin.pointReasons.addReason')}
                 </button>
             </div>
 
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Name</th>
-                        <th className="pb-2 pr-4">Type</th>
-                        <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2">Actions</th>
+                        <th className="pb-2 pr-4">{t('common.name')}</th>
+                        <th className="pb-2 pr-4">{t('common.type')}</th>
+                        <th className="pb-2 pr-4">{t('common.status')}</th>
+                        <th className="pb-2">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,21 +98,21 @@ export default function PointReasonsPage() {
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${reason.isPositive
-                                            ? 'bg-primary/20 text-primary'
-                                            : 'bg-warning/20 text-warning'
+                                        ? 'bg-primary/20 text-primary'
+                                        : 'bg-warning/20 text-warning'
                                         }`}
                                 >
-                                    {reason.isPositive ? 'Positive' : 'Negative'}
+                                    {reason.isPositive ? t('common.positive') : t('common.negative')}
                                 </span>
                             </td>
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${reason.isActive
-                                            ? 'bg-success/20 text-success'
-                                            : 'bg-border text-text-muted'
+                                        ? 'bg-success/20 text-success'
+                                        : 'bg-border text-text-muted'
                                         }`}
                                 >
-                                    {reason.isActive ? 'Active' : 'Inactive'}
+                                    {reason.isActive ? t('common.active') : t('common.inactive')}
                                 </span>
                             </td>
                             <td className="py-3 flex gap-2">
@@ -118,14 +120,14 @@ export default function PointReasonsPage() {
                                     onClick={() => openEdit(reason)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Edit
+                                    {t('common.edit')}
                                 </button>
                                 {reason.isActive && (
                                     <button
                                         onClick={() => void handleDeactivate(reason)}
                                         className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
                                     >
-                                        Deactivate
+                                        {t('common.deactivate')}
                                     </button>
                                 )}
                             </td>
@@ -136,7 +138,7 @@ export default function PointReasonsPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Point Reason" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.pointReasons.addTitle')} onClose={() => setShowAddModal(false)}>
                     <PointReasonForm
                         name={addForm.name}
                         isPositive={addForm.isPositive}
@@ -153,7 +155,7 @@ export default function PointReasonsPage() {
 
             {/* Edit modal */}
             {editReason && (
-                <Modal title="Edit Point Reason" onClose={() => setEditReason(null)}>
+                <Modal title={t('admin.pointReasons.editReason')} onClose={() => setEditReason(null)}>
                     <PointReasonForm
                         name={editForm.name}
                         isPositive={editForm.isPositive}
@@ -196,10 +198,11 @@ function PointReasonForm({
     onSubmit,
     onCancel,
 }: PointReasonFormProps) {
+    const { t } = useTranslation()
     return (
         <form onSubmit={onSubmit}>
             <label htmlFor="pr-name" className="label">
-                Name
+                {t('common.name')}
             </label>
             <input
                 id="pr-name"
@@ -210,7 +213,7 @@ function PointReasonForm({
             />
 
             <fieldset className="mb-4">
-                <legend className="text-sm text-text mb-2">Type</legend>
+                <legend className="text-sm text-text mb-2">{t('common.type')}</legend>
                 <label className="flex items-center gap-2 mb-1 text-sm text-text cursor-pointer">
                     <input
                         type="radio"
@@ -219,7 +222,7 @@ function PointReasonForm({
                         onChange={() => onIsPositiveChange(false)}
                         className="accent-[var(--color-warning)]"
                     />
-                    Negative
+                    {t('common.negative')}
                 </label>
                 <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
                     <input
@@ -229,7 +232,7 @@ function PointReasonForm({
                         onChange={() => onIsPositiveChange(true)}
                         className="accent-[var(--color-primary)]"
                     />
-                    Positive
+                    {t('common.positive')}
                 </label>
             </fieldset>
 
@@ -241,16 +244,16 @@ function PointReasonForm({
                         onChange={(e) => onIsActiveChange(e.target.checked)}
                         className="accent-[var(--color-primary)]"
                     />
-                    Active
+                    {t('common.active')}
                 </label>
             )}
 
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancel} className="btn-ghost text-sm">
-                    Cancel
+                    {t('common.cancel')}
                 </button>
                 <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
-                    Save
+                    {t('common.save')}
                 </button>
             </div>
         </form>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export interface SelectOption {
     value: number | string
@@ -20,6 +21,7 @@ export default function SearchableSelect({
     placeholder = 'Select…',
     className = '',
 }: SearchableSelectProps) {
+    const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [query, setQuery] = useState('')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -93,7 +95,7 @@ export default function SearchableSelect({
                         <button
                             type="button"
                             onClick={handleClear}
-                            aria-label="clear selection"
+                            aria-label={t('common.close')}
                             className="text-text-muted hover:text-text text-xs px-1"
                         >
                             ✕
@@ -119,7 +121,7 @@ export default function SearchableSelect({
                     />
                     <ul className="max-h-48 overflow-y-auto">
                         {filtered.length === 0 ? (
-                            <li className="px-3 py-2 text-sm text-text-muted">No results</li>
+                            <li className="px-3 py-2 text-sm text-text-muted">{t('common.noData')}</li>
                         ) : (
                             filtered.map((opt, i) => (
                                 <li
@@ -127,8 +129,8 @@ export default function SearchableSelect({
                                     onMouseDown={() => handleSelect(opt)}
                                     onMouseEnter={() => setHighlighted(i)}
                                     className={`px-3 py-1.5 text-sm cursor-pointer ${i === highlighted
-                                            ? 'bg-primary text-white'
-                                            : 'hover:bg-border'
+                                        ? 'bg-primary text-white'
+                                        : 'hover:bg-border'
                                         }`}
                                 >
                                     {opt.label}

@@ -7,6 +7,7 @@ import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import UserMatchCard from '../../components/UserMatchCard'
 import { useAuth } from '../../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 
 interface EnrichedEntry {
     userMatch: UserMatch
@@ -16,6 +17,7 @@ interface EnrichedEntry {
 }
 
 export default function AdminAggregatedPointsPage() {
+    const { t } = useTranslation()
     const { token } = useAuth()
     const isAuth = !!token
 
@@ -41,7 +43,7 @@ export default function AdminAggregatedPointsPage() {
                 setSeasons(s)
                 setPointReasons(pr)
             })
-            .catch(() => setError('Failed to load seasons'))
+            .catch(() => setError(t('errors.failedToLoadSeasons')))
             .finally(() => setLoadingSeasons(false))
     }, [])
 
@@ -70,7 +72,7 @@ export default function AdminAggregatedPointsPage() {
             )
             setEntries(enriched)
         } catch {
-            setError('Failed to load aggregated entries')
+            setError(t('errors.failedToLoadEntries'))
         } finally {
             setLoadingEntries(false)
         }
@@ -92,14 +94,14 @@ export default function AdminAggregatedPointsPage() {
             await apiClient.post<UserMatch>(`/api/seasons/${selectedSeasonId}/usermatches`, { userId })
             await loadEntries(selectedSeasonId as number)
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Failed to create entry')
+            setError(e instanceof Error ? e.message : t('errors.failedToCreateEntry'))
         } finally {
             setCreating(null)
         }
     }
 
     const handleDelete = async (userMatchId: number) => {
-        if (!window.confirm('Delete this aggregated entry and all its points?')) return
+        if (!window.confirm(t('admin.aggregated.deleteConfirm'))) return
         await apiClient.delete(`/api/usermatches/${userMatchId}`)
         setManageEntry(null)
         if (selectedSeasonId !== '') await loadEntries(selectedSeasonId as number)
@@ -121,7 +123,7 @@ export default function AdminAggregatedPointsPage() {
         }
     }, [entries]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (loadingSeasons) return <p>Loading…</p>
+    if (loadingSeasons) return <p>{t('common.loading')}</p>
 
     // Users that don't yet have an aggregated entry
     const usersWithEntry = new Set(entries.map((e) => e.userMatch.userId))
@@ -130,17 +132,16 @@ export default function AdminAggregatedPointsPage() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Aggregated Points</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.aggregated.title')}</h1>
             </div>
 
             <p className="text-sm text-text-muted mb-6">
-                Aggregated points are season-level entries not tied to a specific match — use them
-                for bonus points, manual adjustments, or pre-season carryovers.
+                {t('admin.aggregated.description')}
             </p>
 
             {/* Season selector */}
             <div className="mb-6">
-                <label className="label">Season</label>
+                <label className="label">{t('admin.aggregated.season')}</label>
                 <select
                     value={selectedSeasonId}
                     onChange={(e) =>
@@ -148,7 +149,7 @@ export default function AdminAggregatedPointsPage() {
                     }
                     className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
-                    <option value="">Select a season…</option>
+                    <option value="">{t('admin.aggregated.selectSeason')}</option>
                     {seasons.map((s) => (
                         <option key={s.id} value={s.id}>
                             {s.name}
@@ -157,9 +158,9 @@ export default function AdminAggregatedPointsPage() {
                 </select>
             </div>
 
-            {error && <p className="text-danger text-sm mb-4">{error}</p>}
+            {error && <p className="text-danger text-sm mb-4">{t('common.error')}: {error}</p>}
 
-            {selectedSeasonId !== '' && loadingEntries && <p>Loading entries…</p>}
+            {selectedSeasonId !== '' && loadingEntries && <p>{t('admin.aggregated.loadingEntries')}</p>}
 
             {selectedSeasonId !== '' && !loadingEntries && seasonDetail && (
                 <>
@@ -167,16 +168,16 @@ export default function AdminAggregatedPointsPage() {
                     {entries.length > 0 && (
                         <section className="mb-8">
                             <h2 className="text-base font-semibold text-text mb-3">
-                                Existing Entries
+                                {t('admin.aggregated.existingEntries')}
                             </h2>
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="text-left border-b border-border text-text-muted">
-                                        <th className="pb-2 pr-4">Player</th>
+                                        <th className="pb-2 pr-4">{t('common.player')}</th>
                                         <th className="pb-2 pr-4 text-success">+</th>
                                         <th className="pb-2 pr-4 text-danger">−</th>
                                         <th className="pb-2 pr-4">Points</th>
-                                        <th className="pb-2">Actions</th>
+                                        <th className="pb-2">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -195,9 +196,9 @@ export default function AdminAggregatedPointsPage() {
                                                 {entry.userMatch.totalMinus}
                                             </td>
                                             <td className="py-3 pr-4 text-text-muted">
-                                                {entry.points.length} point{entry.points.length !== 1 ? 's' : ''}
-                                                {entry.goals.length > 0 && `, ${entry.goals.length} goal entry`}
-                                                {entry.penalties.length > 0 && `, ${entry.penalties.length} penalty entry`}
+                                                {t('admin.aggregated.pointEntries', { count: entry.points.length })}
+                                                {entry.goals.length > 0 && `, ${t('admin.aggregated.goalEntry', { count: entry.goals.length })}`}
+                                                {entry.penalties.length > 0 && `, ${t('admin.aggregated.penaltyEntry', { count: entry.penalties.length })}`}
                                             </td>
                                             <td className="py-3 flex gap-2">
                                                 {isAuth && (
@@ -206,7 +207,7 @@ export default function AdminAggregatedPointsPage() {
                                                             onClick={() => setManageEntry(entry)}
                                                             className="text-xs bg-primary hover:bg-primary-hover px-3 py-1 rounded"
                                                         >
-                                                            Manage
+                                                            {t('admin.aggregated.manage')}
                                                         </button>
                                                         <button
                                                             onClick={() =>
@@ -214,7 +215,7 @@ export default function AdminAggregatedPointsPage() {
                                                             }
                                                             className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                                         >
-                                                            Delete
+                                                            {t('common.delete')}
                                                         </button>
                                                     </>
                                                 )}
@@ -230,7 +231,7 @@ export default function AdminAggregatedPointsPage() {
                     {usersWithoutEntry.length > 0 && (
                         <section>
                             <h2 className="text-base font-semibold text-text mb-3">
-                                Add Entry For…
+                                {t('admin.aggregated.addEntryFor')}
                             </h2>
                             <div className="space-y-2">
                                 {usersWithoutEntry.map((u) => (
@@ -245,7 +246,7 @@ export default function AdminAggregatedPointsPage() {
                                                 disabled={creating === u.id}
                                                 className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded disabled:opacity-50"
                                             >
-                                                {creating === u.id ? 'Creating…' : '+ Create Entry'}
+                                                {creating === u.id ? t('common.creating') : t('admin.aggregated.createEntry')}
                                             </button>
                                         )}
                                     </div>
@@ -255,7 +256,7 @@ export default function AdminAggregatedPointsPage() {
                     )}
 
                     {entries.length === 0 && usersWithoutEntry.length === 0 && (
-                        <p className="text-text-muted text-sm">No users are assigned to this season.</p>
+                        <p className="text-text-muted text-sm">{t('admin.aggregated.noUsers')}</p>
                     )}
                 </>
             )}
@@ -263,7 +264,7 @@ export default function AdminAggregatedPointsPage() {
             {/* Manage modal */}
             {manageEntry && (
                 <Modal
-                    title={`Aggregated Points — ${manageEntry.userMatch.userName}`}
+                    title={t('admin.aggregated.manageTitle', { name: manageEntry.userMatch.userName })}
                     onClose={() => setManageEntry(null)}
                 >
                     <UserMatchCard

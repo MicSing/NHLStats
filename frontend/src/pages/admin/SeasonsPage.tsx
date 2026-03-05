@@ -4,8 +4,10 @@ import type { Team } from '../../types/team'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function SeasonsPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [allUsers, setAllUsers] = useState<User[]>([])
@@ -37,7 +39,7 @@ export default function SeasonsPage() {
             setTeams(teamsData)
             setAllUsers(usersData)
         } catch {
-            setError('Failed to load data')
+            setError(t('errors.failedToLoadData'))
         } finally {
             setLoading(false)
         }
@@ -84,7 +86,7 @@ export default function SeasonsPage() {
     }
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Delete this season?')) return
+        if (!window.confirm(t('admin.seasons.deleteSeason'))) return
         await apiClient.delete(`/api/seasons/${id}`)
         await loadAll()
     }
@@ -112,13 +114,13 @@ export default function SeasonsPage() {
         setManageSeason(updated)
     }
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Seasons</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.seasons.title')}</h1>
                 <button
                     onClick={() => {
                         resetForm()
@@ -126,18 +128,18 @@ export default function SeasonsPage() {
                     }}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add Season
+                    {t('admin.seasons.addSeason')}
                 </button>
             </div>
 
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Name</th>
-                        <th className="pb-2 pr-4">Started</th>
-                        <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2 pr-4">Hosted By</th>
-                        <th className="pb-2">Actions</th>
+                        <th className="pb-2 pr-4">{t('common.name')}</th>
+                        <th className="pb-2 pr-4">{t('admin.seasons.started')}</th>
+                        <th className="pb-2 pr-4">{t('common.status')}</th>
+                        <th className="pb-2 pr-4">{t('admin.seasons.hostedBy')}</th>
+                        <th className="pb-2">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -162,19 +164,19 @@ export default function SeasonsPage() {
                                     onClick={() => openEdit(season)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Edit
+                                    {t('common.edit')}
                                 </button>
                                 <button
                                     onClick={() => void openManageUsers(season)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Users
+                                    {t('admin.seasons.manageUsers')}
                                 </button>
                                 <button
                                     onClick={() => void handleDelete(season.id)}
                                     className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                 >
-                                    Delete
+                                    {t('common.delete')}
                                 </button>
                             </td>
                         </tr>
@@ -184,7 +186,7 @@ export default function SeasonsPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Season" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.seasons.addSeason')} onClose={() => setShowAddModal(false)}>
                     <SeasonForm
                         form={form}
                         teams={teams}
@@ -197,7 +199,7 @@ export default function SeasonsPage() {
 
             {/* Edit modal */}
             {editSeason && (
-                <Modal title="Edit Season" onClose={() => setEditSeason(null)}>
+                <Modal title={t('admin.seasons.editSeason')} onClose={() => setEditSeason(null)}>
                     <SeasonForm
                         form={form}
                         teams={teams}
@@ -211,12 +213,12 @@ export default function SeasonsPage() {
             {/* Manage users modal */}
             {manageSeason && (
                 <Modal
-                    title={`Users — ${manageSeason.name}`}
+                    title={`${t('admin.seasons.manageUsers')} — ${manageSeason.name}`}
                     onClose={() => setManageSeason(null)}
                 >
                     <ul className="mb-4 space-y-2">
                         {manageSeason.users.length === 0 && (
-                            <li className="text-text-muted text-sm">No users assigned</li>
+                            <li className="text-text-muted text-sm">{t('admin.seasons.noUsersAssigned')}</li>
                         )}
                         {manageSeason.users.map((u) => (
                             <li
@@ -228,7 +230,7 @@ export default function SeasonsPage() {
                                     onClick={() => void handleRemoveUser(u.id)}
                                     className="text-xs bg-red-900 hover:bg-red-800 px-2 py-1 rounded"
                                 >
-                                    Remove
+                                    {t('common.remove')}
                                 </button>
                             </li>
                         ))}
@@ -243,7 +245,7 @@ export default function SeasonsPage() {
                             }
                             className="flex-1 bg-border border border-border rounded px-3 py-2 text-sm"
                         >
-                            <option value="">Select user…</option>
+                            <option value="">{t('admin.seasons.selectUser')}</option>
                             {allUsers
                                 .filter((u) => !manageSeason.users.some((su) => su.id === u.id))
                                 .map((u) => (
@@ -257,7 +259,7 @@ export default function SeasonsPage() {
                             disabled={assignUserId === ''}
                             className="px-3 py-2 text-sm bg-primary hover:bg-primary-hover rounded disabled:opacity-50"
                         >
-                            Assign
+                            {t('common.assign')}
                         </button>
                     </div>
                 </Modal>
@@ -277,12 +279,13 @@ interface SeasonFormProps {
 }
 
 function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormProps) {
+    const { t } = useTranslation()
     const set = (patch: Partial<CreateSeasonDto>) => onChange({ ...form, ...patch })
 
     return (
         <form onSubmit={onSubmit}>
             <label htmlFor="season-name" className="label">
-                Name
+                {t('common.name')}
             </label>
             <input
                 id="season-name"
@@ -293,7 +296,7 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
             />
 
             <label htmlFor="season-started-on" className="label">
-                Started On
+                {t('admin.seasons.startedOn')}
             </label>
             <input
                 id="season-started-on"
@@ -305,7 +308,7 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
             />
 
             <label htmlFor="season-status" className="label">
-                Status
+                {t('common.status')}
             </label>
             <input
                 id="season-status"
@@ -316,7 +319,7 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
             />
 
             <label htmlFor="season-team" className="label">
-                Hosted By
+                {t('admin.seasons.hostedBy')}
             </label>
             <select
                 id="season-team"
@@ -326,20 +329,20 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
                     set({ hostedTeamId: e.target.value ? Number(e.target.value) : null })
                 }
             >
-                <option value="">None</option>
-                {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                        {t.name}
+                <option value="">{t('common.none')}</option>
+                {teams.map((tm) => (
+                    <option key={tm.id} value={tm.id}>
+                        {tm.name}
                     </option>
                 ))}
             </select>
 
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancel} className="btn-ghost text-sm">
-                    Cancel
+                    {t('common.cancel')}
                 </button>
                 <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
-                    Save
+                    {t('common.save')}
                 </button>
             </div>
         </form>

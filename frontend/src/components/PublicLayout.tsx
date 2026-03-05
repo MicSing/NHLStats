@@ -1,10 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
+import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavItems } from '../config/navConfig'
 
 export default function PublicLayout() {
     const { isAuthenticated, user, logout } = useAuth()
+    const { t } = useTranslation()
 
     return (
         <div className="min-h-screen bg-bg text-text flex">
@@ -12,12 +15,12 @@ export default function PublicLayout() {
             <aside className="w-60 bg-surface border-r border-border flex flex-col shrink-0">
                 <div className="px-5 py-4 border-b border-border">
                     <NavLink to="/" className="text-xl font-bold text-primary tracking-tight">
-                        🏒 NHL Stats
+                        {t('layout.appName')}
                     </NavLink>
-                    <p className="text-xs text-text-muted mt-0.5">Season Tracker</p>
+                    <p className="text-xs text-text-muted mt-0.5">{t('layout.seasonTracker')}</p>
                 </div>
                 <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-                    <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Menu</p>
+                    <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
                     {publicNavItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -29,14 +32,14 @@ export default function PublicLayout() {
                                 }`
                             }
                         >
-                            {item.label}
+                            {t(item.labelKey)}
                         </NavLink>
                     ))}
 
                     {/* Admin links — only when logged in */}
                     {isAuthenticated && (
                         <>
-                            <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">Admin</p>
+                            <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
                             {adminNavItems.map((item) => (
                                 <NavLink
                                     key={item.to}
@@ -48,14 +51,17 @@ export default function PublicLayout() {
                                         }`
                                     }
                                 >
-                                    {item.label}
+                                    {t(item.labelKey)}
                                 </NavLink>
                             ))}
                         </>
                     )}
                 </nav>
                 <div className="px-4 py-4 border-t border-border">
-                    <ThemeToggle />
+                    <div className="flex items-center justify-between mb-2">
+                        <ThemeToggle />
+                        <LanguageSwitcher />
+                    </div>
                     <div className="mt-3">
                         {isAuthenticated ? (
                             <>
@@ -64,7 +70,7 @@ export default function PublicLayout() {
                                     onClick={logout}
                                     className="btn-ghost w-full text-sm"
                                 >
-                                    Logout
+                                    {t('layout.logout')}
                                 </button>
                             </>
                         ) : (
@@ -72,7 +78,7 @@ export default function PublicLayout() {
                                 to="/login"
                                 className="block w-full text-center btn-primary text-sm"
                             >
-                                Sign In
+                                {t('layout.signIn')}
                             </NavLink>
                         )}
                     </div>

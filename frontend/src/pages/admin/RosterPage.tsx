@@ -4,8 +4,10 @@ import type { Team } from '../../types/team'
 import type { RosterPlayer, CreateRosterPlayerDto, UpdateRosterPlayerDto, CsvImportResultDto } from '../../types/roster'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function RosterPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
@@ -51,7 +53,7 @@ export default function RosterPage() {
                 setSeasons(s)
                 setTeams(t)
             })
-            .catch(() => setError('Failed to load seasons'))
+            .catch(() => setError(t('errors.failedToLoadSeasons')))
             .finally(() => setLoadingSeasons(false))
     }, [])
 
@@ -61,7 +63,7 @@ export default function RosterPage() {
             const data = await apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`)
             setPlayers(data)
         } catch {
-            setError('Failed to load roster')
+            setError(t('errors.failedToLoadRoster'))
         } finally {
             setLoadingPlayers(false)
         }
@@ -135,19 +137,19 @@ export default function RosterPage() {
         await loadPlayers(selectedSeasonId)
     }
 
-    if (loadingSeasons) return <p>Loading…</p>
+    if (loadingSeasons) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Roster</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.roster.title')}</h1>
             </div>
 
             {/* Season selector */}
             <div className="mb-6">
                 <label htmlFor="roster-season-select" className="label">
-                    Season
+                    {t('admin.roster.season')}
                 </label>
                 <select
                     id="roster-season-select"
@@ -157,7 +159,7 @@ export default function RosterPage() {
                     }
                     className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
-                    <option value="">Select a season…</option>
+                    <option value="">{t('admin.roster.selectSeason')}</option>
                     {seasons.map((s) => (
                         <option key={s.id} value={s.id}>
                             {s.name}
@@ -173,25 +175,25 @@ export default function RosterPage() {
                             onClick={() => setShowAddModal(true)}
                             className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm"
                         >
-                            Add Player
+                            {t('admin.roster.addPlayer')}
                         </button>
                         <button
                             onClick={() => setShowCsvModal(true)}
                             className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
-                            Import CSV
+                            {t('admin.roster.importCsv')}
                         </button>
                         <button
                             onClick={() => setShowCopyModal(true)}
                             className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
-                            Copy from Season
+                            {t('admin.roster.copyFromSeason')}
                         </button>
                     </div>
 
                     {csvResult && (
                         <p className="mb-4 text-sm text-success">
-                            Imported {csvResult.imported} player(s).
+                            {t('admin.roster.importedCount', { count: csvResult.imported })}
                             {csvResult.errors.length > 0 && (
                                 <span className="text-warning"> {csvResult.errors.join('; ')}</span>
                             )}
@@ -199,16 +201,16 @@ export default function RosterPage() {
                     )}
 
                     {loadingPlayers ? (
-                        <p>Loading roster…</p>
+                        <p>{t('admin.roster.loadingRoster')}</p>
                     ) : (
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left border-b border-border text-text-muted">
-                                    <th className="pb-2 pr-4">Name</th>
-                                    <th className="pb-2 pr-4">Position</th>
-                                    <th className="pb-2 pr-4">Team</th>
-                                    <th className="pb-2 pr-4">Status</th>
-                                    <th className="pb-2">Actions</th>
+                                    <th className="pb-2 pr-4">{t('common.name')}</th>
+                                    <th className="pb-2 pr-4">{t('admin.roster.position')}</th>
+                                    <th className="pb-2 pr-4">{t('admin.roster.team')}</th>
+                                    <th className="pb-2 pr-4">{t('common.status')}</th>
+                                    <th className="pb-2">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -222,11 +224,11 @@ export default function RosterPage() {
                                         <td className="py-3 pr-4">
                                             <span
                                                 className={`text-xs px-2 py-1 rounded-full ${p.isActive
-                                                        ? 'bg-success/20 text-success'
-                                                        : 'bg-border text-text-muted'
+                                                    ? 'bg-success/20 text-success'
+                                                    : 'bg-border text-text-muted'
                                                     }`}
                                             >
-                                                {p.isActive ? 'Active' : 'Inactive'}
+                                                {p.isActive ? t('common.active') : t('common.inactive')}
                                             </span>
                                         </td>
                                         <td className="py-3 flex gap-2">
@@ -234,13 +236,13 @@ export default function RosterPage() {
                                                 onClick={() => openEdit(p)}
                                                 className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                             >
-                                                Edit
+                                                {t('common.edit')}
                                             </button>
                                             <button
                                                 onClick={() => void handleDelete(p.id)}
                                                 className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                             >
-                                                Delete
+                                                {t('common.delete')}
                                             </button>
                                         </td>
                                     </tr>
@@ -252,12 +254,12 @@ export default function RosterPage() {
             )}
 
             {selectedSeasonId === '' && (
-                <p className="text-text-muted text-sm">Select a season to manage its roster.</p>
+                <p className="text-text-muted text-sm">{t('admin.roster.selectSeasonPrompt')}</p>
             )}
 
             {/* Add player modal */}
             {showAddModal && (
-                <Modal title="Add Player" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.roster.addPlayer')} onClose={() => setShowAddModal(false)}>
                     <PlayerForm
                         form={addForm}
                         teams={teams}
@@ -273,7 +275,7 @@ export default function RosterPage() {
             {/* Edit player modal */}
             {editPlayer && (
                 <Modal
-                    title={`Edit — ${editPlayer.firstName} ${editPlayer.surname}`}
+                    title={t('admin.roster.editPlayer', { name: `${editPlayer.firstName} ${editPlayer.surname}` })}
                     onClose={() => setEditPlayer(null)}
                 >
                     <PlayerForm
@@ -290,13 +292,13 @@ export default function RosterPage() {
 
             {/* CSV import modal */}
             {showCsvModal && (
-                <Modal title="Import CSV" onClose={() => setShowCsvModal(false)}>
+                <Modal title={t('admin.roster.importCsv')} onClose={() => setShowCsvModal(false)}>
                     <form onSubmit={(e) => void handleCsvImport(e)}>
                         <p className="text-xs text-text-muted mb-2">
-                            Format: <code>FirstName,Surname,Position,TeamShortName</code>
+                            {t('admin.roster.csvFormat')}
                         </p>
                         <label htmlFor="csv-content" className="label">
-                            CSV Content
+                            {t('admin.roster.csvContent')}
                         </label>
                         <textarea
                             id="csv-content"
@@ -312,13 +314,13 @@ export default function RosterPage() {
                                 onClick={() => setShowCsvModal(false)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Import
+                                {t('common.import')}
                             </button>
                         </div>
                     </form>
@@ -327,13 +329,13 @@ export default function RosterPage() {
 
             {/* Copy from season modal */}
             {showCopyModal && (
-                <Modal title="Copy Roster from Season" onClose={() => setShowCopyModal(false)}>
+                <Modal title={t('admin.roster.copyFromSeason')} onClose={() => setShowCopyModal(false)}>
                     <form onSubmit={(e) => void handleCopyFromSeason(e)}>
                         <label
                             htmlFor="copy-source-season"
                             className="label"
                         >
-                            Source Season
+                            {t('admin.roster.sourceSeason')}
                         </label>
                         <select
                             id="copy-source-season"
@@ -344,7 +346,7 @@ export default function RosterPage() {
                             className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
                             required
                         >
-                            <option value="">Select season…</option>
+                            <option value="">{t('admin.roster.selectSourceSeason')}</option>
                             {seasons
                                 .filter((s) => s.id !== selectedSeasonId)
                                 .map((s) => (
@@ -359,13 +361,13 @@ export default function RosterPage() {
                                 onClick={() => setShowCopyModal(false)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Copy
+                                {t('common.copy')}
                             </button>
                         </div>
                     </form>
@@ -396,12 +398,13 @@ interface PlayerFormProps {
 }
 
 function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, onCancel }: PlayerFormProps) {
+    const { t } = useTranslation()
     const set = (patch: Partial<PlayerFormFields>) => onChange({ ...form, ...patch })
 
     return (
         <form onSubmit={onSubmit}>
             <label htmlFor="player-first-name" className="label">
-                First Name
+                {t('admin.roster.firstName')}
             </label>
             <input
                 id="player-first-name"
@@ -412,7 +415,7 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
             />
 
             <label htmlFor="player-surname" className="label">
-                Surname
+                {t('admin.roster.surname')}
             </label>
             <input
                 id="player-surname"
@@ -423,18 +426,18 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
             />
 
             <label htmlFor="player-position" className="label">
-                Position
+                {t('admin.roster.position')}
             </label>
             <input
                 id="player-position"
                 className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.position ?? ''}
                 onChange={(e) => set({ position: e.target.value || null })}
-                placeholder="C, LW, RW, D, G"
+                placeholder={t('admin.roster.positionPlaceholder')}
             />
 
             <label htmlFor="player-team" className="label">
-                Team
+                {t('admin.roster.team')}
             </label>
             <select
                 id="player-team"
@@ -443,10 +446,10 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
                 onChange={(e) => set({ teamId: Number(e.target.value) })}
                 required
             >
-                <option value="">Select team…</option>
-                {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                        {t.name} ({t.shortName})
+                <option value="">{t('common.select')}</option>
+                {teams.map((tm) => (
+                    <option key={tm.id} value={tm.id}>
+                        {tm.name} ({tm.shortName})
                     </option>
                 ))}
             </select>
@@ -459,16 +462,16 @@ function PlayerForm({ form, teams, showIsActive, isActive, onChange, onSubmit, o
                         onChange={(e) => set({ isActive: e.target.checked })}
                         className="accent-[var(--color-primary)]"
                     />
-                    Active
+                    {t('common.active')}
                 </label>
             )}
 
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancel} className="btn-ghost text-sm">
-                    Cancel
+                    {t('common.cancel')}
                 </button>
                 <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
-                    Save
+                    {t('common.save')}
                 </button>
             </div>
         </form>

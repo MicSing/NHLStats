@@ -8,6 +8,7 @@ import type { Match } from '../types/match'
 import apiClient from '../services/apiClient'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
+import { useTranslation } from 'react-i18next'
 
 // ESPN CDN uses different codes for some NHL teams
 const ESPN_NHL_CODES: Record<string, string> = {
@@ -38,6 +39,7 @@ export default function SeasonPage() {
     const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>()
     const navigate = useNavigate()
     const seasonId = seasonIdParam ? Number(seasonIdParam) : null
+    const { t } = useTranslation()
 
     const [seasons, setSeasons] = useState<Season[]>([])
     const [weekGroups, setWeekGroups] = useState<WeekGroup[]>([])
@@ -135,7 +137,7 @@ export default function SeasonPage() {
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
-                    <h1 className="text-2xl font-bold text-primary">Season Overview</h1>
+                    <h1 className="text-2xl font-bold text-primary">{t('season.title')}</h1>
                     {!loadingSeasons && (
                         <SeasonSelector
                             seasons={seasons}
@@ -147,15 +149,15 @@ export default function SeasonPage() {
                         to="/dashboard"
                         className="ml-auto text-sm text-text-muted hover:text-primary transition-colors"
                     >
-                        📊 Dashboard
+                        {t('season.dashboardLink')}
                     </Link>
                 </div>
 
                 {!seasonId && (
-                    <p className="text-text-muted">Select a season to view details.</p>
+                    <p className="text-text-muted">{t('season.selectSeason')}</p>
                 )}
 
-                {seasonId && loadingData && <p>Loading…</p>}
+                {seasonId && loadingData && <p>{t('common.loading')}</p>}
 
                 {seasonId && !loadingData && (
                     <>
@@ -163,17 +165,17 @@ export default function SeasonPage() {
                         {stats.length > 0 && (
                             <section className="mb-8" aria-label="User stats">
                                 <h2 className="text-lg font-semibold mb-3 text-primary/80">
-                                    Player Stats
+                                    {t('season.playerStats')}
                                 </h2>
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="text-left text-text-muted border-b border-border">
-                                            <th className="pb-2">Player</th>
+                                            <th className="pb-2">{t('season.player')}</th>
                                             <th className="pb-2">+</th>
                                             <th className="pb-2">−</th>
-                                            <th className="pb-2">Goals</th>
-                                            <th className="pb-2">Penalties</th>
-                                            <th className="pb-2">Earnings</th>
+                                            <th className="pb-2">{t('season.goals')}</th>
+                                            <th className="pb-2">{t('season.penalties')}</th>
+                                            <th className="pb-2">{t('season.earnings')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -200,26 +202,25 @@ export default function SeasonPage() {
                             <section className="mb-8 flex gap-6" aria-label="Top players">
                                 {topScorer && (
                                     <div className="card p-4">
-                                        <h3 className="text-sm text-text-muted mb-1">Top Scorer</h3>
+                                        <h3 className="text-sm text-text-muted mb-1">{t('season.topScorer')}</h3>
                                         <p className="font-semibold">
                                             {topScorer.firstName} {topScorer.surname}
                                         </p>
                                         <p className="text-sm text-text-muted">
-                                            {topScorer.teamShortName} · {topScorer.count} goals
+                                            {topScorer.teamShortName} · {t('season.goals_count', { count: topScorer.count })}
                                         </p>
                                     </div>
                                 )}
                                 {topPenalized && (
                                     <div className="card p-4">
                                         <h3 className="text-sm text-text-muted mb-1">
-                                            Most Penalized
+                                            {t('season.mostPenalized')}
                                         </h3>
                                         <p className="font-semibold">
                                             {topPenalized.firstName} {topPenalized.surname}
                                         </p>
                                         <p className="text-sm text-text-muted">
-                                            {topPenalized.teamShortName} · {topPenalized.count}{' '}
-                                            penalties
+                                            {topPenalized.teamShortName} · {t('season.penalties_count', { count: topPenalized.count })}
                                         </p>
                                     </div>
                                 )}
@@ -230,7 +231,7 @@ export default function SeasonPage() {
                         {weekGroups.length > 0 && (
                             <section aria-label="Weekly matches">
                                 <h2 className="text-lg font-semibold mb-4 text-primary">
-                                    Matches by Week
+                                    {t('season.matchesByWeek')}
                                 </h2>
                                 {weekGroups.map((group) => {
                                     const season = seasons.find((s) => s.id === seasonId)
@@ -239,7 +240,7 @@ export default function SeasonPage() {
                                     return (
                                         <div key={group.weekNumber} className="mb-6">
                                             <h3 className="text-sm text-text-muted mb-2 border-b border-border pb-1">
-                                                Week {group.weekNumber}
+                                                {t('season.week', { number: group.weekNumber })}
                                             </h3>
                                             <div className="space-y-2">
                                                 {group.matches.map((m) => {
@@ -329,7 +330,7 @@ export default function SeasonPage() {
                                 <>
                                     <section className="mt-8" aria-label="Up next match">
                                         <h2 className="text-lg font-semibold mb-3 text-primary">
-                                            Up Next
+                                            {t('season.upNext')}
                                         </h2>
                                         <Link
                                             to={`/seasons/${seasonId}/matches/${upNext.id}`}
@@ -343,10 +344,10 @@ export default function SeasonPage() {
                                                 </div>
                                                 <div className="text-center px-6">
                                                     <p className="text-xs text-text-muted mb-1">
-                                                        Match #{upNext.matchNumber}
+                                                        {t('season.match', { number: upNext.matchNumber })}
                                                     </p>
                                                     <p className="text-2xl font-mono text-text-muted">
-                                                        vs
+                                                        {t('season.vs')}
                                                     </p>
                                                     <CompletionBadge
                                                         type={upNext.completionType}
@@ -366,7 +367,7 @@ export default function SeasonPage() {
                                         <div className="mt-4" aria-label="Previous meetings">
                                             <div className="flex items-center justify-between mb-2">
                                                 <h3 className="text-base font-semibold text-primary/80">
-                                                    Previous meetings
+                                                    {t('season.previousMeetings')}
                                                 </h3>
                                                 {!loadingH2H && h2hMatches.length > 0 && (
                                                     <button
@@ -374,8 +375,8 @@ export default function SeasonPage() {
                                                         className="text-xs text-primary hover:underline"
                                                     >
                                                         {h2hExpanded
-                                                            ? 'Hide'
-                                                            : `Show ${h2hMatches.length} match${h2hMatches.length !== 1 ? 'es' : ''}`}
+                                                            ? t('season.hide')
+                                                            : t('season.showMatches', { count: h2hMatches.length })}
                                                     </button>
                                                 )}
                                             </div>
@@ -402,13 +403,13 @@ export default function SeasonPage() {
                                                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                                                         />
                                                     </svg>
-                                                    <span>Loading previous meetings…</span>
+                                                    <span>{t('common.loading')}</span>
                                                 </div>
                                             )}
 
                                             {!loadingH2H && h2hMatches.length === 0 && (
                                                 <p className="text-sm text-text-muted py-2">
-                                                    No previous meetings
+                                                    {t('common.noData')}
                                                 </p>
                                             )}
 
@@ -492,7 +493,7 @@ export default function SeasonPage() {
                                     {upcoming.length > 0 && (
                                         <section className="mt-6" aria-label="Upcoming matches">
                                             <h2 className="text-lg font-semibold mb-3 text-primary">
-                                                Upcoming
+                                                {t('season.upcomingMatches')}
                                             </h2>
                                             <div className="space-y-2">
                                                 {upcoming.map((m) => (
@@ -505,7 +506,7 @@ export default function SeasonPage() {
                                                             #{m.matchNumber}
                                                         </span>
                                                         <span className="flex-1">
-                                                            {m.homeTeamName} vs {m.awayTeamName}
+                                                            {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
                                                         </span>
                                                         <CompletionBadge
                                                             type={m.completionType}
@@ -523,7 +524,7 @@ export default function SeasonPage() {
                         {aggregatedEntries.length > 0 && (
                             <section className="mt-8" aria-label="Aggregated entries">
                                 <h2 className="text-lg font-semibold mb-3 text-primary">
-                                    Aggregated Entries
+                                    {t('season.aggregatedEntries', 'Aggregated Entries')}
                                 </h2>
                                 <div className="space-y-2">
                                     {aggregatedEntries.map((um) => (

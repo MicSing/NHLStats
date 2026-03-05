@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Match, UpdateMatchDto } from '../types/match'
 import { CompletionType } from '../types/match'
 import apiClient from '../services/apiClient'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
     seasonId: string
@@ -24,6 +25,7 @@ function CompletionBadge({ type }: { type: CompletionType }) {
 }
 
 export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: Props) {
+    const { t } = useTranslation()
     const [homeScore, setHomeScore] = useState(match.homeScore)
     const [awayScore, setAwayScore] = useState(match.awayScore)
     const [completionType, setCompletionType] = useState<CompletionType>(match.completionType)
@@ -60,7 +62,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                     <p className="text-xl font-bold">{match.homeTeamName}</p>
                 </div>
                 <div className="text-center px-6">
-                    <p className="text-xs text-text-muted mb-1">Match #{match.matchNumber}</p>
+                    <p className="text-xs text-text-muted mb-1">{t('match.matchNumber', { number: match.matchNumber })}</p>
                     {isAuth ? (
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 justify-center">
@@ -89,10 +91,10 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                     onChange={(e) => setCompletionType(Number(e.target.value) as CompletionType)}
                                     className="input text-sm py-1"
                                 >
-                                    <option value={CompletionType.None}>Not Played</option>
-                                    <option value={CompletionType.RegularTime}>REG</option>
-                                    <option value={CompletionType.Overtime}>OT</option>
-                                    <option value={CompletionType.Shootout}>SO</option>
+                                    <option value={CompletionType.None}>{t('match.notPlayed')}</option>
+                                    <option value={CompletionType.RegularTime}>{t('match.reg')}</option>
+                                    <option value={CompletionType.Overtime}>{t('match.ot')}</option>
+                                    <option value={CompletionType.Shootout}>{t('match.so')}</option>
                                 </select>
                                 <input
                                     type="date"
@@ -107,7 +109,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                 disabled={saving}
                                 className="btn-primary disabled:opacity-50 px-4 py-1 text-sm"
                             >
-                                {saving ? 'Saving…' : 'Save'}
+                                {saving ? t('common.saving') : t('common.save')}
                             </button>
                         </div>
                     ) : (
@@ -118,7 +120,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                             <p className="text-sm text-text-muted mt-1">
                                 {match.matchDate
                                     ? new Date(match.matchDate).toLocaleDateString()
-                                    : 'Not played yet'}
+                                    : t('match.notPlayedYet')}
                             </p>
                             <div className="mt-2">
                                 <CompletionBadge type={match.completionType} />

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 
 function LoginPage() {
     const { login } = useAuth()
     const navigate = useNavigate()
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
@@ -19,7 +21,7 @@ function LoginPage() {
             await login({ email, password })
             navigate('/admin')
         } catch {
-            setError('Invalid email or password')
+            setError(t('login.invalidCredentials'))
         } finally {
             setLoading(false)
         }
@@ -30,31 +32,31 @@ function LoginPage() {
             <div className="w-full max-w-md card p-8 shadow-card">
                 <div className="text-center mb-8">
                     <p className="text-4xl mb-2">🏒</p>
-                    <h1 className="text-2xl font-bold text-primary">NHL Stats</h1>
-                    <p className="text-sm text-text-muted mt-1">Sign in to your account</p>
+                    <h1 className="text-2xl font-bold text-primary">{t('login.title')}</h1>
+                    <p className="text-sm text-text-muted mt-1">{t('login.subtitle')}</p>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label htmlFor="email" className="label">Email</label>
+                        <label htmlFor="email" className="label">{t('login.email')}</label>
                         <input
                             id="email"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            placeholder="you@example.com"
+                            placeholder={t('login.emailPlaceholder')}
                             className="input"
                         />
                     </div>
                     <div>
-                        <label htmlFor="password" className="label">Password</label>
+                        <label htmlFor="password" className="label">{t('login.password')}</label>
                         <input
                             id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            placeholder="••••••••"
+                            placeholder={t('login.passwordPlaceholder')}
                             className="input"
                         />
                     </div>
@@ -68,7 +70,7 @@ function LoginPage() {
                         disabled={loading}
                         className="btn-primary w-full py-2.5 mt-2"
                     >
-                        {loading ? 'Signing in…' : 'Sign In'}
+                        {loading ? t('login.signingIn') : t('login.signIn')}
                     </button>
                 </form>
             </div>

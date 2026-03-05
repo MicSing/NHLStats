@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { MoneyConfig, CreateMoneyConfigDto } from '../../types/moneyConfig'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function MoneyConfigPage() {
+    const { t } = useTranslation()
     const [current, setCurrent] = useState<MoneyConfig | null>(null)
     const [history, setHistory] = useState<MoneyConfig[]>([])
     const [loading, setLoading] = useState(true)
@@ -25,7 +27,7 @@ export default function MoneyConfigPage() {
             setCurrent(cur)
             setHistory(hist)
         } catch {
-            setError('Failed to load money config')
+            setError(t('errors.failedToLoadMoneyConfig'))
         } finally {
             setLoading(false)
         }
@@ -48,22 +50,22 @@ export default function MoneyConfigPage() {
             })
             await loadData()
         } catch {
-            setAddError('Failed to add config. Ensure EffectiveFrom is after the last entry.')
+            setAddError(t('admin.moneyConfig.addError'))
         }
     }
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Money Config</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.moneyConfig.title')}</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add Config
+                    {t('admin.moneyConfig.addConfig')}
                 </button>
             </div>
 
@@ -71,19 +73,19 @@ export default function MoneyConfigPage() {
             {current && (
                 <div className="bg-surface rounded-lg p-4 mb-6 inline-flex gap-8">
                     <div>
-                        <p className="text-xs text-text-muted mb-1">Negative Point Value</p>
+                        <p className="text-xs text-text-muted mb-1">{t('admin.moneyConfig.negativePointValue')}</p>
                         <p className="text-2xl font-bold text-warning">
                             −{current.negativePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-text-muted mb-1">Positive Point Value</p>
+                        <p className="text-xs text-text-muted mb-1">{t('admin.moneyConfig.positivePointValue')}</p>
                         <p className="text-2xl font-bold text-primary">
                             +{current.positivePointValue.toFixed(2)} €
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-text-muted mb-1">Effective From</p>
+                        <p className="text-xs text-text-muted mb-1">{t('admin.moneyConfig.effectiveFrom')}</p>
                         <p className="text-sm text-text">
                             {new Date(current.effectiveFrom).toLocaleDateString()}
                         </p>
@@ -92,13 +94,13 @@ export default function MoneyConfigPage() {
             )}
 
             {/* History table */}
-            <h2 className="text-lg font-semibold text-text mb-3">Rate History</h2>
+            <h2 className="text-lg font-semibold text-text mb-3">{t('admin.moneyConfig.rateHistory')}</h2>
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Effective From</th>
-                        <th className="pb-2 pr-4">Negative (−)</th>
-                        <th className="pb-2">Positive (+)</th>
+                        <th className="pb-2 pr-4">{t('admin.moneyConfig.effectiveFrom')}</th>
+                        <th className="pb-2 pr-4">{t('admin.moneyConfig.negative')}</th>
+                        <th className="pb-2">{t('admin.moneyConfig.positive')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -120,7 +122,7 @@ export default function MoneyConfigPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Money Config" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.moneyConfig.addTitle')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)}>
                         {addError && (
                             <p className="text-warning text-sm mb-3">{addError}</p>
@@ -130,7 +132,7 @@ export default function MoneyConfigPage() {
                             htmlFor="mc-negative"
                             className="label"
                         >
-                            Negative Point Value (€)
+                            {t('admin.moneyConfig.negativeLabel')}
                         </label>
                         <input
                             id="mc-negative"
@@ -152,7 +154,7 @@ export default function MoneyConfigPage() {
                             htmlFor="mc-positive"
                             className="label"
                         >
-                            Positive Point Value (€)
+                            {t('admin.moneyConfig.positiveLabel')}
                         </label>
                         <input
                             id="mc-positive"
@@ -174,7 +176,7 @@ export default function MoneyConfigPage() {
                             htmlFor="mc-effective-from"
                             className="label"
                         >
-                            Effective From
+                            {t('admin.moneyConfig.effectiveFrom')}
                         </label>
                         <input
                             id="mc-effective-from"
@@ -193,13 +195,13 @@ export default function MoneyConfigPage() {
                                 onClick={() => setShowAddModal(false)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>

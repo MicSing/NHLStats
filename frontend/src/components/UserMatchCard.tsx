@@ -12,6 +12,7 @@ import type { RosterPlayer } from '../types/roster'
 import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import SearchableSelect from './SearchableSelect'
+import { useTranslation } from 'react-i18next'
 
 type Tab = 'goals' | 'penalties' | 'points'
 
@@ -36,6 +37,7 @@ export default function UserMatchCard({
     isAuth,
     onChanged,
 }: Props) {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<Tab>('goals')
     const [posPointForm, setPosPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
         pointReasonId: '',
@@ -125,13 +127,13 @@ export default function UserMatchCard({
             {/* Tabs */}
             <div className="flex gap-1 border-b border-border mb-3">
                 <button className={tabClass('goals')} onClick={() => setActiveTab('goals')}>
-                    Goals ({goals.reduce((s, g) => s + g.count, 0)})
+                    {t('userMatchCard.goals')} ({goals.reduce((s, g) => s + g.count, 0)})
                 </button>
                 <button className={tabClass('penalties')} onClick={() => setActiveTab('penalties')}>
-                    Penalties ({penalties.reduce((s, p) => s + p.count, 0)})
+                    {t('userMatchCard.penalties')} ({penalties.reduce((s, p) => s + p.count, 0)})
                 </button>
                 <button className={tabClass('points')} onClick={() => setActiveTab('points')}>
-                    Points ({points.reduce((s, p) => s + p.count, 0)})
+                    {t('userMatchCard.points')} ({points.reduce((s, p) => s + p.count, 0)})
                 </button>
             </div>
 
@@ -196,7 +198,7 @@ export default function UserMatchCard({
                                         rosterPlayerId: v === '' ? '' : Number(v),
                                     }))
                                 }
-                                placeholder="Select player"
+                                placeholder={t('userMatchCard.selectPlayer')}
                             />
                             <input
                                 type="number"
@@ -212,7 +214,7 @@ export default function UserMatchCard({
                                 type="submit"
                                 className="btn-primary text-sm px-3 py-1"
                             >
-                                + Goal
+                                {t('userMatchCard.addGoal')}
                             </button>
                         </form>
                     )}
@@ -280,7 +282,7 @@ export default function UserMatchCard({
                                         rosterPlayerId: v === '' ? '' : Number(v),
                                     }))
                                 }
-                                placeholder="Select player"
+                                placeholder={t('userMatchCard.selectPlayer')}
                             />
                             <input
                                 type="number"
@@ -299,7 +301,7 @@ export default function UserMatchCard({
                                 type="submit"
                                 className="btn-warning text-sm px-3 py-1"
                             >
-                                + Penalty
+                                {t('userMatchCard.addPenalty')}
                             </button>
                         </form>
                     )}
@@ -362,7 +364,7 @@ export default function UserMatchCard({
                         <div className="space-y-2 mt-2">
                             {/* Positive points */}
                             <div className="flex gap-2 items-center">
-                                <span className="text-xs text-text-muted w-12 shrink-0">+ Point</span>
+                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addPositive')}</span>
                                 <SearchableSelect
                                     options={positiveReasons.map((r) => ({
                                         value: r.id,
@@ -375,7 +377,7 @@ export default function UserMatchCard({
                                             pointReasonId: v === '' ? '' : Number(v),
                                         }))
                                     }
-                                    placeholder="Positive reason"
+                                    placeholder={t('common.positive')}
                                 />
                                 <input
                                     type="number"
@@ -394,12 +396,12 @@ export default function UserMatchCard({
                                     onClick={() => void handleAddPoint(posPointForm.pointReasonId, posPointForm.count)}
                                     className="btn-primary text-sm px-3 py-1"
                                 >
-                                    + Point
+                                    {t('userMatchCard.addPositive')}
                                 </button>
                             </div>
                             {/* Negative points */}
                             <div className="flex gap-2 items-center">
-                                <span className="text-xs text-text-muted w-12 shrink-0">− Point</span>
+                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addNegative')}</span>
                                 <SearchableSelect
                                     options={negativeReasons.map((r) => ({
                                         value: r.id,
@@ -412,7 +414,7 @@ export default function UserMatchCard({
                                             pointReasonId: v === '' ? '' : Number(v),
                                         }))
                                     }
-                                    placeholder="Negative reason"
+                                    placeholder={t('common.negative')}
                                 />
                                 <input
                                     type="number"
@@ -431,7 +433,7 @@ export default function UserMatchCard({
                                     onClick={() => void handleAddPoint(negPointForm.pointReasonId, negPointForm.count)}
                                     className="btn-danger text-sm px-3 py-1"
                                 >
-                                    − Point
+                                    {t('userMatchCard.addNegative')}
                                 </button>
                             </div>
                         </div>

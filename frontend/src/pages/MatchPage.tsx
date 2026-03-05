@@ -11,6 +11,7 @@ import type { RosterPlayer } from '../types/roster'
 import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 import MatchHeaderEditor from '../components/MatchHeaderEditor'
 import UserMatchCard from '../components/UserMatchCard'
 
@@ -24,6 +25,7 @@ interface UserMatchData {
 export default function MatchPage() {
     const { seasonId, matchId } = useParams<{ seasonId: string; matchId: string }>()
     const { token } = useAuth()
+    const { t } = useTranslation()
 
     const [match, setMatch] = useState<Match | null>(null)
     const [userMatchData, setUserMatchData] = useState<UserMatchData[]>([])
@@ -96,13 +98,13 @@ export default function MatchPage() {
     if (loading)
         return (
             <div className="min-h-screen bg-bg text-text p-6">
-                <p className="text-text-muted">Loading…</p>
+                <p className="text-text-muted">{t('common.loading')}</p>
             </div>
         )
     if (!match)
         return (
             <div className="min-h-screen bg-bg text-text p-6">
-                <p className="text-text-muted">Match not found</p>
+                <p className="text-text-muted">{t('match.matchNotFound')}</p>
             </div>
         )
 
@@ -114,7 +116,7 @@ export default function MatchPage() {
                     to={`/seasons/${seasonId}`}
                     className="text-sm text-primary hover:underline mb-4 inline-block"
                 >
-                    ← Back to Season
+                    {t('match.backToSeason')}
                 </Link>
 
                 {/* Match header */}
@@ -132,7 +134,7 @@ export default function MatchPage() {
                             onClick={() => void handleInitializeUsers()}
                             className="btn-primary text-sm"
                         >
-                            Initialize Users
+                            {t('match.initializeUsers')}
                         </button>
                     </div>
                 )}
@@ -155,7 +157,7 @@ export default function MatchPage() {
                 </div>
 
                 {userMatchData.length === 0 && (
-                    <p className="text-text-muted mt-4">No user entries for this match yet.</p>
+                    <p className="text-text-muted mt-4">{t('match.noUserEntries')}</p>
                 )}
             </div>
         </div>

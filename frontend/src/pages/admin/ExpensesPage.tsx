@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { Expense, CreateExpenseDto, UpdateExpenseDto } from '../../types/expense'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function ExpensesPage() {
+    const { t } = useTranslation()
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function ExpensesPage() {
             const data = await apiClient.get<Expense[]>('/api/expenses')
             setExpenses(data)
         } catch {
-            setError('Failed to load expenses')
+            setError(t('errors.failedToLoadExpenses'))
         } finally {
             setLoading(false)
         }
@@ -69,35 +71,35 @@ export default function ExpensesPage() {
     }
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Delete this expense?')) return
+        if (!window.confirm(t('admin.expenses.deleteConfirm'))) return
         await apiClient.delete(`/api/expenses/${id}`)
         await loadExpenses()
     }
 
     const total = expenses.reduce((sum, e) => sum + e.amount, 0)
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Expenses</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.expenses.title')}</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add Expense
+                    {t('admin.expenses.addExpense')}
                 </button>
             </div>
 
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Description</th>
-                        <th className="pb-2 pr-4">Amount</th>
-                        <th className="pb-2 pr-4">Date</th>
-                        <th className="pb-2">Actions</th>
+                        <th className="pb-2 pr-4">{t('common.description')}</th>
+                        <th className="pb-2 pr-4">{t('common.amount')}</th>
+                        <th className="pb-2 pr-4">{t('common.date')}</th>
+                        <th className="pb-2">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -115,20 +117,20 @@ export default function ExpensesPage() {
                                     onClick={() => openEdit(expense)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Edit
+                                    {t('common.edit')}
                                 </button>
                                 <button
                                     onClick={() => void handleDelete(expense.id)}
                                     className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                 >
-                                    Delete
+                                    {t('common.delete')}
                                 </button>
                             </td>
                         </tr>
                     ))}
                     {expenses.length > 0 && (
                         <tr className="border-t border-border font-semibold">
-                            <td className="pt-3 pr-4 text-text">Total</td>
+                            <td className="pt-3 pr-4 text-text">{t('common.total')}</td>
                             <td className="pt-3 pr-4 text-primary/80">{total.toFixed(2)} €</td>
                             <td colSpan={2} />
                         </tr>
@@ -137,12 +139,12 @@ export default function ExpensesPage() {
             </table>
 
             {expenses.length === 0 && (
-                <p className="text-text-muted text-sm mt-4">No expenses recorded yet.</p>
+                <p className="text-text-muted text-sm mt-4">{t('admin.expenses.noExpenses')}</p>
             )}
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Expense" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.expenses.addExpense')} onClose={() => setShowAddModal(false)}>
                     <ExpenseForm
                         form={addForm}
                         onChange={setAddForm}
@@ -154,7 +156,7 @@ export default function ExpensesPage() {
 
             {/* Edit modal */}
             {editExpense && (
-                <Modal title="Edit Expense" onClose={() => setEditExpense(null)}>
+                <Modal title={t('admin.expenses.editExpense')} onClose={() => setEditExpense(null)}>
                     <ExpenseForm
                         form={editForm}
                         onChange={setEditForm}
@@ -177,23 +179,24 @@ interface ExpenseFormProps {
 }
 
 function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
+    const { t } = useTranslation()
     const set = (patch: Partial<CreateExpenseDto>) => onChange({ ...form, ...patch })
 
     return (
         <form onSubmit={onSubmit}>
             <label htmlFor="expense-description" className="label">
-                Description
+                {t('admin.expenses.descriptionLabel')}
             </label>
             <input
                 id="expense-description"
                 className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.description ?? ''}
                 onChange={(e) => set({ description: e.target.value || null })}
-                placeholder="Optional"
+                placeholder={t('common.optional')}
             />
 
             <label htmlFor="expense-amount" className="label">
-                Amount (€)
+                {t('admin.expenses.amountLabel')}
             </label>
             <input
                 id="expense-amount"
@@ -207,7 +210,7 @@ function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
             />
 
             <label htmlFor="expense-date" className="label">
-                Date
+                {t('admin.expenses.dateLabel')}
             </label>
             <input
                 id="expense-date"
@@ -220,10 +223,10 @@ function ExpenseForm({ form, onChange, onSubmit, onCancel }: ExpenseFormProps) {
 
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancel} className="btn-ghost text-sm">
-                    Cancel
+                    {t('common.cancel')}
                 </button>
                 <button type="submit" className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded">
-                    Save
+                    {t('common.save')}
                 </button>
             </div>
         </form>

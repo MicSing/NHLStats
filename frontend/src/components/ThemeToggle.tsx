@@ -1,15 +1,17 @@
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 
 export default function ThemeToggle() {
     const { theme, toggleTheme } = useTheme()
+    const { t } = useTranslation()
     const isDark = theme === 'dark'
 
     return (
         <button
             onClick={toggleTheme}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-text-muted hover:bg-border hover:text-text transition-colors"
+            aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+            title={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-muted hover:bg-border hover:text-text transition-colors"
         >
             {/* Track */}
             <span className="relative inline-flex items-center w-9 h-5 shrink-0">
@@ -23,7 +25,7 @@ export default function ThemeToggle() {
                 />
             </span>
             <span className="select-none">
-                {isDark ? '🌙 Dark' : '☀️ Light'}
+                {isDark ? t('theme.dark') : t('theme.light')}
             </span>
         </button>
     )

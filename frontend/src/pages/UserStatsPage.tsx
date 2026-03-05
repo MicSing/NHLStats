@@ -8,6 +8,7 @@ import SeasonSelector from '../components/SeasonSelector'
 import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
 import MinusPointsPieChart from '../components/charts/MinusPointsPieChart'
 import UserWeekTrendChart from '../components/charts/UserWeekTrendChart'
+import { useTranslation } from 'react-i18next'
 
 // ESPN CDN uses different codes for some NHL teams (same mapping as SeasonPage)
 const ESPN_NHL_CODES: Record<string, string> = {
@@ -22,13 +23,14 @@ function teamLogoUrl(shortName: string): string {
 }
 
 function MatchCard({ title, match }: { title: string; match: UserMatchSummary | null }) {
+    const { t } = useTranslation()
     if (!match) {
         return (
             <div className="bg-surface rounded-xl p-6 flex flex-col gap-2">
                 <h3 className="text-text-muted text-sm font-semibold uppercase tracking-wide">
                     {title}
                 </h3>
-                <p className="text-text-muted text-sm">No data yet</p>
+                <p className="text-text-muted text-sm">{t('common.noData')}</p>
             </div>
         )
     }
@@ -40,7 +42,7 @@ function MatchCard({ title, match }: { title: string; match: UserMatchSummary | 
         year: 'numeric',
     })
     const score = `${match.homeScore}–${match.awayScore}`
-    const side = match.isHome ? 'Home' : 'Away'
+    const side = match.isHome ? t('userStats.home') : t('userStats.away')
 
     return (
         <div className="bg-surface rounded-xl p-6 flex flex-col gap-3">
@@ -67,7 +69,7 @@ function MatchCard({ title, match }: { title: string; match: UserMatchSummary | 
                 <span className="text-success font-semibold">+{match.totalPlus}</span>
                 <span className="text-danger font-semibold">−{match.totalMinus}</span>
                 {match.goalCount > 0 && (
-                    <span className="text-text-muted">⛳ {match.goalCount} goal{match.goalCount !== 1 ? 's' : ''}</span>
+                    <span className="text-text-muted">⛳ {t('userStats.goal', { count: match.goalCount })}</span>
                 )}
             </div>
         </div>
@@ -75,6 +77,7 @@ function MatchCard({ title, match }: { title: string; match: UserMatchSummary | 
 }
 
 export default function UserStatsPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
     const [users, setUsers] = useState<User[]>([])
@@ -209,12 +212,12 @@ export default function UserStatsPage() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-            <h1 className="text-2xl font-bold text-text">📈 Player Stats</h1>
+            <h1 className="text-2xl font-bold text-text">{t('userStats.title')}</h1>
 
             {/* ── Selectors row ──────────────────────────────────────────── */}
             <div className="flex items-center gap-4 flex-wrap">
                 {loadingSeasons ? (
-                    <div className="text-text-muted text-sm">Loading seasons…</div>
+                    <div className="text-text-muted text-sm">{t('userStats.loadingSeasons')}</div>
                 ) : (
                     <SeasonSelector
                         seasons={seasons}
@@ -224,10 +227,10 @@ export default function UserStatsPage() {
                 )}
 
                 {loadingUsers ? (
-                    <div className="text-text-muted text-sm">Loading players…</div>
+                    <div className="text-text-muted text-sm">{t('userStats.loadingPlayers')}</div>
                 ) : (
                     <select
-                        aria-label="Select player"
+                        aria-label={t('userStats.selectPlayer')}
                         value={selectedUserId ?? ''}
                         onChange={(e) =>
                             setSelectedUserId(
@@ -237,7 +240,7 @@ export default function UserStatsPage() {
                         className="bg-surface text-text rounded-lg px-3 py-1.5 text-sm border border-border focus:outline-none focus:border-primary transition-colors"
                     >
                         {users.length === 0 && (
-                            <option value="">No players</option>
+                            <option value="">{t('userStats.noPlayers')}</option>
                         )}
                         {users.map((u) => (
                             <option key={u.id} value={u.id}>
@@ -248,7 +251,7 @@ export default function UserStatsPage() {
                 )}
 
                 {loadingData && (
-                    <span className="text-text-muted text-sm">Loading stats…</span>
+                    <span className="text-text-muted text-sm">{t('userStats.loadingStats')}</span>
                 )}
             </div>
 
@@ -256,13 +259,13 @@ export default function UserStatsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-surface rounded-xl p-4">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
-                        Penalties
+                        {t('userStats.penalties')}
                     </h2>
                     <PenaltyPointedChart items={breakdownItems} rosterPenalties={rosterPenalties} />
                 </div>
                 <div className="bg-surface rounded-xl p-4">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
-                        Minus Points Breakdown
+                        {t('userStats.minusBreakdown')}
                     </h2>
                     <MinusPointsPieChart items={breakdownItems} />
                 </div>
@@ -271,15 +274,15 @@ export default function UserStatsPage() {
             {/* ── Middle row: week trend chart (full width) ─────────────── */}
             <div className="bg-surface rounded-xl p-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
-                    Week Trend
+                    {t('userStats.weekTrend')}
                 </h2>
                 <UserWeekTrendChart matches={matchHistory} />
             </div>
 
             {/* ── Bottom row: best / worst match highlight cards ─────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <MatchCard title="🏆 Best Match" match={bestMatch} />
-                <MatchCard title="💀 Worst Match" match={worstMatch} />
+                <MatchCard title={t('userStats.bestMatch')} match={bestMatch} />
+                <MatchCard title={t('userStats.worstMatch')} match={worstMatch} />
             </div>
         </div>
     )

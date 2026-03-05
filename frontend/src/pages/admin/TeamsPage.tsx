@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 interface TeamForm {
     name: string
@@ -9,6 +10,7 @@ interface TeamForm {
 }
 
 export default function TeamsPage() {
+    const { t } = useTranslation()
     const [teams, setTeams] = useState<Team[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -26,7 +28,7 @@ export default function TeamsPage() {
             const data = await apiClient.get<Team[]>('/api/teams')
             setTeams(data)
         } catch {
-            setError('Failed to load teams')
+            setError(t('errors.failedToLoadData'))
         } finally {
             setLoading(false)
         }
@@ -53,7 +55,7 @@ export default function TeamsPage() {
     }
 
     const handleDelete = async (team: Team) => {
-        if (!confirm(`Delete "${team.name}"? This cannot be undone.`)) return
+        if (!confirm(t('admin.teams.deleteConfirm', { name: team.name }))) return
         await apiClient.delete(`/api/teams/${team.id}`)
         await loadTeams()
     }
@@ -63,27 +65,27 @@ export default function TeamsPage() {
         setEditForm({ name: team.name, shortName: team.shortName })
     }
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Teams</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.teams.title')}</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add Team
+                    {t('admin.teams.addTeam')}
                 </button>
             </div>
 
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Name</th>
-                        <th className="pb-2 pr-4">Short</th>
-                        <th className="pb-2">Actions</th>
+                        <th className="pb-2 pr-4">{t('common.name')}</th>
+                        <th className="pb-2 pr-4">{t('admin.teams.short')}</th>
+                        <th className="pb-2">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,13 +102,13 @@ export default function TeamsPage() {
                                     onClick={() => openEdit(team)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Edit
+                                    {t('common.edit')}
                                 </button>
                                 <button
                                     onClick={() => void handleDelete(team)}
                                     className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                 >
-                                    Delete
+                                    {t('common.delete')}
                                 </button>
                             </td>
                         </tr>
@@ -116,24 +118,24 @@ export default function TeamsPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add Team" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.teams.addTeam')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)}>
-                        <label htmlFor="add-team-name" className="label">Name</label>
+                        <label htmlFor="add-team-name" className="label">{t('common.name')}</label>
                         <input
                             id="add-team-name"
                             className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                             value={addForm.name}
                             onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                            placeholder="e.g. Utah Mammoth"
+                            placeholder={t('admin.teams.namePlaceholder')}
                             required
                         />
-                        <label htmlFor="add-team-short" className="label">Short Name</label>
+                        <label htmlFor="add-team-short" className="label">{t('admin.teams.shortName')}</label>
                         <input
                             id="add-team-short"
                             className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white uppercase"
                             value={addForm.shortName}
                             onChange={(e) => setAddForm({ ...addForm, shortName: e.target.value.toUpperCase() })}
-                            placeholder="e.g. UTA"
+                            placeholder={t('admin.teams.shortPlaceholder')}
                             maxLength={10}
                             required
                         />
@@ -143,13 +145,13 @@ export default function TeamsPage() {
                                 onClick={() => setShowAddModal(false)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>
@@ -158,9 +160,9 @@ export default function TeamsPage() {
 
             {/* Edit modal */}
             {editTeam && (
-                <Modal title="Edit Team" onClose={() => setEditTeam(null)}>
+                <Modal title={t('admin.teams.editTeam')} onClose={() => setEditTeam(null)}>
                     <form onSubmit={(e) => void handleEdit(e)}>
-                        <label htmlFor="edit-team-name" className="label">Name</label>
+                        <label htmlFor="edit-team-name" className="label">{t('common.name')}</label>
                         <input
                             id="edit-team-name"
                             className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
@@ -168,7 +170,7 @@ export default function TeamsPage() {
                             onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                             required
                         />
-                        <label htmlFor="edit-team-short" className="label">Short Name</label>
+                        <label htmlFor="edit-team-short" className="label">{t('admin.teams.shortName')}</label>
                         <input
                             id="edit-team-short"
                             className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white uppercase"
@@ -183,13 +185,13 @@ export default function TeamsPage() {
                                 onClick={() => setEditTeam(null)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>

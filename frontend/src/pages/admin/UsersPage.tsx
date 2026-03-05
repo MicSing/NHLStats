@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { User, CreateUserDto, UpdateUserDto } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
+import { useTranslation } from 'react-i18next'
 
 export default function UsersPage() {
+    const { t } = useTranslation()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -22,7 +24,7 @@ export default function UsersPage() {
             const data = await apiClient.get<User[]>('/api/users')
             setUsers(data)
         } catch {
-            setError('Failed to load users')
+            setError(t('errors.failedToLoadUsers'))
         } finally {
             setLoading(false)
         }
@@ -63,27 +65,27 @@ export default function UsersPage() {
         setEditIsActive(user.isActive)
     }
 
-    if (loading) return <p>Loading…</p>
+    if (loading) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Users</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.users.title')}</h1>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
                 >
-                    Add User
+                    {t('admin.users.addUser')}
                 </button>
             </div>
 
             <table className="w-full text-sm">
                 <thead>
                     <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">Name</th>
-                        <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2">Actions</th>
+                        <th className="pb-2 pr-4">{t('common.name')}</th>
+                        <th className="pb-2 pr-4">{t('common.status')}</th>
+                        <th className="pb-2">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,11 +95,11 @@ export default function UsersPage() {
                             <td className="py-3 pr-4">
                                 <span
                                     className={`text-xs px-2 py-1 rounded-full ${user.isActive
-                                            ? 'bg-success/20 text-success'
-                                            : 'bg-border text-text-muted'
+                                        ? 'bg-success/20 text-success'
+                                        : 'bg-border text-text-muted'
                                         }`}
                                 >
-                                    {user.isActive ? 'Active' : 'Inactive'}
+                                    {user.isActive ? t('common.active') : t('common.inactive')}
                                 </span>
                             </td>
                             <td className="py-3 flex gap-2">
@@ -105,14 +107,14 @@ export default function UsersPage() {
                                     onClick={() => openEdit(user)}
                                     className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                 >
-                                    Edit
+                                    {t('common.edit')}
                                 </button>
                                 {user.isActive && (
                                     <button
                                         onClick={() => void handleDeactivate(user)}
                                         className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
                                     >
-                                        Deactivate
+                                        {t('common.deactivate')}
                                     </button>
                                 )}
                             </td>
@@ -123,13 +125,13 @@ export default function UsersPage() {
 
             {/* Add modal */}
             {showAddModal && (
-                <Modal title="Add User" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.users.addUser')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)}>
                         <label
                             htmlFor="add-user-name"
                             className="label"
                         >
-                            Name
+                            {t('common.name')}
                         </label>
                         <input
                             id="add-user-name"
@@ -144,13 +146,13 @@ export default function UsersPage() {
                                 onClick={() => setShowAddModal(false)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>
@@ -159,13 +161,13 @@ export default function UsersPage() {
 
             {/* Edit modal */}
             {editUser && (
-                <Modal title="Edit User" onClose={() => setEditUser(null)}>
+                <Modal title={t('admin.users.editUser')} onClose={() => setEditUser(null)}>
                     <form onSubmit={(e) => void handleEdit(e)}>
                         <label
                             htmlFor="edit-user-name"
                             className="label"
                         >
-                            Name
+                            {t('common.name')}
                         </label>
                         <input
                             id="edit-user-name"
@@ -181,7 +183,7 @@ export default function UsersPage() {
                                 onChange={(e) => setEditIsActive(e.target.checked)}
                                 className="accent-[var(--color-primary)]"
                             />
-                            Active
+                            {t('common.active')}
                         </label>
                         <div className="flex gap-2 justify-end">
                             <button
@@ -189,13 +191,13 @@ export default function UsersPage() {
                                 onClick={() => setEditUser(null)}
                                 className="btn-ghost text-sm"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
                             >
-                                Save
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>

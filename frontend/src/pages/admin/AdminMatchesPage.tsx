@@ -8,6 +8,7 @@ import type { Match, CreateMatchDto, UpdateMatchDto, BatchCreateMatchDto } from 
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import SearchableSelect from '../../components/SearchableSelect'
+import { useTranslation } from 'react-i18next'
 
 // ── Completion type badge ─────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ interface BulkMatchCreatorProps {
 }
 
 function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: BulkMatchCreatorProps) {
+    const { t } = useTranslation()
     const [csvText, setCsvText] = useState('')
     const [parsed, setParsed] = useState<ParsedRow[] | null>(null)
     const [perspectiveTeamId, setPerspectiveTeamId] = useState<number | ''>('')
@@ -279,7 +281,7 @@ function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: 
             await apiClient.post(`/api/seasons/${seasonId}/matches/batch`, dtos)
             onSuccess()
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Batch create failed'
+            const msg = e instanceof Error ? e.message : t('errors.batchCreateFailed')
             setError(msg)
         } finally {
             setSubmitting(false)
@@ -398,7 +400,7 @@ function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: 
 
             {/* Paste textarea */}
             <div>
-                <label className="label">Or paste CSV:</label>
+                <label className="label">{t('admin.matches.orPasteCsv', 'Or paste CSV:')}</label>
                 <textarea
                     value={csvText}
                     onChange={(e) => { setCsvText(e.target.value); setParsed(null); setWarn(false) }}
@@ -414,16 +416,16 @@ function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: 
                 disabled={!csvText.trim()}
                 className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm disabled:opacity-50"
             >
-                Parse
+                {t('common.parse')}
             </button>
 
             {/* Preview */}
             {parsed !== null && (
                 <div>
                     <p className="text-sm text-text mb-2">
-                        <span className="text-success font-semibold">{validRows.length} valid</span>
+                        <span className="text-success font-semibold">{t('admin.matches.valid', { count: validRows.length })}</span>
                         {invalidRows.length > 0 && (
-                            <span className="text-danger font-semibold"> · {invalidRows.length} errors</span>
+                            <span className="text-danger font-semibold"> · {t('admin.matches.errors', { count: invalidRows.length })}</span>
                         )}
                     </p>
                     <div className="max-h-56 overflow-y-auto border border-border rounded">
@@ -495,7 +497,7 @@ function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: 
 
             {warn && (
                 <p className="text-yellow-400 text-sm">
-                    ⚠ This exceeds a full NHL regular season (82 games) — continue?
+                    {t('admin.matches.exceedsWarning')}
                 </p>
             )}
 
@@ -508,14 +510,14 @@ function BulkMatchCreator({ seasonId, teams, seasonUsers, onSuccess, onClose }: 
                     disabled={submitting || validRows.length === 0}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
-                    {warn ? `Yes, Create ${validRows.length} Matches` : `Import ${validRows.length} Matches`}
+                    {warn ? t('admin.matches.yesCreate', { count: validRows.length }) : t('admin.matches.importMatches', { count: validRows.length })}
                 </button>
                 <button
                     type="button"
                     onClick={onClose}
                     className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
-                    Cancel
+                    {t('common.cancel')}
                 </button>
             </div>
         </div>
@@ -533,25 +535,26 @@ interface CreateFormProps {
 }
 
 function CreateMatchForm({ teams, form, onChange, onSubmit, onCancel }: CreateFormProps) {
+    const { t } = useTranslation()
     const teamOptions = teams.map((t) => ({ value: t.id, label: t.name }))
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div>
-                <label className="label">Home Team</label>
+                <label className="label">{t('admin.matches.homeTeam')}</label>
                 <SearchableSelect
                     options={teamOptions}
                     value={form.homeTeamId || ''}
                     onChange={(v) => onChange({ ...form, homeTeamId: v as number })}
-                    placeholder="Select home team"
+                    placeholder={t('common.select')}
                 />
             </div>
             <div>
-                <label className="label">Away Team</label>
+                <label className="label">{t('admin.matches.awayTeam')}</label>
                 <SearchableSelect
                     options={teamOptions}
                     value={form.awayTeamId || ''}
                     onChange={(v) => onChange({ ...form, awayTeamId: v as number })}
-                    placeholder="Select away team"
+                    placeholder={t('common.select')}
                 />
             </div>
             <div className="flex gap-3 pt-2">
@@ -560,14 +563,14 @@ function CreateMatchForm({ teams, form, onChange, onSubmit, onCancel }: CreateFo
                     disabled={!form.homeTeamId || !form.awayTeamId}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
-                    Create
+                    {t('common.create')}
                 </button>
                 <button
                     type="button"
                     onClick={onCancel}
                     className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
-                    Cancel
+                    {t('common.cancel')}
                 </button>
             </div>
         </form>
@@ -583,31 +586,32 @@ interface EditFormProps {
 }
 
 function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormProps) {
+    const { t } = useTranslation()
     const teamOptions = teams.map((t) => ({ value: t.id, label: t.name }))
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="label">Home Team</label>
+                    <label className="label">{t('admin.matches.homeTeam')}</label>
                     <SearchableSelect
                         options={teamOptions}
                         value={form.homeTeamId || ''}
                         onChange={(v) => onChange({ ...form, homeTeamId: v as number })}
-                        placeholder="Select home team"
+                        placeholder={t('common.select')}
                     />
                 </div>
                 <div>
-                    <label className="label">Away Team</label>
+                    <label className="label">{t('admin.matches.awayTeam')}</label>
                     <SearchableSelect
                         options={teamOptions}
                         value={form.awayTeamId || ''}
                         onChange={(v) => onChange({ ...form, awayTeamId: v as number })}
-                        placeholder="Select away team"
+                        placeholder={t('common.select')}
                     />
                 </div>
             </div>
             <div>
-                <label className="label">Match Date (optional)</label>
+                <label className="label">{t('admin.matches.matchDate')}</label>
                 <input
                     type="datetime-local"
                     value={form.matchDate ? form.matchDate.slice(0, 16) : ''}
@@ -622,7 +626,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="label">Home Score</label>
+                    <label className="label">{t('admin.matches.homeScore')}</label>
                     <input
                         type="number"
                         min={0}
@@ -632,7 +636,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                     />
                 </div>
                 <div>
-                    <label className="label">Away Score</label>
+                    <label className="label">{t('admin.matches.awayScore')}</label>
                     <input
                         type="number"
                         min={0}
@@ -643,7 +647,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                 </div>
             </div>
             <div>
-                <label className="label">Completion</label>
+                <label className="label">{t('admin.matches.completion')}</label>
                 <select
                     value={form.completionType}
                     onChange={(e) =>
@@ -651,10 +655,10 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                     }
                     className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
                 >
-                    <option value={CompletionType.None}>Not Played</option>
-                    <option value={CompletionType.RegularTime}>Regular Time</option>
-                    <option value={CompletionType.Overtime}>Overtime</option>
-                    <option value={CompletionType.Shootout}>Shootout</option>
+                    <option value={CompletionType.None}>{t('match.notPlayed')}</option>
+                    <option value={CompletionType.RegularTime}>{t('admin.matches.regularTime')}</option>
+                    <option value={CompletionType.Overtime}>{t('admin.matches.overtime')}</option>
+                    <option value={CompletionType.Shootout}>{t('admin.matches.shootout')}</option>
                 </select>
             </div>
             <div className="flex gap-3 pt-2">
@@ -663,14 +667,14 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
                     disabled={!form.homeTeamId || !form.awayTeamId}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
-                    Save
+                    {t('common.save')}
                 </button>
                 <button
                     type="button"
                     onClick={onCancel}
                     className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                 >
-                    Cancel
+                    {t('common.cancel')}
                 </button>
             </div>
         </form>
@@ -680,6 +684,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminMatchesPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
@@ -709,7 +714,7 @@ export default function AdminMatchesPage() {
                 setSeasons(s)
                 setTeams(t)
             })
-            .catch(() => setError('Failed to load data'))
+            .catch(() => setError(t('errors.failedToLoadData')))
             .finally(() => setLoadingSeasons(false))
     }, [])
 
@@ -719,7 +724,7 @@ export default function AdminMatchesPage() {
             const data = await apiClient.get<Match[]>(`/api/seasons/${seasonId}/matches`)
             setMatches(data)
         } catch {
-            setError('Failed to load matches')
+            setError(t('errors.failedToLoadMatches'))
         } finally {
             setLoadingMatches(false)
         }
@@ -771,24 +776,24 @@ export default function AdminMatchesPage() {
     }
 
     const handleDelete = async (id: number) => {
-        if (selectedSeasonId === '' || !window.confirm('Delete this match?')) return
+        if (selectedSeasonId === '' || !window.confirm(t('admin.matches.deleteConfirm'))) return
         await apiClient.delete(`/api/seasons/${selectedSeasonId}/matches/${id}`)
         await loadMatches(selectedSeasonId as number)
     }
 
-    if (loadingSeasons) return <p>Loading…</p>
+    if (loadingSeasons) return <p>{t('common.loading')}</p>
     if (error) return <p role="alert">{error}</p>
 
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">Matches</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('admin.matches.title')}</h1>
             </div>
 
             {/* Season selector */}
             <div className="mb-6">
                 <label htmlFor="match-season-select" className="label">
-                    Season
+                    {t('admin.matches.season')}
                 </label>
                 <select
                     id="match-season-select"
@@ -798,7 +803,7 @@ export default function AdminMatchesPage() {
                     }
                     className="bg-border border border-border rounded px-3 py-2 text-sm text-white min-w-48"
                 >
-                    <option value="">Select a season…</option>
+                    <option value="">{t('admin.matches.selectSeason')}</option>
                     {seasons.map((s) => (
                         <option key={s.id} value={s.id}>
                             {s.name}
@@ -814,28 +819,28 @@ export default function AdminMatchesPage() {
                             onClick={() => setShowAddModal(true)}
                             className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm"
                         >
-                            New Match
+                            {t('admin.matches.newMatch')}
                         </button>
                         <button
                             onClick={() => setShowBulkModal(true)}
                             className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
                         >
-                            Bulk Create
+                            {t('admin.matches.bulkCreate')}
                         </button>
                     </div>
 
                     {loadingMatches ? (
-                        <p>Loading matches…</p>
+                        <p>{t('admin.matches.loadingMatches')}</p>
                     ) : (
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left border-b border-border text-text-muted">
                                     <th className="pb-2 pr-3">#</th>
-                                    <th className="pb-2 pr-3">Match</th>
-                                    <th className="pb-2 pr-3">Score</th>
-                                    <th className="pb-2 pr-3">Date</th>
-                                    <th className="pb-2 pr-3">Status</th>
-                                    <th className="pb-2">Actions</th>
+                                    <th className="pb-2 pr-3">{t('admin.matches.match')}</th>
+                                    <th className="pb-2 pr-3">{t('admin.matches.score')}</th>
+                                    <th className="pb-2 pr-3">{t('common.date')}</th>
+                                    <th className="pb-2 pr-3">{t('common.status')}</th>
+                                    <th className="pb-2">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -860,7 +865,7 @@ export default function AdminMatchesPage() {
                                         <td className="py-3 pr-3 text-text">
                                             {m.matchDate
                                                 ? new Date(m.matchDate).toLocaleDateString()
-                                                : 'TBD'}
+                                                : t('admin.matches.tbd')}
                                         </td>
                                         <td className="py-3 pr-3">
                                             <CompletionBadge type={m.completionType} />
@@ -870,13 +875,13 @@ export default function AdminMatchesPage() {
                                                 onClick={() => openEdit(m)}
                                                 className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
                                             >
-                                                Edit
+                                                {t('common.edit')}
                                             </button>
                                             <button
                                                 onClick={() => void handleDelete(m.id)}
                                                 className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                             >
-                                                Delete
+                                                {t('common.delete')}
                                             </button>
                                         </td>
                                     </tr>
@@ -884,7 +889,7 @@ export default function AdminMatchesPage() {
                                 {matches.length === 0 && (
                                     <tr>
                                         <td colSpan={6} className="py-4 text-text-muted text-center">
-                                            No matches yet.
+                                            {t('admin.matches.noMatches')}
                                         </td>
                                     </tr>
                                 )}
@@ -896,7 +901,7 @@ export default function AdminMatchesPage() {
 
             {/* Create modal */}
             {showAddModal && (
-                <Modal title="New Match" onClose={() => setShowAddModal(false)}>
+                <Modal title={t('admin.matches.newMatch')} onClose={() => setShowAddModal(false)}>
                     <CreateMatchForm
                         teams={teams}
                         form={createForm}
@@ -910,7 +915,7 @@ export default function AdminMatchesPage() {
             {/* Edit modal */}
             {editMatch && (
                 <Modal
-                    title={`Edit Match #${editMatch.matchNumber}`}
+                    title={t('admin.matches.editMatch', { number: editMatch.matchNumber })}
                     onClose={() => setEditMatch(null)}
                 >
                     <EditMatchForm
@@ -925,7 +930,7 @@ export default function AdminMatchesPage() {
 
             {/* Bulk create modal */}
             {showBulkModal && selectedSeasonId !== '' && (
-                <Modal title="Bulk Create Matches" onClose={() => setShowBulkModal(false)}>
+                <Modal title={t('admin.matches.bulkCreateTitle')} onClose={() => setShowBulkModal(false)}>
                     <BulkMatchCreator
                         seasonId={selectedSeasonId as number}
                         teams={teams}

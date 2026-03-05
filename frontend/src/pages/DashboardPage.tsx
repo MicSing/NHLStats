@@ -8,8 +8,10 @@ import TrendChart from '../components/charts/TrendChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
+import { useTranslation } from 'react-i18next'
 
 export default function DashboardPage() {
+    const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
     const [seasonStats, setSeasonStats] = useState<UserSeasonStats[]>([])
@@ -103,7 +105,7 @@ export default function DashboardPage() {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                    <h1 className="text-2xl font-bold text-primary">{t('dashboard.title')}</h1>
                     {!loadingSeasons && (
                         <SeasonSelector
                             seasons={seasons}
@@ -117,9 +119,9 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     {/* Plus / Minus */}
                     <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">Plus / Minus by Player</h2>
+                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.plusMinusByPlayer')}</h2>
                         {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
                         ) : (
                             <PlusMinusChart data={seasonStats} />
                         )}
@@ -127,9 +129,9 @@ export default function DashboardPage() {
 
                     {/* Top Scorers */}
                     <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">Top Scorers (In-Game Players)</h2>
+                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.topScorers')}</h2>
                         {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
                         ) : (
                             <TopScorersChart data={rosterScorers} />
                         )}
@@ -137,9 +139,9 @@ export default function DashboardPage() {
 
                     {/* Penalty Leaders */}
                     <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">Penalty Leaders (In-Game Players)</h2>
+                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.penaltyLeaders')}</h2>
                         {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
                         ) : (
                             <PenaltyLeadersChart data={rosterPenalized} />
                         )}
@@ -147,25 +149,25 @@ export default function DashboardPage() {
 
                     {/* All-Time Earnings */}
                     <section className="card p-5" data-testid="earnings-section">
-                        <h2 className="text-sm font-semibold text-primary mb-3">All-Time Earnings</h2>
+                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.allTimeEarnings')}</h2>
                         {allTimeEarnings ? (
                             <>
                                 <EarningsChart data={allTimeEarnings.userEarnings} />
                                 <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
                                     <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">Collected</p>
+                                        <p className="text-text-muted">{t('dashboard.collected')}</p>
                                         <p className="text-success font-semibold">
                                             {allTimeEarnings.totalCollected.toFixed(2)} €
                                         </p>
                                     </div>
                                     <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">Expenses</p>
+                                        <p className="text-text-muted">{t('dashboard.expenses')}</p>
                                         <p className="text-danger font-semibold">
                                             {allTimeEarnings.totalExpenses.toFixed(2)} €
                                         </p>
                                     </div>
                                     <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">Balance</p>
+                                        <p className="text-text-muted">{t('dashboard.balance')}</p>
                                         <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-success' : 'text-danger'}`}>
                                             {allTimeEarnings.balance.toFixed(2)} €
                                         </p>
@@ -182,20 +184,20 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     <section className="card p-5">
                         <h2 className="text-sm font-semibold text-primary mb-3">
-                            Plus Trend {selectedSeasonId ? '(by Week)' : '(by Season)'}
+                            {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
                         {loadingTrend ? (
-                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
                         ) : (
                             <TrendChart data={trendData} mode="plus" />
                         )}
                     </section>
                     <section className="card p-5">
                         <h2 className="text-sm font-semibold text-primary mb-3">
-                            Minus Trend {selectedSeasonId ? '(by Week)' : '(by Season)'}
+                            {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
                         {loadingTrend ? (
-                            <p className="text-text-muted text-sm text-center py-8">Loading…</p>
+                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
                         ) : (
                             <TrendChart data={trendData} mode="minus" />
                         )}
