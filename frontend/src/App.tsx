@@ -20,6 +20,7 @@ import MatchPage from './pages/MatchPage'
 import DashboardPage from './pages/DashboardPage'
 import EarningsExpensesPage from './pages/EarningsExpensesPage'
 import UserStatsPage from './pages/UserStatsPage'
+import RulesPage from './pages/RulesPage'
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
               <Route path="/seasons/:seasonId" element={<SeasonPage />} />
               <Route path="/seasons/:seasonId/matches/:matchId" element={<MatchPage />} />
               <Route path="/user-stats" element={<UserStatsPage />} />
+              <Route path="/rules" element={<RulesPage />} />
             </Route>
 
             {/* Admin routes — sidebar layout, auth-gated at the parent */}

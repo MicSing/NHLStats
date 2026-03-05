@@ -3,6 +3,7 @@ export const publicNavItems = [
     { to: '/seasons', label: '🏒 Seasons' },
     { to: '/earnings', label: '💰 Finances' },
     { to: '/user-stats', label: '📈 Player Stats' },
+    { to: '/rules', label: '📋 Rules' },
 ]
 
 export const adminNavItems = [
