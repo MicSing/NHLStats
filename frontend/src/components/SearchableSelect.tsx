@@ -27,6 +27,7 @@ export default function SearchableSelect({
     const containerRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const [highlighted, setHighlighted] = useState(0)
+    const [openUpward, setOpenUpward] = useState(false)
 
     const selectedLabel =
         value !== '' ? (options.find((o) => o.value === value)?.label ?? '') : ''
@@ -51,6 +52,15 @@ export default function SearchableSelect({
         setOpen(true)
         setQuery('')
         setHighlighted(0)
+
+        // Determine if dropdown should open upward
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect()
+            const spaceBelow = window.innerHeight - rect.bottom
+            const dropdownHeight = 240 // approximate max height (max-h-48 = 12rem ≈ 192px + input ~48px)
+            setOpenUpward(spaceBelow < dropdownHeight)
+        }
+
         setTimeout(() => inputRef.current?.focus(), 0)
     }
 
@@ -106,19 +116,21 @@ export default function SearchableSelect({
             </div>
 
             {open && (
-                <div className="absolute z-50 mt-1 w-full min-w-48 bg-surface border border-border rounded-lg shadow-card">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={query}
-                        onChange={(e) => {
-                            setQuery(e.target.value)
-                            setHighlighted(0)
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Search…"
-                        className="w-full bg-bg text-sm px-3 py-2 outline-none border-b border-border text-text placeholder-text-muted"
-                    />
+                <div className={`absolute z-50 w-full min-w-48 bg-surface border border-border rounded-lg shadow-card ${openUpward ? 'bottom-full mb-1' : 'top-full mt-1'} ${openUpward ? 'flex flex-col-reverse' : ''}`}>
+                    {!openUpward && (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={query}
+                            onChange={(e) => {
+                                setQuery(e.target.value)
+                                setHighlighted(0)
+                            }}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Search…"
+                            className="w-full bg-bg text-sm px-3 py-2 outline-none border-b border-border text-text placeholder-text-muted rounded-t-lg"
+                        />
+                    )}
                     <ul className="max-h-48 overflow-y-auto">
                         {filtered.length === 0 ? (
                             <li className="px-3 py-2 text-sm text-text-muted">{t('common.noData')}</li>
@@ -138,6 +150,20 @@ export default function SearchableSelect({
                             ))
                         )}
                     </ul>
+                    {openUpward && (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={query}
+                            onChange={(e) => {
+                                setQuery(e.target.value)
+                                setHighlighted(0)
+                            }}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Search…"
+                            className="w-full bg-bg text-sm px-3 py-2 outline-none border-t border-border text-text placeholder-text-muted rounded-b-lg"
+                        />
+                    )}
                 </div>
             )}
         </div>
