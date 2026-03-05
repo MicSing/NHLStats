@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import type { UserMatchSummary } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
+import { useTranslation } from 'react-i18next'
 
 const WEEK_OPTIONS = [4, 8, 12, 16] as const
 type WeekOption = typeof WEEK_OPTIONS[number] | 'all'
@@ -62,18 +63,23 @@ function abbreviateSeasonName(name: string): string {
 
 export default function UserWeekTrendChart({ matches }: Props) {
     const ct = useChartTheme()
+    const { t } = useTranslation()
     const [weekLimit, setWeekLimit] = useState<WeekOption>(12)
 
     if (matches.length === 0) {
         return (
             <div role="img" aria-label="user week trend chart" className="w-full flex items-center justify-center py-12">
-                <p className="text-text-muted text-sm">No data yet</p>
+                <p className="text-text-muted text-sm">{t('trendChart.noData')}</p>
             </div>
         )
     }
 
     // Group matches by season week number
     const weekGroups = computeSeasonWeekGroups(matches)
+
+    const avgPlusLabel = t('trendChart.avgPlus')
+    const avgMinusLabel = t('trendChart.avgMinus')
+    const avgGoalsLabel = t('trendChart.avgGoals')
 
     // Build chart data sorted chronologically, then slice to the chosen window
     const allChartData = weekGroups.map(({ seasonName, weekNumber, matches: ms }) => {
@@ -84,11 +90,11 @@ export default function UserWeekTrendChart({ matches }: Props) {
         const abbr = abbreviateSeasonName(seasonName)
         return {
             label: `${abbr} W${weekNumber}`,
-            fullLabel: `${seasonName} Week ${weekNumber}`,
+            fullLabel: t('trendChart.seasonWeekLabel', { season: seasonName, week: weekNumber }),
             matchCount: count,
-            'Avg Plus': parseFloat((totalPlus / count).toFixed(1)),
-            'Avg Minus': parseFloat((totalMinus / count).toFixed(1)),
-            'Avg Goals': parseFloat((totalGoals / count).toFixed(1)),
+            [avgPlusLabel]: parseFloat((totalPlus / count).toFixed(1)),
+            [avgMinusLabel]: parseFloat((totalMinus / count).toFixed(1)),
+            [avgGoalsLabel]: parseFloat((totalGoals / count).toFixed(1)),
             _totalPlus: totalPlus,
             _totalMinus: totalMinus,
             _totalGoals: totalGoals,
@@ -102,7 +108,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
         <div role="img" aria-label="user week trend chart" className="w-full">
             {/* Week-count selector */}
             <div className="flex items-center gap-1 mb-3 flex-wrap">
-                <span className="text-text-muted text-xs mr-1">Show:</span>
+                <span className="text-text-muted text-xs mr-1">{t('trendChart.show')}</span>
                 {WEEK_OPTIONS.map((n) => (
                     <button
                         key={n}
@@ -122,7 +128,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
                         : 'bg-surface text-text-muted hover:text-text border border-border'
                         }`}
                 >
-                    All
+                    {t('trendChart.all')}
                 </button>
             </div>
             <ResponsiveContainer width="100%" height={300}>
@@ -147,9 +153,9 @@ export default function UserWeekTrendChart({ matches }: Props) {
                             if (!active || !payload || payload.length === 0) return null
                             const entry = chartData.find((d) => d.label === label)
                             const totals: Record<string, number> = {
-                                'Avg Plus': entry?._totalPlus ?? 0,
-                                'Avg Minus': entry?._totalMinus ?? 0,
-                                'Avg Goals': entry?._totalGoals ?? 0,
+                                [avgPlusLabel]: entry?._totalPlus ?? 0,
+                                [avgMinusLabel]: entry?._totalMinus ?? 0,
+                                [avgGoalsLabel]: entry?._totalGoals ?? 0,
                             }
                             return (
                                 <div
@@ -164,7 +170,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
                                 >
                                     <p style={{ marginBottom: 4, fontWeight: 'bold' }}>
                                         {entry?.fullLabel ?? label} —{' '}
-                                        {entry?.matchCount} match{entry?.matchCount !== 1 ? 'es' : ''}
+                                        {t('trendChart.matchCount', { count: entry?.matchCount ?? 0 })}
                                     </p>
                                     {payload.map((p) => (
                                         <p key={p.name} style={{ color: p.color as string, margin: '2px 0' }}>
@@ -176,10 +182,10 @@ export default function UserWeekTrendChart({ matches }: Props) {
                         }}
                     />
                     <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
-                    <Bar dataKey="Avg Goals" fill="#3b82f6" opacity={0.7} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey={avgGoalsLabel} fill="#3b82f6" opacity={0.7} radius={[3, 3, 0, 0]} />
                     <Line
                         type="monotone"
-                        dataKey="Avg Plus"
+                        dataKey={avgPlusLabel}
                         stroke="#22c55e"
                         strokeWidth={2}
                         dot={{ r: 3, fill: '#22c55e' }}
@@ -187,7 +193,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
                     />
                     <Line
                         type="monotone"
-                        dataKey="Avg Minus"
+                        dataKey={avgMinusLabel}
                         stroke="#ef4444"
                         strokeWidth={2}
                         dot={{ r: 3, fill: '#ef4444' }}

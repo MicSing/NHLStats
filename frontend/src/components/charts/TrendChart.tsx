@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import type { PeriodPlusMinus } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
+import { useTranslation } from 'react-i18next'
 
 const USER_COLORS = [
     '#06b6d4', // cyan
@@ -50,12 +51,13 @@ function linearRegression(x: number[], y: number[]): { slope: number; intercept:
 
 export default function TrendChart({ data, mode }: Props) {
     const ct = useChartTheme()
+    const { t } = useTranslation()
     const ariaLabel = mode === 'plus' ? 'plus trend chart' : 'minus trend chart'
 
     if (data.length === 0) {
         return (
             <div role="img" aria-label={ariaLabel} className="w-full">
-                <p className="text-text-muted text-sm text-center py-8">No data available</p>
+                <p className="text-text-muted text-sm text-center py-8">{t('trendChart.noData')}</p>
             </div>
         )
     }
@@ -90,7 +92,7 @@ export default function TrendChart({ data, mode }: Props) {
 
     // Predict next period using linear regression per user
     const predictionEntry: Record<string, unknown> = {
-        label: 'Next (predicted)',
+        label: t('trendChart.nextPredicted'),
         _isPrediction: true,
     }
     const xValues = data.map((_, i) => i)
@@ -183,7 +185,7 @@ export default function TrendChart({ data, mode }: Props) {
 
             {/* Prediction note */}
             <p className="text-text-muted text-xs text-center mt-1 italic">
-                Dashed dot = linear regression prediction for the next period
+                {t('trendChart.predictionNote')}
             </p>
 
             {/* Accessible data summary */}

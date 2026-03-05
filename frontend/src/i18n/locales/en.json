@@ -425,5 +425,18 @@
         "rosterPenalties": "Roster penalties",
         "penaltyPts": "Penalty (\u2212pts)",
         "secPenaltyPts": "Secondary Penalty (\u2212pts)"
+    },
+    "trendChart": {
+        "noData": "No data available",
+        "nextPredicted": "Next (predicted)",
+        "predictionNote": "Dashed dot = linear regression prediction for the next period",
+        "avgPlus": "Avg Plus",
+        "avgMinus": "Avg Minus",
+        "avgGoals": "Avg Goals",
+        "show": "Show:",
+        "all": "All",
+        "matchCount": "{{count}} match",
+        "matchCount_other": "{{count}} matches",
+        "seasonWeekLabel": "{{season}} Week {{week}}"
     }
 }

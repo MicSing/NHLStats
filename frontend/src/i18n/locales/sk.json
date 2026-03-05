@@ -425,5 +425,18 @@
         "rosterPenalties": "Tresty zo zostavy",
         "penaltyPts": "Trest (−body)",
         "secPenaltyPts": "Druhotný trest (−body)"
+    },
+    "trendChart": {
+        "noData": "Žiadne údaje",
+        "nextPredicted": "Ďalší (predikcia)",
+        "predictionNote": "Prerušovaná bodka = predikcia lineárnou regresiou pre ďalšie obdobie",
+        "avgPlus": "Priem. Plus",
+        "avgMinus": "Priem. Mínus",
+        "avgGoals": "Priem. Góly",
+        "show": "Zobraziť:",
+        "all": "Všetky",
+        "matchCount": "{{count}} zápas",
+        "matchCount_other": "{{count}} zápasov",
+        "seasonWeekLabel": "{{season}} Týždeň {{week}}"
     }
 }
