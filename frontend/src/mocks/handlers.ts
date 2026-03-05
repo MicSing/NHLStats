@@ -744,4 +744,65 @@ export const handlers = [
             },
         ]))
     }),
+
+    // --- User Stats & Head-to-Head ---
+
+    rest.get(`${BASE}/api/stats/users/:userId/point-reasons`, (_req, res, ctx) => {
+        return res(ctx.json({
+            userId: 1,
+            userName: 'Player One',
+            items: [
+                { pointReasonId: 1, pointReasonName: 'Goal', isPositive: true, totalCount: 5 },
+                { pointReasonId: 2, pointReasonName: 'Penalty', isPositive: false, totalCount: 2 },
+            ],
+        }))
+    }),
+
+    rest.get(`${BASE}/api/stats/users/:userId/match-history`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                matchId: 1,
+                matchDate: '2025-01-10T00:00:00',
+                opponentName: 'Team B',
+                opponentShortName: 'TB',
+                homeScore: 3,
+                awayScore: 1,
+                isHome: true,
+                totalPlus: 3,
+                totalMinus: 1,
+                goalCount: 1,
+                penaltyCount: 0,
+                seasonId: 1,
+                seasonName: '2024-25',
+            },
+        ]))
+    }),
+
+    rest.get(`${BASE}/api/stats/head-to-head/:teamId`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                matchId: 1,
+                seasonId: 1,
+                seasonName: '2024-25',
+                matchDate: '2025-01-10T00:00:00',
+                homeTeamName: 'Team A',
+                homeTeamShortName: 'TA',
+                awayTeamName: 'Team B',
+                awayTeamShortName: 'TB',
+                homeScore: 3,
+                awayScore: 1,
+                completionType: 0,
+                userResults: [
+                    { userId: 1, userName: 'Player One', totalPlus: 3, totalMinus: 1 },
+                ],
+            },
+        ]))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:seasonId/users`, (_req, res, ctx) => {
+        return res(ctx.json([
+            { id: 1, name: 'Player One', isActive: true },
+            { id: 2, name: 'Player Two', isActive: true },
+        ]))
+    }),
 ]
