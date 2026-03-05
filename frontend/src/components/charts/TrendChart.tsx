@@ -9,6 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import type { PeriodPlusMinus } from '../../types/stats'
+import { useChartTheme } from './useChartTheme'
 
 const USER_COLORS = [
     '#06b6d4', // cyan
@@ -48,6 +49,7 @@ function linearRegression(x: number[], y: number[]): { slope: number; intercept:
 }
 
 export default function TrendChart({ data, mode }: Props) {
+    const ct = useChartTheme()
     const ariaLabel = mode === 'plus' ? 'plus trend chart' : 'minus trend chart'
 
     if (data.length === 0) {
@@ -113,27 +115,27 @@ export default function TrendChart({ data, mode }: Props) {
                     data={chartDataWithPrediction}
                     margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                     <XAxis
                         dataKey="label"
-                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        tick={{ fill: ct.tick, fontSize: 11 }}
                         angle={-20}
                         textAnchor="end"
                         height={60}
                     />
                     <YAxis
-                        tick={{ fill: '#9ca3af', fontSize: 12 }}
+                        tick={{ fill: ct.tick, fontSize: 12 }}
                         domain={[0, 'auto']}
                         allowDecimals={false}
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#fff',
+                            backgroundColor: ct.tooltipBg,
+                            border: `1px solid ${ct.tooltipBorder}`,
+                            color: ct.tooltipText,
                         }}
                     />
-                    <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+                    <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
 
                     {allUsers.map((user, i) => (
                         <Line
@@ -197,7 +199,7 @@ export default function TrendChart({ data, mode }: Props) {
                                 className="inline-block w-2 h-2 rounded-full mr-1"
                                 style={{ backgroundColor: USER_COLORS[i % USER_COLORS.length] }}
                             />
-                            <span className="font-medium text-white">{user.userName}</span>{' '}
+                            <span className="font-medium text-text">{user.userName}</span>{' '}
                             <span className={mode === 'plus' ? 'text-primary' : 'text-danger'}>
                                 {latestValue}
                             </span>

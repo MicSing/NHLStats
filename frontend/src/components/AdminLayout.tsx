@@ -17,6 +17,10 @@ export default function AdminLayout() {
                     <h1 className="text-xl font-bold text-primary tracking-tight">{t('layout.appName')}</h1>
                     <p className="text-xs text-text-muted mt-0.5">{t('layout.adminPanel')}</p>
                 </div>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                </div>
                 <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
                     <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
                     {publicNavItems.map((item) => (
@@ -50,10 +54,6 @@ export default function AdminLayout() {
                     ))}
                 </nav>
                 <div className="px-4 py-4 border-t border-border space-y-2">
-                    <div className="flex items-center justify-between">
-                        <ThemeToggle />
-                        <LanguageSwitcher />
-                    </div>
                     <p className="text-xs text-text-muted truncate px-3">{user?.email}</p>
                     <button
                         onClick={logout}

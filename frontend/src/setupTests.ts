@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import './i18n'
 import { server } from './mocks/server'
 
 // Recharts uses ResizeObserver which is not available in jsdom

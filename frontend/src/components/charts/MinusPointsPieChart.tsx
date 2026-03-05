@@ -7,6 +7,7 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import type { PointReasonBreakdownItem } from '../../types/stats'
+import { useChartTheme } from './useChartTheme'
 
 interface Props {
     items: PointReasonBreakdownItem[]
@@ -34,26 +35,29 @@ interface LabelProps {
 
 const RADIAN = Math.PI / 180
 
-function renderCustomLabel({ cx, cy, midAngle, innerRadius, outerRadius, value }: LabelProps) {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.6
-    const x = cx + radius * Math.cos(-midAngle * RADIAN)
-    const y = cy + radius * Math.sin(-midAngle * RADIAN)
-    return (
-        <text
-            x={x}
-            y={y}
-            fill="#fff"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={12}
-            fontWeight="bold"
-        >
-            {value}
-        </text>
-    )
+function makeRenderCustomLabel(fillColor: string) {
+    return function renderCustomLabel({ cx, cy, midAngle, innerRadius, outerRadius, value }: LabelProps) {
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.6
+        const x = cx + radius * Math.cos(-midAngle * RADIAN)
+        const y = cy + radius * Math.sin(-midAngle * RADIAN)
+        return (
+            <text
+                x={x}
+                y={y}
+                fill={fillColor}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={12}
+                fontWeight="bold"
+            >
+                {value}
+            </text>
+        )
+    }
 }
 
 export default function MinusPointsPieChart({ items }: Props) {
+    const ct = useChartTheme()
     // Pre-filter to negatives only (caller may pass already filtered, but guard here too)
     const negativeItems = items.filter((i) => !i.isPositive)
 
@@ -81,7 +85,7 @@ export default function MinusPointsPieChart({ items }: Props) {
                         outerRadius={100}
                         dataKey="value"
                         labelLine={false}
-                        label={renderCustomLabel as unknown as boolean}
+                        label={makeRenderCustomLabel(ct.pieLabelText) as unknown as boolean}
                     >
                         {chartData.map((_entry, index) => (
                             <Cell
@@ -92,14 +96,14 @@ export default function MinusPointsPieChart({ items }: Props) {
                     </Pie>
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#fff',
+                            backgroundColor: ct.tooltipBg,
+                            border: `1px solid ${ct.tooltipBorder}`,
+                            color: ct.tooltipText,
                         }}
                         formatter={(value: number | undefined) => [value ?? 0, 'Count']}
                     />
                     <Legend
-                        wrapperStyle={{ color: '#9ca3af', fontSize: 12 }}
+                        wrapperStyle={{ color: ct.legendText, fontSize: 12 }}
                     />
                 </PieChart>
             </ResponsiveContainer>

@@ -8,12 +8,14 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import type { UserEarnings } from '../../types/stats'
+import { useChartTheme } from './useChartTheme'
 
 interface Props {
     data: UserEarnings[]
 }
 
 export default function EarningsChart({ data }: Props) {
+    const ct = useChartTheme()
     const sorted = [...data].sort((a, b) => b.remainingBalance - a.remainingBalance)
 
     return (
@@ -27,15 +29,15 @@ export default function EarningsChart({ data }: Props) {
                             data={sorted}
                             margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="userName" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                            <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
                             <YAxis
                                 tickFormatter={(v: number) => `${v.toFixed(2)} €`}
-                                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                                tick={{ fill: ct.tick, fontSize: 12 }}
                             />
                             <Tooltip
                                 formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(2)} €`, 'Balance']}
-                                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }}
+                                contentStyle={{ backgroundColor: ct.tooltipBg, border: `1px solid ${ct.tooltipBorder}`, color: ct.tooltipText }}
                             />
                             <Line
                                 type="monotone"
@@ -52,7 +54,7 @@ export default function EarningsChart({ data }: Props) {
                     <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
                         {sorted.map((d) => (
                             <li key={d.userId}>
-                                <span className="font-medium text-white">{d.userName}</span>{' '}
+                                <span className="font-medium text-text">{d.userName}</span>{' '}
                                 <span className={d.remainingBalance > 0 ? 'text-danger' : 'text-success'}>
                                     {d.remainingBalance.toFixed(2)} €
                                 </span>

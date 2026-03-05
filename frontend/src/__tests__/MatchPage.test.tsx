@@ -84,13 +84,13 @@ describe('MatchPage', () => {
         expect(form).toBeInTheDocument()
     })
 
-    test('Points tab shows + Point and − Point action buttons when authenticated', async () => {
+    test('Points tab shows + Positive and + Negative action buttons when authenticated', async () => {
         const user = userEvent.setup()
         renderMatchPage()
         const pointsTab = await screen.findByRole('button', { name: /^points/i })
         await user.click(pointsTab)
-        expect(await screen.findByRole('button', { name: /\+ point/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /− point/i })).toBeInTheDocument()
+        expect(await screen.findByRole('button', { name: /\+ positive/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /\+ negative/i })).toBeInTheDocument()
     })
 
     test('edit controls hidden when not authenticated', async () => {

@@ -19,6 +19,10 @@ export default function PublicLayout() {
                     </NavLink>
                     <p className="text-xs text-text-muted mt-0.5">{t('layout.seasonTracker')}</p>
                 </div>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                </div>
                 <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
                     <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
                     {publicNavItems.map((item) => (
@@ -58,11 +62,7 @@ export default function PublicLayout() {
                     )}
                 </nav>
                 <div className="px-4 py-4 border-t border-border">
-                    <div className="flex items-center justify-between mb-2">
-                        <ThemeToggle />
-                        <LanguageSwitcher />
-                    </div>
-                    <div className="mt-3">
+                    <div>
                         {isAuthenticated ? (
                             <>
                                 <p className="text-xs text-text-muted mb-2 truncate">{user?.email}</p>

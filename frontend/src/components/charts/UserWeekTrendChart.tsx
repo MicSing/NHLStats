@@ -11,6 +11,7 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import type { UserMatchSummary } from '../../types/stats'
+import { useChartTheme } from './useChartTheme'
 
 const WEEK_OPTIONS = [4, 8, 12, 16] as const
 type WeekOption = typeof WEEK_OPTIONS[number] | 'all'
@@ -35,6 +36,7 @@ function formatWeekLabel(isoDate: string): string {
 }
 
 export default function UserWeekTrendChart({ matches }: Props) {
+    const ct = useChartTheme()
     const [weekLimit, setWeekLimit] = useState<WeekOption>(12)
 
     if (matches.length === 0) {
@@ -87,8 +89,8 @@ export default function UserWeekTrendChart({ matches }: Props) {
                         key={n}
                         onClick={() => setWeekLimit(n)}
                         className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${weekLimit === n
-                                ? 'bg-primary text-white'
-                                : 'bg-surface text-text-muted hover:text-text border border-border'
+                            ? 'bg-primary text-white'
+                            : 'bg-surface text-text-muted hover:text-text border border-border'
                             }`}
                     >
                         {n}w
@@ -97,8 +99,8 @@ export default function UserWeekTrendChart({ matches }: Props) {
                 <button
                     onClick={() => setWeekLimit('all')}
                     className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${weekLimit === 'all'
-                            ? 'bg-primary text-white'
-                            : 'bg-surface text-text-muted hover:text-text border border-border'
+                        ? 'bg-primary text-white'
+                        : 'bg-surface text-text-muted hover:text-text border border-border'
                         }`}
                 >
                     All
@@ -109,17 +111,17 @@ export default function UserWeekTrendChart({ matches }: Props) {
                     data={chartData}
                     margin={{ top: 10, right: 20, left: 0, bottom: 40 }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                     <XAxis
                         dataKey="label"
-                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        tick={{ fill: ct.tick, fontSize: 11 }}
                         angle={-35}
                         textAnchor="end"
                         interval={0}
                     />
                     <YAxis
                         allowDecimals
-                        tick={{ fill: '#9ca3af', fontSize: 12 }}
+                        tick={{ fill: ct.tick, fontSize: 12 }}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -133,9 +135,9 @@ export default function UserWeekTrendChart({ matches }: Props) {
                             return (
                                 <div
                                     style={{
-                                        backgroundColor: '#1f2937',
-                                        border: '1px solid #374151',
-                                        color: '#fff',
+                                        backgroundColor: ct.tooltipBg,
+                                        border: `1px solid ${ct.tooltipBorder}`,
+                                        color: ct.tooltipText,
                                         padding: '10px 14px',
                                         borderRadius: 6,
                                         fontSize: 12,
@@ -154,7 +156,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
                             )
                         }}
                     />
-                    <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+                    <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
                     <Bar dataKey="Avg Goals" fill="#3b82f6" opacity={0.7} radius={[3, 3, 0, 0]} />
                     <Line
                         type="monotone"

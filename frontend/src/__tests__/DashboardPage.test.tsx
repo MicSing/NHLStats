@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
+import { ThemeProvider } from '../context/ThemeContext'
 import DashboardPage from '../pages/DashboardPage'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
@@ -12,13 +13,15 @@ import type { UserEarnings } from '../types/stats'
 
 function renderDashboard() {
     return render(
-        <AuthProvider>
-            <MemoryRouter initialEntries={['/dashboard']}>
-                <Routes>
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                </Routes>
-            </MemoryRouter>
-        </AuthProvider>,
+        <ThemeProvider>
+            <AuthProvider>
+                <MemoryRouter initialEntries={['/dashboard']}>
+                    <Routes>
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                    </Routes>
+                </MemoryRouter>
+            </AuthProvider>
+        </ThemeProvider>,
     )
 }
 
@@ -74,14 +77,14 @@ const mockEarnings: UserEarnings[] = [
 
 describe('PlusMinusChart', () => {
     test('renders with correct data points', () => {
-        render(<PlusMinusChart data={mockStats} />)
+        render(<ThemeProvider><PlusMinusChart data={mockStats} /></ThemeProvider>)
         expect(screen.getByRole('img', { name: /plus minus chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<PlusMinusChart data={[]} />)
+        render(<ThemeProvider><PlusMinusChart data={[]} /></ThemeProvider>)
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })
@@ -90,14 +93,14 @@ describe('PlusMinusChart', () => {
 
 describe('TopScorersChart', () => {
     test('renders bars for each roster player', () => {
-        render(<TopScorersChart data={mockRosterScorers} />)
+        render(<ThemeProvider><TopScorersChart data={mockRosterScorers} /></ThemeProvider>)
         expect(screen.getByRole('img', { name: /top scorers chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<TopScorersChart data={[]} />)
+        render(<ThemeProvider><TopScorersChart data={[]} /></ThemeProvider>)
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })
@@ -106,14 +109,14 @@ describe('TopScorersChart', () => {
 
 describe('PenaltyLeadersChart', () => {
     test('renders bars for each roster player', () => {
-        render(<PenaltyLeadersChart data={mockRosterPenalized} />)
+        render(<ThemeProvider><PenaltyLeadersChart data={mockRosterPenalized} /></ThemeProvider>)
         expect(screen.getByRole('img', { name: /penalty leaders chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<PenaltyLeadersChart data={[]} />)
+        render(<ThemeProvider><PenaltyLeadersChart data={[]} /></ThemeProvider>)
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })
@@ -122,14 +125,14 @@ describe('PenaltyLeadersChart', () => {
 
 describe('EarningsChart', () => {
     test('renders cumulative line with user names', () => {
-        render(<EarningsChart data={mockEarnings} />)
+        render(<ThemeProvider><EarningsChart data={mockEarnings} /></ThemeProvider>)
         expect(screen.getByRole('img', { name: /earnings chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<EarningsChart data={[]} />)
+        render(<ThemeProvider><EarningsChart data={[]} /></ThemeProvider>)
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })

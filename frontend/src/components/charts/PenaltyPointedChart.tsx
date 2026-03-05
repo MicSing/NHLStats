@@ -9,6 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts'
 import type { PointReasonBreakdownItem } from '../../types/stats'
+import { useChartTheme } from './useChartTheme'
 
 const ROSTER_COLOR = '#ef4444'   // red — actual ice penalties
 const PENALTY_COLOR = '#f97316'  // orange — Penalty point deductions
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
+    const ct = useChartTheme()
     const totalRoster = rosterPenalties.reduce((s, p) => s + p.count, 0)
 
     const penaltyPts = items.find(
@@ -67,17 +69,17 @@ export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
                     barCategoryGap="30%"
                     barGap={4}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                    <XAxis dataKey="label" tick={{ fill: ct.tick, fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fill: ct.tick, fontSize: 12 }} />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#fff',
+                            backgroundColor: ct.tooltipBg,
+                            border: `1px solid ${ct.tooltipBorder}`,
+                            color: ct.tooltipText,
                         }}
                     />
-                    <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+                    <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
                     <Bar dataKey="Roster penalties" fill={ROSTER_COLOR} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Penalty (−pts)" fill={PENALTY_COLOR} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Secondary Penalty (−pts)" fill={SEC_PEN_COLOR} radius={[4, 4, 0, 0]} />
