@@ -710,7 +710,9 @@ public class StatsService : IStatsService
                     um.TotalPlus,
                     um.TotalMinus,
                     goalCount,
-                    penaltyCount);
+                    penaltyCount,
+                    um.SeasonId,
+                    match.Season?.Name ?? "");
             })
             .OrderBy(s => s.MatchDate)
             .ToList();

@@ -164,4 +164,6 @@ export interface UserMatchSummary {
     totalMinus: number
     goalCount: number
     penaltyCount: number
+    seasonId: number
+    seasonName: string
 }

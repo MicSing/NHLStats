@@ -158,4 +158,6 @@ public record UserMatchSummaryDto(
     int TotalPlus,
     int TotalMinus,
     int GoalCount,
-    int PenaltyCount);
+    int PenaltyCount,
+    int SeasonId,
+    string SeasonName);

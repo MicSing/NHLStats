@@ -20,19 +20,44 @@ interface Props {
     matches: UserMatchSummary[]
 }
 
-/** Returns the ISO date string (YYYY-MM-DD) of the Monday that starts the match's week. */
-function getWeekStart(dateStr: string): string {
-    const d = new Date(dateStr)
-    const day = d.getUTCDay() // 0 = Sun, 1 = Mon, …
-    const diff = day === 0 ? -6 : 1 - day // shift to Monday
-    d.setUTCDate(d.getUTCDate() + diff)
-    d.setUTCHours(0, 0, 0, 0)
-    return d.toISOString().slice(0, 10)
+/** Compute sequential week groups per season, sorted chronologically. */
+function computeSeasonWeekGroups(matches: UserMatchSummary[]): {
+    seasonName: string; weekNumber: number; matches: UserMatchSummary[]
+}[] {
+    const bySeasonId = new Map<number, UserMatchSummary[]>()
+    for (const m of matches) {
+        const group = bySeasonId.get(m.seasonId) ?? []
+        group.push(m)
+        bySeasonId.set(m.seasonId, group)
+    }
+    const weekGroups: { seasonId: number; seasonName: string; weekNumber: number; matches: UserMatchSummary[] }[] = []
+    for (const [seasonId, seasonMatches] of bySeasonId) {
+        const seasonName = seasonMatches[0].seasonName
+        const distinctDates = [...new Set(seasonMatches.map((m) => m.matchDate.slice(0, 10)))].sort()
+        const dateToWeek = new Map<string, number>()
+        distinctDates.forEach((date, idx) => dateToWeek.set(date, idx + 1))
+        const weekMap = new Map<number, UserMatchSummary[]>()
+        for (const m of seasonMatches) {
+            const wn = dateToWeek.get(m.matchDate.slice(0, 10)) ?? 1
+            const group = weekMap.get(wn) ?? []
+            group.push(m)
+            weekMap.set(wn, group)
+        }
+        for (const [wn, ms] of weekMap) {
+            weekGroups.push({ seasonId, seasonName, weekNumber: wn, matches: ms })
+        }
+    }
+    weekGroups.sort((a, b) => {
+        const dateA = Math.min(...a.matches.map((m) => new Date(m.matchDate).getTime()))
+        const dateB = Math.min(...b.matches.map((m) => new Date(m.matchDate).getTime()))
+        return dateA - dateB
+    })
+    return weekGroups
 }
 
-function formatWeekLabel(isoDate: string): string {
-    const d = new Date(isoDate + 'T00:00:00Z')
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' })
+function abbreviateSeasonName(name: string): string {
+    const m = name.match(/Season\s+(\d+)/i)
+    return m ? `S${m[1]}` : name
 }
 
 export default function UserWeekTrendChart({ matches }: Props) {
@@ -47,34 +72,28 @@ export default function UserWeekTrendChart({ matches }: Props) {
         )
     }
 
-    // Group matches by ISO week start (Monday)
-    const weekMap = new Map<string, UserMatchSummary[]>()
-    for (const m of matches) {
-        const key = getWeekStart(m.matchDate)
-        const group = weekMap.get(key) ?? []
-        group.push(m)
-        weekMap.set(key, group)
-    }
+    // Group matches by season week number
+    const weekGroups = computeSeasonWeekGroups(matches)
 
     // Build chart data sorted chronologically, then slice to the chosen window
-    const allChartData = Array.from(weekMap.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, ms]) => {
-            const count = ms.length
-            const totalPlus = ms.reduce((s, m) => s + m.totalPlus, 0)
-            const totalMinus = ms.reduce((s, m) => s + m.totalMinus, 0)
-            const totalGoals = ms.reduce((s, m) => s + m.goalCount, 0)
-            return {
-                label: formatWeekLabel(key),
-                matchCount: count,
-                'Avg Plus': parseFloat((totalPlus / count).toFixed(1)),
-                'Avg Minus': parseFloat((totalMinus / count).toFixed(1)),
-                'Avg Goals': parseFloat((totalGoals / count).toFixed(1)),
-                _totalPlus: totalPlus,
-                _totalMinus: totalMinus,
-                _totalGoals: totalGoals,
-            }
-        })
+    const allChartData = weekGroups.map(({ seasonName, weekNumber, matches: ms }) => {
+        const count = ms.length
+        const totalPlus = ms.reduce((s, m) => s + m.totalPlus, 0)
+        const totalMinus = ms.reduce((s, m) => s + m.totalMinus, 0)
+        const totalGoals = ms.reduce((s, m) => s + m.goalCount, 0)
+        const abbr = abbreviateSeasonName(seasonName)
+        return {
+            label: `${abbr} W${weekNumber}`,
+            fullLabel: `${seasonName} Week ${weekNumber}`,
+            matchCount: count,
+            'Avg Plus': parseFloat((totalPlus / count).toFixed(1)),
+            'Avg Minus': parseFloat((totalMinus / count).toFixed(1)),
+            'Avg Goals': parseFloat((totalGoals / count).toFixed(1)),
+            _totalPlus: totalPlus,
+            _totalMinus: totalMinus,
+            _totalGoals: totalGoals,
+        }
+    })
 
     const chartData =
         weekLimit === 'all' ? allChartData : allChartData.slice(-weekLimit)
@@ -144,7 +163,7 @@ export default function UserWeekTrendChart({ matches }: Props) {
                                     }}
                                 >
                                     <p style={{ marginBottom: 4, fontWeight: 'bold' }}>
-                                        Week of {label} —{' '}
+                                        {entry?.fullLabel ?? label} —{' '}
                                         {entry?.matchCount} match{entry?.matchCount !== 1 ? 'es' : ''}
                                     </p>
                                     {payload.map((p) => (
