@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NHLStats favicon">
+  <!-- Dark circular base -->
+  <circle cx="32" cy="32" r="30" fill="#0f172a"/>
+
+  <!-- NHL-style shield (simple, bold, high-contrast) -->
+  <path d="M32 10
+           C24 10 18 13 16 16
+           V30
+           C16 41 23.5 50.5 32 54
+           C40.5 50.5 48 41 48 30
+           V16
+           C46 13 40 10 32 10 Z"
+        fill="#0b0f1a" stroke="#cbd5e1" stroke-width="2" stroke-linejoin="round"/>
+
+  <!-- Inner shield inset -->
+  <path d="M32 13
+           C25.5 13 20.5 15.4 19 17.2
+           V30
+           C19 39.2 25.2 47.2 32 50.2
+           C38.8 47.2 45 39 45 30
+           V17.2
+           C43.5 15.4 38.5 13 32 13 Z"
+        fill="none" stroke="#334155" stroke-width="2" opacity="0.9" stroke-linejoin="round"/>
+
+  <!-- Diagonal "league slash" band -->
+  <path d="M18 41 L44.5 14.5" stroke="#e2e8f0" stroke-width="7" stroke-linecap="round" opacity="0.9"/>
+  <path d="M18.8 41 L45.3 14.5" stroke="#0f172a" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Puck (kept bold, minimal) -->
+  <g transform="translate(0,-1)">
+    <ellipse cx="36" cy="40" rx="14" ry="10" fill="#05070d"/>
+    <ellipse cx="36" cy="38.8" rx="12" ry="8.4" fill="none" stroke="#1f2937" stroke-width="3" opacity="0.85"/>
+  </g>
+
+  <!-- ± scoring mark (accent), placed to read instantly at 16x16 -->
+  <g>
+    <!-- slight dark backing for contrast -->
+    <rect x="12.5" y="20.5" width="18" height="18" rx="5" fill="#05070d" opacity="0.85"/>
+    <!-- plus -->
+    <rect x="20.2" y="23" width="4.6" height="12.5" rx="2.3" fill="#06b6d4"/>
+    <rect x="15.6" y="27.5" width="13.8" height="4.6" rx="2.3" fill="#06b6d4"/>
+    <!-- minus (under) -->
+    <rect x="15.6" y="34" width="13.8" height="4.6" rx="2.3" fill="#06b6d4" opacity="0.95"/>
+  </g>
+
+  <!-- Subtle outer ring for “app icon” crispness on tabs -->
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#0b1220" stroke-width="2" opacity="0.55"/>
+</svg>
