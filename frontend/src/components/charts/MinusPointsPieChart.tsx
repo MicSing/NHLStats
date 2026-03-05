@@ -96,7 +96,7 @@ export default function MinusPointsPieChart({ items }: Props) {
                             border: '1px solid #374151',
                             color: '#fff',
                         }}
-                        formatter={(value: number) => [value, 'Count']}
+                        formatter={(value: number | undefined) => [value ?? 0, 'Count']}
                     />
                     <Legend
                         wrapperStyle={{ color: '#9ca3af', fontSize: 12 }}

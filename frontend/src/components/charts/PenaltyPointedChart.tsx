@@ -7,11 +7,9 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    ReferenceLine,
 } from 'recharts'
 import type { PointReasonBreakdownItem } from '../../types/stats'
 
-const PENALTY_REASON_NAMES = ['penalty', 'secondary penalty']
 const ROSTER_COLOR = '#ef4444'   // red — actual ice penalties
 const PENALTY_COLOR = '#f97316'  // orange — Penalty point deductions
 const SEC_PEN_COLOR = '#eab308'  // yellow — Secondary Penalty point deductions
