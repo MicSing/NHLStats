@@ -5,9 +5,16 @@ import type { RosterPlayer, CreateRosterPlayerDto, UpdateRosterPlayerDto, CsvImp
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function RosterPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
@@ -44,6 +51,11 @@ export default function RosterPage() {
     const [showCopyModal, setShowCopyModal] = useState(false)
     const [copySourceId, setCopySourceId] = useState<number | ''>('')
 
+    const { pageItems: pagePlayers, totalFiltered: totalPlayers, search: playerSearch, setSearch: setPlayerSearch, currentPage: playerPage, setCurrentPage: setPlayerPage } = useTable({
+        data: players,
+        searchFields: (p) => [p.firstName, p.surname, p.teamShortName ?? ''],
+    })
+
     useEffect(() => {
         Promise.all([
             apiClient.get<Season[]>('/api/seasons'),
@@ -78,10 +90,15 @@ export default function RosterPage() {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
         if (selectedSeasonId === '') return
-        await apiClient.post<RosterPlayer>(`/api/seasons/${selectedSeasonId}/roster`, addForm)
-        setShowAddModal(false)
-        setAddForm({ firstName: '', surname: '', position: '', teamId: 0 })
-        await loadPlayers(selectedSeasonId)
+        try {
+            await apiClient.post<RosterPlayer>(`/api/seasons/${selectedSeasonId}/roster`, addForm)
+            setShowAddModal(false)
+            setAddForm({ firstName: '', surname: '', position: '', teamId: 0 })
+            toast.success(t('toast.createSuccess'))
+            await loadPlayers(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (player: RosterPlayer) => {
@@ -98,18 +115,28 @@ export default function RosterPage() {
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editPlayer || selectedSeasonId === '') return
-        await apiClient.put<RosterPlayer>(
-            `/api/seasons/${selectedSeasonId}/roster/${editPlayer.id}`,
-            editForm,
-        )
-        setEditPlayer(null)
-        await loadPlayers(selectedSeasonId)
+        try {
+            await apiClient.put<RosterPlayer>(
+                `/api/seasons/${selectedSeasonId}/roster/${editPlayer.id}`,
+                editForm,
+            )
+            setEditPlayer(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadPlayers(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDelete = async (playerId: number) => {
         if (selectedSeasonId === '') return
-        await apiClient.delete(`/api/seasons/${selectedSeasonId}/roster/${playerId}`)
-        await loadPlayers(selectedSeasonId)
+        try {
+            await apiClient.delete(`/api/seasons/${selectedSeasonId}/roster/${playerId}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadPlayers(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleCsvImport = async (e: React.FormEvent) => {
@@ -137,8 +164,8 @@ export default function RosterPage() {
         await loadPlayers(selectedSeasonId)
     }
 
-    if (loadingSeasons) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loadingSeasons) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} />
 
     return (
         <div>
@@ -201,54 +228,67 @@ export default function RosterPage() {
                     )}
 
                     {loadingPlayers ? (
-                        <p>{t('admin.roster.loadingRoster')}</p>
+                        <LoadingSpinner size="sm" inline />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left border-b border-border text-text-muted">
-                                    <th className="pb-2 pr-4">{t('common.name')}</th>
-                                    <th className="pb-2 pr-4">{t('admin.roster.position')}</th>
-                                    <th className="pb-2 pr-4">{t('admin.roster.team')}</th>
-                                    <th className="pb-2 pr-4">{t('common.status')}</th>
-                                    <th className="pb-2">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {players.map((p) => (
-                                    <tr key={p.id} className="border-b border-border/50">
-                                        <td className="py-3 pr-4">
-                                            {p.firstName} {p.surname}
-                                        </td>
-                                        <td className="py-3 pr-4 text-text">{p.position ?? '—'}</td>
-                                        <td className="py-3 pr-4 text-text">{p.teamShortName}</td>
-                                        <td className="py-3 pr-4">
-                                            <span
-                                                className={`text-xs px-2 py-1 rounded-full ${p.isActive
-                                                    ? 'bg-success/20 text-success'
-                                                    : 'bg-border text-text-muted'
-                                                    }`}
-                                            >
-                                                {p.isActive ? t('common.active') : t('common.inactive')}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 flex gap-2">
-                                            <button
-                                                onClick={() => openEdit(p)}
-                                                className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                            >
-                                                {t('common.edit')}
-                                            </button>
-                                            <button
-                                                onClick={() => void handleDelete(p.id)}
-                                                className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                            >
-                                                {t('common.delete')}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <>
+                            <div className="mb-4">
+                                <SearchInput value={playerSearch} onChange={setPlayerSearch} placeholder={t('common.search')} />
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left border-b border-border text-text-muted">
+                                            <th className="pb-2 pr-4">{t('common.name')}</th>
+                                            <th className="pb-2 pr-4">{t('admin.roster.position')}</th>
+                                            <th className="pb-2 pr-4">{t('admin.roster.team')}</th>
+                                            <th className="pb-2 pr-4">{t('common.status')}</th>
+                                            <th className="pb-2">{t('common.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pagePlayers.map((p) => (
+                                            <tr key={p.id} className="border-b border-border/50">
+                                                <td className="py-3 pr-4">
+                                                    {p.firstName} {p.surname}
+                                                </td>
+                                                <td className="py-3 pr-4 text-text">{p.position ?? '—'}</td>
+                                                <td className="py-3 pr-4 text-text">{p.teamShortName}</td>
+                                                <td className="py-3 pr-4">
+                                                    <span
+                                                        className={`text-xs px-2 py-1 rounded-full ${p.isActive
+                                                            ? 'bg-success/20 text-success'
+                                                            : 'bg-border text-text-muted'
+                                                            }`}
+                                                    >
+                                                        {p.isActive ? t('common.active') : t('common.inactive')}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => openEdit(p)}
+                                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                                    >
+                                                        {t('common.edit')}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => void handleDelete(p.id)}
+                                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                                    >
+                                                        {t('common.delete')}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination
+                                currentPage={playerPage}
+                                totalItems={totalPlayers}
+                                pageSize={20}
+                                onPageChange={setPlayerPage}
+                            />
+                        </>
                     )}
                 </>
             )}

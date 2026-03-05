@@ -8,6 +8,7 @@ import TrendChart from '../components/charts/TrendChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { useTranslation } from 'react-i18next'
 
 export default function DashboardPage() {
@@ -121,29 +122,9 @@ export default function DashboardPage() {
                     <section className="card p-5">
                         <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.plusMinusByPlayer')}</h2>
                         {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
+                            <LoadingSpinner size="sm" inline />
                         ) : (
                             <PlusMinusChart data={seasonStats} />
-                        )}
-                    </section>
-
-                    {/* Top Scorers */}
-                    <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.topScorers')}</h2>
-                        {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
-                        ) : (
-                            <TopScorersChart data={rosterScorers} />
-                        )}
-                    </section>
-
-                    {/* Penalty Leaders */}
-                    <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.penaltyLeaders')}</h2>
-                        {loadingStats ? (
-                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
-                        ) : (
-                            <PenaltyLeadersChart data={rosterPenalized} />
                         )}
                     </section>
 
@@ -178,6 +159,30 @@ export default function DashboardPage() {
                             <EarningsChart data={[]} />
                         )}
                     </section>
+
+                    {/* Top Scorers */}
+                    {(loadingStats || rosterScorers.length > 0) && (
+                        <section className="card p-5">
+                            <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.topScorers')}</h2>
+                            {loadingStats ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <TopScorersChart data={rosterScorers} />
+                            )}
+                        </section>
+                    )}
+
+                    {/* Penalty Leaders */}
+                    {(loadingStats || rosterPenalized.length > 0) && (
+                        <section className="card p-5">
+                            <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.penaltyLeaders')}</h2>
+                            {loadingStats ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <PenaltyLeadersChart data={rosterPenalized} />
+                            )}
+                        </section>
+                    )}
                 </div>
 
                 {/* Plus / Minus Trend (split into two charts) */}
@@ -187,7 +192,7 @@ export default function DashboardPage() {
                             {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
                         {loadingTrend ? (
-                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
+                            <LoadingSpinner size="sm" inline />
                         ) : (
                             <TrendChart data={trendData} mode="plus" />
                         )}
@@ -197,7 +202,7 @@ export default function DashboardPage() {
                             {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
                         {loadingTrend ? (
-                            <p className="text-text-muted text-sm text-center py-8">{t('common.loading')}</p>
+                            <LoadingSpinner size="sm" inline />
                         ) : (
                             <TrendChart data={trendData} mode="minus" />
                         )}

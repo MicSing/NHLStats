@@ -3,9 +3,16 @@ import type { PointReason, CreatePointReasonDto, UpdatePointReasonDto } from '..
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function PointReasonsPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [reasons, setReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -20,6 +27,11 @@ export default function PointReasonsPage() {
         name: '',
         isPositive: false,
         isActive: true,
+    })
+
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: reasons,
+        searchFields: (r) => [r.name],
     })
 
     const loadReasons = async () => {
@@ -39,10 +51,15 @@ export default function PointReasonsPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        await apiClient.post<PointReason>('/api/pointreasons', addForm)
-        setShowAddModal(false)
-        setAddForm({ name: '', isPositive: false })
-        await loadReasons()
+        try {
+            await apiClient.post<PointReason>('/api/pointreasons', addForm)
+            setShowAddModal(false)
+            setAddForm({ name: '', isPositive: false })
+            toast.success(t('toast.createSuccess'))
+            await loadReasons()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (reason: PointReason) => {
@@ -53,22 +70,32 @@ export default function PointReasonsPage() {
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editReason) return
-        await apiClient.put<PointReason>(`/api/pointreasons/${editReason.id}`, editForm)
-        setEditReason(null)
-        await loadReasons()
+        try {
+            await apiClient.put<PointReason>(`/api/pointreasons/${editReason.id}`, editForm)
+            setEditReason(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadReasons()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDeactivate = async (reason: PointReason) => {
-        await apiClient.put<PointReason>(`/api/pointreasons/${reason.id}`, {
-            name: reason.name,
-            isPositive: reason.isPositive,
-            isActive: false,
-        } satisfies UpdatePointReasonDto)
-        await loadReasons()
+        try {
+            await apiClient.put<PointReason>(`/api/pointreasons/${reason.id}`, {
+                name: reason.name,
+                isPositive: reason.isPositive,
+                isActive: false,
+            } satisfies UpdatePointReasonDto)
+            toast.success(t('toast.saveSuccess'))
+            await loadReasons()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadReasons()} />
 
     return (
         <div>
@@ -82,59 +109,72 @@ export default function PointReasonsPage() {
                 </button>
             </div>
 
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('common.name')}</th>
-                        <th className="pb-2 pr-4">{t('common.type')}</th>
-                        <th className="pb-2 pr-4">{t('common.status')}</th>
-                        <th className="pb-2">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {reasons.map((reason) => (
-                        <tr key={reason.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4">{reason.name}</td>
-                            <td className="py-3 pr-4">
-                                <span
-                                    className={`text-xs px-2 py-1 rounded-full ${reason.isPositive
-                                        ? 'bg-primary/20 text-primary'
-                                        : 'bg-warning/20 text-warning'
-                                        }`}
-                                >
-                                    {reason.isPositive ? t('common.positive') : t('common.negative')}
-                                </span>
-                            </td>
-                            <td className="py-3 pr-4">
-                                <span
-                                    className={`text-xs px-2 py-1 rounded-full ${reason.isActive
-                                        ? 'bg-success/20 text-success'
-                                        : 'bg-border text-text-muted'
-                                        }`}
-                                >
-                                    {reason.isActive ? t('common.active') : t('common.inactive')}
-                                </span>
-                            </td>
-                            <td className="py-3 flex gap-2">
-                                <button
-                                    onClick={() => openEdit(reason)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('common.edit')}
-                                </button>
-                                {reason.isActive && (
-                                    <button
-                                        onClick={() => void handleDeactivate(reason)}
-                                        className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
-                                    >
-                                        {t('common.deactivate')}
-                                    </button>
-                                )}
-                            </td>
+            <div className="mb-4">
+                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('common.name')}</th>
+                            <th className="pb-2 pr-4">{t('common.type')}</th>
+                            <th className="pb-2 pr-4">{t('common.status')}</th>
+                            <th className="pb-2">{t('common.actions')}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {pageItems.map((reason) => (
+                            <tr key={reason.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4">{reason.name}</td>
+                                <td className="py-3 pr-4">
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded-full ${reason.isPositive
+                                            ? 'bg-primary/20 text-primary'
+                                            : 'bg-warning/20 text-warning'
+                                            }`}
+                                    >
+                                        {reason.isPositive ? t('common.positive') : t('common.negative')}
+                                    </span>
+                                </td>
+                                <td className="py-3 pr-4">
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded-full ${reason.isActive
+                                            ? 'bg-success/20 text-success'
+                                            : 'bg-border text-text-muted'
+                                            }`}
+                                    >
+                                        {reason.isActive ? t('common.active') : t('common.inactive')}
+                                    </span>
+                                </td>
+                                <td className="py-3 flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(reason)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('common.edit')}
+                                    </button>
+                                    {reason.isActive && (
+                                        <button
+                                            onClick={() => void handleDeactivate(reason)}
+                                            className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
+                                        >
+                                            {t('common.deactivate')}
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalFiltered}
+                pageSize={20}
+                onPageChange={setCurrentPage}
+            />
 
             {/* Add modal */}
             {showAddModal && (

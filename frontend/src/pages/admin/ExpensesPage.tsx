@@ -3,9 +3,16 @@ import type { Expense, CreateExpenseDto, UpdateExpenseDto } from '../../types/ex
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function ExpensesPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -26,6 +33,11 @@ export default function ExpensesPage() {
         date: '',
     })
 
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: expenses,
+        searchFields: (e) => [e.description ?? ''],
+    })
+
     const loadExpenses = async () => {
         try {
             const data = await apiClient.get<Expense[]>('/api/expenses')
@@ -43,14 +55,19 @@ export default function ExpensesPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        await apiClient.post<Expense>('/api/expenses', addForm)
-        setShowAddModal(false)
-        setAddForm({
-            description: '',
-            amount: 0,
-            date: new Date().toISOString().split('T')[0],
-        })
-        await loadExpenses()
+        try {
+            await apiClient.post<Expense>('/api/expenses', addForm)
+            setShowAddModal(false)
+            setAddForm({
+                description: '',
+                amount: 0,
+                date: new Date().toISOString().split('T')[0],
+            })
+            toast.success(t('toast.createSuccess'))
+            await loadExpenses()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (expense: Expense) => {
@@ -65,21 +82,31 @@ export default function ExpensesPage() {
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editExpense) return
-        await apiClient.put<Expense>(`/api/expenses/${editExpense.id}`, editForm)
-        setEditExpense(null)
-        await loadExpenses()
+        try {
+            await apiClient.put<Expense>(`/api/expenses/${editExpense.id}`, editForm)
+            setEditExpense(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadExpenses()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDelete = async (id: number) => {
         if (!window.confirm(t('admin.expenses.deleteConfirm'))) return
-        await apiClient.delete(`/api/expenses/${id}`)
-        await loadExpenses()
+        try {
+            await apiClient.delete(`/api/expenses/${id}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadExpenses()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const total = expenses.reduce((sum, e) => sum + e.amount, 0)
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadExpenses()} />
 
     return (
         <div>
@@ -93,50 +120,63 @@ export default function ExpensesPage() {
                 </button>
             </div>
 
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('common.description')}</th>
-                        <th className="pb-2 pr-4">{t('common.amount')}</th>
-                        <th className="pb-2 pr-4">{t('common.date')}</th>
-                        <th className="pb-2">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {expenses.map((expense) => (
-                        <tr key={expense.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4">{expense.description ?? '—'}</td>
-                            <td className="py-3 pr-4 text-primary/80">
-                                {expense.amount.toFixed(2)} €
-                            </td>
-                            <td className="py-3 pr-4 text-text">
-                                {new Date(expense.date).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 flex gap-2">
-                                <button
-                                    onClick={() => openEdit(expense)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('common.edit')}
-                                </button>
-                                <button
-                                    onClick={() => void handleDelete(expense.id)}
-                                    className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                >
-                                    {t('common.delete')}
-                                </button>
-                            </td>
+            <div className="mb-4">
+                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('common.description')}</th>
+                            <th className="pb-2 pr-4">{t('common.amount')}</th>
+                            <th className="pb-2 pr-4">{t('common.date')}</th>
+                            <th className="pb-2">{t('common.actions')}</th>
                         </tr>
-                    ))}
-                    {expenses.length > 0 && (
-                        <tr className="border-t border-border font-semibold">
-                            <td className="pt-3 pr-4 text-text">{t('common.total')}</td>
-                            <td className="pt-3 pr-4 text-primary/80">{total.toFixed(2)} €</td>
-                            <td colSpan={2} />
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {pageItems.map((expense) => (
+                            <tr key={expense.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4">{expense.description ?? '—'}</td>
+                                <td className="py-3 pr-4 text-primary/80">
+                                    {expense.amount.toFixed(2)} €
+                                </td>
+                                <td className="py-3 pr-4 text-text">
+                                    {new Date(expense.date).toLocaleDateString()}
+                                </td>
+                                <td className="py-3 flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(expense)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('common.edit')}
+                                    </button>
+                                    <button
+                                        onClick={() => void handleDelete(expense.id)}
+                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                    >
+                                        {t('common.delete')}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                        {expenses.length > 0 && (
+                            <tr className="border-t border-border font-semibold">
+                                <td className="pt-3 pr-4 text-text">{t('common.total')}</td>
+                                <td className="pt-3 pr-4 text-primary/80">{total.toFixed(2)} €</td>
+                                <td colSpan={2} />
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalFiltered}
+                pageSize={20}
+                onPageChange={setCurrentPage}
+            />
 
             {expenses.length === 0 && (
                 <p className="text-text-muted text-sm mt-4">{t('admin.expenses.noExpenses')}</p>

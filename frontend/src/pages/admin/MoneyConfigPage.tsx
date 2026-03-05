@@ -3,9 +3,13 @@ import type { MoneyConfig, CreateMoneyConfigDto } from '../../types/moneyConfig'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import { useToast } from '../../context/ToastContext'
 
 export default function MoneyConfigPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [current, setCurrent] = useState<MoneyConfig | null>(null)
     const [history, setHistory] = useState<MoneyConfig[]>([])
     const [loading, setLoading] = useState(true)
@@ -48,14 +52,15 @@ export default function MoneyConfigPage() {
                 positivePointValue: 0,
                 effectiveFrom: new Date().toISOString().split('T')[0],
             })
+            toast.success(t('toast.createSuccess'))
             await loadData()
         } catch {
-            setAddError(t('admin.moneyConfig.addError'))
+            toast.error(t('toast.operationFailed'))
         }
     }
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadData()} />
 
     return (
         <div>
@@ -95,30 +100,32 @@ export default function MoneyConfigPage() {
 
             {/* History table */}
             <h2 className="text-lg font-semibold text-text mb-3">{t('admin.moneyConfig.rateHistory')}</h2>
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('admin.moneyConfig.effectiveFrom')}</th>
-                        <th className="pb-2 pr-4">{t('admin.moneyConfig.negative')}</th>
-                        <th className="pb-2">{t('admin.moneyConfig.positive')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {history.map((cfg) => (
-                        <tr key={cfg.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4">
-                                {new Date(cfg.effectiveFrom).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 pr-4 text-warning">
-                                {cfg.negativePointValue.toFixed(2)} €
-                            </td>
-                            <td className="py-3 text-primary/80">
-                                {cfg.positivePointValue.toFixed(2)} €
-                            </td>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('admin.moneyConfig.effectiveFrom')}</th>
+                            <th className="pb-2 pr-4">{t('admin.moneyConfig.negative')}</th>
+                            <th className="pb-2">{t('admin.moneyConfig.positive')}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {history.map((cfg) => (
+                            <tr key={cfg.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4">
+                                    {new Date(cfg.effectiveFrom).toLocaleDateString()}
+                                </td>
+                                <td className="py-3 pr-4 text-warning">
+                                    {cfg.negativePointValue.toFixed(2)} €
+                                </td>
+                                <td className="py-3 text-primary/80">
+                                    {cfg.positivePointValue.toFixed(2)} €
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Add modal */}
             {showAddModal && (

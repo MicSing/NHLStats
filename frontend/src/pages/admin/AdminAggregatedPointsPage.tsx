@@ -8,6 +8,8 @@ import Modal from '../../components/Modal'
 import UserMatchCard from '../../components/UserMatchCard'
 import { useAuth } from '../../context/AuthContext'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import { useToast } from '../../context/ToastContext'
 
 interface EnrichedEntry {
     userMatch: UserMatch
@@ -18,6 +20,7 @@ interface EnrichedEntry {
 
 export default function AdminAggregatedPointsPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const { token } = useAuth()
     const isAuth = !!token
 
@@ -92,9 +95,10 @@ export default function AdminAggregatedPointsPage() {
         setError(null)
         try {
             await apiClient.post<UserMatch>(`/api/seasons/${selectedSeasonId}/usermatches`, { userId })
+            toast.success(t('toast.createSuccess'))
             await loadEntries(selectedSeasonId as number)
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : t('errors.failedToCreateEntry'))
+            toast.error(t('toast.operationFailed'))
         } finally {
             setCreating(null)
         }
@@ -102,9 +106,14 @@ export default function AdminAggregatedPointsPage() {
 
     const handleDelete = async (userMatchId: number) => {
         if (!window.confirm(t('admin.aggregated.deleteConfirm'))) return
-        await apiClient.delete(`/api/usermatches/${userMatchId}`)
-        setManageEntry(null)
-        if (selectedSeasonId !== '') await loadEntries(selectedSeasonId as number)
+        try {
+            await apiClient.delete(`/api/usermatches/${userMatchId}`)
+            setManageEntry(null)
+            toast.success(t('toast.deleteSuccess'))
+            if (selectedSeasonId !== '') await loadEntries(selectedSeasonId as number)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const refreshManageEntry = async () => {
@@ -123,7 +132,7 @@ export default function AdminAggregatedPointsPage() {
         }
     }, [entries]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (loadingSeasons) return <p>{t('common.loading')}</p>
+    if (loadingSeasons) return <LoadingSpinner />
 
     // Users that don't yet have an aggregated entry
     const usersWithEntry = new Set(entries.map((e) => e.userMatch.userId))
@@ -160,7 +169,7 @@ export default function AdminAggregatedPointsPage() {
 
             {error && <p className="text-danger text-sm mb-4">{t('common.error')}: {error}</p>}
 
-            {selectedSeasonId !== '' && loadingEntries && <p>{t('admin.aggregated.loadingEntries')}</p>}
+            {selectedSeasonId !== '' && loadingEntries && <LoadingSpinner size="sm" inline />}
 
             {selectedSeasonId !== '' && !loadingEntries && seasonDetail && (
                 <>
@@ -170,60 +179,62 @@ export default function AdminAggregatedPointsPage() {
                             <h2 className="text-base font-semibold text-text mb-3">
                                 {t('admin.aggregated.existingEntries')}
                             </h2>
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left border-b border-border text-text-muted">
-                                        <th className="pb-2 pr-4">{t('common.player')}</th>
-                                        <th className="pb-2 pr-4 text-success">+</th>
-                                        <th className="pb-2 pr-4 text-danger">−</th>
-                                        <th className="pb-2 pr-4">Points</th>
-                                        <th className="pb-2">{t('common.actions')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {entries.map((entry) => (
-                                        <tr
-                                            key={entry.userMatch.id}
-                                            className="border-b border-border/50"
-                                        >
-                                            <td className="py-3 pr-4">
-                                                {entry.userMatch.userName}
-                                            </td>
-                                            <td className="py-3 pr-4 text-success font-mono">
-                                                {entry.userMatch.totalPlus}
-                                            </td>
-                                            <td className="py-3 pr-4 text-danger font-mono">
-                                                {entry.userMatch.totalMinus}
-                                            </td>
-                                            <td className="py-3 pr-4 text-text-muted">
-                                                {t('admin.aggregated.pointEntries', { count: entry.points.length })}
-                                                {entry.goals.length > 0 && `, ${t('admin.aggregated.goalEntry', { count: entry.goals.length })}`}
-                                                {entry.penalties.length > 0 && `, ${t('admin.aggregated.penaltyEntry', { count: entry.penalties.length })}`}
-                                            </td>
-                                            <td className="py-3 flex gap-2">
-                                                {isAuth && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => setManageEntry(entry)}
-                                                            className="text-xs bg-primary hover:bg-primary-hover px-3 py-1 rounded"
-                                                        >
-                                                            {t('admin.aggregated.manage')}
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                void handleDelete(entry.userMatch.id)
-                                                            }
-                                                            className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                                        >
-                                                            {t('common.delete')}
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left border-b border-border text-text-muted">
+                                            <th className="pb-2 pr-4">{t('common.player')}</th>
+                                            <th className="pb-2 pr-4 text-success">+</th>
+                                            <th className="pb-2 pr-4 text-danger">−</th>
+                                            <th className="pb-2 pr-4">Points</th>
+                                            <th className="pb-2">{t('common.actions')}</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {entries.map((entry) => (
+                                            <tr
+                                                key={entry.userMatch.id}
+                                                className="border-b border-border/50"
+                                            >
+                                                <td className="py-3 pr-4">
+                                                    {entry.userMatch.userName}
+                                                </td>
+                                                <td className="py-3 pr-4 text-success font-mono">
+                                                    {entry.userMatch.totalPlus}
+                                                </td>
+                                                <td className="py-3 pr-4 text-danger font-mono">
+                                                    {entry.userMatch.totalMinus}
+                                                </td>
+                                                <td className="py-3 pr-4 text-text-muted">
+                                                    {t('admin.aggregated.pointEntries', { count: entry.points.length })}
+                                                    {entry.goals.length > 0 && `, ${t('admin.aggregated.goalEntry', { count: entry.goals.length })}`}
+                                                    {entry.penalties.length > 0 && `, ${t('admin.aggregated.penaltyEntry', { count: entry.penalties.length })}`}
+                                                </td>
+                                                <td className="py-3 flex gap-2">
+                                                    {isAuth && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setManageEntry(entry)}
+                                                                className="text-xs bg-primary hover:bg-primary-hover px-3 py-1 rounded"
+                                                            >
+                                                                {t('admin.aggregated.manage')}
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    void handleDelete(entry.userMatch.id)
+                                                                }
+                                                                className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                                            >
+                                                                {t('common.delete')}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </section>
                     )}
 

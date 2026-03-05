@@ -5,9 +5,16 @@ import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function SeasonsPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [allUsers, setAllUsers] = useState<User[]>([])
@@ -27,6 +34,11 @@ export default function SeasonsPage() {
     // Assign users
     const [manageSeason, setManageSeason] = useState<SeasonDetail | null>(null)
     const [assignUserId, setAssignUserId] = useState<number | ''>('')
+
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: seasons,
+        searchFields: (s) => [s.name],
+    })
 
     const loadAll = async () => {
         try {
@@ -59,20 +71,30 @@ export default function SeasonsPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        await apiClient.post<Season>('/api/seasons', form)
-        setShowAddModal(false)
-        resetForm()
-        await loadAll()
+        try {
+            await apiClient.post<Season>('/api/seasons', form)
+            setShowAddModal(false)
+            resetForm()
+            toast.success(t('toast.createSuccess'))
+            await loadAll()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editSeason) return
-        const dto: UpdateSeasonDto = { ...form }
-        await apiClient.put<Season>(`/api/seasons/${editSeason.id}`, dto)
-        setEditSeason(null)
-        resetForm()
-        await loadAll()
+        try {
+            const dto: UpdateSeasonDto = { ...form }
+            await apiClient.put<Season>(`/api/seasons/${editSeason.id}`, dto)
+            setEditSeason(null)
+            resetForm()
+            toast.success(t('toast.saveSuccess'))
+            await loadAll()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (season: Season) => {
@@ -87,8 +109,13 @@ export default function SeasonsPage() {
 
     const handleDelete = async (id: number) => {
         if (!window.confirm(t('admin.seasons.deleteSeason'))) return
-        await apiClient.delete(`/api/seasons/${id}`)
-        await loadAll()
+        try {
+            await apiClient.delete(`/api/seasons/${id}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadAll()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openManageUsers = async (season: Season) => {
@@ -114,8 +141,8 @@ export default function SeasonsPage() {
         setManageSeason(updated)
     }
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadAll()} />
 
     return (
         <div>
@@ -132,57 +159,70 @@ export default function SeasonsPage() {
                 </button>
             </div>
 
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('common.name')}</th>
-                        <th className="pb-2 pr-4">{t('admin.seasons.started')}</th>
-                        <th className="pb-2 pr-4">{t('common.status')}</th>
-                        <th className="pb-2 pr-4">{t('admin.seasons.hostedBy')}</th>
-                        <th className="pb-2">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {seasons.map((season) => (
-                        <tr key={season.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4 font-medium">{season.name}</td>
-                            <td className="py-3 pr-4 text-text">
-                                {new Date(season.startedOn).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 pr-4">
-                                {season.status && (
-                                    <span className="text-xs bg-border text-text px-2 py-1 rounded">
-                                        {season.status}
-                                    </span>
-                                )}
-                            </td>
-                            <td className="py-3 pr-4 text-text">
-                                {season.hostedTeamName ?? '—'}
-                            </td>
-                            <td className="py-3 flex gap-2">
-                                <button
-                                    onClick={() => openEdit(season)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('common.edit')}
-                                </button>
-                                <button
-                                    onClick={() => void openManageUsers(season)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('admin.seasons.manageUsers')}
-                                </button>
-                                <button
-                                    onClick={() => void handleDelete(season.id)}
-                                    className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                >
-                                    {t('common.delete')}
-                                </button>
-                            </td>
+            <div className="mb-4">
+                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('common.name')}</th>
+                            <th className="pb-2 pr-4">{t('admin.seasons.started')}</th>
+                            <th className="pb-2 pr-4">{t('common.status')}</th>
+                            <th className="pb-2 pr-4">{t('admin.seasons.hostedBy')}</th>
+                            <th className="pb-2">{t('common.actions')}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {pageItems.map((season) => (
+                            <tr key={season.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4 font-medium">{season.name}</td>
+                                <td className="py-3 pr-4 text-text">
+                                    {new Date(season.startedOn).toLocaleDateString()}
+                                </td>
+                                <td className="py-3 pr-4">
+                                    {season.status && (
+                                        <span className="text-xs bg-border text-text px-2 py-1 rounded">
+                                            {season.status}
+                                        </span>
+                                    )}
+                                </td>
+                                <td className="py-3 pr-4 text-text">
+                                    {season.hostedTeamName ?? '—'}
+                                </td>
+                                <td className="py-3 flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(season)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('common.edit')}
+                                    </button>
+                                    <button
+                                        onClick={() => void openManageUsers(season)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('admin.seasons.manageUsers')}
+                                    </button>
+                                    <button
+                                        onClick={() => void handleDelete(season.id)}
+                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                    >
+                                        {t('common.delete')}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalFiltered}
+                pageSize={20}
+                onPageChange={setCurrentPage}
+            />
 
             {/* Add modal */}
             {showAddModal && (

@@ -9,6 +9,12 @@ import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import SearchableSelect from '../../components/SearchableSelect'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 // ── Completion type badge ─────────────────────────────────────────────────────
 
@@ -685,6 +691,7 @@ function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: EditFormPr
 
 export default function AdminMatchesPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [teams, setTeams] = useState<Team[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
@@ -706,6 +713,11 @@ export default function AdminMatchesPage() {
         homeScore: 0,
         awayScore: 0,
         completionType: CompletionType.None,
+    })
+
+    const { pageItems: pageMatches, totalFiltered: totalMatches, search: matchSearch, setSearch: setMatchSearch, currentPage: matchPage, setCurrentPage: setMatchPage } = useTable({
+        data: matches,
+        searchFields: (m) => [m.homeTeamName ?? '', m.awayTeamName ?? ''],
     })
 
     useEffect(() => {
@@ -746,10 +758,15 @@ export default function AdminMatchesPage() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
         if (selectedSeasonId === '') return
-        await apiClient.post<Match>(`/api/seasons/${selectedSeasonId}/matches`, createForm)
-        setShowAddModal(false)
-        setCreateForm({ homeTeamId: 0, awayTeamId: 0 })
-        await loadMatches(selectedSeasonId)
+        try {
+            await apiClient.post<Match>(`/api/seasons/${selectedSeasonId}/matches`, createForm)
+            setShowAddModal(false)
+            setCreateForm({ homeTeamId: 0, awayTeamId: 0 })
+            toast.success(t('toast.createSuccess'))
+            await loadMatches(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (m: Match) => {
@@ -767,22 +784,32 @@ export default function AdminMatchesPage() {
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editMatch || selectedSeasonId === '') return
-        await apiClient.put<Match>(
-            `/api/seasons/${selectedSeasonId}/matches/${editMatch.id}`,
-            editForm,
-        )
-        setEditMatch(null)
-        await loadMatches(selectedSeasonId as number)
+        try {
+            await apiClient.put<Match>(
+                `/api/seasons/${selectedSeasonId}/matches/${editMatch.id}`,
+                editForm,
+            )
+            setEditMatch(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadMatches(selectedSeasonId as number)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDelete = async (id: number) => {
         if (selectedSeasonId === '' || !window.confirm(t('admin.matches.deleteConfirm'))) return
-        await apiClient.delete(`/api/seasons/${selectedSeasonId}/matches/${id}`)
-        await loadMatches(selectedSeasonId as number)
+        try {
+            await apiClient.delete(`/api/seasons/${selectedSeasonId}/matches/${id}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadMatches(selectedSeasonId as number)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
-    if (loadingSeasons) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loadingSeasons) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} />
 
     return (
         <div>
@@ -830,71 +857,84 @@ export default function AdminMatchesPage() {
                     </div>
 
                     {loadingMatches ? (
-                        <p>{t('admin.matches.loadingMatches')}</p>
+                        <LoadingSpinner size="sm" inline />
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left border-b border-border text-text-muted">
-                                    <th className="pb-2 pr-3">#</th>
-                                    <th className="pb-2 pr-3">{t('admin.matches.match')}</th>
-                                    <th className="pb-2 pr-3">{t('admin.matches.score')}</th>
-                                    <th className="pb-2 pr-3">{t('common.date')}</th>
-                                    <th className="pb-2 pr-3">{t('common.status')}</th>
-                                    <th className="pb-2">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {matches.map((m) => (
-                                    <tr key={m.id} className="border-b border-border/50">
-                                        <td className="py-3 pr-3 font-mono text-text-muted">
-                                            {m.matchNumber}
-                                        </td>
-                                        <td className="py-3 pr-3">
-                                            <Link
-                                                to={`/seasons/${selectedSeasonId}/matches/${m.id}`}
-                                                className="hover:text-primary"
-                                            >
-                                                {m.homeTeamName} vs {m.awayTeamName}
-                                            </Link>
-                                        </td>
-                                        <td className="py-3 pr-3 font-mono">
-                                            {m.matchDate
-                                                ? `${m.homeScore} – ${m.awayScore}`
-                                                : '—'}
-                                        </td>
-                                        <td className="py-3 pr-3 text-text">
-                                            {m.matchDate
-                                                ? new Date(m.matchDate).toLocaleDateString()
-                                                : t('admin.matches.tbd')}
-                                        </td>
-                                        <td className="py-3 pr-3">
-                                            <CompletionBadge type={m.completionType} />
-                                        </td>
-                                        <td className="py-3 flex gap-2">
-                                            <button
-                                                onClick={() => openEdit(m)}
-                                                className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                            >
-                                                {t('common.edit')}
-                                            </button>
-                                            <button
-                                                onClick={() => void handleDelete(m.id)}
-                                                className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                            >
-                                                {t('common.delete')}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {matches.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="py-4 text-text-muted text-center">
-                                            {t('admin.matches.noMatches')}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                        <>
+                            <div className="mb-4">
+                                <SearchInput value={matchSearch} onChange={setMatchSearch} placeholder={t('common.search')} />
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left border-b border-border text-text-muted">
+                                            <th className="pb-2 pr-3">#</th>
+                                            <th className="pb-2 pr-3">{t('admin.matches.match')}</th>
+                                            <th className="pb-2 pr-3">{t('admin.matches.score')}</th>
+                                            <th className="pb-2 pr-3">{t('common.date')}</th>
+                                            <th className="pb-2 pr-3">{t('common.status')}</th>
+                                            <th className="pb-2">{t('common.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pageMatches.map((m) => (
+                                            <tr key={m.id} className="border-b border-border/50">
+                                                <td className="py-3 pr-3 font-mono text-text-muted">
+                                                    {m.matchNumber}
+                                                </td>
+                                                <td className="py-3 pr-3">
+                                                    <Link
+                                                        to={`/seasons/${selectedSeasonId}/matches/${m.id}`}
+                                                        className="hover:text-primary"
+                                                    >
+                                                        {m.homeTeamName} vs {m.awayTeamName}
+                                                    </Link>
+                                                </td>
+                                                <td className="py-3 pr-3 font-mono">
+                                                    {m.matchDate
+                                                        ? `${m.homeScore} – ${m.awayScore}`
+                                                        : '—'}
+                                                </td>
+                                                <td className="py-3 pr-3 text-text">
+                                                    {m.matchDate
+                                                        ? new Date(m.matchDate).toLocaleDateString()
+                                                        : t('admin.matches.tbd')}
+                                                </td>
+                                                <td className="py-3 pr-3">
+                                                    <CompletionBadge type={m.completionType} />
+                                                </td>
+                                                <td className="py-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => openEdit(m)}
+                                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                                    >
+                                                        {t('common.edit')}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => void handleDelete(m.id)}
+                                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                                    >
+                                                        {t('common.delete')}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {matches.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="py-4 text-text-muted text-center">
+                                                    {t('admin.matches.noMatches')}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination
+                                currentPage={matchPage}
+                                totalItems={totalMatches}
+                                pageSize={20}
+                                onPageChange={setMatchPage}
+                            />
+                        </>
                     )}
                 </>
             )}

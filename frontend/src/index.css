@@ -122,6 +122,52 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* ── Toast slide-in animation ────────────────────────── */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+
+/* ── Mobile sidebar overlay ─────────────────────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes slide-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-from-left {
+  animation: slide-from-left 0.25s ease-out;
+}
+
 /* ── Utility: card ───────────────────────────────────── */
 @layer components {
   .card {

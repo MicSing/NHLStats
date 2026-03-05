@@ -34,7 +34,24 @@
         "none": "Žiadny",
         "saving": "Ukladám…",
         "creating": "Vytváram…",
-        "optional": "Voliteľné"
+        "optional": "Voliteľné",
+        "search": "Hľadať…",
+        "clear": "Vymazať",
+        "retry": "Skúsiť znova",
+        "or": "alebo",
+        "openMenu": "Otvoriť menu",
+        "closeMenu": "Zavrieť menu"
+    },
+    "pagination": {
+        "showing": "{{from}}–{{to}} z {{total}}",
+        "previous": "Predchádzajúca stránka",
+        "next": "Ďalšia stránka"
+    },
+    "toast": {
+        "saveSuccess": "Úspešne uložené",
+        "deleteSuccess": "Úspešne zmazané",
+        "createSuccess": "Úspešne vytvorené",
+        "operationFailed": "Operácia zlyhala. Skúste to znova."
     },
     "nav": {
         "dashboard": "📊 Prehľad",

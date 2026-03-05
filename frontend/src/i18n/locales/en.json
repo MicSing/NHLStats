@@ -34,7 +34,24 @@
         "none": "None",
         "saving": "Saving…",
         "creating": "Creating…",
-        "optional": "Optional"
+        "optional": "Optional",
+        "search": "Search…",
+        "clear": "Clear",
+        "retry": "Try Again",
+        "or": "or",
+        "openMenu": "Open menu",
+        "closeMenu": "Close menu"
+    },
+    "pagination": {
+        "showing": "{{from}}–{{to}} of {{total}}",
+        "previous": "Previous page",
+        "next": "Next page"
+    },
+    "toast": {
+        "saveSuccess": "Saved successfully",
+        "deleteSuccess": "Deleted successfully",
+        "createSuccess": "Created successfully",
+        "operationFailed": "Operation failed. Please try again."
     },
     "nav": {
         "dashboard": "📊 Dashboard",

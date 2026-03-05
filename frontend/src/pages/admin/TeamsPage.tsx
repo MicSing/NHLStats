@@ -3,6 +3,12 @@ import type { Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 interface TeamForm {
     name: string
@@ -11,6 +17,7 @@ interface TeamForm {
 
 export default function TeamsPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [teams, setTeams] = useState<Team[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -22,6 +29,11 @@ export default function TeamsPage() {
     // Edit modal
     const [editTeam, setEditTeam] = useState<Team | null>(null)
     const [editForm, setEditForm] = useState<TeamForm>({ name: '', shortName: '' })
+
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: teams,
+        searchFields: (t) => [t.name, t.shortName],
+    })
 
     const loadTeams = async () => {
         try {
@@ -40,24 +52,39 @@ export default function TeamsPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        await apiClient.post<Team>('/api/teams', addForm)
-        setAddForm({ name: '', shortName: '' })
-        setShowAddModal(false)
-        await loadTeams()
+        try {
+            await apiClient.post<Team>('/api/teams', addForm)
+            setAddForm({ name: '', shortName: '' })
+            setShowAddModal(false)
+            toast.success(t('toast.createSuccess'))
+            await loadTeams()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editTeam) return
-        await apiClient.put<Team>(`/api/teams/${editTeam.id}`, editForm)
-        setEditTeam(null)
-        await loadTeams()
+        try {
+            await apiClient.put<Team>(`/api/teams/${editTeam.id}`, editForm)
+            setEditTeam(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadTeams()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDelete = async (team: Team) => {
         if (!confirm(t('admin.teams.deleteConfirm', { name: team.name }))) return
-        await apiClient.delete(`/api/teams/${team.id}`)
-        await loadTeams()
+        try {
+            await apiClient.delete(`/api/teams/${team.id}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadTeams()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (team: Team) => {
@@ -65,8 +92,8 @@ export default function TeamsPage() {
         setEditForm({ name: team.name, shortName: team.shortName })
     }
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadTeams()} />
 
     return (
         <div>
@@ -80,41 +107,54 @@ export default function TeamsPage() {
                 </button>
             </div>
 
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('common.name')}</th>
-                        <th className="pb-2 pr-4">{t('admin.teams.short')}</th>
-                        <th className="pb-2">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {teams.map((team) => (
-                        <tr key={team.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4">{team.name}</td>
-                            <td className="py-3 pr-4">
-                                <span className="font-mono text-xs bg-border px-2 py-0.5 rounded">
-                                    {team.shortName}
-                                </span>
-                            </td>
-                            <td className="py-3 flex gap-2">
-                                <button
-                                    onClick={() => openEdit(team)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('common.edit')}
-                                </button>
-                                <button
-                                    onClick={() => void handleDelete(team)}
-                                    className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                >
-                                    {t('common.delete')}
-                                </button>
-                            </td>
+            <div className="mb-4">
+                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('common.name')}</th>
+                            <th className="pb-2 pr-4">{t('admin.teams.short')}</th>
+                            <th className="pb-2">{t('common.actions')}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {pageItems.map((team) => (
+                            <tr key={team.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4">{team.name}</td>
+                                <td className="py-3 pr-4">
+                                    <span className="font-mono text-xs bg-border px-2 py-0.5 rounded">
+                                        {team.shortName}
+                                    </span>
+                                </td>
+                                <td className="py-3 flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(team)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('common.edit')}
+                                    </button>
+                                    <button
+                                        onClick={() => void handleDelete(team)}
+                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
+                                    >
+                                        {t('common.delete')}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalFiltered}
+                pageSize={20}
+                onPageChange={setCurrentPage}
+            />
 
             {/* Add modal */}
             {showAddModal && (

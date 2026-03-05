@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
 import { ThemeProvider } from '../context/ThemeContext'
+import { ToastProvider } from '../context/ToastContext'
 
 export function renderWithProviders(
     ui: ReactElement,
@@ -13,11 +14,13 @@ export function renderWithProviders(
     localStorage.setItem('user', JSON.stringify({ id: '1', email: 'admin@test.com' }))
     return render(
         <ThemeProvider>
-            <AuthProvider>
-                <MemoryRouter initialEntries={[route]}>
-                    {ui}
-                </MemoryRouter>
-            </AuthProvider>
+            <ToastProvider>
+                <AuthProvider>
+                    <MemoryRouter initialEntries={[route]}>
+                        {ui}
+                    </MemoryRouter>
+                </AuthProvider>
+            </ToastProvider>
         </ThemeProvider>,
     )
 }
@@ -30,11 +33,13 @@ export function renderWithoutAuth(
     localStorage.removeItem('user')
     return render(
         <ThemeProvider>
-            <AuthProvider>
-                <MemoryRouter initialEntries={[route]}>
-                    {ui}
-                </MemoryRouter>
-            </AuthProvider>
+            <ToastProvider>
+                <AuthProvider>
+                    <MemoryRouter initialEntries={[route]}>
+                        {ui}
+                    </MemoryRouter>
+                </AuthProvider>
+            </ToastProvider>
         </ThemeProvider>,
     )
 }

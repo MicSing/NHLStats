@@ -5,9 +5,15 @@ import type { UserPayout, CreateUserPayoutDto, UpdateUserPayoutDto } from '../..
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function PayoutsPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [users, setUsers] = useState<User[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
@@ -30,6 +36,11 @@ export default function PayoutsPage() {
     const [editForm, setEditForm] = useState<UpdateUserPayoutDto>({
         amount: 0,
         paidOn: today,
+    })
+
+    const { pageItems: pagePayouts, totalFiltered: totalPayouts, search: payoutSearch, setSearch: setPayoutSearch, currentPage: payoutPage, setCurrentPage: setPayoutPage } = useTable({
+        data: payouts,
+        searchFields: (p) => [p.userName],
     })
 
     useEffect(() => {
@@ -68,10 +79,15 @@ export default function PayoutsPage() {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedSeasonId) return
-        await apiClient.post<UserPayout>(`/api/seasons/${selectedSeasonId}/payouts`, addForm)
-        setShowAddModal(false)
-        setAddForm({ userId: 0, amount: 0, paidOn: today })
-        await loadPayouts(selectedSeasonId)
+        try {
+            await apiClient.post<UserPayout>(`/api/seasons/${selectedSeasonId}/payouts`, addForm)
+            setShowAddModal(false)
+            setAddForm({ userId: 0, amount: 0, paidOn: today })
+            toast.success(t('toast.createSuccess'))
+            await loadPayouts(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (payout: UserPayout) => {
@@ -85,19 +101,29 @@ export default function PayoutsPage() {
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editPayout || !selectedSeasonId) return
-        await apiClient.put<UserPayout>(
-            `/api/seasons/${selectedSeasonId}/payouts/${editPayout.id}`,
-            editForm,
-        )
-        setEditPayout(null)
-        await loadPayouts(selectedSeasonId)
+        try {
+            await apiClient.put<UserPayout>(
+                `/api/seasons/${selectedSeasonId}/payouts/${editPayout.id}`,
+                editForm,
+            )
+            setEditPayout(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadPayouts(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDelete = async (id: number) => {
         if (!selectedSeasonId) return
         if (!confirm(t('admin.payouts.deleteConfirm'))) return
-        await apiClient.delete(`/api/seasons/${selectedSeasonId}/payouts/${id}`)
-        await loadPayouts(selectedSeasonId)
+        try {
+            await apiClient.delete(`/api/seasons/${selectedSeasonId}/payouts/${id}`)
+            toast.success(t('toast.deleteSuccess'))
+            await loadPayouts(selectedSeasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const totalAmount = payouts.reduce((s, p) => s + p.amount, 0)
@@ -138,10 +164,13 @@ export default function PayoutsPage() {
                 <p className="text-text-muted">{t('admin.payouts.selectSeasonPrompt')}</p>
             )}
 
-            {selectedSeasonId && loading && <p className="text-text-muted">{t('common.loading')}</p>}
+            {selectedSeasonId && loading && <LoadingSpinner size="sm" inline />}
 
             {selectedSeasonId && !loading && (
                 <>
+                    <div className="mb-4">
+                        <SearchInput value={payoutSearch} onChange={setPayoutSearch} placeholder={t('common.search')} />
+                    </div>
                     <div className="overflow-x-auto rounded-lg border border-border">
                         <table className="w-full text-sm">
                             <thead className="bg-surface text-text uppercase text-xs tracking-wider">
@@ -163,7 +192,7 @@ export default function PayoutsPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    payouts.map((p) => (
+                                    pagePayouts.map((p) => (
                                         <tr
                                             key={p.id}
                                             className="bg-bg hover:bg-surface transition-colors"
@@ -206,6 +235,12 @@ export default function PayoutsPage() {
                             )}
                         </table>
                     </div>
+                    <Pagination
+                        currentPage={payoutPage}
+                        totalItems={totalPayouts}
+                        pageSize={20}
+                        onPageChange={setPayoutPage}
+                    />
                 </>
             )}
 

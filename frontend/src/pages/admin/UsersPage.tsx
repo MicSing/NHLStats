@@ -3,9 +3,16 @@ import type { User, CreateUserDto, UpdateUserDto } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import SearchInput from '../../components/SearchInput'
+import Pagination from '../../components/Pagination'
+import useTable from '../../hooks/useTable'
+import { useToast } from '../../context/ToastContext'
 
 export default function UsersPage() {
     const { t } = useTranslation()
+    const toast = useToast()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -18,6 +25,11 @@ export default function UsersPage() {
     const [editUser, setEditUser] = useState<User | null>(null)
     const [editName, setEditName] = useState('')
     const [editIsActive, setEditIsActive] = useState(true)
+
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: users,
+        searchFields: (u) => [u.name],
+    })
 
     const loadUsers = async () => {
         try {
@@ -36,27 +48,42 @@ export default function UsersPage() {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        await apiClient.post<User>('/api/users', { name: newName } satisfies CreateUserDto)
-        setNewName('')
-        setShowAddModal(false)
-        await loadUsers()
+        try {
+            await apiClient.post<User>('/api/users', { name: newName } satisfies CreateUserDto)
+            setNewName('')
+            setShowAddModal(false)
+            toast.success(t('toast.createSuccess'))
+            await loadUsers()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editUser) return
-        const dto: UpdateUserDto = { name: editName, isActive: editIsActive }
-        await apiClient.put<User>(`/api/users/${editUser.id}`, dto)
-        setEditUser(null)
-        await loadUsers()
+        try {
+            const dto: UpdateUserDto = { name: editName, isActive: editIsActive }
+            await apiClient.put<User>(`/api/users/${editUser.id}`, dto)
+            setEditUser(null)
+            toast.success(t('toast.saveSuccess'))
+            await loadUsers()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDeactivate = async (user: User) => {
-        await apiClient.put<User>(`/api/users/${user.id}`, {
-            name: user.name,
-            isActive: false,
-        } satisfies UpdateUserDto)
-        await loadUsers()
+        try {
+            await apiClient.put<User>(`/api/users/${user.id}`, {
+                name: user.name,
+                isActive: false,
+            } satisfies UpdateUserDto)
+            toast.success(t('toast.saveSuccess'))
+            await loadUsers()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const openEdit = (user: User) => {
@@ -65,8 +92,8 @@ export default function UsersPage() {
         setEditIsActive(user.isActive)
     }
 
-    if (loading) return <p>{t('common.loading')}</p>
-    if (error) return <p role="alert">{error}</p>
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage message={error} onRetry={() => void loadUsers()} />
 
     return (
         <div>
@@ -80,48 +107,61 @@ export default function UsersPage() {
                 </button>
             </div>
 
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="text-left border-b border-border text-text-muted">
-                        <th className="pb-2 pr-4">{t('common.name')}</th>
-                        <th className="pb-2 pr-4">{t('common.status')}</th>
-                        <th className="pb-2">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {users.map((user) => (
-                        <tr key={user.id} className="border-b border-border/50">
-                            <td className="py-3 pr-4">{user.name}</td>
-                            <td className="py-3 pr-4">
-                                <span
-                                    className={`text-xs px-2 py-1 rounded-full ${user.isActive
-                                        ? 'bg-success/20 text-success'
-                                        : 'bg-border text-text-muted'
-                                        }`}
-                                >
-                                    {user.isActive ? t('common.active') : t('common.inactive')}
-                                </span>
-                            </td>
-                            <td className="py-3 flex gap-2">
-                                <button
-                                    onClick={() => openEdit(user)}
-                                    className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                >
-                                    {t('common.edit')}
-                                </button>
-                                {user.isActive && (
-                                    <button
-                                        onClick={() => void handleDeactivate(user)}
-                                        className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
-                                    >
-                                        {t('common.deactivate')}
-                                    </button>
-                                )}
-                            </td>
+            <div className="mb-4">
+                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left border-b border-border text-text-muted">
+                            <th className="pb-2 pr-4">{t('common.name')}</th>
+                            <th className="pb-2 pr-4">{t('common.status')}</th>
+                            <th className="pb-2">{t('common.actions')}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {pageItems.map((user) => (
+                            <tr key={user.id} className="border-b border-border/50">
+                                <td className="py-3 pr-4">{user.name}</td>
+                                <td className="py-3 pr-4">
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded-full ${user.isActive
+                                            ? 'bg-success/20 text-success'
+                                            : 'bg-border text-text-muted'
+                                            }`}
+                                    >
+                                        {user.isActive ? t('common.active') : t('common.inactive')}
+                                    </span>
+                                </td>
+                                <td className="py-3 flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(user)}
+                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
+                                    >
+                                        {t('common.edit')}
+                                    </button>
+                                    {user.isActive && (
+                                        <button
+                                            onClick={() => void handleDeactivate(user)}
+                                            className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
+                                        >
+                                            {t('common.deactivate')}
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalFiltered}
+                pageSize={20}
+                onPageChange={setCurrentPage}
+            />
 
             {/* Add modal */}
             {showAddModal && (

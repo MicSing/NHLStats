@@ -11,6 +11,7 @@ import type { RosterPlayer } from '../types/roster'
 import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { useTranslation } from 'react-i18next'
 import MatchHeaderEditor from '../components/MatchHeaderEditor'
 import UserMatchCard from '../components/UserMatchCard'
@@ -98,7 +99,7 @@ export default function MatchPage() {
     if (loading)
         return (
             <div className="min-h-screen bg-bg text-text p-6">
-                <p className="text-text-muted">{t('common.loading')}</p>
+                <LoadingSpinner />
             </div>
         )
     if (!match)

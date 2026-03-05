@@ -8,6 +8,7 @@ import type { Match } from '../types/match'
 import apiClient from '../services/apiClient'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { useTranslation } from 'react-i18next'
 
 // ESPN CDN uses different codes for some NHL teams
@@ -157,7 +158,7 @@ export default function SeasonPage() {
                     <p className="text-text-muted">{t('season.selectSeason')}</p>
                 )}
 
-                {seasonId && loadingData && <p>{t('common.loading')}</p>}
+                {seasonId && loadingData && <LoadingSpinner />}
 
                 {seasonId && !loadingData && (
                     <>
@@ -167,33 +168,35 @@ export default function SeasonPage() {
                                 <h2 className="text-lg font-semibold mb-3 text-primary/80">
                                     {t('season.playerStats')}
                                 </h2>
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="text-left text-text-muted border-b border-border">
-                                            <th className="pb-2">{t('season.player')}</th>
-                                            <th className="pb-2">+</th>
-                                            <th className="pb-2">−</th>
-                                            <th className="pb-2">{t('season.goals')}</th>
-                                            <th className="pb-2">{t('season.penalties')}</th>
-                                            <th className="pb-2">{t('season.earnings')}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {stats.map((s) => {
-                                            const totals = userTotals.find((t) => t.userId === s.userId)
-                                            return (
-                                                <tr key={s.userId} className="border-b border-border">
-                                                    <td className="py-2">{s.userName}</td>
-                                                    <td className="py-2 text-success">{s.totalPlus}</td>
-                                                    <td className="py-2 text-danger">{s.totalMinus}</td>
-                                                    <td className="py-2 text-primary">{totals?.totalGoals ?? 0}</td>
-                                                    <td className="py-2 text-warning">{totals?.totalPenalties ?? 0}</td>
-                                                    <td className="py-2">{s.earnings.toFixed(2)} €</td>
-                                                </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="text-left text-text-muted border-b border-border">
+                                                <th className="pb-2">{t('season.player')}</th>
+                                                <th className="pb-2">+</th>
+                                                <th className="pb-2">−</th>
+                                                <th className="pb-2">{t('season.goals')}</th>
+                                                <th className="pb-2">{t('season.penalties')}</th>
+                                                <th className="pb-2">{t('season.earnings')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stats.map((s) => {
+                                                const totals = userTotals.find((t) => t.userId === s.userId)
+                                                return (
+                                                    <tr key={s.userId} className="border-b border-border">
+                                                        <td className="py-2">{s.userName}</td>
+                                                        <td className="py-2 text-success">{s.totalPlus}</td>
+                                                        <td className="py-2 text-danger">{s.totalMinus}</td>
+                                                        <td className="py-2 text-primary">{totals?.totalGoals ?? 0}</td>
+                                                        <td className="py-2 text-warning">{totals?.totalPenalties ?? 0}</td>
+                                                        <td className="py-2">{s.earnings.toFixed(2)} €</td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </section>
                         )}
 

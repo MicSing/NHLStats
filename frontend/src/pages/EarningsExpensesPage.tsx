@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import LoadingSpinner from '../components/LoadingSpinner'
 import type { AllTimeEarnings } from '../types/stats'
 import type { Expense } from '../types/expense'
 import apiClient from '../services/apiClient'
@@ -36,7 +37,7 @@ export default function EarningsExpensesPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-bg text-text flex items-center justify-center">
-                <p className="text-text-muted">{t('common.loading')}</p>
+                <LoadingSpinner />
             </div>
         )
     }
