@@ -31,7 +31,7 @@ HTTP_STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -H "If-Match: *" \
   -H "X-CSRF-Token: 1" \
   -T "$LOCAL_DB" \
-  "https://$SCM_HOST/api/vfs/home/data/nhlstats.db")
+  "https://$SCM_HOST/api/vfs/data/nhlstats.db")
 
 BODY=$(cat "$BODY_FILE")
 rm -f "$BODY_FILE"

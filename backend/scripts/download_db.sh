@@ -11,7 +11,7 @@ TOKEN=$(az account get-access-token --resource https://management.azure.com --qu
 OUTPUT="$DEST/nhlstats-$(date +%F-%H%M%S).db"
 echo "Downloading DB to $OUTPUT ..."
 curl -f -H "Authorization: Bearer $TOKEN" \
-  "https://$SCM_HOST/api/vfs/home/data/nhlstats.db" \
+  "https://$SCM_HOST/api/vfs/data/nhlstats.db" \
   -o "$OUTPUT"
 
 echo "Done: $OUTPUT"
