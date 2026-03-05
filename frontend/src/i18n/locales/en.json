@@ -106,6 +106,7 @@
         "collected": "Collected",
         "expenses": "Expenses",
         "balance": "Balance",
+        "canBeCollected": "Can Be Collected",
         "plusTrend": "Plus Trend",
         "minusTrend": "Minus Trend",
         "byWeek": "(by Week)",
@@ -202,7 +203,10 @@
         "home": "Home",
         "away": "Away",
         "goal": "{{count}} goal",
-        "goal_other": "{{count}} goals"
+        "goal_other": "{{count}} goals",
+        "penaltyChartSummary": "{{roster}} roster pen · {{pen}} pen · {{secPen}} sec pen",
+        "penaltyChartChance": "{{pct}}% chance opponent scores",
+        "penaltyChartExtra": "(+{{pct}}% extra)"
     },
     "rules": {
         "title": "📋 Rules",
@@ -416,5 +420,10 @@
         "failedToLoadEntries": "Failed to load aggregated entries",
         "failedToCreateEntry": "Failed to create entry",
         "batchCreateFailed": "Batch create failed"
+    },
+    "penaltyChart": {
+        "rosterPenalties": "Roster penalties",
+        "penaltyPts": "Penalty (\u2212pts)",
+        "secPenaltyPts": "Secondary Penalty (\u2212pts)"
     }
 }

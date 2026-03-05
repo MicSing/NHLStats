@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import type { PointReasonBreakdownItem } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
+import { useTranslation } from 'react-i18next'
 
 const ROSTER_COLOR = '#ef4444'   // red — actual ice penalties
 const PENALTY_COLOR = '#f97316'  // orange — Penalty point deductions
@@ -27,6 +28,7 @@ interface Props {
 
 export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
     const ct = useChartTheme()
+    const { t } = useTranslation()
     const totalRoster = rosterPenalties.reduce((s, p) => s + p.count, 0)
 
     const penaltyPts = items.find(
@@ -42,23 +44,24 @@ export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
     if (!hasData) {
         return (
             <div role="img" aria-label="penalty chart" className="w-full flex items-center justify-center py-12">
-                <p className="text-text-muted text-sm">No data yet</p>
+                <p className="text-text-muted text-sm">{t('userStats.noData')}</p>
             </div>
         )
     }
 
     // Single grouped bar chart — one "category" with 3 bars side by side
+    const rosterLabel = t('penaltyChart.rosterPenalties')
+    const penaltyLabel = t('penaltyChart.penaltyPts')
+    const secPenaltyLabel = t('penaltyChart.secPenaltyPts')
+
     const chartData = [
         {
-            label: 'Penalties',
-            'Roster penalties': totalRoster,
-            'Penalty (−pts)': penaltyPts,
-            'Secondary Penalty (−pts)': secPenaltyPts,
+            label: t('userStats.penalties'),
+            [rosterLabel]: totalRoster,
+            [penaltyLabel]: penaltyPts,
+            [secPenaltyLabel]: secPenaltyPts,
         },
     ]
-
-    const totalPts = penaltyPts + secPenaltyPts
-    const diff = totalRoster - totalPts
 
     return (
         <div role="img" aria-label="penalty chart" className="w-full">
@@ -80,18 +83,26 @@ export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
                         }}
                     />
                     <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
-                    <Bar dataKey="Roster penalties" fill={ROSTER_COLOR} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Penalty (−pts)" fill={PENALTY_COLOR} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Secondary Penalty (−pts)" fill={SEC_PEN_COLOR} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey={rosterLabel} fill={ROSTER_COLOR} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey={penaltyLabel} fill={PENALTY_COLOR} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey={secPenaltyLabel} fill={SEC_PEN_COLOR} radius={[4, 4, 0, 0]} />
                 </BarChart>
             </ResponsiveContainer>
             {/* Summary note */}
             <p className="text-xs text-text-muted text-center mt-2">
-                {totalRoster} roster pen · {totalPts} pts deducted
-                {diff !== 0 && (
-                    <span className={diff > 0 ? ' text-danger' : ' text-success'}>
-                        {' '}({diff > 0 ? '+' : ''}{diff} unaccounted)
-                    </span>
+                {t('userStats.penaltyChartSummary', { roster: totalRoster, pen: penaltyPts, secPen: secPenaltyPts })}
+                {totalRoster > 0 && (
+                    <>
+                        {' '}—{' '}
+                        <span className="text-danger">
+                            {t('userStats.penaltyChartChance', { pct: Math.round(penaltyPts / totalRoster * 100) })}
+                        </span>
+                        {secPenaltyPts > 0 && (
+                            <span className="text-warning">
+                                {' '}{t('userStats.penaltyChartExtra', { pct: Math.round(secPenaltyPts / totalRoster * 100) })}
+                            </span>
+                        )}
+                    </>
                 )}
             </p>
         </div>

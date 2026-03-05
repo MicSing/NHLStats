@@ -155,9 +155,10 @@ export default function DashboardPage() {
                                     </p>
                                 </div>
                                 <div className="bg-bg rounded-lg p-2 border border-border">
-                                    <p className="text-text-muted">{t('dashboard.balance')}</p>
-                                    <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {allTimeEarnings.balance.toFixed(2)} €
+                                    <p className="text-text-muted">{t('dashboard.canBeCollected')}</p>
+                                    <p className={`font-semibold ${allTimeEarnings.canBeCollected > 100 ? 'text-danger' :
+                                        allTimeEarnings.canBeCollected > 20 ? 'text-warning' : 'text-success'}`}>
+                                        {allTimeEarnings.canBeCollected.toFixed(2)} €
                                     </p>
                                 </div>
                             </div>

@@ -106,6 +106,7 @@
         "collected": "Vyzbierané",
         "expenses": "Výdavky",
         "balance": "Zostatok",
+        "canBeCollected": "Na vyzbieranie",
         "plusTrend": "Trend plusov",
         "minusTrend": "Trend mínusov",
         "byWeek": "(podľa týždňa)",
@@ -202,7 +203,10 @@
         "home": "Doma",
         "away": "Vonku",
         "goal": "{{count}} gól",
-        "goal_other": "{{count}} gólov"
+        "goal_other": "{{count}} gólov",
+        "penaltyChartSummary": "{{roster}} trest. zo zostavy · {{pen}} trest. · {{secPen}} druhotný trest.",
+        "penaltyChartChance": "{{pct}}% šanca, že súper skóruje",
+        "penaltyChartExtra": "(+{{pct}}% navyše)"
     },
     "rules": {
         "title": "📋 Pravidlá",
@@ -416,5 +420,10 @@
         "failedToLoadEntries": "Nepodarilo sa načítať súhrnné záznamy",
         "failedToCreateEntry": "Nepodarilo sa vytvoriť záznam",
         "batchCreateFailed": "Hromadné vytváranie zlyhalo"
+    },
+    "penaltyChart": {
+        "rosterPenalties": "Tresty zo zostavy",
+        "penaltyPts": "Trest (−body)",
+        "secPenaltyPts": "Druhotný trest (−body)"
     }
 }
