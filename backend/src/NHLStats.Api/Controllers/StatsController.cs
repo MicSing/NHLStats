@@ -146,4 +146,44 @@ public class StatsController : ControllerBase
         var result = await _stats.GetAllTimeEarningsAsync();
         return Ok(result);
     }
+
+    /// <summary>GET /api/stats/users/{userId}/point-reasons</summary>
+    /// <remarks>
+    /// Returns a user's point-reason breakdown (points grouped by reason).
+    /// Optionally filtered by season via query parameter.
+    /// If no seasonId provided, aggregates across all seasons.
+    /// </remarks>
+    [HttpGet("users/{userId:int}/point-reasons")]
+    public async Task<IActionResult> GetUserPointReasonBreakdown(int userId, [FromQuery] int? seasonId = null)
+    {
+        var result = await _stats.GetUserPointReasonBreakdownAsync(userId, seasonId);
+        if (result == null) return NotFound();
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/stats/head-to-head/{teamId}?hostedTeamId={hostedTeamId}</summary>
+    /// <remarks>
+    /// Returns all played matches (MatchDate != null) where the given team appeared
+    /// within seasons whose HostedTeamId matches the required hostedTeamId query param.
+    /// Results are ordered newest first and include per-user +/− totals.
+    /// </remarks>
+    [HttpGet("head-to-head/{teamId:int}")]
+    public async Task<IActionResult> GetHeadToHead(int teamId, [FromQuery] int hostedTeamId)
+    {
+        var result = await _stats.GetHeadToHeadAsync(teamId, hostedTeamId);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/stats/users/{userId}/match-history</summary>
+    /// <remarks>
+    /// Returns per-match summary for a user ordered by MatchDate ascending.
+    /// Opponent is resolved via Season.HostedTeamId.
+    /// Optionally filtered by seasonId query parameter.
+    /// </remarks>
+    [HttpGet("users/{userId:int}/match-history")]
+    public async Task<IActionResult> GetUserMatchHistory(int userId, [FromQuery] int? seasonId = null)
+    {
+        var result = await _stats.GetUserMatchHistoryAsync(userId, seasonId);
+        return Ok(result);
+    }
 }

@@ -571,4 +571,144 @@ public class StatsService : IStatsService
             .OrderBy(t => t.UserName)
             .ToList();
     }
+
+    // ─── User point-reason breakdown ────────────────────────────────────────
+
+    public async Task<UserPointReasonBreakdownDto?> GetUserPointReasonBreakdownAsync(int userId, int? seasonId = null)
+    {
+        // Verify user exists
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null)
+            return null;
+
+        // Query UserMatchPoints filtered by userId and optionally by seasonId
+        var query = _db.UserMatchPoints
+            .Include(p => p.UserMatch)
+            .Include(p => p.PointReason)
+            .Where(p => p.UserMatch!.UserId == userId);
+
+        if (seasonId.HasValue)
+            query = query.Where(p => p.UserMatch!.SeasonId == seasonId.Value);
+
+        var points = await query.ToListAsync();
+
+        // Group by PointReasonId and sum counts
+        var breakdown = points
+            .GroupBy(p => p.PointReasonId)
+            .Select(g => new PointReasonBreakdownItemDto(
+                g.Key,
+                g.First().PointReason?.Name ?? "",
+                g.First().PointReason?.IsPositive ?? false,
+                g.Sum(p => p.Count)))
+            .OrderBy(x => x.PointReasonId)
+            .ToList();
+
+        return new UserPointReasonBreakdownDto(userId, user.Name ?? "", breakdown);
+    }
+
+    // ─── User match history ───────────────────────────────────────────────────
+
+    public async Task<IEnumerable<UserMatchSummaryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null)
+    {
+        var query = _db.UserMatches
+            .Include(um => um.Match).ThenInclude(m => m!.HomeTeam)
+            .Include(um => um.Match).ThenInclude(m => m!.AwayTeam)
+            .Include(um => um.Match).ThenInclude(m => m!.Season)
+            .Include(um => um.Goals)
+            .Include(um => um.Penalties)
+            .Where(um => um.UserId == userId && um.MatchId != null && um.Match!.MatchDate != null);
+
+        if (seasonId.HasValue)
+            query = query.Where(um => um.SeasonId == seasonId.Value);
+
+        var userMatches = await query.ToListAsync();
+
+        return userMatches
+            .Select(um =>
+            {
+                var match = um.Match!;
+                var hostedTeamId = match.Season?.HostedTeamId;
+
+                bool isHome;
+                string opponentName;
+                string opponentShortName;
+
+                if (hostedTeamId.HasValue)
+                {
+                    isHome = match.HomeTeamId == hostedTeamId.Value;
+                    opponentName = isHome
+                        ? (match.AwayTeam?.Name ?? "")
+                        : (match.HomeTeam?.Name ?? "");
+                    opponentShortName = isHome
+                        ? (match.AwayTeam?.ShortName ?? "")
+                        : (match.HomeTeam?.ShortName ?? "");
+                }
+                else
+                {
+                    isHome = true;
+                    opponentName = match.AwayTeam?.Name ?? "";
+                    opponentShortName = match.AwayTeam?.ShortName ?? "";
+                }
+
+                var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>()).Sum(g => g.Count);
+                var penaltyCount = (um.Penalties ?? Enumerable.Empty<UserMatchPenalty>()).Sum(p => p.Count);
+
+                return new UserMatchSummaryDto(
+                    match.Id,
+                    match.MatchDate!.Value,
+                    opponentName,
+                    opponentShortName,
+                    match.HomeScore,
+                    match.AwayScore,
+                    isHome,
+                    um.TotalPlus,
+                    um.TotalMinus,
+                    goalCount,
+                    penaltyCount);
+            })
+            .OrderBy(s => s.MatchDate)
+            .ToList();
+    }
+
+    // ─── Head-to-head ─────────────────────────────────────────────────────────
+
+    public async Task<IEnumerable<HeadToHeadMatchDto>> GetHeadToHeadAsync(int teamId, int hostedTeamId)
+    {
+        var matches = await _db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Include(m => m.Season)
+            .Include(m => m.UserMatches!).ThenInclude(um => um.User)
+            .Where(m =>
+                m.MatchDate != null &&
+                m.Season!.HostedTeamId == hostedTeamId &&
+                (m.HomeTeamId == teamId || m.AwayTeamId == teamId))
+            .OrderByDescending(m => m.MatchDate)
+            .ToListAsync();
+
+        return matches.Select(m =>
+        {
+            var userResults = (m.UserMatches ?? Enumerable.Empty<UserMatch>())
+                .Select(um => new HeadToHeadUserResultDto(
+                    um.UserId,
+                    um.User?.Name ?? "",
+                    um.TotalPlus,
+                    um.TotalMinus))
+                .ToList();
+
+            return new HeadToHeadMatchDto(
+                m.Id,
+                m.SeasonId,
+                m.Season?.Name ?? "",
+                m.MatchDate!.Value,
+                m.HomeTeam?.Name ?? "",
+                m.HomeTeam?.ShortName ?? "",
+                m.AwayTeam?.Name ?? "",
+                m.AwayTeam?.ShortName ?? "",
+                m.HomeScore,
+                m.AwayScore,
+                m.CompletionType,
+                userResults);
+        });
+    }
 }

@@ -1,7 +1,8 @@
 export const publicNavItems = [
     { to: '/dashboard', label: '📊 Dashboard' },
     { to: '/seasons', label: '🏒 Seasons' },
-    { to: '/earnings', label: '� Finances' },
+    { to: '/earnings', label: '💰 Finances' },
+    { to: '/user-stats', label: '📈 Player Stats' },
 ]
 
 export const adminNavItems = [

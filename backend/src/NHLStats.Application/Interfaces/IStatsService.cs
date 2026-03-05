@@ -74,4 +74,24 @@ public interface IStatsService
     /// Returns per-user total goals and penalties for a season.
     /// </summary>
     Task<IEnumerable<UserSeasonTotalsDto>> GetUserSeasonTotalsAsync(int seasonId);
+
+    /// <summary>
+    /// Returns a user's point-reason breakdown, optionally filtered by season.
+    /// Groups UserMatchPoints by PointReason, returning count per reason and whether it's positive.
+    /// If no seasonId provided, aggregates across all seasons.
+    /// </summary>
+    Task<UserPointReasonBreakdownDto?> GetUserPointReasonBreakdownAsync(int userId, int? seasonId = null);
+
+    /// <summary>
+    /// Returns all played matches where the given team appeared (home or away)
+    /// within seasons whose HostedTeamId matches hostedTeamId, ordered newest first.
+    /// </summary>
+    Task<IEnumerable<HeadToHeadMatchDto>> GetHeadToHeadAsync(int teamId, int hostedTeamId);
+
+    /// <summary>
+    /// Returns per-match summary for a user, ordered by MatchDate ascending.
+    /// Opponent is resolved from Season.HostedTeamId: if hosted team is home, opponent is away and vice-versa.
+    /// Optionally filtered by seasonId.
+    /// </summary>
+    Task<IEnumerable<UserMatchSummaryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null);
 }

@@ -98,3 +98,52 @@ public record PeriodPlusMinusDto(
     string Label,
     IEnumerable<UserPeriodPlusMinusDto> Users);
 
+// ─── Point-reason breakdown ───────────────────────────────────────────────────
+
+public record PointReasonBreakdownItemDto(
+    int PointReasonId,
+    string PointReasonName,
+    bool IsPositive,
+    int TotalCount);
+
+public record UserPointReasonBreakdownDto(
+    int UserId,
+    string UserName,
+    IEnumerable<PointReasonBreakdownItemDto> Items);
+
+// ─── Head-to-head ─────────────────────────────────────────────────────────────
+
+public record HeadToHeadUserResultDto(
+    int UserId,
+    string UserName,
+    int TotalPlus,
+    int TotalMinus);
+
+public record HeadToHeadMatchDto(
+    int MatchId,
+    int SeasonId,
+    string SeasonName,
+    DateTime MatchDate,
+    string HomeTeamName,
+    string HomeTeamShortName,
+    string AwayTeamName,
+    string AwayTeamShortName,
+    int HomeScore,
+    int AwayScore,
+    CompletionType CompletionType,
+    IEnumerable<HeadToHeadUserResultDto> UserResults);
+
+// ─── User match history ───────────────────────────────────────────────────────
+
+public record UserMatchSummaryDto(
+    int MatchId,
+    DateTime MatchDate,
+    string OpponentName,
+    string OpponentShortName,
+    int HomeScore,
+    int AwayScore,
+    bool IsHome,
+    int TotalPlus,
+    int TotalMinus,
+    int GoalCount,
+    int PenaltyCount);

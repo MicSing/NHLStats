@@ -102,3 +102,54 @@ export interface PeriodPlusMinus {
     label: string
     users: UserPeriodPlusMinus[]
 }
+
+// --- Phase 6: User Stats types ---
+
+export interface PointReasonBreakdownItem {
+    pointReasonId: number
+    pointReasonName: string
+    isPositive: boolean
+    totalCount: number
+}
+
+export interface UserPointReasonBreakdown {
+    userId: number
+    userName: string
+    items: PointReasonBreakdownItem[]
+}
+
+export interface HeadToHeadUserResult {
+    userId: number
+    userName: string
+    totalPlus: number
+    totalMinus: number
+}
+
+export interface HeadToHeadMatch {
+    matchId: number
+    seasonId: number
+    seasonName: string
+    matchDate: string
+    homeTeamName: string
+    homeTeamShortName: string
+    awayTeamName: string
+    awayTeamShortName: string
+    homeScore: number
+    awayScore: number
+    completionType: number
+    userResults: HeadToHeadUserResult[]
+}
+
+export interface UserMatchSummary {
+    matchId: number
+    matchDate: string
+    opponentName: string
+    opponentShortName: string
+    homeScore: number
+    awayScore: number
+    isHome: boolean
+    totalPlus: number
+    totalMinus: number
+    goalCount: number
+    penaltyCount: number
+}

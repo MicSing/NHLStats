@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Season } from '../types/season'
-import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals } from '../types/stats'
+import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch } from '../types/stats'
 import type { UserMatch } from '../types/userMatch'
 import { CompletionType } from '../types/match'
 import type { Match } from '../types/match'
 import apiClient from '../services/apiClient'
+import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
 
 // ESPN CDN uses different codes for some NHL teams
@@ -48,6 +49,9 @@ export default function SeasonPage() {
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingData, setLoadingData] = useState(false)
+    const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
+    const [loadingH2H, setLoadingH2H] = useState(false)
+    const [h2hExpanded, setH2hExpanded] = useState(false)
 
     useEffect(() => {
         apiClient
@@ -69,6 +73,9 @@ export default function SeasonPage() {
         if (!seasonId) return
 
         setLoadingData(true)
+        setH2hMatches([])
+        setH2hExpanded(false)
+        setLoadingH2H(false)
 
         Promise.all([
             apiClient.get<WeekGroup[]>(`/api/seasons/${seasonId}/stats/weekly`),
@@ -94,6 +101,29 @@ export default function SeasonPage() {
             })
             .finally(() => setLoadingData(false))
     }, [seasonId])
+
+    useEffect(() => {
+        if (!seasonId || allMatches.length === 0) return
+
+        const season = seasons.find((s) => s.id === seasonId)
+        if (!season?.hostedTeamId) return
+
+        const unplayed = allMatches
+            .filter((m) => m.matchDate === null)
+            .sort((a, b) => a.matchNumber - b.matchNumber)
+        if (unplayed.length === 0) return
+
+        const upNext = unplayed[0]
+        const opponentTeamId =
+            upNext.homeTeamId === season.hostedTeamId ? upNext.awayTeamId : upNext.homeTeamId
+
+        setLoadingH2H(true)
+        statsService
+            .getHeadToHead(opponentTeamId, season.hostedTeamId)
+            .then((matches) => setH2hMatches(matches))
+            .catch(() => setH2hMatches([]))
+            .finally(() => setLoadingH2H(false))
+    }, [allMatches]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSeasonChange = (id: number | null) => {
         if (id === null) navigate('/seasons')
@@ -293,6 +323,8 @@ export default function SeasonPage() {
                             if (unplayed.length === 0) return null
                             const upNext = unplayed[0]
                             const upcoming = unplayed.slice(1)
+                            const season = seasons.find((s) => s.id === seasonId)
+                            const hostedTeamId = season?.hostedTeamId ?? null
                             return (
                                 <>
                                     <section className="mt-8" aria-label="Up next match">
@@ -328,6 +360,134 @@ export default function SeasonPage() {
                                             </div>
                                         </Link>
                                     </section>
+
+                                    {/* Head-to-head with upcoming opponent */}
+                                    {hostedTeamId && (
+                                        <div className="mt-4" aria-label="Previous meetings">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="text-base font-semibold text-primary/80">
+                                                    Previous meetings
+                                                </h3>
+                                                {!loadingH2H && h2hMatches.length > 0 && (
+                                                    <button
+                                                        onClick={() => setH2hExpanded((prev) => !prev)}
+                                                        className="text-xs text-primary hover:underline"
+                                                    >
+                                                        {h2hExpanded
+                                                            ? 'Hide'
+                                                            : `Show ${h2hMatches.length} match${h2hMatches.length !== 1 ? 'es' : ''}`}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {loadingH2H && (
+                                                <div className="flex items-center gap-2 text-text-muted text-sm py-2">
+                                                    <svg
+                                                        className="animate-spin w-4 h-4 text-primary"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <circle
+                                                            className="opacity-25"
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="10"
+                                                            stroke="currentColor"
+                                                            strokeWidth="4"
+                                                        />
+                                                        <path
+                                                            className="opacity-75"
+                                                            fill="currentColor"
+                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                                        />
+                                                    </svg>
+                                                    <span>Loading previous meetings…</span>
+                                                </div>
+                                            )}
+
+                                            {!loadingH2H && h2hMatches.length === 0 && (
+                                                <p className="text-sm text-text-muted py-2">
+                                                    No previous meetings
+                                                </p>
+                                            )}
+
+                                            {!loadingH2H && h2hMatches.length > 0 && h2hExpanded && (
+                                                <div className="space-y-2">
+                                                    {h2hMatches.map((h2hMatch) => {
+                                                        const homeLogo = teamLogoUrl(h2hMatch.homeTeamShortName)
+                                                        const awayLogo = teamLogoUrl(h2hMatch.awayTeamShortName)
+                                                        const ct = h2hMatch.completionType as CompletionType
+                                                        return (
+                                                            <div
+                                                                key={h2hMatch.matchId}
+                                                                className="card rounded-lg px-4 py-3"
+                                                            >
+                                                                {/* Score row */}
+                                                                <div className="flex items-center gap-2 text-sm flex-wrap">
+                                                                    <img
+                                                                        src={homeLogo}
+                                                                        alt={h2hMatch.homeTeamShortName}
+                                                                        className="w-6 h-6 object-contain flex-shrink-0"
+                                                                        onError={(e) => {
+                                                                            ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                        }}
+                                                                    />
+                                                                    <span className="font-semibold w-8 flex-shrink-0">
+                                                                        {h2hMatch.homeTeamShortName}
+                                                                    </span>
+                                                                    <span className="font-mono font-bold">
+                                                                        {h2hMatch.homeScore}
+                                                                    </span>
+                                                                    <span className="text-text-muted font-mono">–</span>
+                                                                    <span className="font-mono font-bold">
+                                                                        {h2hMatch.awayScore}
+                                                                    </span>
+                                                                    <span className="font-semibold w-8 flex-shrink-0">
+                                                                        {h2hMatch.awayTeamShortName}
+                                                                    </span>
+                                                                    <img
+                                                                        src={awayLogo}
+                                                                        alt={h2hMatch.awayTeamShortName}
+                                                                        className="w-6 h-6 object-contain flex-shrink-0"
+                                                                        onError={(e) => {
+                                                                            ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                        }}
+                                                                    />
+                                                                    {ct !== CompletionType.None && (
+                                                                        <CompletionBadge type={ct} />
+                                                                    )}
+                                                                    <span className="text-xs text-text-muted ml-auto whitespace-nowrap">
+                                                                        {new Date(h2hMatch.matchDate).toLocaleDateString()}{' '}
+                                                                        · {h2hMatch.seasonName}
+                                                                    </span>
+                                                                </div>
+                                                                {/* Per-user +/- row */}
+                                                                {h2hMatch.userResults.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-3 mt-1.5">
+                                                                        {h2hMatch.userResults.map((ur) => (
+                                                                            <span key={ur.userId} className="text-xs">
+                                                                                <span className="text-text-muted">
+                                                                                    {ur.userName}:
+                                                                                </span>{' '}
+                                                                                <span className="text-success">
+                                                                                    +{ur.totalPlus}
+                                                                                </span>
+                                                                                {' / '}
+                                                                                <span className="text-danger">
+                                                                                    −{ur.totalMinus}
+                                                                                </span>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {upcoming.length > 0 && (
                                         <section className="mt-6" aria-label="Upcoming matches">

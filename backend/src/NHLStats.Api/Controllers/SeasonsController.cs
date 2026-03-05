@@ -50,6 +50,13 @@ public class SeasonsController : ControllerBase
         return success ? NoContent() : NotFound();
     }
 
+    [HttpGet("{id:int}/users")]
+    public async Task<IActionResult> GetUsers(int id)
+    {
+        var users = await _service.GetSeasonUsersAsync(id);
+        return users == null ? NotFound() : Ok(users);
+    }
+
     [Authorize]
     [HttpPost("{id:int}/users/{userId:int}")]
     public async Task<IActionResult> AssignUser(int id, int userId)

@@ -554,4 +554,544 @@ public class StatsTests : ApiTestBase
         match.TryGetProperty("homeScore", out _).Should().BeTrue();
         match.TryGetProperty("awayScore", out _).Should().BeTrue();
     }
+
+    // ─── GET /api/stats/users/{userId}/point-reasons — Point reason breakdown ──
+
+    [Fact]
+    public async Task PointReasonBreakdown_ReturnsGroupedByReason()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Breakdown Test Season");
+        var userId = await CreateUserAsync(client, "Breakdown Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-03-10T20:00:00");
+        var umId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
+
+        // Penalty (id 1, IsPositive=false)
+        await AddPointAsync(client, umId, 1, 3);
+        // Secondary Penalty (id 2, IsPositive=false)
+        await AddPointAsync(client, umId, 2, 1);
+        // Last Minute Action Positive (id 13, IsPositive=true)
+        await AddPointAsync(client, umId, 13, 2);
+        // Positive Penalty (id 9, IsPositive=true)
+        await AddPointAsync(client, umId, 9, 5);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/point-reasons");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        body.GetProperty("userId").GetInt32().Should().Be(userId);
+        body.TryGetProperty("userName", out _).Should().BeTrue();
+
+        var items = body.GetProperty("items");
+        items.ValueKind.Should().Be(JsonValueKind.Array);
+        items.GetArrayLength().Should().Be(4);
+
+        // Verify grouping by reason ID and correct totals
+        var itemsList = Enumerable.Range(0, items.GetArrayLength())
+            .Select(i => items[i])
+            .ToList();
+
+        var penalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 1);
+        penalty.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        penalty.GetProperty("isPositive").GetBoolean().Should().BeFalse();
+        penalty.GetProperty("totalCount").GetInt32().Should().Be(3);
+
+        var secondary = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 2);
+        secondary.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        secondary.GetProperty("isPositive").GetBoolean().Should().BeFalse();
+        secondary.GetProperty("totalCount").GetInt32().Should().Be(1);
+
+        var lastMinute = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 13);
+        lastMinute.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        lastMinute.GetProperty("isPositive").GetBoolean().Should().BeTrue();
+        lastMinute.GetProperty("totalCount").GetInt32().Should().Be(2);
+
+        var positivePenalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 9);
+        positivePenalty.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        positivePenalty.GetProperty("isPositive").GetBoolean().Should().BeTrue();
+        positivePenalty.GetProperty("totalCount").GetInt32().Should().Be(5);
+    }
+
+    [Fact]
+    public async Task PointReasonBreakdown_FiltersBySeason()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        // Season A
+        var s1 = await CreateSeasonAsync(client, "Breakdown Season A");
+        var userId = await CreateUserAsync(client, "Breakdown Multi-Season Player");
+        await AssignUserAsync(client, s1, userId);
+
+        var m1 = await CreateMatchAsync(client, s1, "2024-03-10T20:00:00");
+        var um1 = await CreateUserMatchAsync(client, s1, m1, userId);
+        await AddPointAsync(client, um1, 1 /* Penalty */, 4);
+        await AddPointAsync(client, um1, 9 /* Positive Penalty */, 2);
+
+        // Season B
+        var s2 = await CreateSeasonAsync(client, "Breakdown Season B");
+        await AssignUserAsync(client, s2, userId);
+
+        var m2 = await CreateMatchAsync(client, s2, "2024-06-10T20:00:00");
+        var um2 = await CreateUserMatchAsync(client, s2, m2, userId);
+        await AddPointAsync(client, um2, 1 /* Penalty */, 1);
+        await AddPointAsync(client, um2, 9 /* Positive Penalty */, 3);
+
+        // Query for Season A only
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/point-reasons?seasonId={s1}");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        var items = body.GetProperty("items");
+        items.GetArrayLength().Should().Be(2);
+
+        var itemsList = Enumerable.Range(0, items.GetArrayLength())
+            .Select(i => items[i])
+            .ToList();
+
+        // Season A should have: 4 penalties, 2 positive penalties
+        var penalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 1);
+        penalty.GetProperty("totalCount").GetInt32().Should().Be(4);
+
+        var posPenalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 9);
+        posPenalty.GetProperty("totalCount").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PointReasonBreakdown_EmptyUser_ReturnsEmptyItems()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Breakdown Empty Season");
+        var userId = await CreateUserAsync(client, "Breakdown Empty Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // Create a match but no user match entry for this user
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-03-10T20:00:00");
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/point-reasons?seasonId={seasonId}");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        body.GetProperty("userId").GetInt32().Should().Be(userId);
+        var items = body.GetProperty("items");
+        items.GetArrayLength().Should().Be(0);
+    }
+
+    // ─── Head-to-head helpers ─────────────────────────────────────────────────
+
+    private async Task<int> CreateSeasonWithHostedTeamAsync(HttpClient client, string name, int hostedTeamId,
+        string startedOn = "2024-01-01T00:00:00")
+    {
+        var resp = await client.PostAsJsonAsync("/api/seasons", new { name, startedOn, hostedTeamId });
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task<int> CreateMatchWithTeamsAsync(HttpClient client, int seasonId,
+        int homeTeamId, int awayTeamId, string matchDate)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId,
+            awayTeamId
+        });
+        resp.EnsureSuccessStatusCode();
+        var matchId = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId,
+            awayTeamId,
+            homeScore = 2,
+            awayScore = 1,
+            matchDate,
+            completionType = 0
+        });
+        updateResp.EnsureSuccessStatusCode();
+        return matchId;
+    }
+
+    private async Task<int> CreateUnplayedMatchWithTeamsAsync(HttpClient client, int seasonId,
+        int homeTeamId, int awayTeamId)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId,
+            awayTeamId
+        });
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    // ─── GET /api/stats/head-to-head/{teamId} ─────────────────────────────────
+
+    [Fact]
+    public async Task HeadToHead_ReturnsMatchesWhereTeamIsHomeOrAway()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Use unique teams: hosted=BUF(4), opponent=CGY(5) — isolated from other h2h tests
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "H2H Home Away Season", hostedTeamId: 4);
+
+        // Match A: hosted team (BUF=4) at home vs CGY (5) away
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 4, awayTeamId: 5, "2024-03-01T20:00:00");
+        // Match B: CGY (5) at home vs hosted team (BUF=4) away
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 5, awayTeamId: 4, "2024-03-15T20:00:00");
+
+        var resp = await client.GetAsync("/api/stats/head-to-head/5?hostedTeamId=4");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+        body.GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task HeadToHead_OnlyMatchesFromSeasonsWithSameHostedTeam()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Use unique teams: hosted=CAR(6)/STL(26), opponent=CHI(7) — isolated from other h2h tests
+        var sA = await CreateSeasonWithHostedTeamAsync(client, "H2H Same Host A", hostedTeamId: 6, "2024-01-01T00:00:00");
+        var sB = await CreateSeasonWithHostedTeamAsync(client, "H2H Same Host B", hostedTeamId: 6, "2024-06-01T00:00:00");
+        var sC = await CreateSeasonWithHostedTeamAsync(client, "H2H Different Host C", hostedTeamId: 26, "2024-09-01T00:00:00");
+
+        await CreateMatchWithTeamsAsync(client, sA, homeTeamId: 6, awayTeamId: 7, "2024-02-01T20:00:00");
+        await CreateMatchWithTeamsAsync(client, sB, homeTeamId: 6, awayTeamId: 7, "2024-07-01T20:00:00");
+        await CreateMatchWithTeamsAsync(client, sC, homeTeamId: 26, awayTeamId: 7, "2024-10-01T20:00:00");
+
+        var resp = await client.GetAsync("/api/stats/head-to-head/7?hostedTeamId=6");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(2, "only seasons A and B share hostedTeamId=6");
+
+        var seasonIds = Enumerable.Range(0, 2)
+            .Select(i => body[i].GetProperty("seasonId").GetInt32())
+            .ToList();
+        seasonIds.Should().NotContain(sC);
+    }
+
+    [Fact]
+    public async Task HeadToHead_ExcludesUnplayedMatches()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Use unique teams: hosted=COL(8), opponent=CBJ(9) — isolated from other h2h tests
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "H2H Unplayed Season", hostedTeamId: 8);
+
+        // Played match
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 8, awayTeamId: 9, "2024-03-01T20:00:00");
+        // Unplayed match (no date set)
+        await CreateUnplayedMatchWithTeamsAsync(client, seasonId, homeTeamId: 8, awayTeamId: 9);
+
+        var resp = await client.GetAsync("/api/stats/head-to-head/9?hostedTeamId=8");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1, "unplayed match must be excluded");
+    }
+
+    [Fact]
+    public async Task HeadToHead_IncludesUserResults()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Use unique teams: hosted=DAL(10), opponent=DET(11) — isolated from other h2h tests
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "H2H User Results Season", hostedTeamId: 10);
+
+        var u1 = await CreateUserAsync(client, "H2H Player One");
+        var u2 = await CreateUserAsync(client, "H2H Player Two");
+        await AssignUserAsync(client, seasonId, u1);
+        await AssignUserAsync(client, seasonId, u2);
+
+        var matchId = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 10, awayTeamId: 11, "2024-03-05T20:00:00");
+
+        var um1 = await CreateUserMatchAsync(client, seasonId, matchId, u1);
+        var um2 = await CreateUserMatchAsync(client, seasonId, matchId, u2);
+
+        // u1: 3 penalties (minus), 1 positive
+        await AddPointAsync(client, um1, 1 /* Penalty */, 3);
+        await AddPointAsync(client, um1, 9 /* Positive Penalty */, 1);
+        // u2: 2 penalties (minus)
+        await AddPointAsync(client, um2, 1 /* Penalty */, 2);
+
+        var resp = await client.GetAsync("/api/stats/head-to-head/11?hostedTeamId=10");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1);
+
+        var match = body[0];
+        var userResults = match.GetProperty("userResults");
+        userResults.GetArrayLength().Should().Be(2);
+
+        var resultsList = Enumerable.Range(0, 2)
+            .Select(i => userResults[i])
+            .ToList();
+
+        var r1 = resultsList.FirstOrDefault(r => r.GetProperty("userId").GetInt32() == u1);
+        r1.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        r1.GetProperty("totalMinus").GetInt32().Should().Be(3);
+        r1.GetProperty("totalPlus").GetInt32().Should().Be(1);
+
+        var r2 = resultsList.FirstOrDefault(r => r.GetProperty("userId").GetInt32() == u2);
+        r2.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+        r2.GetProperty("totalMinus").GetInt32().Should().Be(2);
+        r2.GetProperty("totalPlus").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task HeadToHead_OrderedByDateDescending()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Use unique teams: hosted=EDM(12), opponent=FLA(13) — isolated from other h2h tests
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "H2H Order Season", hostedTeamId: 12);
+
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 12, awayTeamId: 13, "2024-01-10T20:00:00");
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 12, awayTeamId: 13, "2024-03-20T20:00:00");
+        await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 12, awayTeamId: 13, "2024-02-15T20:00:00");
+
+        var resp = await client.GetAsync("/api/stats/head-to-head/13?hostedTeamId=12");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(3);
+
+        var dates = Enumerable.Range(0, 3)
+            .Select(i => body[i].GetProperty("matchDate").GetDateTime())
+            .ToList();
+
+        dates.Should().BeInDescendingOrder();
+    }
+
+    [Fact]
+    public async Task PointReasonBreakdown_AllSeasons_SumsAcrossAll()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var userId = await CreateUserAsync(client, "Breakdown All Seasons Player");
+
+        // Season A
+        var s1 = await CreateSeasonAsync(client, "Breakdown All Season A");
+        await AssignUserAsync(client, s1, userId);
+        var m1 = await CreateMatchAsync(client, s1, "2024-03-10T20:00:00");
+        var um1 = await CreateUserMatchAsync(client, s1, m1, userId);
+        await AddPointAsync(client, um1, 1 /* Penalty */, 2);
+
+        // Season B
+        var s2 = await CreateSeasonAsync(client, "Breakdown All Season B");
+        await AssignUserAsync(client, s2, userId);
+        var m2 = await CreateMatchAsync(client, s2, "2024-06-10T20:00:00");
+        var um2 = await CreateUserMatchAsync(client, s2, m2, userId);
+        await AddPointAsync(client, um2, 1 /* Penalty */, 3);
+
+        // Query without seasonId
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/point-reasons");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        var items = body.GetProperty("items");
+        items.GetArrayLength().Should().Be(1);
+
+        // Should have totals from both seasons: 2 + 3 = 5
+        var penalty = items[0];
+        penalty.GetProperty("pointReasonId").GetInt32().Should().Be(1);
+        penalty.GetProperty("totalCount").GetInt32().Should().Be(5);
+    }
+
+    // ─── GET /api/stats/users/{userId}/match-history — User match history ──────
+
+    [Fact]
+    public async Task MatchHistory_ReturnsPerMatchSummary()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=LAK(14), opponent=MIN(15)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Returns Season", hostedTeamId: 14);
+        var userId = await CreateUserAsync(client, "MH Returns Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // Match 1: 3 plus, 1 minus
+        var m1 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-01T20:00:00");
+        var um1 = await CreateUserMatchAsync(client, seasonId, m1, userId);
+        await AddPointAsync(client, um1, 9 /* IsPositive */, 3);
+        await AddPointAsync(client, um1, 1 /* Penalty */, 1);
+
+        // Match 2: 1 plus, 2 minus
+        var m2 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-08T20:00:00");
+        var um2 = await CreateUserMatchAsync(client, seasonId, m2, userId);
+        await AddPointAsync(client, um2, 9, 1);
+        await AddPointAsync(client, um2, 1, 2);
+
+        // Match 3: 0 plus, 3 minus
+        var m3 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-15T20:00:00");
+        var um3 = await CreateUserMatchAsync(client, seasonId, m3, userId);
+        await AddPointAsync(client, um3, 1, 3);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+        body.GetArrayLength().Should().Be(3);
+
+        var first = body[0];
+        first.TryGetProperty("matchId", out _).Should().BeTrue();
+        first.TryGetProperty("matchDate", out _).Should().BeTrue();
+        first.TryGetProperty("opponentName", out _).Should().BeTrue();
+        first.TryGetProperty("opponentShortName", out _).Should().BeTrue();
+        first.TryGetProperty("homeScore", out _).Should().BeTrue();
+        first.TryGetProperty("awayScore", out _).Should().BeTrue();
+        first.TryGetProperty("isHome", out _).Should().BeTrue();
+        first.TryGetProperty("totalPlus", out _).Should().BeTrue();
+        first.TryGetProperty("totalMinus", out _).Should().BeTrue();
+        first.TryGetProperty("goalCount", out _).Should().BeTrue();
+
+        first.GetProperty("totalPlus").GetInt32().Should().Be(3);
+        first.GetProperty("totalMinus").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MatchHistory_ResolvesOpponentFromHostedTeam()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=MTL(16), opponent=NSH(17)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Opponent Season", hostedTeamId: 16);
+        var userId = await CreateUserAsync(client, "MH Opponent Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // Match A: hosted (MTL=16) is HOME → opponent should be away team NSH(17)
+        var mA = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 16, awayTeamId: 17, "2024-03-01T20:00:00");
+        var umA = await CreateUserMatchAsync(client, seasonId, mA, userId);
+
+        // Match B: hosted (MTL=16) is AWAY → opponent should be home team NSH(17)
+        var mB = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 17, awayTeamId: 16, "2024-03-08T20:00:00");
+        var umB = await CreateUserMatchAsync(client, seasonId, mB, userId);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(2);
+
+        // First match (2024-03-01): hosted is home → isHome=true, opponent=NSH
+        var matchA = body[0];
+        matchA.GetProperty("isHome").GetBoolean().Should().BeTrue();
+        matchA.GetProperty("opponentShortName").GetString().Should().Be("NSH");
+
+        // Second match (2024-03-08): hosted is away → isHome=false, opponent=NSH
+        var matchB = body[1];
+        matchB.GetProperty("isHome").GetBoolean().Should().BeFalse();
+        matchB.GetProperty("opponentShortName").GetString().Should().Be("NSH");
+    }
+
+    [Fact]
+    public async Task MatchHistory_FiltersBySeason()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=NJD(18), opponent=NYI(19)
+        var s1 = await CreateSeasonWithHostedTeamAsync(client, "MH Filter Season A", hostedTeamId: 18, "2024-01-01T00:00:00");
+        var s2 = await CreateSeasonWithHostedTeamAsync(client, "MH Filter Season B", hostedTeamId: 18, "2024-06-01T00:00:00");
+        var userId = await CreateUserAsync(client, "MH Filter Player");
+        await AssignUserAsync(client, s1, userId);
+        await AssignUserAsync(client, s2, userId);
+
+        var mA = await CreateMatchWithTeamsAsync(client, s1, homeTeamId: 18, awayTeamId: 19, "2024-02-01T20:00:00");
+        await CreateUserMatchAsync(client, s1, mA, userId);
+
+        var mB = await CreateMatchWithTeamsAsync(client, s2, homeTeamId: 18, awayTeamId: 19, "2024-07-01T20:00:00");
+        await CreateUserMatchAsync(client, s2, mB, userId);
+
+        // Filter by Season 1 only
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history?seasonId={s1}");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1, "only matches from season 1 should be returned");
+        body[0].GetProperty("matchId").GetInt32().Should().Be(mA);
+    }
+
+    [Fact]
+    public async Task MatchHistory_GoalCountSumsCorrectly()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=NYR(20), opponent=OTT(21)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Goals Season", hostedTeamId: 20);
+        var userId = await CreateUserAsync(client, "MH Goals Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        var matchId = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 20, awayTeamId: 21, "2024-04-01T20:00:00");
+        var umId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
+
+        var player1 = await CreateRosterPlayerAsync(client, seasonId, "Sidney", "Crosby");
+        var player2 = await CreateRosterPlayerAsync(client, seasonId, "Mario", "Lemieux");
+
+        // Player 1: 2 goals, Player 2: 3 goals → total = 5
+        await AddGoalAsync(client, umId, player1, 2);
+        await AddGoalAsync(client, umId, player2, 3);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1);
+        body[0].GetProperty("goalCount").GetInt32().Should().Be(5);
+    }
+
+    [Fact]
+    public async Task MatchHistory_ExcludesUnplayedMatches()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=PHI(22), opponent=PIT(23)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Unplayed Season", hostedTeamId: 22);
+        var userId = await CreateUserAsync(client, "MH Unplayed Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // Played match
+        var playedId = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 22, awayTeamId: 23, "2024-05-01T20:00:00");
+        await CreateUserMatchAsync(client, seasonId, playedId, userId);
+
+        // Unplayed match (no date)
+        var unplayedId = await CreateUnplayedMatchWithTeamsAsync(client, seasonId, homeTeamId: 22, awayTeamId: 23);
+        await CreateUserMatchAsync(client, seasonId, unplayedId, userId);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1, "unplayed match must be excluded");
+        body[0].GetProperty("matchId").GetInt32().Should().Be(playedId);
+    }
+
+    [Fact]
+    public async Task MatchHistory_OrderedByDateAscending()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=SJS(24), opponent=SEA(25)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Order Season", hostedTeamId: 24);
+        var userId = await CreateUserAsync(client, "MH Order Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // Create matches out of order
+        var m3 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-15T20:00:00");
+        var m1 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-01T20:00:00");
+        var m2 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-08T20:00:00");
+
+        await CreateUserMatchAsync(client, seasonId, m3, userId);
+        await CreateUserMatchAsync(client, seasonId, m1, userId);
+        await CreateUserMatchAsync(client, seasonId, m2, userId);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(3);
+
+        var dates = Enumerable.Range(0, 3)
+            .Select(i => body[i].GetProperty("matchDate").GetDateTime())
+            .ToList();
+
+        dates.Should().BeInAscendingOrder();
+    }
 }

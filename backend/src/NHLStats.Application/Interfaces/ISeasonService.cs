@@ -11,4 +11,5 @@ public interface ISeasonService
     Task<bool> DeleteAsync(int id);
     Task<SeasonDetailDto?> AssignUserAsync(int seasonId, int userId);
     Task<bool> RemoveUserAsync(int seasonId, int userId);
+    Task<IEnumerable<UserDto>?> GetSeasonUsersAsync(int seasonId);
 }

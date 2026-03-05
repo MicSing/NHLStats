@@ -108,4 +108,16 @@ public class SeasonService : ISeasonService
         await _db.SaveChangesAsync();
         return true;
     }
+
+    public async Task<IEnumerable<UserDto>?> GetSeasonUsersAsync(int seasonId)
+    {
+        var seasonExists = await _db.Seasons.AnyAsync(s => s.Id == seasonId);
+        if (!seasonExists) return null;
+
+        return await _db.SeasonUsers
+            .Where(su => su.SeasonId == seasonId)
+            .Include(su => su.User)
+            .Select(su => new UserDto(su.User!.Id, su.User.Name, su.User.IsActive))
+            .ToListAsync();
+    }
 }
