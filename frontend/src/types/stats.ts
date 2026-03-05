@@ -82,6 +82,18 @@ export interface AllTimeEarnings {
     balance: number
 }
 
+export interface SeasonUserEarnings {
+    userId: number
+    userName: string
+    earnings: number
+}
+
+export interface SeasonEarningsEntry {
+    seasonId: number
+    seasonName: string
+    users: SeasonUserEarnings[]
+}
+
 export interface UserSeasonTotals {
     userId: number
     userName: string

@@ -78,6 +78,18 @@ public record AllTimeEarningsDto(
     decimal TotalExpenses,
     decimal Balance);
 
+// ─── Per-season per-user earnings (for stacked chart) ────────────────────────
+
+public record SeasonUserEarningsDto(
+    int UserId,
+    string UserName,
+    decimal Earnings);
+
+public record SeasonEarningsEntryDto(
+    int SeasonId,
+    string SeasonName,
+    IEnumerable<SeasonUserEarningsDto> Users);
+
 // ─── Per-user goals & penalties totals for a season ──────────────────────────
 
 public record UserSeasonTotalsDto(

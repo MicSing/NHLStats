@@ -9,7 +9,7 @@ import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
 import type { UserSeasonStats, RosterScorerByUser, RosterPenalizedByUser } from '../types/stats'
-import type { UserEarnings } from '../types/stats'
+import type { SeasonEarningsEntry } from '../types/stats'
 
 function renderDashboard() {
     return render(
@@ -68,9 +68,22 @@ const mockRosterPenalized: RosterPenalizedByUser[] = [
     },
 ]
 
-const mockEarnings: UserEarnings[] = [
-    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75, totalPaid: 0, remainingBalance: 0.75 },
-    { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, totalEarnings: -2.5, totalPaid: 0, remainingBalance: 0 },
+const mockEarningsBySeason: SeasonEarningsEntry[] = [
+    {
+        seasonId: 1,
+        seasonName: '2023-24',
+        users: [
+            { userId: 1, userName: 'Player One', earnings: 0.50 },
+            { userId: 2, userName: 'Player Two', earnings: 1.25 },
+        ],
+    },
+    {
+        seasonId: 2,
+        seasonName: '2024-25',
+        users: [
+            { userId: 1, userName: 'Player One', earnings: 0.25 },
+        ],
+    },
 ]
 
 // ── PlusMinusChart ──────────────────────────────────────────────────────────
@@ -124,15 +137,15 @@ describe('PenaltyLeadersChart', () => {
 // ── EarningsChart ───────────────────────────────────────────────────────────
 
 describe('EarningsChart', () => {
-    test('renders cumulative line with user names', () => {
-        render(<ThemeProvider><EarningsChart data={mockEarnings} /></ThemeProvider>)
+    test('renders stacked bars with user names', () => {
+        render(<ThemeProvider><EarningsChart data={mockEarningsBySeason} selectedSeasonId={null} /></ThemeProvider>)
         expect(screen.getByRole('img', { name: /earnings chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<ThemeProvider><EarningsChart data={[]} /></ThemeProvider>)
+        render(<ThemeProvider><EarningsChart data={[]} selectedSeasonId={null} /></ThemeProvider>)
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })
@@ -155,13 +168,13 @@ describe('DashboardPage', () => {
         expect(screen.getByText('2024-25')).toBeInTheDocument()
     })
 
-    test('shows earnings chart on load (all-time data)', async () => {
+    test('shows earnings chart on load', async () => {
         renderDashboard()
-        // Earnings section is always present (shows all-time data)
+        // Earnings section is always present
         expect(await screen.findByTestId('earnings-section')).toBeInTheDocument()
-        // The earnings chart itself should be inside that section
+        // When a season is auto-selected, the section shows "Season Earnings"
         const section = screen.getByTestId('earnings-section')
-        expect(section).toHaveTextContent(/all-time earnings/i)
+        expect(section).toHaveTextContent(/season earnings/i)
     })
 
     test('season filter updates plus/minus chart data', async () => {

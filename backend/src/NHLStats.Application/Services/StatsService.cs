@@ -466,6 +466,52 @@ public class StatsService : IStatsService
             .ToList();
     }
 
+    // ─── Earnings by season (for stacked chart) ──────────────────────────────
+
+    public async Task<IEnumerable<SeasonEarningsEntryDto>> GetEarningsBySeasonAsync()
+    {
+        var seasons = await _db.Seasons
+            .OrderBy(s => s.StartedOn)
+            .ToListAsync();
+
+        var userMatches = await _db.UserMatches
+            .Include(um => um.User)
+            .Include(um => um.Match)
+            .ToListAsync();
+
+        var moneyConfigs = await _db.MoneyConfigs
+            .OrderBy(m => m.EffectiveFrom)
+            .ToListAsync();
+
+        var result = new List<SeasonEarningsEntryDto>();
+
+        foreach (var season in seasons)
+        {
+            var seasonUserMatches = userMatches.Where(um => um.SeasonId == season.Id).ToList();
+            if (seasonUserMatches.Count == 0) continue;
+
+            var users = seasonUserMatches
+                .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
+                .Select(g =>
+                {
+                    var rawEarnings = g.Sum(um =>
+                    {
+                        var date = um.Match?.MatchDate ?? season.StartedOn;
+                        var config = GetEffectiveConfig(moneyConfigs, date);
+                        return config == null ? 0m : RawEarnings(config, um.TotalPlus, um.TotalMinus);
+                    });
+                    var earnings = Math.Max(0m, rawEarnings);
+                    return new SeasonUserEarningsDto(g.Key.UserId, g.Key.UserName, earnings);
+                })
+                .OrderByDescending(u => u.Earnings)
+                .ToList();
+
+            result.Add(new SeasonEarningsEntryDto(season.Id, season.Name, users));
+        }
+
+        return result;
+    }
+
     // ─── All-time earnings ────────────────────────────────────────────────────
 
     public async Task<AllTimeEarningsDto> GetAllTimeEarningsAsync()

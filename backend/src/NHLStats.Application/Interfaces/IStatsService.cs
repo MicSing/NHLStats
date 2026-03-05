@@ -71,6 +71,12 @@ public interface IStatsService
     Task<AllTimeEarningsDto> GetAllTimeEarningsAsync();
 
     /// <summary>
+    /// Returns per-user earnings broken down by season.
+    /// Each entry contains the season info and per-user earnings for that season.
+    /// </summary>
+    Task<IEnumerable<SeasonEarningsEntryDto>> GetEarningsBySeasonAsync();
+
+    /// <summary>
     /// Returns per-user total goals and penalties for a season.
     /// </summary>
     Task<IEnumerable<UserSeasonTotalsDto>> GetUserSeasonTotalsAsync(int seasonId);

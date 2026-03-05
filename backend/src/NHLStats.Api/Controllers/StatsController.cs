@@ -147,6 +147,17 @@ public class StatsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>GET /api/stats/earnings-by-season</summary>
+    /// <remarks>
+    /// Returns per-user earnings broken down by season for stacked chart display.
+    /// </remarks>
+    [HttpGet("earnings-by-season")]
+    public async Task<IActionResult> GetEarningsBySeason()
+    {
+        var result = await _stats.GetEarningsBySeasonAsync();
+        return Ok(result);
+    }
+
     /// <summary>GET /api/stats/users/{userId}/point-reasons</summary>
     /// <remarks>
     /// Returns a user's point-reason breakdown (points grouped by reason).

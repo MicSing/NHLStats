@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
-import type { UserSeasonStats, AllTimeEarnings, RosterScorerByUser, RosterPenalizedByUser, PeriodPlusMinus } from '../types/stats'
+import type { UserSeasonStats, AllTimeEarnings, SeasonEarningsEntry, RosterScorerByUser, RosterPenalizedByUser, PeriodPlusMinus } from '../types/stats'
 import apiClient from '../services/apiClient'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
@@ -19,6 +19,7 @@ export default function DashboardPage() {
     const [rosterScorers, setRosterScorers] = useState<RosterScorerByUser[]>([])
     const [rosterPenalized, setRosterPenalized] = useState<RosterPenalizedByUser[]>([])
     const [allTimeEarnings, setAllTimeEarnings] = useState<AllTimeEarnings | null>(null)
+    const [earningsBySeason, setEarningsBySeason] = useState<SeasonEarningsEntry[]>([])
     const [trendData, setTrendData] = useState<PeriodPlusMinus[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingStats, setLoadingStats] = useState(false)
@@ -41,6 +42,11 @@ export default function DashboardPage() {
             .get<AllTimeEarnings>('/api/stats/earnings')
             .then(setAllTimeEarnings)
             .catch(() => setAllTimeEarnings(null))
+
+        apiClient
+            .get<SeasonEarningsEntry[]>('/api/stats/earnings-by-season')
+            .then(setEarningsBySeason)
+            .catch(() => setEarningsBySeason([]))
     }, [])
 
     // Load per-season stats when a season is selected, or all-seasons aggregated stats
@@ -128,35 +134,33 @@ export default function DashboardPage() {
                         )}
                     </section>
 
-                    {/* All-Time Earnings */}
+                    {/* Earnings */}
                     <section className="card p-5" data-testid="earnings-section">
-                        <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.allTimeEarnings')}</h2>
-                        {allTimeEarnings ? (
-                            <>
-                                <EarningsChart data={allTimeEarnings.userEarnings} />
-                                <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
-                                    <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">{t('dashboard.collected')}</p>
-                                        <p className="text-success font-semibold">
-                                            {allTimeEarnings.totalCollected.toFixed(2)} €
-                                        </p>
-                                    </div>
-                                    <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">{t('dashboard.expenses')}</p>
-                                        <p className="text-danger font-semibold">
-                                            {allTimeEarnings.totalExpenses.toFixed(2)} €
-                                        </p>
-                                    </div>
-                                    <div className="bg-bg rounded-lg p-2 border border-border">
-                                        <p className="text-text-muted">{t('dashboard.balance')}</p>
-                                        <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            {allTimeEarnings.balance.toFixed(2)} €
-                                        </p>
-                                    </div>
+                        <h2 className="text-sm font-semibold text-primary mb-3">
+                            {selectedSeasonId ? t('dashboard.seasonEarnings') : t('dashboard.allTimeEarnings')}
+                        </h2>
+                        <EarningsChart data={earningsBySeason} selectedSeasonId={selectedSeasonId} />
+                        {!selectedSeasonId && allTimeEarnings && (
+                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
+                                <div className="bg-bg rounded-lg p-2 border border-border">
+                                    <p className="text-text-muted">{t('dashboard.collected')}</p>
+                                    <p className="text-success font-semibold">
+                                        {allTimeEarnings.totalCollected.toFixed(2)} €
+                                    </p>
                                 </div>
-                            </>
-                        ) : (
-                            <EarningsChart data={[]} />
+                                <div className="bg-bg rounded-lg p-2 border border-border">
+                                    <p className="text-text-muted">{t('dashboard.expenses')}</p>
+                                    <p className="text-danger font-semibold">
+                                        {allTimeEarnings.totalExpenses.toFixed(2)} €
+                                    </p>
+                                </div>
+                                <div className="bg-bg rounded-lg p-2 border border-border">
+                                    <p className="text-text-muted">{t('dashboard.balance')}</p>
+                                    <p className={`font-semibold ${allTimeEarnings.balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                                        {allTimeEarnings.balance.toFixed(2)} €
+                                    </p>
+                                </div>
+                            </div>
                         )}
                     </section>
 

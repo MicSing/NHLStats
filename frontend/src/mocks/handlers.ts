@@ -695,6 +695,26 @@ export const handlers = [
         }))
     }),
 
+    rest.get(`${BASE}/api/stats/earnings-by-season`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                seasonId: 1,
+                seasonName: '2023-24',
+                users: [
+                    { userId: 1, userName: 'Player One', earnings: 0.50 },
+                    { userId: 2, userName: 'Player Two', earnings: 1.25 },
+                ],
+            },
+            {
+                seasonId: 2,
+                seasonName: '2024-25',
+                users: [
+                    { userId: 1, userName: 'Player One', earnings: 0.25 },
+                ],
+            },
+        ]))
+    }),
+
     rest.get(`${BASE}/api/stats/plus-minus`, (_req, res, ctx) => {
         return res(ctx.json(mockSeasonStats))
     }),
