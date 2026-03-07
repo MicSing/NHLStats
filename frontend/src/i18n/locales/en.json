@@ -255,6 +255,8 @@
         "goalCount": "goal count",
         "penaltyCount": "penalty count",
         "addGoal": "+ Goal",
+        "addGoalPP": "+ PP",
+        "addGoalSH": "+ SH",
         "addPenalty": "+ Penalty",
         "addPositive": "+ Positive",
         "addNegative": "+ Negative",

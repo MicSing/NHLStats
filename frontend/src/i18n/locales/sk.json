@@ -255,6 +255,8 @@
         "goalCount": "počet gólov",
         "penaltyCount": "počet trestov",
         "addGoal": "+ Gól",
+        "addGoalPP": "+ PP",
+        "addGoalSH": "+ SH",
         "addPenalty": "+ Trest",
         "addPositive": "+ Pozitívny",
         "addNegative": "+ Negatívny",

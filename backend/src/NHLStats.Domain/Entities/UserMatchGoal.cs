@@ -6,6 +6,7 @@ public class UserMatchGoal
     public int UserMatchId { get; set; }
     public int RosterPlayerId { get; set; }
     public int Count { get; set; }
+    public GoalType GoalType { get; set; }
 
     public UserMatch? UserMatch { get; set; }
     public RosterPlayer? RosterPlayer { get; set; }

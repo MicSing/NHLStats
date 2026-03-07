@@ -7,6 +7,7 @@ import type {
     CreateUserMatchPointDto,
     CreateUserMatchGoalDto,
     CreateUserMatchPenaltyDto,
+    GoalType,
 } from '../types/userMatch'
 import type { RosterPlayer } from '../types/roster'
 import type { PointReason } from '../types/pointReason'
@@ -51,6 +52,7 @@ export default function UserMatchCard({
         rosterPlayerId: '',
         count: 1,
     })
+    const [showGoalTypes, setShowGoalTypes] = useState(false)
     const [penaltyForm, setPenaltyForm] = useState<{
         rosterPlayerId: number | ''
         count: number
@@ -75,11 +77,12 @@ export default function UserMatchCard({
         onChanged()
     }
 
-    const handleAddGoal = async () => {
+    const handleAddGoal = async (goalType: GoalType = 'Regular') => {
         if (goalForm.rosterPlayerId === '') return
         await apiClient.post<UserMatchGoal>(`/api/usermatches/${um.id}/goals`, {
             rosterPlayerId: goalForm.rosterPlayerId,
             count: goalForm.count,
+            goalType,
         } as CreateUserMatchGoalDto)
         onChanged()
     }
@@ -143,28 +146,36 @@ export default function UserMatchCard({
                     <div className="flex flex-wrap gap-2 mb-2">
                         {Object.values(
                             goals.reduce<
-                                Record<number, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[] }>
+                                Record<string, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[]; goalType: GoalType }>
                             >((acc, g) => {
-                                if (acc[g.rosterPlayerId]) {
-                                    acc[g.rosterPlayerId].totalCount += g.count
-                                    acc[g.rosterPlayerId].ids.push(g.id)
+                                const key = `${g.rosterPlayerId}-${g.goalType}`
+                                if (acc[key]) {
+                                    acc[key].totalCount += g.count
+                                    acc[key].ids.push(g.id)
                                 } else {
-                                    acc[g.rosterPlayerId] = {
+                                    acc[key] = {
                                         rosterPlayerId: g.rosterPlayerId,
                                         firstName: g.playerFirstName,
                                         surname: g.playerSurname,
                                         totalCount: g.count,
                                         ids: [g.id],
+                                        goalType: g.goalType,
                                     }
                                 }
                                 return acc
                             }, {}),
                         ).map((g) => (
                             <span
-                                key={g.rosterPlayerId}
+                                key={`${g.rosterPlayerId}-${g.goalType}`}
                                 className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
                             >
-                                {g.firstName} {g.surname} × {g.totalCount}
+                                {g.firstName} {g.surname}
+                                {g.goalType !== 'Regular' && (
+                                    <span className="text-xs font-semibold text-primary ml-0.5">
+                                        {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
+                                    </span>
+                                )}
+                                {' '}× {g.totalCount}
                                 {isAuth && (
                                     <button
                                         aria-label={`delete goal for player ${g.rosterPlayerId}`}
@@ -182,7 +193,8 @@ export default function UserMatchCard({
                             aria-label={`add goal for ${um.userName}`}
                             onSubmit={(e) => {
                                 e.preventDefault()
-                                void handleAddGoal()
+                                void handleAddGoal('Regular')
+                                setShowGoalTypes(false)
                             }}
                             className="flex gap-2 mt-2"
                         >
@@ -210,12 +222,46 @@ export default function UserMatchCard({
                                 }
                                 className="input w-16 text-center text-sm py-1"
                             />
-                            <button
-                                type="submit"
-                                className="btn-primary text-sm px-3 py-1"
-                            >
-                                {t('userMatchCard.addGoal')}
-                            </button>
+                            <div className="relative flex">
+                                <button
+                                    type="submit"
+                                    className="btn-primary text-sm px-3 py-1 rounded-r-none border-r border-white/20"
+                                >
+                                    {t('userMatchCard.addGoal')}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary text-sm px-2 py-1 rounded-l-none"
+                                    onClick={() => setShowGoalTypes((prev) => !prev)}
+                                    aria-label="More goal types"
+                                >
+                                    ▾
+                                </button>
+                                {showGoalTypes && (
+                                    <div className="absolute top-full right-0 flex gap-1 mt-1 z-10">
+                                        <button
+                                            type="button"
+                                            className="btn-primary text-sm px-3 py-1"
+                                            onClick={() => {
+                                                void handleAddGoal('PowerPlay')
+                                                setShowGoalTypes(false)
+                                            }}
+                                        >
+                                            {t('userMatchCard.addGoalPP')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn-primary text-sm px-3 py-1"
+                                            onClick={() => {
+                                                void handleAddGoal('ShortHanded')
+                                                setShowGoalTypes(false)
+                                            }}
+                                        >
+                                            {t('userMatchCard.addGoalSH')}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </form>
                     )}
                 </div>

@@ -23,7 +23,7 @@ public class UserMatchService : IUserMatchService
 
     private static UserMatchGoalDto ToGoalDto(UserMatchGoal g) => new(
         g.Id, g.UserMatchId, g.RosterPlayerId,
-        g.RosterPlayer?.FirstName, g.RosterPlayer?.Surname, g.Count);
+        g.RosterPlayer?.FirstName, g.RosterPlayer?.Surname, g.Count, g.GoalType);
 
     private static UserMatchPenaltyDto ToPenaltyDto(UserMatchPenalty p) => new(
         p.Id, p.UserMatchId, p.RosterPlayerId,
@@ -296,7 +296,8 @@ public class UserMatchService : IUserMatchService
         {
             UserMatchId = userMatchId,
             RosterPlayerId = dto.RosterPlayerId,
-            Count = dto.Count
+            Count = dto.Count,
+            GoalType = dto.GoalType
         };
         _db.UserMatchGoals.Add(goal);
         await _db.SaveChangesAsync();
@@ -328,6 +329,7 @@ public class UserMatchService : IUserMatchService
 
         goal.RosterPlayerId = dto.RosterPlayerId;
         goal.Count = dto.Count;
+        goal.GoalType = dto.GoalType;
         await _db.SaveChangesAsync();
 
         var loaded = await _db.UserMatchGoals

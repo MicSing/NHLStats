@@ -1,3 +1,5 @@
+export type GoalType = 'Regular' | 'PowerPlay' | 'ShortHanded'
+
 export interface UserMatch {
     id: number
     userId: number
@@ -24,6 +26,7 @@ export interface UserMatchGoal {
     playerFirstName: string | null
     playerSurname: string | null
     count: number
+    goalType: GoalType
 }
 
 export interface UserMatchPenalty {
@@ -43,6 +46,7 @@ export interface CreateUserMatchPointDto {
 export interface CreateUserMatchGoalDto {
     rosterPlayerId: number
     count: number
+    goalType: GoalType
 }
 
 export interface CreateUserMatchPenaltyDto {

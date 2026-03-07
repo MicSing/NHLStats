@@ -1,3 +1,5 @@
+using NHLStats.Domain.Entities;
+
 namespace NHLStats.Application.DTOs;
 
 public record UserMatchDto(
@@ -38,15 +40,18 @@ public record UserMatchGoalDto(
     int RosterPlayerId,
     string? PlayerFirstName,
     string? PlayerSurname,
-    int Count);
+    int Count,
+    GoalType GoalType);
 
 public record CreateUserMatchGoalDto(
     int RosterPlayerId,
-    int Count);
+    int Count,
+    GoalType GoalType = GoalType.Regular);
 
 public record UpdateUserMatchGoalDto(
     int RosterPlayerId,
-    int Count);
+    int Count,
+    GoalType GoalType = GoalType.Regular);
 
 // ─── Penalties ────────────────────────────────────────────────────────────────
 
