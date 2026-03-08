@@ -129,6 +129,10 @@ export default function DashboardPage() {
         ? safeDashboardData.trendData
         : safeDashboardData.allTimePlusMinusTrend
 
+    // Show trend charts only for all-time view or the most recent season
+    const isLastSeason = selectedSeasonId === seasons[0]?.id
+    const showTrendCharts = !selectedSeasonId || isLastSeason
+
     return (
         <div className="min-h-screen bg-bg text-text p-6">
             <div className="max-w-7xl mx-auto">
@@ -217,29 +221,31 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                {/* Plus / Minus Trend (split into two charts) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">
-                            {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                        </h2>
-                        {loadingDashboard ? (
-                            <LoadingSpinner size="sm" inline />
-                        ) : (
-                            <TrendChart data={trendData} mode="plus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
-                        )}
-                    </section>
-                    <section className="card p-5">
-                        <h2 className="text-sm font-semibold text-primary mb-3">
-                            {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                        </h2>
-                        {loadingDashboard ? (
-                            <LoadingSpinner size="sm" inline />
-                        ) : (
-                            <TrendChart data={trendData} mode="minus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
-                        )}
-                    </section>
-                </div>
+                {/* Plus / Minus Trend (split into two charts) - only show for all-time or last season */}
+                {showTrendCharts && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <section className="card p-5">
+                            <h2 className="text-sm font-semibold text-primary mb-3">
+                                {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                            </h2>
+                            {loadingDashboard ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <TrendChart data={trendData} mode="plus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                            )}
+                        </section>
+                        <section className="card p-5">
+                            <h2 className="text-sm font-semibold text-primary mb-3">
+                                {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                            </h2>
+                            {loadingDashboard ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <TrendChart data={trendData} mode="minus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                            )}
+                        </section>
+                    </div>
+                )}
             </div>
         </div>
     )
