@@ -3,6 +3,7 @@ import type { Season } from '../../types/season'
 import type { Team } from '../../types/team'
 import type { RosterPlayer, CreateRosterPlayerDto, UpdateRosterPlayerDto, CsvImportResultDto } from '../../types/roster'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -58,7 +59,7 @@ export default function RosterPage() {
 
     useEffect(() => {
         Promise.all([
-            apiClient.get<Season[]>('/api/seasons'),
+            cacheService.getSeasons(),
             apiClient.get<Team[]>('/api/teams'),
         ])
             .then(([s, t]) => {

@@ -1,4 +1,5 @@
 import apiClient from './apiClient'
+import { cacheService } from './cacheService'
 import type {
     HeadToHeadMatch,
     UserMatchSummary,
@@ -39,8 +40,9 @@ export const statsService = {
         )
     },
 
-    /** GET /api/seasons/{id}/users */
-    getSeasonUsers(seasonId: number): Promise<User[]> {
-        return apiClient.get<User[]>(`/api/seasons/${seasonId}/users`)
+    /** GET /api/seasons/{id}/users - replaced with cached users */
+    getSeasonUsers(): Promise<User[]> {
+        // Use cached users instead of season-specific endpoint
+        return cacheService.getUsers()
     },
 }

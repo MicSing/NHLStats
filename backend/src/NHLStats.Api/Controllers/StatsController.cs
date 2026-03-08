@@ -14,15 +14,6 @@ public class SeasonStatsController : ControllerBase
 
     public SeasonStatsController(IStatsService stats) => _stats = stats;
 
-    /// <summary>GET /api/seasons/{seasonId}/stats</summary>
-    /// <remarks>Returns per-user TotalPlus, TotalMinus and calculated Earnings for the season.</remarks>
-    [HttpGet]
-    public async Task<IActionResult> GetSeasonStats(int seasonId)
-    {
-        var result = await _stats.GetSeasonStatsAsync(seasonId);
-        return Ok(result);
-    }
-
     /// <summary>GET /api/seasons/{seasonId}/stats/weekly</summary>
     /// <remarks>Returns all matches in the season grouped by sequential week number.</remarks>
     [HttpGet("weekly")]
@@ -61,30 +52,12 @@ public class SeasonStatsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>GET /api/seasons/{seasonId}/stats/roster-scorers-by-user</summary>
-    /// <remarks>Returns all roster players sorted by goals scored descending, with per-user goal counts.</remarks>
-    [HttpGet("roster-scorers-by-user")]
-    public async Task<IActionResult> GetRosterScorersByUser(int seasonId)
-    {
-        var result = await _stats.GetAllGoalScorersByUserAsync(seasonId);
-        return Ok(result);
-    }
-
     /// <summary>GET /api/seasons/{seasonId}/stats/roster-penalized</summary>
     /// <remarks>Returns all roster players sorted by penalties taken descending for the season.</remarks>
     [HttpGet("roster-penalized")]
     public async Task<IActionResult> GetRosterPenalized(int seasonId)
     {
         var result = await _stats.GetAllPenaltyPlayersAsync(seasonId);
-        return Ok(result);
-    }
-
-    /// <summary>GET /api/seasons/{seasonId}/stats/roster-penalized-by-user</summary>
-    /// <remarks>Returns all roster players sorted by penalties taken descending, with per-user penalty counts.</remarks>
-    [HttpGet("roster-penalized-by-user")]
-    public async Task<IActionResult> GetRosterPenalizedByUser(int seasonId)
-    {
-        var result = await _stats.GetAllPenaltyPlayersByUserAsync(seasonId);
         return Ok(result);
     }
 
@@ -116,36 +89,6 @@ public class StatsController : ControllerBase
     private readonly IStatsService _stats;
 
     public StatsController(IStatsService stats) => _stats = stats;
-
-    /// <summary>GET /api/stats/plus-minus</summary>
-    /// <remarks>Returns per-user aggregated TotalPlus, TotalMinus and Earnings across all seasons.</remarks>
-    [HttpGet("plus-minus")]
-    public async Task<IActionResult> GetAllSeasonsPlusMinus()
-    {
-        var result = await _stats.GetAllSeasonsStatsAsync();
-        return Ok(result);
-    }
-
-    /// <summary>GET /api/stats/plus-minus-trend</summary>
-    /// <remarks>Returns plus/minus net per user per season for trend charting.</remarks>
-    [HttpGet("plus-minus-trend")]
-    public async Task<IActionResult> GetPlusMinusTrend()
-    {
-        var result = await _stats.GetPlusMinusTrendAsync();
-        return Ok(result);
-    }
-
-    /// <summary>GET /api/stats/earnings</summary>
-    /// <remarks>
-    /// Returns all-time earnings per user across every season, plus total collected,
-    /// total expenses, and the remaining balance.
-    /// </remarks>
-    [HttpGet("earnings")]
-    public async Task<IActionResult> GetEarnings()
-    {
-        var result = await _stats.GetAllTimeEarningsAsync();
-        return Ok(result);
-    }
 
     /// <summary>GET /api/stats/earnings-by-season</summary>
     /// <remarks>
@@ -195,6 +138,38 @@ public class StatsController : ControllerBase
     public async Task<IActionResult> GetUserMatchHistory(int userId, [FromQuery] int? seasonId = null)
     {
         var result = await _stats.GetUserMatchHistoryAsync(userId, seasonId);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/stats/dashboard</summary>
+    /// <remarks>
+    /// Returns consolidated dashboard data including season stats, earnings, trends, and roster statistics.
+    /// If seasonId is provided, returns season-specific data and weekly trends.
+    /// If seasonId is null, returns aggregated data across all seasons.
+    /// </remarks>
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboardData()
+    {
+        var result = await _stats.GetDashboardDataAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// GET /api/stats/season
+    /// Returns total season stats including total goals, penalties, matches, earnings and top roster players for a season.
+    /// </summary>
+    /// <returns></returns>
+    [HttpGet("season")]
+    public async Task<IActionResult> GetSeasonTotals()
+    {
+        var result = await _stats.GetSeasonTotalsAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("financial-stats")]
+    public async Task<IActionResult> GetFinancialStats()
+    {
+        var result = await _stats.GetFinancialStatsAsync();
         return Ok(result);
     }
 }

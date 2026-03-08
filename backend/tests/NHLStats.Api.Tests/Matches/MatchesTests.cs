@@ -69,7 +69,7 @@ public class MatchesTests : ApiTestBase
         body.GetProperty("awayScore").GetInt32().Should().Be(0);
         body.GetProperty("matchNumber").GetInt32().Should().Be(1);
         body.GetProperty("matchDate").ValueKind.Should().Be(JsonValueKind.Null);
-        body.GetProperty("completionType").GetInt32().Should().Be(0); // None
+        body.GetProperty("completionType").GetString().Should().Be("None");
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class MatchesTests : ApiTestBase
         var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
         updated.GetProperty("homeScore").GetInt32().Should().Be(5);
         updated.GetProperty("homeTeamId").GetInt32().Should().Be(3);
-        updated.GetProperty("completionType").GetInt32().Should().Be(2);
+        updated.GetProperty("completionType").GetString().Should().Be("Overtime");
         updated.GetProperty("matchDate").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 

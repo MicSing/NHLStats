@@ -126,6 +126,7 @@ public class MatchService : IMatchService
 
         // Create UserMatch records for player points
         var userMatches = new List<UserMatch>();
+        var userPointsPairs = new List<(UserMatch um, BatchUserPointsDto points)>();
         for (int i = 0; i < dtoList.Count; i++)
         {
             var dto = dtoList[i];
@@ -134,14 +135,14 @@ public class MatchService : IMatchService
             {
                 foreach (var up in dto.UserPoints)
                 {
-                    userMatches.Add(new UserMatch
+                    var um = new UserMatch
                     {
                         UserId = up.UserId,
                         MatchId = match.Id,
-                        SeasonId = seasonId,
-                        TotalPlus = up.Plus,
-                        TotalMinus = up.Minus
-                    });
+                        SeasonId = seasonId
+                    };
+                    userMatches.Add(um);
+                    userPointsPairs.Add((um, up));
                 }
             }
         }
@@ -154,12 +155,12 @@ public class MatchService : IMatchService
             // Negative points → PointReason Id=1 ("Penalty", IsPositive=false)
             // Positive points → PointReason Id=9 ("Penalty", IsPositive=true)
             var pointEntries = new List<UserMatchPoint>();
-            foreach (var um in userMatches)
+            foreach (var (um, up) in userPointsPairs)
             {
-                if (um.TotalMinus > 0)
-                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 1, Count = um.TotalMinus });
-                if (um.TotalPlus > 0)
-                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 9, Count = um.TotalPlus });
+                if (up.Minus > 0)
+                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 1, Count = up.Minus });
+                if (up.Plus > 0)
+                    pointEntries.Add(new UserMatchPoint { UserMatchId = um.Id, PointReasonId = 9, Count = up.Plus });
             }
             if (pointEntries.Count > 0)
             {

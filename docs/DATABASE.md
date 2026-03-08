@@ -523,14 +523,14 @@ cp ~/data/nhlstats.db ~/data/nhlstats.db.backup
 
 ### Production (Azure)
 
-Use Azure SQL Backup or regular SQLite backup:
+Use regular SQLite backup:
 
 ```bash
 # SSH to app service and backup
 sqlite3 /data/nhlstats.db ".backup '/data/nhlstats.db.backup'"
 ```
 
-Or use Azure App Service backup feature (if using managed SQL).
+Or use Azure App Service backup feature for the SQLite file path.
 
 ## Common Queries
 

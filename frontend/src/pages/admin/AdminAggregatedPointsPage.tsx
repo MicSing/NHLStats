@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react'
 import type { Season, SeasonDetail } from '../../types/season'
-import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../../types/userMatch'
-import type { RosterPlayer } from '../../types/roster'
-import type { PointReason } from '../../types/pointReason'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
-import UserMatchCard from '../../components/UserMatchCard'
 import { useAuth } from '../../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import { useToast } from '../../context/ToastContext'
 
+interface AggregatedSeasonData {
+    id: number
+    userId: number
+    seasonId: number
+    totalPlus: number
+    totalMinus: number
+    matchesPlayed: number
+}
+
 interface EnrichedEntry {
-    userMatch: UserMatch
-    points: UserMatchPoint[]
-    goals: UserMatchGoal[]
-    penalties: UserMatchPenalty[]
+    aggregatedData: AggregatedSeasonData
+    userName: string
 }
 
 export default function AdminAggregatedPointsPage() {
@@ -28,51 +32,45 @@ export default function AdminAggregatedPointsPage() {
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | ''>('')
     const [seasonDetail, setSeasonDetail] = useState<SeasonDetail | null>(null)
     const [entries, setEntries] = useState<EnrichedEntry[]>([])
-    const [roster, setRoster] = useState<RosterPlayer[]>([])
-    const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingEntries, setLoadingEntries] = useState(false)
     const [creating, setCreating] = useState<number | null>(null) // userId being created
     const [error, setError] = useState<string | null>(null)
     const [manageEntry, setManageEntry] = useState<EnrichedEntry | null>(null)
+    const [editValues, setEditValues] = useState({ totalPlus: 0, totalMinus: 0, matchesPlayed: 0 })
+    const [saving, setSaving] = useState(false)
 
-    // Load seasons + point reasons once
+    const isValidNonNegative = (value: number) => Number.isFinite(value) && value >= 0
+
+    // Load seasons
     useEffect(() => {
-        Promise.all([
-            apiClient.get<Season[]>('/api/seasons'),
-            apiClient.get<PointReason[]>('/api/pointreasons'),
-        ])
-            .then(([s, pr]) => {
+        cacheService
+            .getSeasons()
+            .then((s) => {
                 setSeasons(s)
-                setPointReasons(pr)
             })
             .catch(() => setError(t('errors.failedToLoadSeasons')))
             .finally(() => setLoadingSeasons(false))
-    }, [])
+    }, [t])
 
     const loadEntries = async (seasonId: number) => {
         setLoadingEntries(true)
         setError(null)
         try {
-            const [detail, rawEntries, rosterData] = await Promise.all([
+            const [detail, aggregated] = await Promise.all([
                 apiClient.get<SeasonDetail>(`/api/seasons/${seasonId}`),
-                apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/usermatches`),
-                apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`),
+                apiClient.get<AggregatedSeasonData[]>(`/api/seasons/${seasonId}/aggregated-data`),
             ])
             setSeasonDetail(detail)
-            setRoster(rosterData)
 
-            // Enrich each aggregated entry with its points/goals/penalties
-            const enriched = await Promise.all(
-                rawEntries.map(async (um) => {
-                    const [points, goals, penalties] = await Promise.all([
-                        apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`),
-                        apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`),
-                        apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`),
-                    ])
-                    return { userMatch: um, points, goals, penalties }
-                }),
-            )
+            const nameById = new Map(detail.users.map((user) => [user.id, user.name]))
+            const enriched = aggregated.map((agg) => {
+                const userName = nameById.get(agg.userId)
+                if (!userName) {
+                    console.warn(`Missing user name for aggregated data user ${agg.userId}`)
+                }
+                return { aggregatedData: agg, userName: userName ?? `User ${agg.userId}` }
+            })
             setEntries(enriched)
         } catch {
             setError(t('errors.failedToLoadEntries'))
@@ -94,48 +92,75 @@ export default function AdminAggregatedPointsPage() {
         setCreating(userId)
         setError(null)
         try {
-            await apiClient.post<UserMatch>(`/api/seasons/${selectedSeasonId}/usermatches`, { userId })
+            await apiClient.post(
+                `/api/users/${userId}/seasons/${selectedSeasonId}/aggregated-data`,
+                { userId, seasonId: selectedSeasonId, totalPlus: 0, totalMinus: 0, matchesPlayed: 0 }
+            )
             toast.success(t('toast.createSuccess'))
             await loadEntries(selectedSeasonId as number)
-        } catch (e: unknown) {
+        } catch {
             toast.error(t('toast.operationFailed'))
         } finally {
             setCreating(null)
         }
     }
 
-    const handleDelete = async (userMatchId: number) => {
+    const handleDelete = async (userId: number) => {
         if (!window.confirm(t('admin.aggregated.deleteConfirm'))) return
+        if (selectedSeasonId === '') return
         try {
-            await apiClient.delete(`/api/usermatches/${userMatchId}`)
+            await apiClient.delete(`/api/users/${userId}/seasons/${selectedSeasonId}/aggregated-data`)
             setManageEntry(null)
             toast.success(t('toast.deleteSuccess'))
-            if (selectedSeasonId !== '') await loadEntries(selectedSeasonId as number)
+            await loadEntries(selectedSeasonId)
         } catch {
             toast.error(t('toast.operationFailed'))
         }
     }
 
-    const refreshManageEntry = async () => {
+    const handleSave = async () => {
         if (!manageEntry || selectedSeasonId === '') return
-        await loadEntries(selectedSeasonId as number)
-        // Re-find the refreshed entry
-        const updated = entries.find((e) => e.userMatch.id === manageEntry.userMatch.id)
-        if (updated) setManageEntry(updated)
+        if (!isValidNonNegative(editValues.totalPlus)
+            || !isValidNonNegative(editValues.totalMinus)
+            || !isValidNonNegative(editValues.matchesPlayed)) {
+            toast.error(t('errors.invalidInput'))
+            return
+        }
+        setSaving(true)
+        try {
+            await apiClient.put(
+                `/api/users/${manageEntry.aggregatedData.userId}/seasons/${selectedSeasonId}/aggregated-data`,
+                {
+                    totalPlus: editValues.totalPlus,
+                    totalMinus: editValues.totalMinus,
+                    matchesPlayed: editValues.matchesPlayed,
+                }
+            )
+            toast.success(t('toast.saveSuccess'))
+            await loadEntries(selectedSeasonId as number)
+            setManageEntry(null)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setSaving(false)
+        }
     }
 
-    // After loadEntries, keep the open modal in sync
+    // Initialize edit values when modal opens
     useEffect(() => {
         if (manageEntry) {
-            const refreshed = entries.find((e) => e.userMatch.id === manageEntry.userMatch.id)
-            if (refreshed) setManageEntry(refreshed)
+            setEditValues({
+                totalPlus: manageEntry.aggregatedData.totalPlus,
+                totalMinus: manageEntry.aggregatedData.totalMinus,
+                matchesPlayed: manageEntry.aggregatedData.matchesPlayed,
+            })
         }
-    }, [entries]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [manageEntry])
 
     if (loadingSeasons) return <LoadingSpinner />
 
     // Users that don't yet have an aggregated entry
-    const usersWithEntry = new Set(entries.map((e) => e.userMatch.userId))
+    const usersWithEntry = new Set(entries.map((e) => e.aggregatedData.userId))
     const usersWithoutEntry = seasonDetail?.users.filter((u) => !usersWithEntry.has(u.id)) ?? []
 
     return (
@@ -186,29 +211,27 @@ export default function AdminAggregatedPointsPage() {
                                             <th className="pb-2 pr-4">{t('common.player')}</th>
                                             <th className="pb-2 pr-4 text-success">+</th>
                                             <th className="pb-2 pr-4 text-danger">−</th>
-                                            <th className="pb-2 pr-4">Points</th>
+                                            <th className="pb-2 pr-4">{t('admin.aggregated.matchesPlayed')}</th>
                                             <th className="pb-2">{t('common.actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {entries.map((entry) => (
                                             <tr
-                                                key={entry.userMatch.id}
+                                                key={entry.aggregatedData.id}
                                                 className="border-b border-border/50"
                                             >
                                                 <td className="py-3 pr-4">
-                                                    {entry.userMatch.userName}
+                                                    {entry.userName}
                                                 </td>
                                                 <td className="py-3 pr-4 text-success font-mono">
-                                                    {entry.userMatch.totalPlus}
+                                                    {entry.aggregatedData.totalPlus}
                                                 </td>
                                                 <td className="py-3 pr-4 text-danger font-mono">
-                                                    {entry.userMatch.totalMinus}
+                                                    {entry.aggregatedData.totalMinus}
                                                 </td>
-                                                <td className="py-3 pr-4 text-text-muted">
-                                                    {t('admin.aggregated.pointEntries', { count: entry.points.length })}
-                                                    {entry.goals.length > 0 && `, ${t('admin.aggregated.goalEntry', { count: entry.goals.length })}`}
-                                                    {entry.penalties.length > 0 && `, ${t('admin.aggregated.penaltyEntry', { count: entry.penalties.length })}`}
+                                                <td className="py-3 pr-4 font-mono">
+                                                    {entry.aggregatedData.matchesPlayed}
                                                 </td>
                                                 <td className="py-3 flex gap-2">
                                                     {isAuth && (
@@ -221,7 +244,7 @@ export default function AdminAggregatedPointsPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() =>
-                                                                    void handleDelete(entry.userMatch.id)
+                                                                    void handleDelete(entry.aggregatedData.userId)
                                                                 }
                                                                 className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
                                                             >
@@ -275,19 +298,83 @@ export default function AdminAggregatedPointsPage() {
             {/* Manage modal */}
             {manageEntry && (
                 <Modal
-                    title={t('admin.aggregated.manageTitle', { name: manageEntry.userMatch.userName })}
+                    title={t('admin.aggregated.manageTitle', { name: manageEntry.userName })}
                     onClose={() => setManageEntry(null)}
                 >
-                    <UserMatchCard
-                        userMatch={manageEntry.userMatch}
-                        points={manageEntry.points}
-                        goals={manageEntry.goals}
-                        penalties={manageEntry.penalties}
-                        roster={roster}
-                        pointReasons={pointReasons}
-                        isAuth={isAuth}
-                        onChanged={() => void refreshManageEntry()}
-                    />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="label text-success">
+                                {t('admin.aggregated.totalPositive')}
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                value={editValues.totalPlus}
+                                onChange={(e) => {
+                                    const parsed = Number(e.target.value)
+                                    if (Number.isNaN(parsed)) return
+                                    setEditValues((current) => ({
+                                        ...current,
+                                        totalPlus: Math.max(0, parsed),
+                                    }))
+                                }}
+                                className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="label text-danger">
+                                {t('admin.aggregated.totalNegative')}
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                value={editValues.totalMinus}
+                                onChange={(e) => {
+                                    const parsed = Number(e.target.value)
+                                    if (Number.isNaN(parsed)) return
+                                    setEditValues((current) => ({
+                                        ...current,
+                                        totalMinus: Math.max(0, parsed),
+                                    }))
+                                }}
+                                className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="label">
+                                {t('admin.aggregated.matchesPlayed')}
+                            </label>
+                            <input
+                                type="number"
+                                min={0}
+                                value={editValues.matchesPlayed}
+                                onChange={(e) => {
+                                    const parsed = Number(e.target.value)
+                                    if (Number.isNaN(parsed)) return
+                                    setEditValues((current) => ({
+                                        ...current,
+                                        matchesPlayed: Math.max(0, parsed),
+                                    }))
+                                }}
+                                className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-white"
+                            />
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                            <button
+                                onClick={() => void handleSave()}
+                                disabled={saving}
+                                className="flex-1 bg-primary hover:bg-primary-hover px-3 py-2 rounded text-sm disabled:opacity-50"
+                            >
+                                {saving ? t('common.saving') : t('common.save')}
+                            </button>
+                            <button
+                                onClick={() => setManageEntry(null)}
+                                className="flex-1 bg-border hover:bg-border/80 px-3 py-2 rounded text-sm"
+                            >
+                                {t('common.cancel')}
+                            </button>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </div>

@@ -1,3 +1,5 @@
+import type { Expense } from './expense'
+
 export interface UserSeasonStats {
     userId: number
     userName: string
@@ -10,7 +12,6 @@ export interface TopRosterPlayer {
     rosterPlayerId: number
     firstName: string
     surname: string
-    teamShortName: string | null
     count: number
 }
 
@@ -75,23 +76,33 @@ export interface UserEarnings {
 }
 
 export interface AllTimeEarnings {
-    userEarnings: UserEarnings[]
+    userEarnings: { userId: number; earnings: number }[]
     totalCollected: number
     canBeCollected: number
     totalExpenses: number
-    balance: number
 }
 
-export interface SeasonUserEarnings {
+export interface UserFinancialStats {
     userId: number
-    userName: string
-    earnings: number
+    totalPluses: number
+    totalMinuses: number
+    collected: number
+    totalEarnings: number
+    canBeCollected: number
 }
 
-export interface SeasonEarningsEntry {
+export interface FinancialStats {
+    totalCollected: number
+    totalExpenses: number
+    canBeCollected: number
+    totalEarnings: number
+    expenses: Expense[]
+    financesByUser: UserFinancialStats[]
+}
+
+export interface SeasonalUserEarnings {
     seasonId: number
-    seasonName: string
-    users: SeasonUserEarnings[]
+    userEarnings: { userId: number; earnings: number }[]
 }
 
 export interface UserSeasonTotals {
@@ -101,6 +112,40 @@ export interface UserSeasonTotals {
     totalPenalties: number
 }
 
+// --- Season Totals from /api/stats/season endpoint ---
+
+export interface SeasonUserData {
+    userId: number
+    totalPlus: number
+    totalMinus: number
+    totalGoals: number
+    totalPenalties: number
+    earnings: number
+}
+
+export interface SeasonalUserData {
+    seasonId: number
+    usersData: SeasonUserData[]
+}
+
+export interface PlayerTopStats {
+    name: string
+    count: number
+}
+
+export interface SeasonTopRosterPlayers {
+    seasonId: number
+    topScorer: PlayerTopStats | null
+    topPenalty: PlayerTopStats | null
+    topPpScorer: PlayerTopStats | null
+    topShScorer: PlayerTopStats | null
+}
+
+export interface SeasonTotals {
+    usersData: SeasonalUserData[]
+    topRosterPlayers: SeasonTopRosterPlayers[]
+}
+
 // Plus/minus trend per period (season or week)
 
 export interface UserPeriodPlusMinus {
@@ -108,11 +153,13 @@ export interface UserPeriodPlusMinus {
     userName: string
     totalPlus: number
     totalMinus: number
+    matchesPlayed: number
 }
 
 export interface PeriodPlusMinus {
     label: string
     users: UserPeriodPlusMinus[]
+    totalPeriodMatches: number
 }
 
 // --- Phase 6: User Stats types ---
@@ -166,4 +213,63 @@ export interface UserMatchSummary {
     penaltyCount: number
     seasonId: number
     seasonName: string
+}
+
+export interface DashboardData {
+    seasonStats: SeasonStatsSummary[]
+    earningsBySeason: SeasonalUserEarnings[]
+    trendData: PeriodPlusMinus[]
+    rosterScorers: RosterScorerBySeason[]
+    rosterPenalized: RosterPenalizedBySeason[]
+
+    allTimeStats: UserPerformanceMetrics[]
+    allTimeEarnings: AllTimeEarnings
+    allTimePlusMinusTrend: PeriodPlusMinus[]
+    allTimeRosterScorers: AllTimeRosterScorer[]
+    allTimeRosterPenalized: AllTimeRosterPenalized[]
+}
+
+export interface UserPerformanceMetrics {
+    userId: number
+    totalPlus: number
+    totalMinus: number
+}
+
+export interface SeasonStatsSummary {
+    seasonId: number
+    userStats: UserPerformanceMetrics[]
+}
+
+export interface RosterScorerBySeason {
+    rosterPlayerId: number
+    seasonId: number
+    firstName: string
+    surname: string
+    totalCount: number
+    userCounts: UserGoalCount[]
+}
+
+export interface AllTimeRosterScorer {
+    rosterPlayerId: number
+    firstName: string
+    surname: string
+    totalCount: number
+    userCounts: UserGoalCount[]
+}
+
+export interface RosterPenalizedBySeason {
+    rosterPlayerId: number
+    seasonId: number
+    firstName: string
+    surname: string
+    totalCount: number
+    userCounts: UserPenaltyCount[]
+}
+
+export interface AllTimeRosterPenalized {
+    rosterPlayerId: number
+    firstName: string
+    surname: string
+    totalCount: number
+    userCounts: UserPenaltyCount[]
 }

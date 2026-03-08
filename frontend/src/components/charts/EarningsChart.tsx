@@ -9,7 +9,9 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
-import type { SeasonEarningsEntry } from '../../types/stats'
+import type { SeasonalUserEarnings } from '../../types/stats'
+import type { User } from '../../types/user'
+import type { Season } from '../../types/season'
 import { useChartTheme } from './useChartTheme'
 
 // A curated palette of distinguishable colors for stacked seasons
@@ -28,9 +30,13 @@ const SEASON_COLORS = [
 
 interface Props {
     /** All per-season earnings data (from /api/stats/earnings-by-season) */
-    data: SeasonEarningsEntry[]
+    data: SeasonalUserEarnings[]
     /** Currently selected season id, or null for "all seasons" */
     selectedSeasonId: number | null
+    /** Users for name lookups */
+    users: User[]
+    /** Seasons for name lookups */
+    seasons: Season[]
 }
 
 interface ChartRow {
@@ -38,9 +44,13 @@ interface ChartRow {
     [seasonName: string]: string | number
 }
 
-export default function EarningsChart({ data, selectedSeasonId }: Props) {
+export default function EarningsChart({ data, selectedSeasonId, users, seasons }: Props) {
     const ct = useChartTheme()
     const [hoveredSeason, setHoveredSeason] = useState<string | null>(null)
+
+    // Create lookup maps
+    const userNameById = new Map(users.map((u) => [u.id, u.name]))
+    const seasonNameById = new Map(seasons.map((s) => [s.id, s.name]))
 
     // Filter seasons based on selection
     const filteredSeasons = selectedSeasonId
@@ -58,19 +68,24 @@ export default function EarningsChart({ data, selectedSeasonId }: Props) {
     // Collect all unique users across the selected seasons
     const userMap = new Map<number, string>()
     for (const season of filteredSeasons) {
-        for (const u of season.users) {
-            if (!userMap.has(u.userId)) userMap.set(u.userId, u.userName)
+        for (const u of season.userEarnings) {
+            if (!userMap.has(u.userId)) {
+                const userName = userNameById.get(u.userId) ?? `User ${u.userId}`
+                userMap.set(u.userId, userName)
+            }
         }
     }
 
     // Build chart data: one row per user, season names as keys
     // Seasons are already ordered chronologically from the API — first season at bottom, last at top
-    const seasonNames = filteredSeasons.map((s) => s.seasonName)
+    const seasonNames = filteredSeasons.map((s) => seasonNameById.get(s.seasonId) ?? `Season ${s.seasonId}`)
     const chartData: ChartRow[] = Array.from(userMap.entries()).map(([userId, userName]) => {
         const row: ChartRow = { userName }
-        for (const season of filteredSeasons) {
-            const userEntry = season.users.find((u) => u.userId === userId)
-            row[season.seasonName] = userEntry ? Number(userEntry.earnings.toFixed(2)) : 0
+        for (let i = 0; i < filteredSeasons.length; i++) {
+            const season = filteredSeasons[i]
+            const seasonName = seasonNames[i]
+            const userEntry = season.userEarnings.find((u) => u.userId === userId)
+            row[seasonName] = userEntry ? Number(userEntry.earnings.toFixed(2)) : 0
         }
         return row
     })

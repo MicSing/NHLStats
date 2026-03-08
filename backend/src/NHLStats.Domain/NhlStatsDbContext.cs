@@ -25,6 +25,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MoneyConfig> MoneyConfigs => Set<MoneyConfig>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<UserPayout> UserPayouts => Set<UserPayout>();
+    public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,6 +88,14 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
             b.HasOne(x => x.User).WithMany(u => u.UserMatches).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Match).WithMany(m => m.UserMatches).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserSeasonAggregatedData>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => new { x.UserId, x.SeasonId }).IsUnique();
         });
 
         modelBuilder.Entity<UserMatchPoint>(b =>

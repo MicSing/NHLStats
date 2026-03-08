@@ -9,7 +9,9 @@ import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
 import type { UserSeasonStats, RosterScorerByUser, RosterPenalizedByUser } from '../types/stats'
-import type { SeasonEarningsEntry } from '../types/stats'
+import type { SeasonalUserEarnings } from '../types/stats'
+import type { User } from '../types/user'
+import type { Season } from '../types/season'
 
 function renderDashboard() {
     return render(
@@ -68,21 +70,41 @@ const mockRosterPenalized: RosterPenalizedByUser[] = [
     },
 ]
 
-const mockEarningsBySeason: SeasonEarningsEntry[] = [
+const mockEarningsBySeason: SeasonalUserEarnings[] = [
     {
         seasonId: 1,
-        seasonName: '2023-24',
-        users: [
-            { userId: 1, userName: 'Player One', earnings: 0.50 },
-            { userId: 2, userName: 'Player Two', earnings: 1.25 },
+        userEarnings: [
+            { userId: 1, earnings: 0.50 },
+            { userId: 2, earnings: 1.25 },
         ],
     },
     {
         seasonId: 2,
-        seasonName: '2024-25',
-        users: [
-            { userId: 1, userName: 'Player One', earnings: 0.25 },
+        userEarnings: [
+            { userId: 1, earnings: 0.25 },
         ],
+    },
+]
+
+const mockUsers: User[] = [
+    { id: 1, name: 'Player One', email: 'player1@test.com' },
+    { id: 2, name: 'Player Two', email: 'player2@test.com' },
+]
+
+const mockSeasons: Season[] = [
+    {
+        id: 1,
+        name: '2023-24',
+        startedOn: '2023-09-01',
+        endedOn: null,
+        parentSeasonId: null,
+    },
+    {
+        id: 2,
+        name: '2024-25',
+        startedOn: '2024-09-01',
+        endedOn: null,
+        parentSeasonId: null,
     },
 ]
 
@@ -138,14 +160,32 @@ describe('PenaltyLeadersChart', () => {
 
 describe('EarningsChart', () => {
     test('renders stacked bars with user names', () => {
-        render(<ThemeProvider><EarningsChart data={mockEarningsBySeason} selectedSeasonId={null} /></ThemeProvider>)
+        render(
+            <ThemeProvider>
+                <EarningsChart
+                    data={mockEarningsBySeason}
+                    selectedSeasonId={null}
+                    users={mockUsers}
+                    seasons={mockSeasons}
+                />
+            </ThemeProvider>
+        )
         expect(screen.getByRole('img', { name: /earnings chart/i })).toBeInTheDocument()
         expect(screen.getAllByText('Player One').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Player Two').length).toBeGreaterThan(0)
     })
 
     test('handles empty data gracefully', () => {
-        render(<ThemeProvider><EarningsChart data={[]} selectedSeasonId={null} /></ThemeProvider>)
+        render(
+            <ThemeProvider>
+                <EarningsChart
+                    data={[]}
+                    selectedSeasonId={null}
+                    users={mockUsers}
+                    seasons={mockSeasons}
+                />
+            </ThemeProvider>
+        )
         expect(screen.getByText(/no data available/i)).toBeInTheDocument()
     })
 })
@@ -209,12 +249,14 @@ describe('DashboardPage', () => {
         })
     })
 
-    test('charts show no data placeholder when no season selected', async () => {
+    test('switching to all seasons shows all-time earnings heading', async () => {
+        const user = userEvent.setup()
         renderDashboard()
-        // Wait for page to render
-        await screen.findByRole('heading', { name: /dashboard/i })
-        // Season-specific charts should show no-data placeholder before a season is chosen
-        const noDataMessages = await screen.findAllByText(/no data available/i)
-        expect(noDataMessages.length).toBeGreaterThanOrEqual(1)
+
+        const select = await screen.findByRole('combobox', { name: /select season/i })
+        await user.selectOptions(select, '')
+
+        const section = await screen.findByTestId('earnings-section')
+        expect(section).toHaveTextContent(/all-time earnings/i)
     })
 })

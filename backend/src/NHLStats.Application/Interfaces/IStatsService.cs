@@ -8,7 +8,7 @@ public interface IStatsService
     /// Returns per-user aggregated stats (TotalPlus, TotalMinus, Earnings) for a season.
     /// Earnings are calculated using the MoneyConfig rate that was active at each match date.
     /// </summary>
-    Task<IEnumerable<UserSeasonStatsDto>> GetSeasonStatsAsync(int seasonId);
+    Task<IEnumerable<SeasonPointsStatsSummaryDto>> FetchSeasonPointsStatisticsAsync();
 
     /// <summary>
     /// Returns all matches in a season grouped by sequential week number.
@@ -35,7 +35,7 @@ public interface IStatsService
     /// <summary>
     /// Returns all roster players sorted by goals scored descending, with per-user goal counts.
     /// </summary>
-    Task<IEnumerable<RosterScorerByUserDto>> GetAllGoalScorersByUserAsync(int seasonId);
+    Task<IEnumerable<RosterScorerBySeasonDto>> GetAllGoalScorersByUserAsync();
 
     /// <summary>
     /// Returns all roster players sorted by penalties taken descending for the season.
@@ -45,36 +45,36 @@ public interface IStatsService
     /// <summary>
     /// Returns all roster players sorted by penalties taken descending, with per-user penalty counts.
     /// </summary>
-    Task<IEnumerable<RosterPenalizedByUserDto>> GetAllPenaltyPlayersByUserAsync(int seasonId);
+    Task<IEnumerable<RosterPenalizedBySeasonDto>> GetAllPenaltyPlayersByUserAsync();
 
     /// <summary>
     /// Returns per-user aggregated plus/minus stats across all seasons.
     /// </summary>
-    Task<IEnumerable<UserSeasonStatsDto>> GetAllSeasonsStatsAsync();
+    Task<IEnumerable<UserPointsMetricsDto>> GetAllTimeStatsAsync(IEnumerable<SeasonPointsStatsSummaryDto> seasonsStats);
 
     /// <summary>
     /// Returns plus/minus per user per season, ordered chronologically.
     /// Used for trend charts.
     /// </summary>
-    Task<IEnumerable<PeriodPlusMinusDto>> GetPlusMinusTrendAsync();
+    Task<IEnumerable<PeriodPlusMinusDto>> GetAllTimePlusMinusTrendAsync();
 
     /// <summary>
     /// Returns plus/minus per user per week for a season.
     /// When the season has few weeks, backfills from the previous season.
     /// </summary>
-    Task<IEnumerable<PeriodPlusMinusDto>> GetWeeklyPlusMinusTrendAsync(int seasonId);
+    Task<IEnumerable<PeriodPlusMinusDto>> GetWeeklyPlusMinusTrendAsync(int desiredWeeks = 6);
 
     /// <summary>
     /// Returns all-time earnings per user aggregated across every season,
     /// along with total collected, total expenses, and the remaining balance.
     /// </summary>
-    Task<AllTimeEarningsDto> GetAllTimeEarningsAsync();
+    Task<AllTimeEarningsDto> GetAllTimeEarningsAsync(IEnumerable<SeasonalUserEarningsDto> earningsBySeason);
 
     /// <summary>
     /// Returns per-user earnings broken down by season.
     /// Each entry contains the season info and per-user earnings for that season.
     /// </summary>
-    Task<IEnumerable<SeasonEarningsEntryDto>> GetEarningsBySeasonAsync();
+    Task<IEnumerable<SeasonalUserEarningsDto>> GetEarningsBySeasonAsync();
 
     /// <summary>
     /// Returns per-user total goals and penalties for a season.
@@ -100,4 +100,25 @@ public interface IStatsService
     /// Optionally filtered by seasonId.
     /// </summary>
     Task<IEnumerable<UserMatchSummaryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null);
+
+    /// <summary>
+    /// Returns consolidated dashboard data for a season or all seasons aggregated.
+    /// Includes season stats, earnings, trend data, roster statistics, and total season matches.
+    /// If seasonId is null, returns aggregated data across all seasons.
+    /// </summary>
+    Task<DashboardDataDto> GetDashboardDataAsync();
+
+    /// <summary>
+    /// Returns total season stats including total goals, penalties, matches, and active users for a season.
+    /// </summary>
+    /// <param name="seasonId">The ID of the season to retrieve totals for.</param>
+    /// <returns>A <see cref="SeasonTotalsDto"/> containing the total stats for the specified season.</returns>
+    Task<SeasonTotalsDto> GetSeasonTotalsAsync();
+
+    /// <summary>
+    /// Returns financial stats including total collected, total expenses, remaining balance, and per-user earnings for all seasons aggregated.
+    /// </summary>
+    /// <param name="seasonId">The ID of the season to retrieve financial stats for. If null, aggregates across all seasons.</param>
+    /// <returns>A <see cref="FinancialStatsDto"/> containing the financial stats for all seasons.</returns>
+    Task<FinancialStatsDto> GetFinancialStatsAsync();
 }

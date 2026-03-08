@@ -3,6 +3,7 @@ import type { Season } from '../types/season'
 import type { User } from '../types/user'
 import type { PointReasonBreakdownItem, RosterPenalizedByUser, UserMatchSummary } from '../types/stats'
 import apiClient from '../services/apiClient'
+import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
 import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
@@ -241,8 +242,8 @@ export default function UserStatsPage() {
 
         const promise: Promise<User[]> =
             selectedSeasonId != null
-                ? statsService.getSeasonUsers(selectedSeasonId)
-                : apiClient.get<User[]>('/api/users')
+                ? cacheService.getUsers()
+                : cacheService.getUsers()
 
         promise
             .then((fetched) => {

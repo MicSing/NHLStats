@@ -30,23 +30,64 @@ type Mode = 'plus' | 'minus'
 interface Props {
     data: PeriodPlusMinus[]
     mode: Mode
+    totalPeriodMatches?: number // Total matches in current season from API
 }
 
 /**
- * Simple linear regression: returns { slope, intercept } for arrays x, y.
+ * Calculate pace (points per match) for a user
  */
-function linearRegression(x: number[], y: number[]): { slope: number; intercept: number } {
-    const n = x.length
-    if (n === 0) return { slope: 0, intercept: 0 }
-    const sumX = x.reduce((a, b) => a + b, 0)
-    const sumY = y.reduce((a, b) => a + b, 0)
-    const sumXY = x.reduce((a, xi, i) => a + xi * y[i], 0)
-    const sumXX = x.reduce((a, xi) => a + xi * xi, 0)
-    const denom = n * sumXX - sumX * sumX
-    if (denom === 0) return { slope: 0, intercept: sumY / n }
-    const slope = (n * sumXY - sumX * sumY) / denom
-    const intercept = (sumY - slope * sumX) / n
-    return { slope, intercept }
+function calculatePace(points: number, matches: number): number {
+    return matches > 0 ? points / matches : 0
+}
+
+/**
+ * Calculate historical pace: average pace of all previous periods (excluding current)
+ */
+function calculateHistoricalPace(
+    data: PeriodPlusMinus[],
+    userId: number,
+    getValue: (u: { totalPlus: number; totalMinus: number }) => number,
+    currentPeriodIndex: number
+): number {
+    const previousPeriods = data.slice(0, currentPeriodIndex)
+    if (previousPeriods.length === 0) return 0
+
+    let totalPace = 0
+    let count = 0
+
+    for (const period of previousPeriods) {
+        const user = period.users.find(u => u.userId === userId)
+        if (user && user.matchesPlayed > 0) {
+            totalPace += calculatePace(getValue(user), user.matchesPlayed)
+            count++
+        }
+    }
+
+    return count > 0 ? totalPace / count : 0
+}
+
+/**
+ * Calculate last N periods pace
+ */
+function calculateLastNPeriodsPace(
+    data: PeriodPlusMinus[],
+    userId: number,
+    getValue: (u: { totalPlus: number; totalMinus: number }) => number,
+    n: number
+): number {
+    const recentPeriods = data.slice(Math.max(0, data.length - n))
+    let totalPoints = 0
+    let totalMatches = 0
+
+    for (const period of recentPeriods) {
+        const user = period.users.find(u => u.userId === userId)
+        if (user) {
+            totalPoints += getValue(user)
+            totalMatches += user.matchesPlayed
+        }
+    }
+
+    return calculatePace(totalPoints, totalMatches)
 }
 
 export default function TrendChart({ data, mode }: Props) {
@@ -90,23 +131,79 @@ export default function TrendChart({ data, mode }: Props) {
         return entry
     })
 
-    // Predict next period using linear regression per user
+    // Predict next period using pace-based predictions per user
     const predictionEntry: Record<string, unknown> = {
         label: t('trendChart.nextPredicted'),
         _isPrediction: true,
     }
-    const xValues = data.map((_, i) => i)
-    const nextX = data.length
+
+    // Determine if this is weekly or season data
+    const isWeekly = data.length > 0 && data[0].label.toLowerCase().startsWith('week')
+    const currentPeriodIndex = data.length - 1
+
+    const getSeasonMatchesForUser = (userId: number): number =>
+        data.reduce((sum, period) => {
+            const u = period.users.find((p) => p.userId === userId)
+            return sum + (u?.matchesPlayed || 0)
+        }, 0)
+
+    // Use provided totalSeasonMatches or fallback to 82
+    const FULL_SEASON_MATCHES = 82
+
+    // Calculate total matches played across all users in the season
+    const totalSeasonMatchesPlayed = allUsers.reduce((sum, u) => {
+        return sum + getSeasonMatchesForUser(u.userId)
+    }, 0) / allUsers.length // Average to get total season matches played
+
+    // maxSeasonMatches = full season
+    // matchesRemainingInSeason = full season - matches already played in season
+    const maxSeasonMatches = FULL_SEASON_MATCHES
+    const matchesRemainingInSeason = Math.max(0, maxSeasonMatches - totalSeasonMatchesPlayed)
 
     for (const user of allUsers) {
-        const yValues = data.map((period) => {
-            const match = period.users.find((u) => u.userId === user.userId)
-            return match ? getValue(match) : 0
-        })
-        const { slope, intercept } = linearRegression(xValues, yValues)
-        // Clamp prediction to 0 (can't be negative for individual plus/minus counts)
-        predictionEntry[user.userName] = Math.max(0, Math.round(intercept + slope * nextX))
+        const currentUser = data[currentPeriodIndex]?.users.find((u) => u.userId === user.userId)
+
+        const currentSeasonMatches = getSeasonMatchesForUser(user.userId)
+        if (currentSeasonMatches === 0) {
+            predictionEntry[user.userName] = 0
+            continue
+        }
+
+        // Calculate current period pace
+        // For season view: only current season (last period)
+        // For weekly view: all weeks in current season
+        const currentSeasonPace = isWeekly
+            ? calculateLastNPeriodsPace(data, user.userId, getValue, data.length)
+            : calculateLastNPeriodsPace(data, user.userId, getValue, 1)
+
+        // Calculate historical pace (average of all previous periods)
+        const historicalPace = calculateHistoricalPace(data, user.userId, getValue, currentPeriodIndex)
+
+        let predictedPace: number
+
+        if (isWeekly && data.length >= 4) {
+            // Weekly with >= 4 weeks: 50% last 4 weeks + 30% current season + 20% historical
+            const last4WeeksPace = calculateLastNPeriodsPace(data, user.userId, getValue, 4)
+
+            predictedPace = 0.5 * last4WeeksPace + 0.3 * currentSeasonPace + 0.2 * historicalPace
+        } else {
+            // Season or < 4 weeks fallback: 80% current season + 20% historical
+            predictedPace = 0.8 * currentSeasonPace + 0.2 * historicalPace
+        }
+
+        // For season view: predict end-of-season total (82 games)
+        // For weekly view: predict next week based on recent match frequency
+        const matchesLastWeek = currentUser?.matchesPlayed ?? 0
+        console.log(`User ${user.userName}: currentSeasonMatches=${currentSeasonMatches}, matchesLastWeek=${matchesLastWeek}, matchesRemaining=${matchesRemainingInSeason}`)
+        const weeklyMultiplier = Math.min(matchesLastWeek, matchesRemainingInSeason)
+        console.log(`User ${user.userName}: pace=${predictedPace.toFixed(2)}, multiplier=${weeklyMultiplier}`)
+        const multiplier = isWeekly ? weeklyMultiplier : maxSeasonMatches
+        const predictedPoints = predictedPace * multiplier
+
+        // Clamp to 0 (can't be negative)
+        predictionEntry[user.userName] = Math.max(0, Math.round(predictedPoints))
     }
+    console.log('Prediction entry:', predictionEntry)
 
     const chartDataWithPrediction = [...chartData, predictionEntry]
 

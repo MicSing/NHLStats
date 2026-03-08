@@ -78,6 +78,22 @@ const mockSeasonStats = [
     { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
 ]
 
+const mockDashboardSeasonStats = [
+    {
+        seasonId: 1,
+        userStats: [
+            { userId: 1, totalPlus: 5, totalMinus: 3 },
+            { userId: 2, totalPlus: 2, totalMinus: 7 },
+        ],
+    },
+    {
+        seasonId: 2,
+        userStats: [
+            { userId: 1, totalPlus: 4, totalMinus: 1 },
+        ],
+    },
+]
+
 const mockTopScorer = {
     rosterPlayerId: 1,
     firstName: 'Connor',
@@ -108,6 +124,7 @@ const mockRosterPenalized = [
 const mockRosterScorersByUser = [
     {
         rosterPlayerId: 1,
+        seasonId: 1,
         firstName: 'Connor',
         surname: 'McDavid',
         teamShortName: 'EDM',
@@ -116,6 +133,7 @@ const mockRosterScorersByUser = [
     },
     {
         rosterPlayerId: 2,
+        seasonId: 2,
         firstName: 'Nathan',
         surname: 'MacKinnon',
         teamShortName: 'COL',
@@ -127,6 +145,7 @@ const mockRosterScorersByUser = [
 const mockRosterPenalizedByUser = [
     {
         rosterPlayerId: 4,
+        seasonId: 1,
         firstName: 'Tiger',
         surname: 'Williams',
         teamShortName: 'VAN',
@@ -135,6 +154,7 @@ const mockRosterPenalizedByUser = [
     },
     {
         rosterPlayerId: 5,
+        seasonId: 2,
         firstName: 'Zdeno',
         surname: 'Chara',
         teamShortName: 'BOS',
@@ -534,19 +554,37 @@ export const handlers = [
         return res(ctx.json([]))
     }),
 
-    // ── Aggregated UserMatches ────────────────────────────────────────────────
+    // ── Aggregated Season Data ────────────────────────────────────────────────
 
-    rest.get(`${BASE}/api/seasons/:seasonId/usermatches`, (req, res, ctx) => {
-        if (Number(req.params.seasonId) === 1) return res(ctx.json(mockAggregatedUserMatches))
+    rest.post(`${BASE}/api/users/:userId/seasons/:seasonId/aggregated-data`, async (req, res, ctx) => {
+        const body = await req.json() as { userId: number; seasonId: number; totalPlus: number; totalMinus: number; matchesPlayed: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 99, ...body }),
+        )
+    }),
+
+    rest.get(`${BASE}/api/users/:userId/seasons/:seasonId/aggregated-data`, (req, res, ctx) => {
+        if (Number(req.params.userId) === 1 && Number(req.params.seasonId) === 1) {
+            return res(ctx.json([{ id: 99, userId: 1, seasonId: 1, totalPlus: 5, totalMinus: 3, matchesPlayed: 2 }]))
+        }
         return res(ctx.json([]))
     }),
 
-    rest.post(`${BASE}/api/seasons/:seasonId/usermatches`, async (req, res, ctx) => {
-        const body = await req.json() as { userId: number }
-        return res(
-            ctx.status(201),
-            ctx.json({ id: 99, userId: body.userId, userName: 'Player One', matchId: null, seasonId: Number(req.params.seasonId), totalPlus: 0, totalMinus: 0 }),
-        )
+    rest.get(`${BASE}/api/seasons/:seasonId/aggregated-data`, (req, res, ctx) => {
+        if (Number(req.params.seasonId) === 1) {
+            return res(ctx.json([{ id: 99, userId: 1, seasonId: 1, totalPlus: 5, totalMinus: 3, matchesPlayed: 2 }]))
+        }
+        return res(ctx.json([]))
+    }),
+
+    rest.put(`${BASE}/api/users/:userId/seasons/:seasonId/aggregated-data`, async (req, res, ctx) => {
+        const body = await req.json() as { userId: number; seasonId: number; totalPlus: number; totalMinus: number; matchesPlayed: number }
+        return res(ctx.json({ id: 99, ...body }))
+    }),
+
+    rest.delete(`${BASE}/api/users/:userId/seasons/:seasonId/aggregated-data`, (_req, res, ctx) => {
+        return res(ctx.status(204))
     }),
 
     // ── UserMatch resource ────────────────────────────────────────────────────
@@ -685,13 +723,92 @@ export const handlers = [
 
     // ── Global Stats ──────────────────────────────────────────────────────────
 
-    rest.get(`${BASE}/api/stats/earnings`, (_req, res, ctx) => {
+    rest.get(`${BASE}/api/stats/dashboard`, (_req, res, ctx) => {
         return res(ctx.json({
-            userEarnings: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, totalEarnings: 0.75, totalPaid: 0, remainingBalance: 0.75 }],
+            seasonStats: mockDashboardSeasonStats,
+            earningsBySeason: [
+                {
+                    seasonId: 1,
+                    userEarnings: [
+                        { userId: 1, earnings: 0.50 },
+                        { userId: 2, earnings: 1.25 },
+                    ],
+                },
+                {
+                    seasonId: 2,
+                    userEarnings: [
+                        { userId: 1, earnings: 0.25 },
+                    ],
+                },
+            ],
+            trendData: [
+                {
+                    label: 'Week 1',
+                    totalPeriodMatches: 82,
+                    users: [{ userId: 1, userName: 'Player One', totalPlus: 2, totalMinus: 1, matchesPlayed: 1 }],
+                },
+                {
+                    label: 'Week 2',
+                    totalPeriodMatches: 82,
+                    users: [{ userId: 1, userName: 'Player One', totalPlus: 3, totalMinus: 2, matchesPlayed: 1 }],
+                },
+            ],
+            rosterScorers: mockRosterScorersByUser,
+            rosterPenalized: mockRosterPenalizedByUser,
+            allTimeStats: [
+                { userId: 1, totalPlus: 9, totalMinus: 4 },
+                { userId: 2, totalPlus: 2, totalMinus: 7 },
+            ],
+            allTimeEarnings: {
+                userEarnings: [{ userId: 1, earnings: 0.75 }],
+                totalCollected: 0.75,
+                canBeCollected: 0.75,
+                totalExpenses: 80.0,
+            },
+            allTimePlusMinusTrend: [
+                {
+                    seasonName: '2023-24',
+                    label: '2023-24',
+                    totalPeriodMatches: 82,
+                    users: [{ userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, matchesPlayed: 10 }],
+                },
+                {
+                    seasonName: '2024-25',
+                    label: '2024-25',
+                    totalPeriodMatches: 82,
+                    users: [{ userId: 1, userName: 'Player One', totalPlus: 7, totalMinus: 2, matchesPlayed: 9 }],
+                },
+            ],
+            allTimeRosterScorers: [
+                {
+                    rosterPlayerId: 1,
+                    firstName: 'Connor',
+                    surname: 'McDavid',
+                    totalCount: 10,
+                    userCounts: [{ userId: 1, userName: 'Player One', count: 10 }],
+                },
+            ],
+            allTimeRosterPenalized: [
+                {
+                    rosterPlayerId: 4,
+                    firstName: 'Tiger',
+                    surname: 'Williams',
+                    totalCount: 7,
+                    userCounts: [{ userId: 1, userName: 'Player One', count: 7 }],
+                },
+            ],
+        }))
+    }),
+
+    rest.get(`${BASE}/api/stats/financial-stats`, (_req, res, ctx) => {
+        return res(ctx.json({
             totalCollected: 0.75,
-            canBeCollected: 0.75,
             totalExpenses: 80.0,
-            balance: -79.25,
+            canBeCollected: 0.75,
+            expenses: mockExpenses,
+            financesByUser: [
+                { userId: 1, totalPluses: 5, totalMinuses: 3, collected: 0.75, earnings: 0.75 },
+            ],
         }))
     }),
 

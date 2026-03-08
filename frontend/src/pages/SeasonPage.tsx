@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Season } from '../types/season'
-import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch } from '../types/stats'
-import type { UserMatch } from '../types/userMatch'
+import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch, SeasonTotals } from '../types/stats'
 import { CompletionType } from '../types/match'
 import type { Match } from '../types/match'
 import apiClient from '../services/apiClient'
+import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -41,6 +41,10 @@ export default function SeasonPage() {
     const navigate = useNavigate()
     const seasonId = seasonIdParam ? Number(seasonIdParam) : null
     const { t } = useTranslation()
+    // Cache of all seasons' totals data (fetched once)
+    const [seasonTotals, setSeasonTotals] = useState<SeasonTotals | null>(null)
+    const [loadingTotals, setLoadingTotals] = useState(true)
+
 
     const [seasons, setSeasons] = useState<Season[]>([])
     const [weekGroups, setWeekGroups] = useState<WeekGroup[]>([])
@@ -48,17 +52,27 @@ export default function SeasonPage() {
     const [userTotals, setUserTotals] = useState<UserSeasonTotals[]>([])
     const [topScorer, setTopScorer] = useState<TopRosterPlayer | null>(null)
     const [topPenalized, setTopPenalized] = useState<TopRosterPlayer | null>(null)
-    const [aggregatedEntries, setAggregatedEntries] = useState<UserMatch[]>([])
+    const [topPpScorer, setTopPpScorer] = useState<TopRosterPlayer | null>(null)
+    const [topShScorer, setTopShScorer] = useState<TopRosterPlayer | null>(null)
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingData, setLoadingData] = useState(false)
     const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
     const [loadingH2H, setLoadingH2H] = useState(false)
     const [h2hExpanded, setH2hExpanded] = useState(false)
-
+    // Fetch all seasons' totals data once on mount
     useEffect(() => {
         apiClient
-            .get<Season[]>('/api/seasons')
+            .get<SeasonTotals>('/api/stats/season')
+            .then(data => setSeasonTotals(data))
+            .catch(err => console.error('Failed to fetch season totals:', err))
+            .finally(() => setLoadingTotals(false))
+    }, [])
+
+
+    useEffect(() => {
+        cacheService
+            .getSeasons()
             .then((data) => {
                 const sorted = [...data].sort(
                     (a, b) => new Date(b.startedOn).getTime() - new Date(a.startedOn).getTime(),
@@ -73,37 +87,91 @@ export default function SeasonPage() {
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        if (!seasonId) return
+        if (!seasonId || !seasonTotals) return
 
         setLoadingData(true)
         setH2hMatches([])
         setH2hExpanded(false)
         setLoadingH2H(false)
+        // Find data for the selected season from cached totals
+        const seasonUserData = seasonTotals.usersData.find(s => s.seasonId === seasonId)
+        const seasonTopPlayers = seasonTotals.topRosterPlayers.find(s => s.seasonId === seasonId)
+
 
         Promise.all([
             apiClient.get<WeekGroup[]>(`/api/seasons/${seasonId}/stats/weekly`),
-            apiClient.get<UserSeasonStats[]>(`/api/seasons/${seasonId}/stats`),
-            apiClient
-                .get<TopRosterPlayer | null>(`/api/seasons/${seasonId}/stats/top-scorers`)
-                .catch(() => null),
-            apiClient
-                .get<TopRosterPlayer | null>(`/api/seasons/${seasonId}/stats/top-penalized`)
-                .catch(() => null),
-            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/usermatches`),
+            cacheService.getUsers(),
             apiClient.get<Match[]>(`/api/seasons/${seasonId}/matches`),
-            apiClient.get<UserSeasonTotals[]>(`/api/seasons/${seasonId}/stats/user-totals`).catch(() => []),
         ])
-            .then(([weeks, seasonStats, scorer, penalized, aggregated, matches, totals]) => {
+            .then(([weeks, users, matches]) => {
+                const userNameById = new Map(users.map(u => [u.id, u.name]))
+
+                // Map SeasonUserData to UserSeasonStats format
+                const seasonStats: UserSeasonStats[] = (seasonUserData?.usersData ?? []).map(ud => ({
+                    userId: ud.userId,
+                    userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
+                    totalPlus: ud.totalPlus,
+                    totalMinus: ud.totalMinus,
+                    earnings: ud.earnings,
+                }))
+
+                // Map to UserSeasonTotals format
+                const totals: UserSeasonTotals[] = (seasonUserData?.usersData ?? []).map(ud => ({
+                    userId: ud.userId,
+                    userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
+                    totalGoals: ud.totalGoals,
+                    totalPenalties: ud.totalPenalties,
+                }))
+
+                // Map top scorer (if exists)
+                const scorer: TopRosterPlayer | null = seasonTopPlayers?.topScorer
+                    ? {
+                        rosterPlayerId: 0, // Not available in new format
+                        firstName: seasonTopPlayers.topScorer.name.split(' ')[0] ?? '',
+                        surname: seasonTopPlayers.topScorer.name.split(' ').slice(1).join(' ') || '',
+                        count: seasonTopPlayers.topScorer.count,
+                    }
+                    : null
+
+                // Map top penalized (if exists)
+                const penalized: TopRosterPlayer | null = seasonTopPlayers?.topPenalty
+                    ? {
+                        rosterPlayerId: 0,
+                        firstName: seasonTopPlayers.topPenalty.name.split(' ')[0] ?? '',
+                        surname: seasonTopPlayers.topPenalty.name.split(' ').slice(1).join(' ') || '',
+                        count: seasonTopPlayers.topPenalty.count,
+                    }
+                    : null
+
+                const ppScorer: TopRosterPlayer | null = seasonTopPlayers?.topPpScorer
+                    ? {
+                        rosterPlayerId: 0,
+                        firstName: seasonTopPlayers.topPpScorer.name.split(' ')[0] ?? '',
+                        surname: seasonTopPlayers.topPpScorer.name.split(' ').slice(1).join(' ') || '',
+                        count: seasonTopPlayers.topPpScorer.count,
+                    }
+                    : null
+
+                const shScorer: TopRosterPlayer | null = seasonTopPlayers?.topShScorer
+                    ? {
+                        rosterPlayerId: 0,
+                        firstName: seasonTopPlayers.topShScorer.name.split(' ')[0] ?? '',
+                        surname: seasonTopPlayers.topShScorer.name.split(' ').slice(1).join(' ') || '',
+                        count: seasonTopPlayers.topShScorer.count,
+                    }
+                    : null
+
                 setWeekGroups(weeks)
                 setStats(seasonStats)
                 setTopScorer(scorer)
                 setTopPenalized(penalized)
-                setAggregatedEntries(aggregated)
+                setTopPpScorer(ppScorer)
+                setTopShScorer(shScorer)
                 setAllMatches(matches)
                 setUserTotals(totals)
             })
             .finally(() => setLoadingData(false))
-    }, [seasonId])
+    }, [seasonId, seasonTotals])
 
     useEffect(() => {
         if (!seasonId || allMatches.length === 0) return
@@ -158,9 +226,9 @@ export default function SeasonPage() {
                     <p className="text-text-muted">{t('season.selectSeason')}</p>
                 )}
 
-                {seasonId && loadingData && <LoadingSpinner />}
+                {seasonId && (loadingTotals || loadingData) && <LoadingSpinner />}
 
-                {seasonId && !loadingData && (
+                {seasonId && !loadingTotals && !loadingData && (
                     <>
                         {/* User Stats Table */}
                         {stats.length > 0 && (
@@ -201,7 +269,7 @@ export default function SeasonPage() {
                         )}
 
                         {/* Top Players */}
-                        {(topScorer ?? topPenalized) && (
+                        {(topScorer ?? topPenalized ?? topPpScorer ?? topShScorer) && (
                             <section className="mb-8 flex gap-6" aria-label="Top players">
                                 {topScorer && (
                                     <div className="card p-4">
@@ -210,7 +278,33 @@ export default function SeasonPage() {
                                             {topScorer.firstName} {topScorer.surname}
                                         </p>
                                         <p className="text-sm text-text-muted">
-                                            {topScorer.teamShortName} · {t('season.goals_count', { count: topScorer.count })}
+                                            {t('season.goals_count', { count: topScorer.count })}
+                                        </p>
+                                    </div>
+                                )}
+                                {topPpScorer && (
+                                    <div className="card p-4">
+                                        <h3 className="text-sm text-text-muted mb-1">
+                                            {t('season.topPowerPlayScorer')}
+                                        </h3>
+                                        <p className="font-semibold">
+                                            {topPpScorer.firstName} {topPpScorer.surname}
+                                        </p>
+                                        <p className="text-sm text-text-muted">
+                                            {t('season.goals_count', { count: topPpScorer.count })}
+                                        </p>
+                                    </div>
+                                )}
+                                {topShScorer && (
+                                    <div className="card p-4">
+                                        <h3 className="text-sm text-text-muted mb-1">
+                                            {t('season.topShortHandedScorer')}
+                                        </h3>
+                                        <p className="font-semibold">
+                                            {topShScorer.firstName} {topShScorer.surname}
+                                        </p>
+                                        <p className="text-sm text-text-muted">
+                                            {t('season.goals_count', { count: topShScorer.count })}
                                         </p>
                                     </div>
                                 )}
@@ -223,7 +317,7 @@ export default function SeasonPage() {
                                             {topPenalized.firstName} {topPenalized.surname}
                                         </p>
                                         <p className="text-sm text-text-muted">
-                                            {topPenalized.teamShortName} · {t('season.penalties_count', { count: topPenalized.count })}
+                                            {t('season.penalties_count', { count: topPenalized.count })}
                                         </p>
                                     </div>
                                 )}
@@ -523,27 +617,6 @@ export default function SeasonPage() {
                             )
                         })()}
 
-                        {/* Aggregated Entries */}
-                        {aggregatedEntries.length > 0 && (
-                            <section className="mt-8" aria-label="Aggregated entries">
-                                <h2 className="text-lg font-semibold mb-3 text-primary">
-                                    {t('season.aggregatedEntries', 'Aggregated Entries')}
-                                </h2>
-                                <div className="space-y-2">
-                                    {aggregatedEntries.map((um) => (
-                                        <div
-                                            key={um.id}
-                                            className="card rounded-lg px-4 py-3 flex items-center justify-between"
-                                        >
-                                            <span>{um.userName}</span>
-                                            <span className="text-sm text-text-muted">
-                                                +{um.totalPlus} / −{um.totalMinus}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
                     </>
                 )}
             </div>

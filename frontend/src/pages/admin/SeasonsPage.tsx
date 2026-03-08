@@ -3,6 +3,7 @@ import type { Season, SeasonDetail, CreateSeasonDto, UpdateSeasonDto } from '../
 import type { Team } from '../../types/team'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -43,9 +44,9 @@ export default function SeasonsPage() {
     const loadAll = async () => {
         try {
             const [seasonsData, teamsData, usersData] = await Promise.all([
-                apiClient.get<Season[]>('/api/seasons'),
+                cacheService.getSeasons(true),
                 apiClient.get<Team[]>('/api/teams'),
-                apiClient.get<User[]>('/api/users'),
+                cacheService.getUsers(true),
             ])
             setSeasons(seasonsData)
             setTeams(teamsData)
@@ -73,6 +74,7 @@ export default function SeasonsPage() {
         e.preventDefault()
         try {
             await apiClient.post<Season>('/api/seasons', form)
+            cacheService.invalidateSeasons()
             setShowAddModal(false)
             resetForm()
             toast.success(t('toast.createSuccess'))
@@ -88,6 +90,7 @@ export default function SeasonsPage() {
         try {
             const dto: UpdateSeasonDto = { ...form }
             await apiClient.put<Season>(`/api/seasons/${editSeason.id}`, dto)
+            cacheService.invalidateSeasons()
             setEditSeason(null)
             resetForm()
             toast.success(t('toast.saveSuccess'))
@@ -111,6 +114,7 @@ export default function SeasonsPage() {
         if (!window.confirm(t('admin.seasons.deleteSeason'))) return
         try {
             await apiClient.delete(`/api/seasons/${id}`)
+            cacheService.invalidateSeasons()
             toast.success(t('toast.deleteSuccess'))
             await loadAll()
         } catch {

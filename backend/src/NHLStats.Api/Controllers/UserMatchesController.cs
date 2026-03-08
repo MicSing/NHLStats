@@ -9,7 +9,6 @@ namespace NHLStats.Api.Controllers;
 /// Handles UserMatch creation, retrieval, deletion and bulk initialization.
 /// Routes live under two prefixes:
 ///   api/seasons/{seasonId}/matches/{matchId}/usermatches  — match-scoped
-///   api/seasons/{seasonId}/usermatches                    — aggregated (MatchId = null)
 ///   api/usermatches/{id}                                  — individual resource
 /// </summary>
 [ApiController]
@@ -24,6 +23,12 @@ public class UserMatchesController : ControllerBase
     [HttpGet("api/seasons/{seasonId:int}/matches/{matchId:int}/usermatches")]
     public async Task<IActionResult> GetByMatch(int seasonId, int matchId) =>
         Ok(await _service.GetByMatchAsync(matchId));
+
+    // ── GET api/seasons/{seasonId}/usermatches ────────────────────────────────
+
+    [HttpGet("api/seasons/{seasonId:int}/usermatches")]
+    public async Task<IActionResult> GetBySeason(int seasonId) =>
+        Ok(await _service.GetBySeasonAsync(seasonId));
 
     // ── POST api/seasons/{seasonId}/matches/{matchId}/usermatches ────────────
 
@@ -48,21 +53,47 @@ public class UserMatchesController : ControllerBase
         return Ok(new { created });
     }
 
-    // ── GET api/seasons/{seasonId}/usermatches ───────────────────────────────
+    // ── Aggregated Season Data ────────────────────────────────────────────────
 
-    [HttpGet("api/seasons/{seasonId:int}/usermatches")]
-    public async Task<IActionResult> GetAggregatedBySeason(int seasonId) =>
-        Ok(await _service.GetAggregatedBySeasonAsync(seasonId));
-
-    // ── POST api/seasons/{seasonId}/usermatches ──────────────────────────────
-
+    [HttpPost("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
     [Authorize]
-    [HttpPost("api/seasons/{seasonId:int}/usermatches")]
-    public async Task<IActionResult> CreateAggregated(int seasonId, CreateUserMatchDto dto)
+    public async Task<IActionResult> CreateAggregatedData(int userId, int seasonId, CreateAggregatedSeasonDataDto dto)
     {
-        var (result, error) = await _service.CreateAggregatedAsync(seasonId, dto);
+        var (result, error) = await _service.CreateAggregatedDataAsync(userId, seasonId, dto);
         if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetById), new { id = result!.Id }, result);
+        return CreatedAtAction(nameof(GetAggregatedData), new { userId, seasonId }, result);
+    }
+
+    [HttpGet("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
+    public async Task<IActionResult> GetAggregatedData(int userId, int seasonId)
+    {
+        var result = await _service.GetAggregatedDataAsync(userId, seasonId);
+        return Ok(result);
+    }
+
+    [HttpGet("api/seasons/{seasonId:int}/aggregated-data")]
+    public async Task<IActionResult> GetAggregatedDataBySeason(int seasonId)
+    {
+        var result = await _service.GetAggregatedDataBySeasonAsync(seasonId);
+        return Ok(result);
+    }
+
+    [HttpPut("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
+    [Authorize]
+    public async Task<IActionResult> UpdateAggregatedData(int userId, int seasonId, UpdateAggregatedSeasonDataDto dto)
+    {
+        var (result, error) = await _service.UpdateAggregatedDataAsync(userId, seasonId, dto);
+        if (error != null) return BadRequest(new { error });
+        return Ok(result);
+    }
+
+    [HttpDelete("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
+    [Authorize]
+    public async Task<IActionResult> DeleteAggregatedData(int userId, int seasonId)
+    {
+        var deleted = await _service.DeleteAggregatedDataAsync(userId, seasonId);
+        if (!deleted) return NotFound();
+        return NoContent();
     }
 
     // ── GET api/usermatches/{id} ─────────────────────────────────────────────

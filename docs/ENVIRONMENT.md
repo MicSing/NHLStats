@@ -163,7 +163,7 @@ WEBSITES_PORT=5267
 
 **Connection strings:**
 ```
-DefaultConnection=Server=tcp:your-server.database.windows.net,1433;...
+DefaultConnection=Data Source=/home/data/nhlstats.db
 ```
 
 ### Frontend (Azure Static Web Apps)

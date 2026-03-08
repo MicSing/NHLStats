@@ -493,7 +493,7 @@ az webapp config ssl create \
 
 - **App Service Plan**: Standard B1 (~$12/month) for small workload
 - **Static Web Apps**: Standard (~$9/month)
-- **Database**: Upgrade to Azure SQL Database (~$15-50/month)
+- **Database**: SQLite backups and storage (~$0-$5/month depending on retention)
 - **Total**: ~$36-71/month
 
 **Cost reduction strategies:**
@@ -524,23 +524,13 @@ az monitor autoscale create \
   --resource-group-name $RESOURCE_GROUP
 ```
 
-### Vertical Scaling (Database)
+### Database Reliability (SQLite)
 
-If SQLite becomes bottleneck:
+For SQLite in production:
 
-```bash
-# Migrate to Azure SQL Database (managed SQL)
-az sql server create \
-  --name $SQL_SERVER \
-  --resource-group $RESOURCE_GROUP \
-  --admin-user adminuser \
-  --admin-password <secure-password>
-
-az sql db create \
-  --name nhlstats \
-  --server $SQL_SERVER \
-  --resource-group $RESOURCE_GROUP
-```
+- Keep a single writer instance.
+- Store the DB in persistent storage (`/home/data/nhlstats.db` on Linux App Service).
+- Run scheduled backups to Blob Storage.
 
 ## Rollback Deployment
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
-import type { UserSeasonStats, AllTimeEarnings, SeasonEarningsEntry, RosterScorerByUser, RosterPenalizedByUser, PeriodPlusMinus } from '../types/stats'
+import type { DashboardData, RosterPenalizedByUser, RosterScorerByUser, UserSeasonStats } from '../types/stats'
+import type { User } from '../types/user'
 import apiClient from '../services/apiClient'
+import { cacheService } from '../services/cacheService'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
 import TrendChart from '../components/charts/TrendChart'
@@ -14,98 +16,118 @@ import { useTranslation } from 'react-i18next'
 export default function DashboardPage() {
     const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
+    const [users, setUsers] = useState<User[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
-    const [seasonStats, setSeasonStats] = useState<UserSeasonStats[]>([])
-    const [rosterScorers, setRosterScorers] = useState<RosterScorerByUser[]>([])
-    const [rosterPenalized, setRosterPenalized] = useState<RosterPenalizedByUser[]>([])
-    const [allTimeEarnings, setAllTimeEarnings] = useState<AllTimeEarnings | null>(null)
-    const [earningsBySeason, setEarningsBySeason] = useState<SeasonEarningsEntry[]>([])
-    const [trendData, setTrendData] = useState<PeriodPlusMinus[]>([])
-    const [loadingSeasons, setLoadingSeasons] = useState(true)
-    const [loadingStats, setLoadingStats] = useState(false)
-    const [loadingTrend, setLoadingTrend] = useState(false)
+    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+    const [loadingDashboard, setLoadingDashboard] = useState(true)
 
-    // Load seasons and all-time earnings on mount
+    const handleSeasonChange = (seasonId: number | null) => {
+        setSelectedSeasonId(seasonId)
+    }
+
+    // Load dashboard and supporting lookup data once.
     useEffect(() => {
-        apiClient
-            .get<Season[]>('/api/seasons')
-            .then((data) => {
-                const sorted = [...data].sort(
+        Promise.all([
+            apiClient.get<DashboardData>('/api/stats/dashboard'),
+            cacheService.getSeasons(),
+            cacheService.getUsers(),
+        ])
+            .then(([dashboard, fetchedSeasons, fetchedUsers]) => {
+                setDashboardData(dashboard)
+                setUsers(fetchedUsers)
+
+                const sortedSeasons = [...fetchedSeasons].sort(
                     (a, b) => new Date(b.startedOn).getTime() - new Date(a.startedOn).getTime(),
                 )
-                setSeasons(sorted)
-                if (sorted.length > 0) setSelectedSeasonId(sorted[0].id)
-            })
-            .finally(() => setLoadingSeasons(false))
+                setSeasons(sortedSeasons)
 
-        apiClient
-            .get<AllTimeEarnings>('/api/stats/earnings')
-            .then(setAllTimeEarnings)
-            .catch(() => setAllTimeEarnings(null))
-
-        apiClient
-            .get<SeasonEarningsEntry[]>('/api/stats/earnings-by-season')
-            .then(setEarningsBySeason)
-            .catch(() => setEarningsBySeason([]))
-    }, [])
-
-    // Load per-season stats when a season is selected, or all-seasons aggregated stats
-    useEffect(() => {
-        if (!selectedSeasonId) {
-            // "All seasons" — fetch aggregated plus/minus stats and season-level trend
-            setLoadingStats(true)
-            setLoadingTrend(true)
-            apiClient
-                .get<UserSeasonStats[]>('/api/stats/plus-minus')
-                .then((stats) => {
-                    setSeasonStats(stats)
-                    setRosterScorers([])
-                    setRosterPenalized([])
-                })
-                .catch(() => {
-                    setSeasonStats([])
-                    setRosterScorers([])
-                    setRosterPenalized([])
-                })
-                .finally(() => setLoadingStats(false))
-
-            apiClient
-                .get<PeriodPlusMinus[]>('/api/stats/plus-minus-trend')
-                .then(setTrendData)
-                .catch(() => setTrendData([]))
-                .finally(() => setLoadingTrend(false))
-            return
-        }
-        setLoadingStats(true)
-        setLoadingTrend(true)
-        Promise.all([
-            apiClient.get<UserSeasonStats[]>(`/api/seasons/${selectedSeasonId}/stats`),
-            apiClient
-                .get<RosterScorerByUser[]>(`/api/seasons/${selectedSeasonId}/stats/roster-scorers-by-user`)
-                .catch(() => [] as RosterScorerByUser[]),
-            apiClient
-                .get<RosterPenalizedByUser[]>(`/api/seasons/${selectedSeasonId}/stats/roster-penalized-by-user`)
-                .catch(() => [] as RosterPenalizedByUser[]),
-        ])
-            .then(([stats, scorers, penalized]) => {
-                setSeasonStats(stats)
-                setRosterScorers(scorers)
-                setRosterPenalized(penalized)
+                if (sortedSeasons.length > 0) {
+                    setSelectedSeasonId(sortedSeasons[0].id)
+                }
             })
             .catch(() => {
-                setSeasonStats([])
-                setRosterScorers([])
-                setRosterPenalized([])
+                setDashboardData(null)
+                setUsers([])
+                setSeasons([])
             })
-            .finally(() => setLoadingStats(false))
+            .finally(() => setLoadingDashboard(false))
+    }, [])
 
-        // Weekly trend for the selected season (with automatic backfill from previous season)
-        apiClient
-            .get<PeriodPlusMinus[]>(`/api/seasons/${selectedSeasonId}/stats/plus-minus-trend-weekly`)
-            .then(setTrendData)
-            .catch(() => setTrendData([]))
-            .finally(() => setLoadingTrend(false))
-    }, [selectedSeasonId])
+    const safeDashboardData: DashboardData = dashboardData ?? {
+        seasonStats: [],
+        earningsBySeason: [],
+        trendData: [],
+        rosterScorers: [],
+        rosterPenalized: [],
+        allTimeStats: [],
+        allTimeEarnings: {
+            userEarnings: [],
+            totalCollected: 0,
+            canBeCollected: 0,
+            totalExpenses: 0,
+        },
+        allTimePlusMinusTrend: [],
+        allTimeRosterScorers: [],
+        allTimeRosterPenalized: [],
+    }
+
+    const userNameById = new Map(users.map((u) => [u.id, u.name]))
+
+    const selectedSeasonStats = selectedSeasonId
+        ? safeDashboardData.seasonStats.find((s) => s.seasonId === selectedSeasonId)?.userStats ?? []
+        : safeDashboardData.allTimeStats
+
+    const plusMinusData: UserSeasonStats[] = selectedSeasonStats.map((stat) => ({
+        userId: stat.userId,
+        userName: userNameById.get(stat.userId) ?? `User ${stat.userId}`,
+        totalPlus: stat.totalPlus,
+        totalMinus: stat.totalMinus,
+        earnings: 0,
+    }))
+
+    const rosterScorersData: RosterScorerByUser[] = selectedSeasonId
+        ? safeDashboardData.rosterScorers
+            .filter((scorer) => scorer.seasonId === selectedSeasonId)
+            .map((scorer) => ({
+                rosterPlayerId: scorer.rosterPlayerId,
+                firstName: scorer.firstName,
+                surname: scorer.surname,
+                teamShortName: null,
+                totalCount: scorer.totalCount,
+                userCounts: scorer.userCounts,
+            }))
+        : safeDashboardData.allTimeRosterScorers.map((scorer) => ({
+            rosterPlayerId: scorer.rosterPlayerId,
+            firstName: scorer.firstName,
+            surname: scorer.surname,
+            teamShortName: null,
+            totalCount: scorer.totalCount,
+            userCounts: scorer.userCounts,
+        }))
+
+    const rosterPenalizedData: RosterPenalizedByUser[] = selectedSeasonId
+        ? safeDashboardData.rosterPenalized
+            .filter((penalized) => penalized.seasonId === selectedSeasonId)
+            .map((penalized) => ({
+                rosterPlayerId: penalized.rosterPlayerId,
+                firstName: penalized.firstName,
+                surname: penalized.surname,
+                teamShortName: null,
+                totalCount: penalized.totalCount,
+                userCounts: penalized.userCounts,
+            }))
+        : safeDashboardData.allTimeRosterPenalized.map((penalized) => ({
+            rosterPlayerId: penalized.rosterPlayerId,
+            firstName: penalized.firstName,
+            surname: penalized.surname,
+            teamShortName: null,
+            totalCount: penalized.totalCount,
+            userCounts: penalized.userCounts,
+        }))
+
+    const trendData = selectedSeasonId
+        ? safeDashboardData.trendData
+        : safeDashboardData.allTimePlusMinusTrend
 
     return (
         <div className="min-h-screen bg-bg text-text p-6">
@@ -113,11 +135,11 @@ export default function DashboardPage() {
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
                     <h1 className="text-2xl font-bold text-primary">{t('dashboard.title')}</h1>
-                    {!loadingSeasons && (
+                    {seasons.length > 0 && (
                         <SeasonSelector
                             seasons={seasons}
                             selectedId={selectedSeasonId}
-                            onChange={setSelectedSeasonId}
+                            onChange={handleSeasonChange}
                         />
                     )}
                 </div>
@@ -127,10 +149,10 @@ export default function DashboardPage() {
                     {/* Plus / Minus */}
                     <section className="card p-5">
                         <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.plusMinusByPlayer')}</h2>
-                        {loadingStats ? (
+                        {loadingDashboard ? (
                             <LoadingSpinner size="sm" inline />
                         ) : (
-                            <PlusMinusChart data={seasonStats} />
+                            <PlusMinusChart data={plusMinusData} />
                         )}
                     </section>
 
@@ -139,26 +161,31 @@ export default function DashboardPage() {
                         <h2 className="text-sm font-semibold text-primary mb-3">
                             {selectedSeasonId ? t('dashboard.seasonEarnings') : t('dashboard.allTimeEarnings')}
                         </h2>
-                        <EarningsChart data={earningsBySeason} selectedSeasonId={selectedSeasonId} />
-                        {!selectedSeasonId && allTimeEarnings && (
+                        <EarningsChart
+                            data={safeDashboardData.earningsBySeason}
+                            selectedSeasonId={selectedSeasonId}
+                            users={users}
+                            seasons={seasons}
+                        />
+                        {!selectedSeasonId && safeDashboardData.allTimeEarnings && (
                             <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
                                 <div className="bg-bg rounded-lg p-2 border border-border">
                                     <p className="text-text-muted">{t('dashboard.collected')}</p>
                                     <p className="text-success font-semibold">
-                                        {allTimeEarnings.totalCollected.toFixed(2)} €
+                                        {safeDashboardData.allTimeEarnings.totalCollected.toFixed(2)} €
                                     </p>
                                 </div>
                                 <div className="bg-bg rounded-lg p-2 border border-border">
                                     <p className="text-text-muted">{t('dashboard.expenses')}</p>
                                     <p className="text-danger font-semibold">
-                                        {allTimeEarnings.totalExpenses.toFixed(2)} €
+                                        {safeDashboardData.allTimeEarnings.totalExpenses.toFixed(2)} €
                                     </p>
                                 </div>
                                 <div className="bg-bg rounded-lg p-2 border border-border">
                                     <p className="text-text-muted">{t('dashboard.canBeCollected')}</p>
-                                    <p className={`font-semibold ${allTimeEarnings.canBeCollected > 100 ? 'text-danger' :
-                                        allTimeEarnings.canBeCollected > 20 ? 'text-warning' : 'text-success'}`}>
-                                        {allTimeEarnings.canBeCollected.toFixed(2)} €
+                                    <p className={`font-semibold ${safeDashboardData.allTimeEarnings.canBeCollected > 100 ? 'text-danger' :
+                                        safeDashboardData.allTimeEarnings.canBeCollected > 20 ? 'text-warning' : 'text-success'}`}>
+                                        {safeDashboardData.allTimeEarnings.canBeCollected.toFixed(2)} €
                                     </p>
                                 </div>
                             </div>
@@ -166,25 +193,25 @@ export default function DashboardPage() {
                     </section>
 
                     {/* Top Scorers */}
-                    {(loadingStats || rosterScorers.length > 0) && (
+                    {(loadingDashboard || rosterScorersData.length > 0) && (
                         <section className="card p-5">
                             <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.topScorers')}</h2>
-                            {loadingStats ? (
+                            {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
                             ) : (
-                                <TopScorersChart data={rosterScorers} />
+                                <TopScorersChart data={rosterScorersData} />
                             )}
                         </section>
                     )}
 
                     {/* Penalty Leaders */}
-                    {(loadingStats || rosterPenalized.length > 0) && (
+                    {(loadingDashboard || rosterPenalizedData.length > 0) && (
                         <section className="card p-5">
                             <h2 className="text-sm font-semibold text-primary mb-3">{t('dashboard.penaltyLeaders')}</h2>
-                            {loadingStats ? (
+                            {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
                             ) : (
-                                <PenaltyLeadersChart data={rosterPenalized} />
+                                <PenaltyLeadersChart data={rosterPenalizedData} />
                             )}
                         </section>
                     )}
@@ -196,20 +223,20 @@ export default function DashboardPage() {
                         <h2 className="text-sm font-semibold text-primary mb-3">
                             {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
-                        {loadingTrend ? (
+                        {loadingDashboard ? (
                             <LoadingSpinner size="sm" inline />
                         ) : (
-                            <TrendChart data={trendData} mode="plus" />
+                            <TrendChart data={trendData} mode="plus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
                         )}
                     </section>
                     <section className="card p-5">
                         <h2 className="text-sm font-semibold text-primary mb-3">
                             {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                         </h2>
-                        {loadingTrend ? (
+                        {loadingDashboard ? (
                             <LoadingSpinner size="sm" inline />
                         ) : (
-                            <TrendChart data={trendData} mode="minus" />
+                            <TrendChart data={trendData} mode="minus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
                         )}
                     </section>
                 </div>

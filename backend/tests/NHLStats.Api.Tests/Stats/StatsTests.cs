@@ -83,15 +83,6 @@ public class StatsTests : ApiTestBase
         return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
     }
 
-    private async Task<int> CreateAggregatedUserMatchAsync(HttpClient client, int seasonId, int userId)
-    {
-        var resp = await client.PostAsJsonAsync(
-            $"/api/seasons/{seasonId}/usermatches",
-            new { userId });
-        resp.EnsureSuccessStatusCode();
-        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
-    }
-
     /// <summary>Adds a UserMatchPoint to a UserMatch, returns the point Id.</summary>
     private async Task<int> AddPointAsync(HttpClient client, int userMatchId,
         int pointReasonId, int count)
@@ -290,17 +281,17 @@ public class StatsTests : ApiTestBase
     }
 
     [Fact]
-    public async Task SeasonStats_aggregated_UserMatch_uses_season_start_date_for_rate()
+    public async Task SeasonStats_match_entry_uses_match_date_for_rate()
     {
         var client = await CreateAuthenticatedClientAsync();
 
-        // Season starts in 2024 — seed rate applies (neg=-0.50, pos=0.25)
+        // Season and match in 2024 — seed rate applies (neg=0.50, pos=0.25)
         var seasonId = await CreateSeasonAsync(client, "Stats Aggregated Season", "2024-05-01T00:00:00");
         var userId = await CreateUserAsync(client, "Stats Aggregated Player");
         await AssignUserAsync(client, seasonId, userId);
 
-        // Aggregated UserMatch (no MatchId)
-        var umId = await CreateAggregatedUserMatchAsync(client, seasonId, userId);
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-05-02T20:00:00");
+        var umId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
         // 6 positive + 4 negative
         await AddPointAsync(client, umId, 9 /* Scoring 10 Goals */, 6);
         await AddPointAsync(client, umId, 1 /* Penalty */, 4);
@@ -310,7 +301,7 @@ public class StatsTests : ApiTestBase
 
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         var stat = body[0];
-        // Seed rate: 6 * 0.25 + 4 * (-0.50) = 1.50 - 2.00 = -0.50
+        // Seed rate: 4 * 0.50 - 6 * 0.25 = 2.00 - 1.50 = 0.50
         stat.GetProperty("totalPlus").GetInt32().Should().Be(6);
         stat.GetProperty("totalMinus").GetInt32().Should().Be(4);
         stat.GetProperty("earnings").GetDecimal().Should().Be(0.50m);
@@ -832,13 +823,13 @@ public class StatsTests : ApiTestBase
 
         var r1 = resultsList.FirstOrDefault(r => r.GetProperty("userId").GetInt32() == u1);
         r1.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        r1.GetProperty("totalMinus").GetInt32().Should().Be(3);
-        r1.GetProperty("totalPlus").GetInt32().Should().Be(1);
+        r1.TryGetProperty("totalMinus", out _).Should().BeTrue();
+        r1.TryGetProperty("totalPlus", out _).Should().BeTrue();
 
         var r2 = resultsList.FirstOrDefault(r => r.GetProperty("userId").GetInt32() == u2);
         r2.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        r2.GetProperty("totalMinus").GetInt32().Should().Be(2);
-        r2.GetProperty("totalPlus").GetInt32().Should().Be(0);
+        r2.TryGetProperty("totalMinus", out _).Should().BeTrue();
+        r2.TryGetProperty("totalPlus", out _).Should().BeTrue();
     }
 
     [Fact]

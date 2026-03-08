@@ -603,11 +603,9 @@ SQLiteException: database is locked
    az appservice plan update --name $PLAN --resource-group $RG --number-of-workers 1
    ```
 
-2. **Migrate to Azure SQL Database:**
-   ```csharp
-   // In Program.cs
-   options.UseSqlServer(sqlServerConn);  // Instead of SQLite
-   ```
+2. **Keep single writable instance for SQLite:**
+   - Ensure only one app instance writes to the DB file.
+   - Keep DB file on persistent storage (`/home/data/nhlstats.db` on App Service Linux).
 
 ### Deployment Timeout
 

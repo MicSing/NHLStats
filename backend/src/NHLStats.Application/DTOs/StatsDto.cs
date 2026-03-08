@@ -1,15 +1,34 @@
+using NHLStats.Application.Services;
 using NHLStats.Domain.Entities;
 
 namespace NHLStats.Application.DTOs;
 
 // ─── Season stats per user ────────────────────────────────────────────────────
 
-public record UserSeasonStatsDto(
+public record UserPointsMetricsDto(
     int UserId,
-    string UserName,
     int TotalPlus,
-    int TotalMinus,
-    decimal Earnings);
+    int TotalMinus);
+
+public record SeasonPointsStatsSummaryDto(
+    int SeasonId,
+    IEnumerable<UserPointsMetricsDto> UserStats);
+
+public record UserGoalsMetricsDto(
+    int UserId,
+    int TotalGoals);
+
+public record SeasonGoalsStatsSummaryDto(
+    int SeasonId,
+    IEnumerable<UserGoalsMetricsDto> UserStats);
+
+public record UserPenaltiesMetricsDto(
+    int UserId,
+    int TotalPenalties);
+
+public record SeasonPenaltiesStatsSummaryDto(
+    int SeasonId,
+    IEnumerable<UserPenaltiesMetricsDto> UserStats);
 
 // ─── Top roster player (goals / penalties) ────────────────────────────────────
 
@@ -22,21 +41,35 @@ public record TopRosterPlayerDto(
 
 public record UserGoalCountDto(int UserId, string UserName, int Count);
 
-public record RosterScorerByUserDto(
+public record RosterScorerBySeasonDto(
+    int RosterPlayerId,
+    int SeasonId,
+    string FirstName,
+    string Surname,
+    int TotalCount,
+    IEnumerable<UserGoalCountDto> UserCounts);
+
+public record AllTimeRosterScorerDto(
     int RosterPlayerId,
     string FirstName,
     string Surname,
-    string? TeamShortName,
     int TotalCount,
     IEnumerable<UserGoalCountDto> UserCounts);
 
 public record UserPenaltyCountDto(int UserId, string UserName, int Count);
 
-public record RosterPenalizedByUserDto(
+public record RosterPenalizedBySeasonDto(
+    int RosterPlayerId,
+    int SeasonId,
+    string FirstName,
+    string Surname,
+    int TotalCount,
+    IEnumerable<UserPenaltyCountDto> UserCounts);
+
+public record AllTimeRosterPenalizedDto(
     int RosterPlayerId,
     string FirstName,
     string Surname,
-    string? TeamShortName,
     int TotalCount,
     IEnumerable<UserPenaltyCountDto> UserCounts);
 
@@ -64,31 +97,17 @@ public record WeekGroupDto(
 
 public record UserEarningsDto(
     int UserId,
-    string UserName,
-    int TotalPlus,
-    int TotalMinus,
-    decimal TotalEarnings,
-    decimal TotalPaid,
-    decimal RemainingBalance);
+    decimal Earnings);
+
+public record SeasonalUserEarningsDto(
+    int SeasonId,
+    IEnumerable<UserEarningsDto> UserEarnings);
 
 public record AllTimeEarningsDto(
     IEnumerable<UserEarningsDto> UserEarnings,
     decimal TotalCollected,
     decimal CanBeCollected,
-    decimal TotalExpenses,
-    decimal Balance);
-
-// ─── Per-season per-user earnings (for stacked chart) ────────────────────────
-
-public record SeasonUserEarningsDto(
-    int UserId,
-    string UserName,
-    decimal Earnings);
-
-public record SeasonEarningsEntryDto(
-    int SeasonId,
-    string SeasonName,
-    IEnumerable<SeasonUserEarningsDto> Users);
+    decimal TotalExpenses);
 
 // ─── Per-user goals & penalties totals for a season ──────────────────────────
 
@@ -104,11 +123,13 @@ public record UserPeriodPlusMinusDto(
     int UserId,
     string UserName,
     int TotalPlus,
-    int TotalMinus);
+    int TotalMinus,
+    int MatchesPlayed);
 
 public record PeriodPlusMinusDto(
     string Label,
-    IEnumerable<UserPeriodPlusMinusDto> Users);
+    IEnumerable<UserPeriodPlusMinusDto> Users,
+    int TotalPeriodMatches);
 
 // ─── Point-reason breakdown ───────────────────────────────────────────────────
 
@@ -161,3 +182,68 @@ public record UserMatchSummaryDto(
     int PenaltyCount,
     int SeasonId,
     string SeasonName);
+
+// ─── Consolidated dashboard data ──────────────────────────────────────────────
+
+public record DashboardDataDto(
+    IEnumerable<SeasonPointsStatsSummaryDto> SeasonStats,
+    IEnumerable<SeasonalUserEarningsDto> EarningsBySeason,
+    IEnumerable<PeriodPlusMinusDto> TrendData,
+    IEnumerable<RosterScorerBySeasonDto> RosterScorers,
+    IEnumerable<RosterPenalizedBySeasonDto> RosterPenalized,
+
+    IEnumerable<UserPointsMetricsDto> AllTimeStats,
+    AllTimeEarningsDto AllTimeEarnings,
+    IEnumerable<PeriodPlusMinusDto> AllTimePlusMinusTrend,
+    IEnumerable<AllTimeRosterScorerDto> AllTimeRosterScorers,
+    IEnumerable<AllTimeRosterPenalizedDto> AllTimeRosterPenalized);
+
+// --- Consolidated Season data ─────────────────────────────────────────────────
+
+public record SeasonUserDataDto(
+    int UserId,
+    int TotalPlus,
+    int TotalMinus,
+    int TotalGoals,
+    int TotalPenalties,
+    decimal Earnings);
+
+public record SeasonalUserDataDto(
+    int SeasonId,
+    IEnumerable<SeasonUserDataDto> UsersData);
+
+public record PlayerTopStatsDto(
+    string Name,
+    int Count);
+
+public record SeasonTopRosterPlayersDto(
+    int SeasonId,
+    PlayerTopStatsDto? TopScorer,
+    PlayerTopStatsDto? TopPenalty,
+    PlayerTopStatsDto? TopPpScorer,
+    PlayerTopStatsDto? TopShScorer
+);
+
+public record SeasonTotalsDto(
+    // Table data (user's total plus, minus, goals, penalties, earnings)
+    IEnumerable<SeasonalUserDataDto> UsersData,
+    // Top scorers and penalized, SH and PP goal scorers players for the season
+    IEnumerable<SeasonTopRosterPlayersDto> TopRosterPlayers);
+
+// ─── Consolidated Finances stats ───────────────────────────────────────────────────
+
+public record UserFinancialStatsDto(
+    int UserId,
+    int TotalPluses,
+    int TotalMinuses,
+    decimal Collected,
+    decimal TotalEarnings,
+    decimal CanBeCollected);
+
+public record FinancialStatsDto(
+    decimal TotalCollected,
+    decimal TotalExpenses,
+    decimal CanBeCollected,
+    decimal TotalEarnings,
+    IEnumerable<ExpenseDto> Expenses,
+    IEnumerable<UserFinancialStatsDto> FinancesByUser);

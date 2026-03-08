@@ -108,7 +108,15 @@ using (var scope = app.Services.CreateScope())
     var ctx = services.GetRequiredService<NhlStatsDbContext>();
     try
     {
-        ctx.Database.Migrate();
+        if (app.Environment.IsEnvironment("Testing"))
+        {
+            // Integration tests use SQLite; create schema directly from model to avoid provider-specific migration SQL.
+            ctx.Database.EnsureCreated();
+        }
+        else
+        {
+            ctx.Database.Migrate();
+        }
     }
     catch (Exception ex)
     {

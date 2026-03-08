@@ -122,6 +122,8 @@
         "penalties": "Penalties",
         "earnings": "Earnings",
         "topScorer": "Top Scorer",
+        "topPowerPlayScorer": "Most Power-Play Goals",
+        "topShortHandedScorer": "Most Short-Handed Goals",
         "mostPenalized": "Most Penalized",
         "goals_count": "{{count}} goals",
         "penalties_count": "{{count}} penalties",
@@ -134,6 +136,8 @@
         "hide": "Hide",
         "showMatches": "Show {{count}} match",
         "showMatches_other": "Show {{count}} matches",
+        "matches_count": "{{count}} match",
+        "matches_count_other": "{{count}} matches",
         "upcomingMatches": "Upcoming Matches",
         "aggregatedEntries": "Aggregated Entries",
         "notPlayed": "Not Played",
@@ -160,12 +164,15 @@
     "earnings": {
         "title": "Finances",
         "playerBalance": "Player Balance",
+        "playerEarnings": "Player Earnings",
         "player": "Player",
         "plusPoints": "+ Points",
         "minusPoints": "− Points",
         "paid": "Paid",
         "balance": "Balance",
+        "earnings": "Earnings",
         "noBalanceData": "No balance data available.",
+        "noFinancialData": "No financial data available.",
         "total": "Total",
         "groupExpenses": "Group Expenses",
         "description": "Description",
@@ -261,7 +268,9 @@
         "addPositive": "+ Positive",
         "addNegative": "+ Negative",
         "count": "count",
-        "pointCount": "point count"
+        "pointCount": "point count",
+        "deleteUserMatch": "Unassign",
+        "deleteConfirm": "Unassign {{userName}} from this match? This will delete all points, goals, and penalties."
     },
     "admin": {
         "users": {
@@ -401,6 +410,9 @@
             "manage": "Manage",
             "deleteConfirm": "Delete this aggregated entry and all its points?",
             "noUsers": "No users are assigned to this season.",
+            "matchesPlayed": "Matches Played",
+            "totalPositive": "Total Positive",
+            "totalNegative": "Total Negative",
             "pointEntries": "{{count}} point",
             "pointEntries_other": "{{count}} points",
             "goalEntry": ", {{count}} goal entry",
@@ -420,6 +432,7 @@
         "failedToLoadMatches": "Failed to load matches",
         "failedToLoadPayouts": "Failed to load payouts",
         "failedToLoadEntries": "Failed to load aggregated entries",
+        "invalidInput": "Please enter non-negative numbers.",
         "failedToCreateEntry": "Failed to create entry",
         "batchCreateFailed": "Batch create failed"
     },

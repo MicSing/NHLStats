@@ -7,10 +7,10 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 | Layer | Technology |
 |-------|------------|
 | **Backend** | .NET 10, ASP.NET Core Web API, Entity Framework Core |
-| **Backend Testing** | xUnit, FluentAssertions, Moq, Testcontainers (SQL Server), Bogus (fake data) |
+| **Backend Testing** | xUnit, FluentAssertions, Moq, Testcontainers, Bogus (fake data) |
 | **Frontend** | React 18, Vite, TypeScript, Tailwind CSS |
 | **Frontend Testing** | Vitest, React Testing Library, MSW (Mock Service Worker) |
-| **Database** | Azure SQL (production) / SQLite (single-instance demo) |
+| **Database** | SQLite |
 | **Auth** | ASP.NET Identity + JWT |
 | **Deployment** | Azure App Service (API), Azure Static Web Apps (SPA) |
 | **CI/CD** | GitHub Actions |
@@ -99,7 +99,7 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 ## Implementation Phases
 
 ### Phase 1: Project Scaffolding & Infrastructure (Completed)
-**Status:** Completed — scaffold, tests, docker-compose, frontend setup, and smoke health test are present.
+**Status:** Completed — scaffold, tests, frontend setup, and smoke health test are present.
 **Goal:** Set up the monorepo structure, development environment, and test infrastructure
 
 - [x] Create folder structure: `backend/`, `frontend/`
@@ -109,9 +109,9 @@ A full-stack web application for tracking NHL (PS5/Xbox) human players' plus/min
 - [x] Initialize React + Vite + TypeScript project
 - [x] **Configure Vitest and React Testing Library**
 - [x] Configure Tailwind CSS
-- [x] Add root `docker-compose.yml` for local development (SQL Server container)
+- [x] Add root development infrastructure for local backend/frontend workflows
 - [x] Add root `.gitignore`, `README.md`
-- [x] Configure EF Core with Azure SQL / LocalDB for development
+- [x] Configure EF Core with SQLite for development
 - [x] **Write first smoke test** (API health check endpoint)
 
 ---
@@ -373,8 +373,8 @@ For each admin page, follow this TDD cycle:
 ---
 
 ### Phase 13: Azure Deployment Setup
-**Status:** Completed — SQLite on App Service (no Azure SQL); GitHub Actions CI/CD; Static Web Apps SPA config; resource provisioning script.
-**Goal:** Configure Azure resources and CI/CD (using SQLite — no Azure SQL required)
+**Status:** Completed — SQLite on App Service; GitHub Actions CI/CD; Static Web Apps SPA config; resource provisioning script.
+**Goal:** Configure Azure resources and CI/CD (SQLite-only)
 
 - [x] Create Azure App Service (Linux, .NET 10) for backend API
   - Free tier (F1) — run `backend/scripts/create_azure_resources.sh`
@@ -448,7 +448,6 @@ NHLStats 2.0/
 │   │   └── types/                  # TypeScript interfaces
 │   ├── package.json
 │   └── vite.config.ts
-├── docker-compose.yml
 ├── .gitignore
 ├── README.md
 └── IMPLEMENTATION_PLAN.md
@@ -461,9 +460,6 @@ NHLStats 2.0/
 ### Local Development
 
 ```bash
-# Start database
-docker-compose up -d
-
 # Backend
 cd backend
 dotnet restore
@@ -479,7 +475,7 @@ npm run dev
 ### Environment Variables
 
 **Backend:**
-- `ConnectionStrings__DefaultConnection` — SQL connection string
+- `ConnectionStrings__DefaultConnection` — SQLite connection string (`Data Source=...`)
 - `Jwt__Secret` — JWT signing key
 - `Jwt__Issuer` — JWT issuer
 - `Jwt__Audience` — JWT audience
@@ -499,20 +495,11 @@ npm run dev
 
 ---
 
-**Optional: SQLite for single-instance demos**
+**SQLite deployment notes**
 
-- Use SQLite when you want a zero-cost, single-instance demo without provisioning Azure SQL. This is suitable for internal demos or small groups only.
-- Constraints: file-based DB, no multi-instance scaling, limited concurrency. Store the DB file under the App Service persistent area (for example: `HOME/data/nhlstats.db`) so it survives restarts and redeploys.
-- Back up the SQLite file regularly (for example compress and upload to Azure Blob Storage) to avoid data loss during deployments.
-
-**Deployment notes (Phase 13 alternative)**
-
-When using SQLite instead of Azure SQL for the backend in Phase 13:
-
-- Deploy the API to Azure App Service (Free tier for demo). Configure the app so the SQLite file is placed in the App Service persistent path (`/home/data/nhlstats.db` on Linux or `D:\\home\\data\\nhlstats.db` on Windows).
-- Avoid `WEBSITE_RUN_FROM_PACKAGE=1` or any read-only package mount for the app content, since the SQLite DB must be writable. If you use zip-deploy, ensure the DB file is not overwritten by deployments or add a post-deploy restore step.
-- Add a small post-deploy or scheduled task to copy the DB file to Azure Blob Storage (compressed) for backups. Use lifecycle rules on the storage account (Cool/Archive) to minimize cost.
-- For reliability consider switching to Azure SQL when you require scaling, multi-instance deployments, or managed backups.
+- The backend uses SQLite only.
+- Deploy the API to Azure App Service and keep the DB file under a persistent writable path (`/home/data/nhlstats.db` on Linux or `D:\\home\\data\\nhlstats.db` on Windows).
+- Avoid read-only deployment layouts for the DB path and back up the SQLite file regularly.
 
 **Local dev with SQLite**
 

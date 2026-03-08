@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
-import type { AllTimeEarnings } from '../types/stats'
+import type { FinancialStats } from '../types/stats'
 import type { Expense } from '../types/expense'
 import apiClient from '../services/apiClient'
+import { cacheService } from '../services/cacheService'
 
 function formatCurrency(value: number): string {
     const abs = Math.abs(value)
@@ -17,18 +18,25 @@ function formatDate(dateStr: string): string {
 
 export default function EarningsExpensesPage() {
     const { t } = useTranslation()
-    const [earnings, setEarnings] = useState<AllTimeEarnings | null>(null)
+    const [stats, setStats] = useState<FinancialStats | null>(null)
     const [expenses, setExpenses] = useState<Expense[]>([])
+    const [userNames, setUserNames] = useState<Record<number, string>>({})
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         Promise.all([
-            apiClient.get<AllTimeEarnings>('/api/stats/earnings'),
-            apiClient.get<Expense[]>('/api/expenses'),
+            apiClient.get<FinancialStats>('/api/stats/financial-stats'),
+            cacheService.getUsers(),
         ])
-            .then(([e, ex]) => {
-                setEarnings(e)
-                setExpenses(ex)
+            .then(([response, users]) => {
+                setStats(response)
+                setExpenses(response.expenses ?? [])
+                setUserNames(
+                    users.reduce<Record<number, string>>((acc, user) => {
+                        acc[user.id] = user.name
+                        return acc
+                    }, {})
+                )
             })
             .catch(() => { })
             .finally(() => setLoading(false))
@@ -42,9 +50,9 @@ export default function EarningsExpensesPage() {
         )
     }
 
-    const users = earnings?.userEarnings ?? []
-    const totalPlus = users.reduce((s, u) => s + u.totalPlus, 0)
-    const totalMinus = users.reduce((s, u) => s + u.totalMinus, 0)
+    const users = stats?.financesByUser ?? []
+    const totalPlus = users.reduce((s, u) => s + u.totalPluses, 0)
+    const totalMinus = users.reduce((s, u) => s + u.totalMinuses, 0)
     const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0)
 
     return (
@@ -54,7 +62,7 @@ export default function EarningsExpensesPage() {
 
                 {/* ── Earnings Table ──────────────────────────────────── */}
                 <section>
-                    <h2 className="text-lg font-semibold text-primary mb-3">{t('earnings.playerBalance')}</h2>
+                    <h2 className="text-lg font-semibold text-primary mb-3">{t('earnings.playerEarnings')}</h2>
                     <div className="overflow-x-auto rounded-xl border border-border">
                         <table
                             className="w-full text-sm"
@@ -67,27 +75,31 @@ export default function EarningsExpensesPage() {
                                     <th className="text-right px-4 py-3">{t('earnings.plusPoints')}</th>
                                     <th className="text-right px-4 py-3">{t('earnings.minusPoints')}</th>
                                     <th className="text-right px-4 py-3">{t('earnings.paid')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.balance')}</th>
+                                    <th className="text-right px-4 py-3">{t('earnings.earnings')}</th>
+                                    <th className="text-right px-4 py-3">{t('earnings.canBeCollected')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {users.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="text-center py-6 text-text-muted">
-                                            {t('earnings.noBalanceData')}
+                                            {t('earnings.noFinancialData')}
                                         </td>
                                     </tr>
                                 ) : (
                                     users.map((u) => (
                                         <tr key={u.userId} className="bg-bg hover:bg-surface transition-colors">
-                                            <td className="px-4 py-3 font-medium">{u.userName}</td>
-                                            <td className="px-4 py-3 text-right text-success">{u.totalPlus}</td>
-                                            <td className="px-4 py-3 text-right text-danger">{u.totalMinus}</td>
+                                            <td className="px-4 py-3 font-medium">{userNames[u.userId] ?? `User ${u.userId}`}</td>
+                                            <td className="px-4 py-3 text-right text-success">{u.totalPluses}</td>
+                                            <td className="px-4 py-3 text-right text-danger">{u.totalMinuses}</td>
                                             <td className="px-4 py-3 text-right text-text-muted">
-                                                {u.totalPaid > 0 ? formatCurrency(u.totalPaid) : '—'}
+                                                {u.collected > 0 ? formatCurrency(u.collected) : '—'}
                                             </td>
-                                            <td className={`px-4 py-3 text-right font-medium ${u.remainingBalance > 0 ? 'text-danger' : 'text-success'}`}>
-                                                {formatCurrency(u.remainingBalance)}
+                                            <td className="px-4 py-3 text-right font-medium text-text-muted">
+                                                {formatCurrency(u.totalEarnings)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-medium text-warning">
+                                                {formatCurrency(u.canBeCollected)}
                                             </td>
                                         </tr>
                                     ))
@@ -99,9 +111,10 @@ export default function EarningsExpensesPage() {
                                         <td className="px-4 py-3 text-text">{t('earnings.total')}</td>
                                         <td className="px-4 py-3 text-right text-success">{totalPlus}</td>
                                         <td className="px-4 py-3 text-right text-danger">{totalMinus}</td>
-                                        <td className="px-4 py-3 text-right text-text-muted">{formatCurrency(earnings?.totalCollected ?? 0)}</td>
-                                        <td className={`px-4 py-3 text-right ${(earnings?.canBeCollected ?? 0) > 0 ? 'text-danger' : 'text-success'}`}>
-                                            {formatCurrency(earnings?.canBeCollected ?? 0)}
+                                        <td className="px-4 py-3 text-right text-text-muted">{formatCurrency(stats?.totalExpenses ?? 0)}</td>
+                                        <td className="px-4 py-3 text-right text-text-muted">{formatCurrency(stats?.totalEarnings ?? 0)}</td>
+                                        <td className={`px-4 py-3 text-right ${(stats?.canBeCollected ?? 0) > 0 ? 'text-warning' : 'text-success'}`}>
+                                            {formatCurrency(stats?.canBeCollected ?? 0)}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -161,19 +174,19 @@ export default function EarningsExpensesPage() {
                 </section>
 
                 {/* ── Balance Summary ───────────────────────────────────── */}
-                {earnings && (
+                {stats && (
                     <section
                         className="card p-6"
                         data-testid="balance-summary"
                     >
                         <h2 className="text-lg font-semibold text-primary mb-4">{t('earnings.balanceSummary')}</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="bg-bg rounded-lg border border-border p-4 text-center">
                                 <p className="text-xs text-text-muted uppercase tracking-wider mb-1">
                                     {t('earnings.canBeCollected')}
                                 </p>
-                                <p className={`text-2xl font-bold ${(earnings.canBeCollected ?? 0) > 0 ? 'text-danger' : 'text-success'}`}>
-                                    {formatCurrency(earnings.canBeCollected)}
+                                <p className={`text-2xl font-bold ${(stats.canBeCollected ?? 0) > 0 ? 'text-danger' : 'text-success'}`}>
+                                    {formatCurrency(stats.canBeCollected)}
                                 </p>
                             </div>
                             <div className="bg-bg rounded-lg border border-border p-4 text-center">
@@ -181,7 +194,7 @@ export default function EarningsExpensesPage() {
                                     {t('earnings.totalCollected')}
                                 </p>
                                 <p className="text-2xl font-bold text-success">
-                                    {formatCurrency(earnings.totalCollected)}
+                                    {formatCurrency(stats.totalCollected)}
                                 </p>
                             </div>
                             <div className="bg-bg rounded-lg border border-border p-4 text-center">
@@ -189,16 +202,7 @@ export default function EarningsExpensesPage() {
                                     {t('earnings.totalExpenses')}
                                 </p>
                                 <p className="text-2xl font-bold text-warning">
-                                    {formatCurrency(earnings.totalExpenses)}
-                                </p>
-                            </div>
-                            <div className="bg-bg rounded-lg border border-border p-4 text-center">
-                                <p className="text-xs text-text-muted uppercase tracking-wider mb-1">{t('earnings.remaining')}</p>
-                                <p
-                                    className={`text-2xl font-bold ${earnings.balance >= 0 ? 'text-success' : 'text-danger'
-                                        }`}
-                                >
-                                    {formatCurrency(earnings.balance)}
+                                    {formatCurrency(stats.totalExpenses)}
                                 </p>
                             </div>
                         </div>

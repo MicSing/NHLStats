@@ -6,19 +6,23 @@ public interface IUserMatchService
 {
     // ── UserMatch CRUD ────────────────────────────────────────────────────────
     Task<IEnumerable<UserMatchDto>> GetByMatchAsync(int matchId);
-    Task<IEnumerable<UserMatchDto>> GetAggregatedBySeasonAsync(int seasonId);
+    Task<IEnumerable<UserMatchDto>> GetBySeasonAsync(int seasonId);
     Task<UserMatchDto?> GetByIdAsync(int id);
 
     /// <summary>Creates a UserMatch linked to a specific match. User must be in SeasonUser.</summary>
     Task<(UserMatchDto? result, string? error)> CreateForMatchAsync(int seasonId, int matchId, CreateUserMatchDto dto);
 
-    /// <summary>Creates an aggregated UserMatch (MatchId = null). User must be in SeasonUser.</summary>
-    Task<(UserMatchDto? result, string? error)> CreateAggregatedAsync(int seasonId, CreateUserMatchDto dto);
-
     Task<bool> DeleteAsync(int id);
 
     /// <summary>Creates a UserMatch for every SeasonUser not already represented in the match.</summary>
     Task<(int created, string? error)> InitializeUsersForMatchAsync(int seasonId, int matchId);
+
+    // ── Aggregated data ────────────────────────────────────────────────────────────────
+    Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(int userId, int seasonId, CreateAggregatedSeasonDataDto dto);
+    Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataAsync(int userId, int seasonId);
+    Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataBySeasonAsync(int seasonId);
+    Task<(AggregatedSeasonDataDto? result, string? error)> UpdateAggregatedDataAsync(int userId, int seasonId, UpdateAggregatedSeasonDataDto dto);
+    Task<bool> DeleteAggregatedDataAsync(int userId, int seasonId);
 
     // ── Points ────────────────────────────────────────────────────────────────
     Task<IEnumerable<UserMatchPointDto>> GetPointsAsync(int userMatchId);

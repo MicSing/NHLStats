@@ -14,6 +14,7 @@ import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import SearchableSelect from './SearchableSelect'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '../context/ToastContext'
 
 type Tab = 'goals' | 'penalties' | 'points'
 
@@ -39,6 +40,7 @@ export default function UserMatchCard({
     onChanged,
 }: Props) {
     const { t } = useTranslation()
+    const toast = useToast()
     const [activeTab, setActiveTab] = useState<Tab>('goals')
     const [posPointForm, setPosPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
         pointReasonId: '',
@@ -110,6 +112,17 @@ export default function UserMatchCard({
         onChanged()
     }
 
+    const handleDeleteUserMatch = async () => {
+        if (!window.confirm(t('userMatchCard.deleteConfirm', { userName: um.userName }))) return
+        try {
+            await apiClient.delete(`/api/usermatches/${um.id}`)
+            toast.success(t('toast.deleteSuccess'))
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
     const tabClass = (tab: Tab) =>
         `px-3 py-1 text-sm rounded-t font-medium transition-colors ${activeTab === tab
             ? 'bg-surface text-text border-b-2 border-primary'
@@ -121,9 +134,20 @@ export default function UserMatchCard({
             {/* Card header */}
             <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold">{um.userName}</h2>
-                <div className="flex gap-4 text-sm">
-                    <span className="text-success">+{um.totalPlus}</span>
-                    <span className="text-danger">−{um.totalMinus}</span>
+                <div className="flex items-center gap-4">
+                    <div className="flex gap-4 text-sm">
+                        <span className="text-success">+{um.totalPlus}</span>
+                        <span className="text-danger">−{um.totalMinus}</span>
+                    </div>
+                    {isAuth && (
+                        <button
+                            onClick={() => void handleDeleteUserMatch()}
+                            className="text-danger hover:opacity-70 text-sm px-2 py-1 border border-danger rounded"
+                            aria-label={t('userMatchCard.deleteUserMatch')}
+                        >
+                            {t('userMatchCard.deleteUserMatch')}
+                        </button>
+                    )}
                 </div>
             </div>
 

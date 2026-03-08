@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User, CreateUserDto, UpdateUserDto } from '../../types/user'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -33,7 +34,7 @@ export default function UsersPage() {
 
     const loadUsers = async () => {
         try {
-            const data = await apiClient.get<User[]>('/api/users')
+            const data = await cacheService.getUsers(true)
             setUsers(data)
         } catch {
             setError(t('errors.failedToLoadUsers'))
@@ -50,6 +51,7 @@ export default function UsersPage() {
         e.preventDefault()
         try {
             await apiClient.post<User>('/api/users', { name: newName } satisfies CreateUserDto)
+            cacheService.invalidateUsers()
             setNewName('')
             setShowAddModal(false)
             toast.success(t('toast.createSuccess'))
@@ -65,6 +67,7 @@ export default function UsersPage() {
         try {
             const dto: UpdateUserDto = { name: editName, isActive: editIsActive }
             await apiClient.put<User>(`/api/users/${editUser.id}`, dto)
+            cacheService.invalidateUsers()
             setEditUser(null)
             toast.success(t('toast.saveSuccess'))
             await loadUsers()
@@ -79,6 +82,7 @@ export default function UsersPage() {
                 name: user.name,
                 isActive: false,
             } satisfies UpdateUserDto)
+            cacheService.invalidateUsers()
             toast.success(t('toast.saveSuccess'))
             await loadUsers()
         } catch {

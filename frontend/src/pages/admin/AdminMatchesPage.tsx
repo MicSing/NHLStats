@@ -6,6 +6,7 @@ import type { User } from '../../types/user'
 import { CompletionType } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto, BatchCreateMatchDto } from '../../types/match'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import SearchableSelect from '../../components/SearchableSelect'
 import { useTranslation } from 'react-i18next'
@@ -721,7 +722,7 @@ export default function AdminMatchesPage() {
     })
 
     useEffect(() => {
-        Promise.all([apiClient.get<Season[]>('/api/seasons'), apiClient.get<Team[]>('/api/teams')])
+        Promise.all([cacheService.getSeasons(), apiClient.get<Team[]>('/api/teams')])
             .then(([s, t]) => {
                 setSeasons(s)
                 setTeams(t)

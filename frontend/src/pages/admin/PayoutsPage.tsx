@@ -3,6 +3,7 @@ import type { Season } from '../../types/season'
 import type { User } from '../../types/user'
 import type { UserPayout, CreateUserPayoutDto, UpdateUserPayoutDto } from '../../types/payout'
 import apiClient from '../../services/apiClient'
+import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -45,8 +46,8 @@ export default function PayoutsPage() {
 
     useEffect(() => {
         Promise.all([
-            apiClient.get<Season[]>('/api/seasons'),
-            apiClient.get<User[]>('/api/users'),
+            cacheService.getSeasons(),
+            cacheService.getUsers(),
         ])
             .then(([s, u]) => {
                 const sorted = [...s].sort(

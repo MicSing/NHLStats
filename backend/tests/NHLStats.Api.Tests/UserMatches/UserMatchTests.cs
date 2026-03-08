@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NHLStats.Domain;
 
 namespace NHLStats.Api.Tests;
 
@@ -112,7 +114,7 @@ public class UserMatchTests : ApiTestBase
     // ─── UserMatch — Aggregated (MatchId = null) ──────────────────────────────
 
     [Fact]
-    public async Task CreateAggregated_returns_201_with_null_matchId()
+    public async Task CreateAggregated_returns_400_when_feature_is_deprecated()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "UM Aggregated");
@@ -123,11 +125,9 @@ public class UserMatchTests : ApiTestBase
             $"/api/seasons/{seasonId}/usermatches",
             new { userId });
 
-        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("matchId").ValueKind.Should().Be(JsonValueKind.Null);
-        body.GetProperty("seasonId").GetInt32().Should().Be(seasonId);
-        body.GetProperty("userId").GetInt32().Should().Be(userId);
+        body.GetProperty("error").GetString().Should().Contain("no longer supported");
     }
 
     [Fact]
@@ -220,7 +220,7 @@ public class UserMatchTests : ApiTestBase
     // ─── UserMatchPoint — Add & totals recalculation ─────────────────────────
 
     [Fact]
-    public async Task AddPoint_negative_reason_increments_TotalMinus()
+    public async Task AddPoint_negative_reason_creates_negative_point_entry()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "UM AddPointNeg");
@@ -240,14 +240,16 @@ public class UserMatchTests : ApiTestBase
 
         addResp.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var getResp = await client.GetAsync($"/api/usermatches/{umId}");
-        var um = await getResp.Content.ReadFromJsonAsync<JsonElement>();
-        um.GetProperty("totalMinus").GetInt32().Should().Be(2);
-        um.GetProperty("totalPlus").GetInt32().Should().Be(0);
+        var pointsResp = await client.GetAsync($"/api/usermatches/{umId}/points");
+        pointsResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var points = await pointsResp.Content.ReadFromJsonAsync<JsonElement>();
+        points.GetArrayLength().Should().Be(1);
+        points[0].GetProperty("pointReasonId").GetInt32().Should().Be(1);
+        points[0].GetProperty("count").GetInt32().Should().Be(2);
     }
 
     [Fact]
-    public async Task AddPoint_positive_reason_increments_TotalPlus()
+    public async Task AddPoint_positive_reason_creates_positive_point_entry()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "UM AddPointPos");
@@ -265,14 +267,16 @@ public class UserMatchTests : ApiTestBase
             $"/api/usermatches/{umId}/points",
             new { pointReasonId = 12, count = 3 });
 
-        var getResp = await client.GetAsync($"/api/usermatches/{umId}");
-        var um = await getResp.Content.ReadFromJsonAsync<JsonElement>();
-        um.GetProperty("totalPlus").GetInt32().Should().Be(3);
-        um.GetProperty("totalMinus").GetInt32().Should().Be(0);
+        var pointsResp = await client.GetAsync($"/api/usermatches/{umId}/points");
+        pointsResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var points = await pointsResp.Content.ReadFromJsonAsync<JsonElement>();
+        points.GetArrayLength().Should().Be(1);
+        points[0].GetProperty("pointReasonId").GetInt32().Should().Be(12);
+        points[0].GetProperty("count").GetInt32().Should().Be(3);
     }
 
     [Fact]
-    public async Task UpdatePoint_recalculates_totals()
+    public async Task UpdatePoint_updates_point_reason_and_count()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "UM UpdatePoint");
@@ -297,14 +301,16 @@ public class UserMatchTests : ApiTestBase
             new { pointReasonId = 9, count = 5 });
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResp = await client.GetAsync($"/api/usermatches/{umId}");
-        var um = await getResp.Content.ReadFromJsonAsync<JsonElement>();
-        um.GetProperty("totalPlus").GetInt32().Should().Be(5);
-        um.GetProperty("totalMinus").GetInt32().Should().Be(0);
+        var pointsResp = await client.GetAsync($"/api/usermatches/{umId}/points");
+        pointsResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var points = await pointsResp.Content.ReadFromJsonAsync<JsonElement>();
+        points.GetArrayLength().Should().Be(1);
+        points[0].GetProperty("pointReasonId").GetInt32().Should().Be(9);
+        points[0].GetProperty("count").GetInt32().Should().Be(5);
     }
 
     [Fact]
-    public async Task DeletePoint_recalculates_totals()
+    public async Task DeletePoint_removes_target_point_and_keeps_remaining()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "UM DeletePoint");
@@ -331,10 +337,13 @@ public class UserMatchTests : ApiTestBase
         var delResp = await client.DeleteAsync($"/api/usermatches/{umId}/points/{pointId}");
         delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Remaining: count=2 negative
-        var getResp = await client.GetAsync($"/api/usermatches/{umId}");
-        var um = await getResp.Content.ReadFromJsonAsync<JsonElement>();
-        um.GetProperty("totalMinus").GetInt32().Should().Be(2);
+        // Remaining: one negative entry with count=2
+        var pointsResp = await client.GetAsync($"/api/usermatches/{umId}/points");
+        pointsResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var points = await pointsResp.Content.ReadFromJsonAsync<JsonElement>();
+        points.GetArrayLength().Should().Be(1);
+        points[0].GetProperty("pointReasonId").GetInt32().Should().Be(1);
+        points[0].GetProperty("count").GetInt32().Should().Be(2);
     }
 
     // ─── UserMatchGoal — Season validation ────────────────────────────────────
@@ -362,6 +371,64 @@ public class UserMatchTests : ApiTestBase
         var body = await addResp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("rosterPlayerId").GetInt32().Should().Be(playerId);
         body.GetProperty("count").GetInt32().Should().Be(2);
+    }
+
+    // --- UserMatch - Delete ---
+
+    [Fact]
+    public async Task Delete_cascades_to_points_goals_and_penalties()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "UM Delete Cascade");
+        var userId = await CreateUserAsync(client, "Cascade Player");
+        await AssignUserToSeasonAsync(client, seasonId, userId);
+        var matchId = await CreateMatchAsync(client, seasonId);
+        var rosterPlayerId = await CreateRosterPlayerAsync(client, seasonId);
+
+        var createResp = await client.PostAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}/usermatches",
+            new { userId });
+        var umId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt32();
+
+        var pointResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{umId}/points",
+            new { pointReasonId = 1, count = 2 });
+        pointResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var goalResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{umId}/goals",
+            new { rosterPlayerId, count = 1, goalType = "EvenStrength" });
+        goalResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var penaltyResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{umId}/penalties",
+            new { rosterPlayerId, count = 1 });
+        penaltyResp.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var pointId = (await pointResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var goalId = (await goalResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var penaltyId = (await penaltyResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var pointsBeforeResp = await client.GetAsync($"/api/usermatches/{umId}/points");
+        var goalsBeforeResp = await client.GetAsync($"/api/usermatches/{umId}/goals");
+        var penaltiesBeforeResp = await client.GetAsync($"/api/usermatches/{umId}/penalties");
+
+        var pointsBefore = await pointsBeforeResp.Content.ReadFromJsonAsync<JsonElement>();
+        var goalsBefore = await goalsBeforeResp.Content.ReadFromJsonAsync<JsonElement>();
+        var penaltiesBefore = await penaltiesBeforeResp.Content.ReadFromJsonAsync<JsonElement>();
+
+        pointsBefore.GetArrayLength().Should().Be(1);
+        goalsBefore.GetArrayLength().Should().Be(1);
+        penaltiesBefore.GetArrayLength().Should().Be(1);
+
+        var deleteResp = await client.DeleteAsync($"/api/usermatches/{umId}");
+        deleteResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NhlStatsDbContext>();
+
+        (await db.UserMatchPoints.FindAsync(pointId)).Should().BeNull();
+        (await db.UserMatchGoals.FindAsync(goalId)).Should().BeNull();
+        (await db.UserMatchPenalties.FindAsync(penaltyId)).Should().BeNull();
     }
 
     [Fact]

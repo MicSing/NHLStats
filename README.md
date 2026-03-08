@@ -157,7 +157,7 @@ Deployed on Azure with GitHub Actions CI/CD.
 
 - **Backend**: Azure App Service (http://localhost:5267)
 - **Frontend**: Azure Static Web Apps
-- **Database**: SQLite (development) / Azure SQL (production)
+- **Database**: SQLite
 
 **[→ Deployment Guide](docs/DEPLOYMENT.md)**
 

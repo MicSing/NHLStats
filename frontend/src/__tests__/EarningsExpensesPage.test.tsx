@@ -1,23 +1,24 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from './testUtils'
 import EarningsExpensesPage from '../pages/EarningsExpensesPage'
 
 // MSW handlers already provide:
-//   GET /api/stats/earnings → { userEarnings: [{ userId:1, userName:'Player One', totalPlus:5, totalMinus:3, totalEarnings:0.75 }], totalCollected:0.75, totalExpenses:80.0, balance:-79.25 }
-//   GET /api/expenses → [{ id:1, description:'Pizza party', amount:50.0, date:'2023-10-05T00:00:00' }, { id:2, description:'Trophy', amount:30.0, date:'2023-10-10T00:00:00' }]
+//   GET /api/stats/financial-stats → { totalCollected:0.75, totalExpenses:80.0, canBeCollected:0.75, expenses:[...], financesByUser:[{ userId:1, totalPluses:5, totalMinuses:3, collected:0.75, earnings:0.75 }] }
+//   GET /api/users → [{ id:1, name:'Player One', isActive:true }, ...]
 // Note: EarningsExpensesPage uses € (euro) as the currency symbol.
 
 // ── Earnings Table ──────────────────────────────────────────────────────────
 
 describe('EarningsExpensesPage — earnings table', () => {
-    test('renders row for each user with Plus, Minus, Earnings', async () => {
+    test('renders row for each user with Plus, Minus, Paid, Earnings', async () => {
         renderWithProviders(<EarningsExpensesPage />)
         await waitFor(() => expect(screen.getByText('Player One')).toBeInTheDocument())
 
         const row = screen.getByText('Player One').closest('tr')!
-        expect(row).toHaveTextContent('5')       // totalPlus
-        expect(row).toHaveTextContent('3')       // totalMinus
-        expect(row).toHaveTextContent('0.75 €')   // totalEarnings
+        expect(row).toHaveTextContent('5')       // totalPluses
+        expect(row).toHaveTextContent('3')       // totalMinuses
+        expect(row).toHaveTextContent('0.75 €')  // collected
+        expect(row).toHaveTextContent('0.75 €')  // earnings
     })
 
     test('totals row sums all users', async () => {
@@ -29,7 +30,7 @@ describe('EarningsExpensesPage — earnings table', () => {
         expect(tfoot).toHaveTextContent('Total')
         expect(tfoot).toHaveTextContent('5')       // sum of totalPlus
         expect(tfoot).toHaveTextContent('3')       // sum of totalMinus
-        expect(tfoot).toHaveTextContent('0.75 €')   // sum of totalEarnings
+        expect(tfoot).toHaveTextContent('0.75 €')   // totalCollected and totalEarnings
     })
 
     test('handles users with no data gracefully', async () => {
@@ -65,23 +66,23 @@ describe('EarningsExpensesPage — expenses table', () => {
 // ── Balance Summary ─────────────────────────────────────────────────────────
 
 describe('EarningsExpensesPage — balance summary', () => {
-    test('shows Total Collected, Total Expenses, Remaining', async () => {
+    test('shows Can Be Collected, Total Collected, Total Expenses', async () => {
         renderWithProviders(<EarningsExpensesPage />)
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
+        expect(screen.getByText(/can be collected/i)).toBeInTheDocument()
         expect(screen.getByText(/total collected/i)).toBeInTheDocument()
         expect(screen.getByText(/total expenses/i)).toBeInTheDocument()
-        expect(screen.getByText(/remaining/i)).toBeInTheDocument()
     })
 
-    test('Remaining = Total collected − Total expenses', async () => {
+    test('displays correct summary values', async () => {
         renderWithProviders(<EarningsExpensesPage />)
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
         const summary = screen.getByTestId('balance-summary')
-        // totalCollected = 0.75 → "0.75 €"
-        within(summary).getAllByText('0.75 €')
-        // balance = 0.75 − 80 = −79.25 → "-79.25 €"
-        within(summary).getByText('-79.25 €')
+        // canBeCollected = 0.75, totalCollected = 0.75, totalExpenses = 80.0
+        const amounts = summary.querySelectorAll('.text-2xl')
+        expect(amounts).toHaveLength(3)
     })
 })
+

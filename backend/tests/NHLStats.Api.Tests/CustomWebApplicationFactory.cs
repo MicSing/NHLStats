@@ -21,6 +21,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         // Expose test admin credentials via IConfiguration so the Program.cs
         // seed block picks them up via config["ADMIN_EMAIL"] / config["ADMIN_PASSWORD"].
         builder.UseSetting("ADMIN_EMAIL", "testadmin@nhlstats.test");

@@ -14,6 +14,31 @@ public record UserMatchDto(
 public record CreateUserMatchDto(
     int UserId);
 
+// ─── Aggregated data ──────────────────────────────────────────────────────────────────
+
+public record AggregatedSeasonDataDto(
+    int Id,
+    int UserId,
+    int SeasonId,
+    int TotalPlus,
+    int TotalMinus,
+    int MatchesPlayed);
+
+public record CreateAggregatedSeasonDataDto(
+    int UserId,
+    int SeasonId,
+    int TotalPlus,
+    int TotalMinus,
+    int MatchesPlayed);
+
+public record UpdateAggregatedSeasonDataDto(
+    int UserId,
+    int SeasonId,
+    int TotalPlus,
+    int TotalMinus,
+    int MatchesPlayed);
+
+
 // ─── Points ──────────────────────────────────────────────────────────────────
 
 public record UserMatchPointDto(

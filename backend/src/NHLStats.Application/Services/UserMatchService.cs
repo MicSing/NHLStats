@@ -38,10 +38,10 @@ public class UserMatchService : IUserMatchService
             .Select(um => ToDto(um))
             .ToListAsync();
 
-    public async Task<IEnumerable<UserMatchDto>> GetAggregatedBySeasonAsync(int seasonId) =>
+    public async Task<IEnumerable<UserMatchDto>> GetBySeasonAsync(int seasonId) =>
         await _db.UserMatches
             .Include(um => um.User)
-            .Where(um => um.SeasonId == seasonId && um.MatchId == null)
+            .Where(um => um.SeasonId == seasonId)
             .Select(um => ToDto(um))
             .ToListAsync();
 
@@ -78,37 +78,7 @@ public class UserMatchService : IUserMatchService
         {
             UserId = dto.UserId,
             MatchId = matchId,
-            SeasonId = seasonId,
-            TotalPlus = 0,
-            TotalMinus = 0
-        };
-        _db.UserMatches.Add(userMatch);
-        await _db.SaveChangesAsync();
-        return (await GetByIdAsync(userMatch.Id), null);
-    }
-
-    public async Task<(UserMatchDto? result, string? error)> CreateAggregatedAsync(
-        int seasonId, CreateUserMatchDto dto)
-    {
-        // Validate user is in the season
-        var inSeason = await _db.SeasonUsers
-            .AnyAsync(su => su.SeasonId == seasonId && su.UserId == dto.UserId);
-        if (!inSeason)
-            return (null, $"User {dto.UserId} is not assigned to season {seasonId}.");
-
-        // Prevent duplicate aggregated entry
-        var duplicate = await _db.UserMatches
-            .AnyAsync(um => um.SeasonId == seasonId && um.UserId == dto.UserId && um.MatchId == null);
-        if (duplicate)
-            return (null, $"Aggregated UserMatch for user {dto.UserId} in season {seasonId} already exists.");
-
-        var userMatch = new UserMatch
-        {
-            UserId = dto.UserId,
-            MatchId = null,
-            SeasonId = seasonId,
-            TotalPlus = 0,
-            TotalMinus = 0
+            SeasonId = seasonId
         };
         _db.UserMatches.Add(userMatch);
         await _db.SaveChangesAsync();
@@ -148,15 +118,90 @@ public class UserMatchService : IUserMatchService
             {
                 UserId = userId,
                 MatchId = matchId,
-                SeasonId = seasonId,
-                TotalPlus = 0,
-                TotalMinus = 0
+                SeasonId = seasonId
             })
             .ToList();
 
         _db.UserMatches.AddRange(toCreate);
         await _db.SaveChangesAsync();
         return (toCreate.Count, null);
+    }
+
+    // --- Aggregated data ────────────────────────────────────────────────────────────────
+
+    public async Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(
+        int userId, int seasonId, CreateAggregatedSeasonDataDto dto)
+    {
+        // Validate user is in the season
+        var inSeason = await _db.SeasonUsers
+            .AnyAsync(su => su.SeasonId == seasonId && su.UserId == userId);
+        if (!inSeason)
+            return (null, $"User {userId} is not assigned to season {seasonId}.");
+
+        var existing = await _db.UserSeasonAggregatedData
+            .FirstOrDefaultAsync(agg => agg.UserId == userId && agg.SeasonId == seasonId);
+        if (existing != null)
+            return (null, $"Aggregated data for user {userId} in season {seasonId} already exists.");
+
+        var aggData = new UserSeasonAggregatedData
+        {
+            UserId = userId,
+            SeasonId = seasonId,
+            TotalPlus = dto.TotalPlus,
+            TotalMinus = dto.TotalMinus,
+            MatchesPlayed = dto.MatchesPlayed,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.UserSeasonAggregatedData.Add(aggData);
+        await _db.SaveChangesAsync();
+
+        var resultDto = new AggregatedSeasonDataDto(
+            aggData.Id, aggData.UserId, aggData.SeasonId, aggData.TotalPlus, aggData.TotalMinus, aggData.MatchesPlayed);
+        return (resultDto, null);
+    }
+
+    public async Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataAsync(int userId, int seasonId) =>
+        await _db.UserSeasonAggregatedData
+            .Where(agg => agg.UserId == userId && agg.SeasonId == seasonId)
+            .Select(agg => new AggregatedSeasonDataDto(
+                agg.Id, agg.UserId, agg.SeasonId, agg.TotalPlus, agg.TotalMinus, agg.MatchesPlayed))
+            .ToListAsync();
+
+    public async Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataBySeasonAsync(int seasonId) =>
+        await _db.UserSeasonAggregatedData
+            .Where(agg => agg.SeasonId == seasonId)
+            .Select(agg => new AggregatedSeasonDataDto(
+                agg.Id, agg.UserId, agg.SeasonId, agg.TotalPlus, agg.TotalMinus, agg.MatchesPlayed))
+            .ToListAsync();
+
+    public async Task<(AggregatedSeasonDataDto? result, string? error)> UpdateAggregatedDataAsync(
+        int userId, int seasonId, UpdateAggregatedSeasonDataDto dto)
+    {
+        var aggData = await _db.UserSeasonAggregatedData
+            .FirstOrDefaultAsync(agg => agg.UserId == userId && agg.SeasonId == seasonId);
+        if (aggData == null)
+            return (null, $"Aggregated data for user {userId} in season {seasonId} not found.");
+
+        aggData.TotalPlus = dto.TotalPlus;
+        aggData.TotalMinus = dto.TotalMinus;
+        aggData.MatchesPlayed = dto.MatchesPlayed;
+
+        await _db.SaveChangesAsync();
+
+        var resultDto = new AggregatedSeasonDataDto(
+            aggData.Id, aggData.UserId, aggData.SeasonId, aggData.TotalPlus, aggData.TotalMinus, aggData.MatchesPlayed);
+        return (resultDto, null);
+    }
+
+    public async Task<bool> DeleteAggregatedDataAsync(int userId, int seasonId)
+    {
+        var aggData = await _db.UserSeasonAggregatedData
+            .FirstOrDefaultAsync(agg => agg.UserId == userId && agg.SeasonId == seasonId);
+        if (aggData == null) return false;
+
+        _db.UserSeasonAggregatedData.Remove(aggData);
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     // ─── Points ───────────────────────────────────────────────────────────────
@@ -187,11 +232,7 @@ public class UserMatchService : IUserMatchService
         };
         _db.UserMatchPoints.Add(point);
 
-        // Adjust totals in the same transaction
-        if (reason.IsPositive)
-            userMatch.TotalPlus += dto.Count;
-        else
-            userMatch.TotalMinus += dto.Count;
+        // TotalPlus and TotalMinus are now calculated properties, no manual update needed
 
         await _db.SaveChangesAsync();
 
@@ -218,17 +259,7 @@ public class UserMatchService : IUserMatchService
         if (newReason == null)
             return (null, $"PointReason {dto.PointReasonId} not found.");
 
-        // Reverse old contribution
-        if (point.PointReason!.IsPositive)
-            userMatch.TotalPlus -= point.Count;
-        else
-            userMatch.TotalMinus -= point.Count;
-
-        // Apply new contribution
-        if (newReason.IsPositive)
-            userMatch.TotalPlus += dto.Count;
-        else
-            userMatch.TotalMinus += dto.Count;
+        // TotalPlus and TotalMinus are now calculated properties, no manual update needed
 
         point.PointReasonId = dto.PointReasonId;
         point.Count = dto.Count;
@@ -261,8 +292,7 @@ public class UserMatchService : IUserMatchService
                 .Where(p => p.UserMatchId == userMatchId)
                 .ToListAsync();
 
-            userMatch.TotalPlus = remaining.Where(p => p.PointReason!.IsPositive).Sum(p => p.Count);
-            userMatch.TotalMinus = remaining.Where(p => !p.PointReason!.IsPositive).Sum(p => p.Count);
+            // TotalPlus and TotalMinus are now calculated properties from Points collection
             await _db.SaveChangesAsync();
         }
 
