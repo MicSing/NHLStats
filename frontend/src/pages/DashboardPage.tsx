@@ -231,7 +231,7 @@ export default function DashboardPage() {
                             {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
                             ) : (
-                                <TrendChart data={trendData} mode="plus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                                <TrendChart data={trendData} mode="plus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
                             )}
                         </section>
                         <section className="card p-5">
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                             {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
                             ) : (
-                                <TrendChart data={trendData} mode="minus" totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                                <TrendChart data={trendData} mode="minus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
                             )}
                         </section>
                     </div>

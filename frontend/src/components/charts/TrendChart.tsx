@@ -30,6 +30,7 @@ type Mode = 'plus' | 'minus'
 interface Props {
     data: PeriodPlusMinus[]
     mode: Mode
+    isWeekly: boolean // True when viewing a specific season (weekly breakdown), false for all-time (by-season)
     totalPeriodMatches?: number // Total matches in current season from API
 }
 
@@ -90,7 +91,7 @@ function calculateLastNPeriodsPace(
     return calculatePace(totalPoints, totalMatches)
 }
 
-export default function TrendChart({ data, mode }: Props) {
+export default function TrendChart({ data, mode, isWeekly }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
     const ariaLabel = mode === 'plus' ? 'plus trend chart' : 'minus trend chart'
@@ -137,8 +138,6 @@ export default function TrendChart({ data, mode }: Props) {
         _isPrediction: true,
     }
 
-    // Determine if this is weekly or season data
-    const isWeekly = data.length > 0 && data[0].label.toLowerCase().startsWith('week')
     const currentPeriodIndex = data.length - 1
 
     const getSeasonMatchesForUser = (userId: number): number =>
@@ -157,16 +156,16 @@ export default function TrendChart({ data, mode }: Props) {
 
     // maxSeasonMatches = full season
     // matchesRemainingInSeason = full season - matches already played in season
-    const maxSeasonMatches = FULL_SEASON_MATCHES
-    const matchesRemainingInSeason = Math.max(0, maxSeasonMatches - totalSeasonMatchesPlayed)
+    const maxSeasonMatches = FULL_SEASON_MATCHES;
+    const matchesRemainingInSeason = Math.max(0, maxSeasonMatches - totalSeasonMatchesPlayed);
 
     for (const user of allUsers) {
-        const currentUser = data[currentPeriodIndex]?.users.find((u) => u.userId === user.userId)
+        const currentUser = data[currentPeriodIndex]?.users.find((u) => u.userId === user.userId);
 
-        const currentSeasonMatches = getSeasonMatchesForUser(user.userId)
+        const currentSeasonMatches = getSeasonMatchesForUser(user.userId);
         if (currentSeasonMatches === 0) {
-            predictionEntry[user.userName] = 0
-            continue
+            predictionEntry[user.userName] = 0;
+            continue;
         }
 
         // Calculate current period pace
@@ -174,38 +173,35 @@ export default function TrendChart({ data, mode }: Props) {
         // For weekly view: all weeks in current season
         const currentSeasonPace = isWeekly
             ? calculateLastNPeriodsPace(data, user.userId, getValue, data.length)
-            : calculateLastNPeriodsPace(data, user.userId, getValue, 1)
+            : calculateLastNPeriodsPace(data, user.userId, getValue, 1);
 
         // Calculate historical pace (average of all previous periods)
-        const historicalPace = calculateHistoricalPace(data, user.userId, getValue, currentPeriodIndex)
+        const historicalPace = calculateHistoricalPace(data, user.userId, getValue, currentPeriodIndex);
 
-        let predictedPace: number
+        let predictedPace: number;
 
         if (isWeekly && data.length >= 4) {
             // Weekly with >= 4 weeks: 50% last 4 weeks + 30% current season + 20% historical
-            const last4WeeksPace = calculateLastNPeriodsPace(data, user.userId, getValue, 4)
+            const last4WeeksPace = calculateLastNPeriodsPace(data, user.userId, getValue, 4);
 
-            predictedPace = 0.5 * last4WeeksPace + 0.3 * currentSeasonPace + 0.2 * historicalPace
+            predictedPace = 0.5 * last4WeeksPace + 0.3 * currentSeasonPace + 0.2 * historicalPace;
         } else {
             // Season or < 4 weeks fallback: 80% current season + 20% historical
-            predictedPace = 0.8 * currentSeasonPace + 0.2 * historicalPace
+            predictedPace = 0.8 * currentSeasonPace + 0.2 * historicalPace;
         }
 
         // For season view: predict end-of-season total (82 games)
         // For weekly view: predict next week based on recent match frequency
-        const matchesLastWeek = currentUser?.matchesPlayed ?? 0
-        console.log(`User ${user.userName}: currentSeasonMatches=${currentSeasonMatches}, matchesLastWeek=${matchesLastWeek}, matchesRemaining=${matchesRemainingInSeason}`)
-        const weeklyMultiplier = Math.min(matchesLastWeek, matchesRemainingInSeason)
-        console.log(`User ${user.userName}: pace=${predictedPace.toFixed(2)}, multiplier=${weeklyMultiplier}`)
-        const multiplier = isWeekly ? weeklyMultiplier : maxSeasonMatches
-        const predictedPoints = predictedPace * multiplier
+        const matchesLastWeek = currentUser?.matchesPlayed ?? 0;
+        const weeklyMultiplier = Math.min(matchesLastWeek, matchesRemainingInSeason);
+        const multiplier = isWeekly ? weeklyMultiplier : maxSeasonMatches;
+        const predictedPoints = predictedPace * multiplier;
 
         // Clamp to 0 (can't be negative)
-        predictionEntry[user.userName] = Math.max(0, Math.round(predictedPoints))
+        predictionEntry[user.userName] = Math.max(0, Math.round(predictedPoints));
     }
-    console.log('Prediction entry:', predictionEntry)
 
-    const chartDataWithPrediction = [...chartData, predictionEntry]
+    const chartDataWithPrediction = [...chartData, predictionEntry];
 
     return (
         <div role="img" aria-label={ariaLabel} className="w-full">
