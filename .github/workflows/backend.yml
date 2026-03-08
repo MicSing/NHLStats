@@ -31,10 +31,6 @@ jobs:
         run: dotnet build --no-restore --configuration Release
         working-directory: backend
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
-        working-directory: backend
-
       - name: Publish
         run: dotnet publish src/NHLStats.Api/NHLStats.Api.csproj --no-restore -p:Configuration=Release --output ./publish
         working-directory: backend

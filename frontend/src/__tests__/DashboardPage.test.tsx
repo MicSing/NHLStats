@@ -87,23 +87,27 @@ const mockEarningsBySeason: SeasonalUserEarnings[] = [
 ]
 
 const mockUsers: User[] = [
-    { id: 1, name: 'Player One', email: 'player1@test.com' },
-    { id: 2, name: 'Player Two', email: 'player2@test.com' },
+    { id: 1, name: 'Player One', isActive: true },
+    { id: 2, name: 'Player Two', isActive: true },
 ]
 
 const mockSeasons: Season[] = [
     {
         id: 1,
         name: '2023-24',
+        hostedTeamId: null,
+        hostedTeamName: null,
         startedOn: '2023-09-01',
-        endedOn: null,
+        status: null,
         parentSeasonId: null,
     },
     {
         id: 2,
         name: '2024-25',
+        hostedTeamId: null,
+        hostedTeamName: null,
         startedOn: '2024-09-01',
-        endedOn: null,
+        status: null,
         parentSeasonId: null,
     },
 ]
