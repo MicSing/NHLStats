@@ -75,6 +75,14 @@ public record AllTimeRosterPenalizedDto(
 
 // ─── Weekly match grouping ────────────────────────────────────────────────────
 
+public record WeeklyMatchUserDto(
+    int UserId,
+    string UserName,
+    int TotalPlus,
+    int TotalMinus,
+    int TotalGoals,
+    int TotalPenalties);
+
 public record WeeklyMatchDto(
     int MatchId,
     int WeekNumber,
@@ -87,7 +95,8 @@ public record WeeklyMatchDto(
     string? AwayTeamShortName,
     int HomeScore,
     int AwayScore,
-    CompletionType CompletionType);
+    CompletionType CompletionType,
+    IEnumerable<WeeklyMatchUserDto> Users);
 
 public record WeekGroupDto(
     int WeekNumber,

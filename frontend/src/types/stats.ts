@@ -45,6 +45,15 @@ export interface RosterPenalizedByUser {
     userCounts: UserPenaltyCount[]
 }
 
+export interface WeeklyMatchUser {
+    userId: number
+    userName: string
+    totalPlus: number
+    totalMinus: number
+    totalGoals: number
+    totalPenalties: number
+}
+
 export interface WeeklyMatch {
     matchId: number
     weekNumber: number
@@ -58,6 +67,7 @@ export interface WeeklyMatch {
     homeScore: number
     awayScore: number
     completionType: number
+    users: WeeklyMatchUser[]
 }
 
 export interface WeekGroup {

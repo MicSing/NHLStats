@@ -66,6 +66,61 @@ function CompletionBadge({ type }: { type: CompletionType }) {
     )
 }
 
+function StatsTooltip({ users }: { users: { userId: number; userName: string; totalPlus: number; totalMinus: number; totalGoals: number; totalPenalties: number }[] }) {
+    const { t } = useTranslation()
+    if (!users || users.length === 0) return null
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="bg-surface border border-border rounded-lg shadow-lg px-4 py-3 min-w-[280px]">
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="text-text-muted border-b border-border">
+                            <th className="pb-1 text-left">{t('season.player')}</th>
+                            <th className="pb-1 text-center">+</th>
+                            <th className="pb-1 text-center">&minus;</th>
+                            <th className="pb-1 text-center">{t('season.goals')}</th>
+                            <th className="pb-1 text-center">{t('season.penalties')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map((u) => (
+                            <tr key={u.userId} className="border-b border-border/50 last:border-b-0">
+                                <td className="py-1 font-medium">{u.userName}</td>
+                                <td className="py-1 text-center text-success">
+                                    {u.totalPlus > 0 ? `+${u.totalPlus}` : '0'}
+                                </td>
+                                <td className="py-1 text-center text-danger">
+                                    {u.totalMinus > 0 ? u.totalMinus : '0'}
+                                </td>
+                                <td className="py-1 text-center">{u.totalGoals}</td>
+                                <td className="py-1 text-center">{u.totalPenalties}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function aggregateWeekUsers(group: WeekGroup) {
+    const map = new Map<number, { userId: number; userName: string; totalPlus: number; totalMinus: number; totalGoals: number; totalPenalties: number }>()
+    for (const match of group.matches) {
+        for (const u of match.users ?? []) {
+            const existing = map.get(u.userId)
+            if (existing) {
+                existing.totalPlus += u.totalPlus
+                existing.totalMinus += u.totalMinus
+                existing.totalGoals += u.totalGoals
+                existing.totalPenalties += u.totalPenalties
+            } else {
+                map.set(u.userId, { ...u })
+            }
+        }
+    }
+    return Array.from(map.values())
+}
+
 export default function SeasonPage() {
     const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>()
     const navigate = useNavigate()
@@ -354,7 +409,7 @@ export default function SeasonPage() {
                             </section>
                         )}
 
-                        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(22rem,1fr)] xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,1fr)]">
                             <div>
                                 {/* Weekly Matches */}
                                 {weekGroups.length > 0 && (
@@ -372,11 +427,12 @@ export default function SeasonPage() {
                                                         <h3 className="text-sm text-text-muted">
                                                             {t('season.week', { number: group.weekNumber })}
                                                         </h3>
-                                                        <div className="flex items-center gap-2 text-xs">
-                                                            <span className="px-2 py-0.5 rounded bg-success/20 text-success font-medium">
+                                                        <div className="relative group flex items-center gap-2 text-xs">
+                                                            <StatsTooltip users={aggregateWeekUsers(group)} />
+                                                            <span className="px-2 py-0.5 rounded bg-success/20 text-success font-medium cursor-default">
                                                                 +{group.totalPlus}
                                                             </span>
-                                                            <span className="px-2 py-0.5 rounded bg-danger/20 text-danger font-medium">
+                                                            <span className="px-2 py-0.5 rounded bg-danger/20 text-danger font-medium cursor-default">
                                                                 −{group.totalMinus}
                                                             </span>
                                                         </div>
@@ -404,48 +460,50 @@ export default function SeasonPage() {
                                                             const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
 
                                                             return (
-                                                                <Link
-                                                                    key={m.matchId}
-                                                                    to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                                    className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
-                                                                    style={bgStyle}
-                                                                >
-                                                                    {/* Home team */}
-                                                                    <img
-                                                                        src={homeLogo}
-                                                                        alt={m.homeTeamShortName ?? ''}
-                                                                        className="w-7 h-7 object-contain flex-shrink-0"
-                                                                        onError={(e) => {
-                                                                            ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                        }}
-                                                                    />
-                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                        {m.homeTeamShortName}
-                                                                    </span>
+                                                                <div key={m.matchId} className="relative group">
+                                                                    <StatsTooltip users={m.users ?? []} />
+                                                                    <Link
+                                                                        to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                                        className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
+                                                                        style={bgStyle}
+                                                                    >
+                                                                        {/* Home team */}
+                                                                        <img
+                                                                            src={homeLogo}
+                                                                            alt={m.homeTeamShortName ?? ''}
+                                                                            className="w-7 h-7 object-contain flex-shrink-0"
+                                                                            onError={(e) => {
+                                                                                ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                            }}
+                                                                        />
+                                                                        <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                            {m.homeTeamShortName}
+                                                                        </span>
 
-                                                                    {/* Score */}
-                                                                    <span className="font-mono text-lg">{m.homeScore}</span>
-                                                                    <span className="text-text-muted font-mono text-lg">–</span>
-                                                                    <span className="font-mono text-lg">{m.awayScore}</span>
+                                                                        {/* Score */}
+                                                                        <span className="font-mono text-lg">{m.homeScore}</span>
+                                                                        <span className="text-text-muted font-mono text-lg">–</span>
+                                                                        <span className="font-mono text-lg">{m.awayScore}</span>
 
-                                                                    {/* Completion badge */}
-                                                                    {completionType !== CompletionType.None && (
-                                                                        <CompletionBadge type={completionType} />
-                                                                    )}
+                                                                        {/* Completion badge */}
+                                                                        {completionType !== CompletionType.None && (
+                                                                            <CompletionBadge type={completionType} />
+                                                                        )}
 
-                                                                    {/* Away team */}
-                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                        {m.awayTeamShortName}
-                                                                    </span>
-                                                                    <img
-                                                                        src={awayLogo}
-                                                                        alt={m.awayTeamShortName ?? ''}
-                                                                        className="w-7 h-7 object-contain flex-shrink-0"
-                                                                        onError={(e) => {
-                                                                            ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                        }}
-                                                                    />
-                                                                </Link>
+                                                                        {/* Away team */}
+                                                                        <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                            {m.awayTeamShortName}
+                                                                        </span>
+                                                                        <img
+                                                                            src={awayLogo}
+                                                                            alt={m.awayTeamShortName ?? ''}
+                                                                            className="w-7 h-7 object-contain flex-shrink-0"
+                                                                            onError={(e) => {
+                                                                                ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                            }}
+                                                                        />
+                                                                    </Link>
+                                                                </div>
                                                             )
                                                         })}
                                                     </div>
@@ -490,9 +548,6 @@ export default function SeasonPage() {
                                                             <p className="text-2xl font-mono text-text-muted">
                                                                 {t('season.vs')}
                                                             </p>
-                                                            <CompletionBadge
-                                                                type={normalizeCompletionType(upNext.completionType)}
-                                                            />
                                                         </div>
                                                         <div className="text-center flex-1">
                                                             <p className="text-lg font-bold">
@@ -649,9 +704,6 @@ export default function SeasonPage() {
                                                                 <span className="flex-1">
                                                                     {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
                                                                 </span>
-                                                                <CompletionBadge
-                                                                    type={normalizeCompletionType(m.completionType)}
-                                                                />
                                                             </Link>
                                                         ))}
                                                     </div>

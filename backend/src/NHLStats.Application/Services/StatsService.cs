@@ -179,10 +179,59 @@ public class StatsService : IStatsService
             .Select(p => new
             {
                 MatchId = p.UserMatch!.MatchId,
+                UserId = p.UserMatch.UserId,
                 p.Count,
                 IsPositive = p.PointReason != null && p.PointReason.IsPositive
             })
             .ToListAsync();
+
+        // Per-user per-match goals
+        var goalRows = await _db.UserMatchGoals
+            .AsNoTracking()
+            .Where(g => g.UserMatch != null && matchIds.Contains(g.UserMatch.MatchId))
+            .Select(g => new { g.UserMatch!.MatchId, g.UserMatch.UserId, g.Count })
+            .ToListAsync();
+
+        // Per-user per-match penalties
+        var penaltyRows = await _db.UserMatchPenalties
+            .AsNoTracking()
+            .Where(p => p.UserMatch != null && matchIds.Contains(p.UserMatch.MatchId))
+            .Select(p => new { p.UserMatch!.MatchId, p.UserMatch.UserId, p.Count })
+            .ToListAsync();
+
+        // Load user names for all users involved
+        var allUserIds = pointRows.Select(r => r.UserId)
+            .Union(goalRows.Select(r => r.UserId))
+            .Union(penaltyRows.Select(r => r.UserId))
+            .Distinct()
+            .ToList();
+
+        var userNames = await _db.Users
+            .AsNoTracking()
+            .Where(u => allUserIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Name ?? $"User {u.Id}");
+
+        // Build per-user per-match point totals
+        var userPointsByMatch = pointRows
+            .GroupBy(r => new { r.MatchId, r.UserId })
+            .ToDictionary(
+                g => (g.Key.MatchId, g.Key.UserId),
+                g => (Plus: g.Where(x => x.IsPositive).Sum(x => x.Count),
+                       Minus: g.Where(x => !x.IsPositive).Sum(x => x.Count)));
+
+        var userGoalsByMatch = goalRows
+            .GroupBy(r => (r.MatchId, r.UserId))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
+        var userPenaltiesByMatch = penaltyRows
+            .GroupBy(r => (r.MatchId, r.UserId))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
+
+        // Collect all (matchId, userId) pairs
+        var matchUserPairs = pointRows.Select(r => (r.MatchId, r.UserId))
+            .Union(goalRows.Select(r => (r.MatchId, r.UserId)))
+            .Union(penaltyRows.Select(r => (r.MatchId, r.UserId)))
+            .Distinct()
+            .ToList();
 
         var totalsByWeek = new Dictionary<int, (int plus, int minus)>();
 
@@ -210,19 +259,41 @@ public class StatsService : IStatsService
             totalsByWeek[week] = totals;
         }
 
-        var weeklyMatches = matches.Select(m => new WeeklyMatchDto(
-            m.Id,
-            dateToWeek[m.MatchDate!.Value.Date],
-            m.MatchDate.Value,
-            m.HomeTeamId,
-            m.HomeTeam?.Name,
-            m.HomeTeam?.ShortName,
-            m.AwayTeamId,
-            m.AwayTeam?.Name,
-            m.AwayTeam?.ShortName,
-            m.HomeScore,
-            m.AwayScore,
-            m.CompletionType));
+        var weeklyMatches = matches.Select(m =>
+        {
+            var users = matchUserPairs
+                .Where(p => p.MatchId == m.Id)
+                .Select(p =>
+                {
+                    var pts = userPointsByMatch.TryGetValue((m.Id, p.UserId), out var v) ? v : (Plus: 0, Minus: 0);
+                    var goals = userGoalsByMatch.TryGetValue((m.Id, p.UserId), out var g) ? g : 0;
+                    var pens = userPenaltiesByMatch.TryGetValue((m.Id, p.UserId), out var pen) ? pen : 0;
+                    return new WeeklyMatchUserDto(
+                        p.UserId,
+                        userNames.TryGetValue(p.UserId, out var name) ? name : $"User {p.UserId}",
+                        pts.Plus,
+                        pts.Minus,
+                        goals,
+                        pens);
+                })
+                .OrderBy(u => u.UserId)
+                .ToList();
+
+            return new WeeklyMatchDto(
+                m.Id,
+                dateToWeek[m.MatchDate!.Value.Date],
+                m.MatchDate.Value,
+                m.HomeTeamId,
+                m.HomeTeam?.Name,
+                m.HomeTeam?.ShortName,
+                m.AwayTeamId,
+                m.AwayTeam?.Name,
+                m.AwayTeam?.ShortName,
+                m.HomeScore,
+                m.AwayScore,
+                m.CompletionType,
+                users);
+        });
 
         return weeklyMatches
             .GroupBy(m => m.WeekNumber)
