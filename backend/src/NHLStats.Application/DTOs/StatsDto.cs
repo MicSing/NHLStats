@@ -91,6 +91,8 @@ public record WeeklyMatchDto(
 
 public record WeekGroupDto(
     int WeekNumber,
+    int TotalPlus,
+    int TotalMinus,
     IEnumerable<WeeklyMatchDto> Matches);
 
 // ─── All-time earnings ────────────────────────────────────────────────────────

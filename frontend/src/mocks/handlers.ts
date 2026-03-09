@@ -166,6 +166,8 @@ const mockRosterPenalizedByUser = [
 const mockWeekGroups = [
     {
         weekNumber: 1,
+        totalPlus: 6,
+        totalMinus: 3,
         matches: [
             {
                 matchId: 10,

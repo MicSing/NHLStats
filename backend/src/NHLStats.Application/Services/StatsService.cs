@@ -152,6 +152,11 @@ public class StatsService : IStatsService
             .OrderBy(m => m.MatchDate)
             .ToListAsync();
 
+        if (matches.Count == 0)
+        {
+            return new List<WeekGroupDto>();
+        }
+
         // Assign sequential week numbers: each distinct date (day) gets the next number
         var distinctDates = matches
             .Select(m => m.MatchDate!.Value.Date)
@@ -162,6 +167,48 @@ public class StatsService : IStatsService
         var dateToWeek = distinctDates
             .Select((date, index) => new { date, week = index + 1 })
             .ToDictionary(x => x.date, x => x.week);
+
+        var matchIdToWeek = matches
+            .ToDictionary(m => m.Id, m => dateToWeek[m.MatchDate!.Value.Date]);
+
+        var matchIds = matchIdToWeek.Keys.ToList();
+
+        var pointRows = await _db.UserMatchPoints
+            .AsNoTracking()
+            .Where(p => p.UserMatch != null && matchIds.Contains(p.UserMatch.MatchId))
+            .Select(p => new
+            {
+                MatchId = p.UserMatch!.MatchId,
+                p.Count,
+                IsPositive = p.PointReason != null && p.PointReason.IsPositive
+            })
+            .ToListAsync();
+
+        var totalsByWeek = new Dictionary<int, (int plus, int minus)>();
+
+        foreach (var row in pointRows)
+        {
+            if (!matchIdToWeek.TryGetValue(row.MatchId, out var week))
+            {
+                continue;
+            }
+
+            if (!totalsByWeek.TryGetValue(week, out var totals))
+            {
+                totals = (0, 0);
+            }
+
+            if (row.IsPositive)
+            {
+                totals.plus += row.Count;
+            }
+            else
+            {
+                totals.minus += row.Count;
+            }
+
+            totalsByWeek[week] = totals;
+        }
 
         var weeklyMatches = matches.Select(m => new WeeklyMatchDto(
             m.Id,
@@ -179,8 +226,17 @@ public class StatsService : IStatsService
 
         return weeklyMatches
             .GroupBy(m => m.WeekNumber)
-            .OrderBy(g => g.Key)
-            .Select(g => new WeekGroupDto(g.Key, g.ToList()))
+            .OrderByDescending(g => g.Key)
+            .Select(g =>
+            {
+                var totals = totalsByWeek.TryGetValue(g.Key, out var value)
+                    ? value
+                    : (plus: 0, minus: 0);
+                var orderedMatches = g
+                    .OrderByDescending(m => m.MatchDate)
+                    .ToList();
+                return new WeekGroupDto(g.Key, totals.plus, totals.minus, orderedMatches);
+            })
             .ToList();
     }
 

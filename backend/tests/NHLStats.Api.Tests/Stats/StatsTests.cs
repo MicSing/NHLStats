@@ -546,6 +546,30 @@ public class StatsTests : ApiTestBase
         match.TryGetProperty("awayScore", out _).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Weekly_includes_plus_minus_totals()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Stats Weekly Totals Season");
+        var userId = await CreateUserAsync(client, "Weekly Totals Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-07-10T20:00:00");
+        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
+
+        await AddPointAsync(client, userMatchId, 9, 4); // positive
+        await AddPointAsync(client, userMatchId, 1, 2); // negative
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/stats/weekly");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var week = body[0];
+
+        week.GetProperty("totalPlus").GetInt32().Should().Be(4);
+        week.GetProperty("totalMinus").GetInt32().Should().Be(2);
+    }
+
     // ─── GET /api/stats/users/{userId}/point-reasons — Point reason breakdown ──
 
     [Fact]

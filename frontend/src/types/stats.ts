@@ -62,6 +62,8 @@ export interface WeeklyMatch {
 
 export interface WeekGroup {
     weekNumber: number
+    totalPlus: number
+    totalMinus: number
     matches: WeeklyMatch[]
 }
 

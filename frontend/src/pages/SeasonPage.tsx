@@ -348,298 +348,314 @@ export default function SeasonPage() {
                             </section>
                         )}
 
-                        {/* Weekly Matches */}
-                        {weekGroups.length > 0 && (
-                            <section aria-label="Weekly matches">
-                                <h2 className="text-lg font-semibold mb-4 text-primary">
-                                    {t('season.matchesByWeek')}
-                                </h2>
-                                {weekGroups.map((group) => {
-                                    const season = seasons.find((s) => s.id === seasonId)
-                                    const hostedTeamId = season?.hostedTeamId ?? null
-
-                                    return (
-                                        <div key={group.weekNumber} className="mb-6">
-                                            <h3 className="text-sm text-text-muted mb-2 border-b border-border pb-1">
-                                                {t('season.week', { number: group.weekNumber })}
-                                            </h3>
-                                            <div className="space-y-2">
-                                                {group.matches.map((m) => {
-                                                    const isHome = hostedTeamId != null && m.homeTeamId === hostedTeamId
-                                                    const isAway = hostedTeamId != null && m.awayTeamId === hostedTeamId
-                                                    const hostedScore = isHome ? m.homeScore : isAway ? m.awayScore : null
-                                                    const opponentScore = isHome ? m.awayScore : isAway ? m.homeScore : null
-                                                    const isWin = hostedScore != null && opponentScore != null && hostedScore > opponentScore
-                                                    const isLoss = hostedScore != null && opponentScore != null && hostedScore < opponentScore
-                                                    const completionType = normalizeCompletionType(m.completionType)
-
-                                                    // Inline background avoids CSS variable opacity issues
-                                                    const bgStyle = {
-                                                        backgroundColor: isWin
-                                                            ? 'rgba(46, 147, 90, 0.18)'
-                                                            : isLoss
-                                                                ? 'rgba(197, 48, 48, 0.18)'
-                                                                : undefined,
-                                                    }
-
-                                                    const homeLogo = teamLogoUrl(m.homeTeamShortName ?? '')
-                                                    const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
-
-                                                    return (
-                                                        <Link
-                                                            key={m.matchId}
-                                                            to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                            className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
-                                                            style={bgStyle}
-                                                        >
-                                                            {/* Home team */}
-                                                            <img
-                                                                src={homeLogo}
-                                                                alt={m.homeTeamShortName ?? ''}
-                                                                className="w-7 h-7 object-contain flex-shrink-0"
-                                                                onError={(e) => {
-                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                }}
-                                                            />
-                                                            <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                {m.homeTeamShortName}
-                                                            </span>
-
-                                                            {/* Score */}
-                                                            <span className="font-mono text-lg">{m.homeScore}</span>
-                                                            <span className="text-text-muted font-mono text-lg">–</span>
-                                                            <span className="font-mono text-lg">{m.awayScore}</span>
-
-                                                            {/* Completion badge */}
-                                                            {completionType !== CompletionType.None && (
-                                                                <CompletionBadge type={completionType} />
-                                                            )}
-
-                                                            {/* Away team */}
-                                                            <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                {m.awayTeamShortName}
-                                                            </span>
-                                                            <img
-                                                                src={awayLogo}
-                                                                alt={m.awayTeamShortName ?? ''}
-                                                                className="w-7 h-7 object-contain flex-shrink-0"
-                                                                onError={(e) => {
-                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                }}
-                                                            />
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </section>
-                        )}
-
-                        {/* Up Next + Upcoming unplayed matches */}
-                        {(() => {
-                            const unplayed = allMatches
-                                .filter((m) => m.matchDate === null)
-                                .sort((a, b) => a.matchNumber - b.matchNumber)
-                            if (unplayed.length === 0) return null
-                            const upNext = unplayed[0]
-                            const upcoming = unplayed.slice(1)
-                            const season = seasons.find((s) => s.id === seasonId)
-                            const hostedTeamId = season?.hostedTeamId ?? null
-                            return (
-                                <>
-                                    <section className="mt-8" aria-label="Up next match">
-                                        <h2 className="text-lg font-semibold mb-3 text-primary">
-                                            {t('season.upNext')}
+                        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                            <div>
+                                {/* Weekly Matches */}
+                                {weekGroups.length > 0 && (
+                                    <section aria-label="Weekly matches">
+                                        <h2 className="text-lg font-semibold mb-4 text-primary">
+                                            {t('season.matchesByWeek')}
                                         </h2>
-                                        <Link
-                                            to={`/seasons/${seasonId}/matches/${upNext.id}`}
-                                            className="block card border-primary/40 rounded-xl px-6 py-5 hover:bg-primary/10 transition-colors"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-center flex-1">
-                                                    <p className="text-lg font-bold">
-                                                        {upNext.homeTeamName}
-                                                    </p>
-                                                </div>
-                                                <div className="text-center px-6">
-                                                    <p className="text-xs text-text-muted mb-1">
-                                                        {t('season.match', { number: upNext.matchNumber })}
-                                                    </p>
-                                                    <p className="text-2xl font-mono text-text-muted">
-                                                        {t('season.vs')}
-                                                    </p>
-                                                    <CompletionBadge
-                                                        type={normalizeCompletionType(upNext.completionType)}
-                                                    />
-                                                </div>
-                                                <div className="text-center flex-1">
-                                                    <p className="text-lg font-bold">
-                                                        {upNext.awayTeamName}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    </section>
+                                        {weekGroups.map((group) => {
+                                            const season = seasons.find((s) => s.id === seasonId)
+                                            const hostedTeamId = season?.hostedTeamId ?? null
 
-                                    {/* Head-to-head with upcoming opponent */}
-                                    {hostedTeamId && (
-                                        <div className="mt-4" aria-label="Previous meetings">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h3 className="text-base font-semibold text-primary/80">
-                                                    {t('season.previousMeetings')}
-                                                </h3>
-                                                {!loadingH2H && h2hMatches.length > 0 && (
-                                                    <button
-                                                        onClick={() => setH2hExpanded((prev) => !prev)}
-                                                        className="text-xs text-primary hover:underline"
-                                                    >
-                                                        {h2hExpanded
-                                                            ? t('season.hide')
-                                                            : t('season.showMatches', { count: h2hMatches.length })}
-                                                    </button>
-                                                )}
-                                            </div>
+                                            return (
+                                                <div key={group.weekNumber} className="mb-6">
+                                                    <div className="flex items-center justify-between mb-2 border-b border-border pb-1">
+                                                        <h3 className="text-sm text-text-muted">
+                                                            {t('season.week', { number: group.weekNumber })}
+                                                        </h3>
+                                                        <div className="flex items-center gap-2 text-xs">
+                                                            <span className="px-2 py-0.5 rounded bg-success/20 text-success font-medium">
+                                                                +{group.totalPlus}
+                                                            </span>
+                                                            <span className="px-2 py-0.5 rounded bg-danger/20 text-danger font-medium">
+                                                                −{group.totalMinus}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {group.matches.map((m) => {
+                                                            const isHome = hostedTeamId != null && m.homeTeamId === hostedTeamId
+                                                            const isAway = hostedTeamId != null && m.awayTeamId === hostedTeamId
+                                                            const hostedScore = isHome ? m.homeScore : isAway ? m.awayScore : null
+                                                            const opponentScore = isHome ? m.awayScore : isAway ? m.homeScore : null
+                                                            const isWin = hostedScore != null && opponentScore != null && hostedScore > opponentScore
+                                                            const isLoss = hostedScore != null && opponentScore != null && hostedScore < opponentScore
+                                                            const completionType = normalizeCompletionType(m.completionType)
 
-                                            {loadingH2H && (
-                                                <div className="flex items-center gap-2 text-text-muted text-sm py-2">
-                                                    <svg
-                                                        className="animate-spin w-4 h-4 text-primary"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <circle
-                                                            className="opacity-25"
-                                                            cx="12"
-                                                            cy="12"
-                                                            r="10"
-                                                            stroke="currentColor"
-                                                            strokeWidth="4"
-                                                        />
-                                                        <path
-                                                            className="opacity-75"
-                                                            fill="currentColor"
-                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                                                        />
-                                                    </svg>
-                                                    <span>{t('common.loading')}</span>
-                                                </div>
-                                            )}
+                                                            // Inline background avoids CSS variable opacity issues
+                                                            const bgStyle = {
+                                                                backgroundColor: isWin
+                                                                    ? 'rgba(46, 147, 90, 0.18)'
+                                                                    : isLoss
+                                                                        ? 'rgba(197, 48, 48, 0.18)'
+                                                                        : undefined,
+                                                            }
 
-                                            {!loadingH2H && h2hMatches.length === 0 && (
-                                                <p className="text-sm text-text-muted py-2">
-                                                    {t('common.noData')}
-                                                </p>
-                                            )}
+                                                            const homeLogo = teamLogoUrl(m.homeTeamShortName ?? '')
+                                                            const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
 
-                                            {!loadingH2H && h2hMatches.length > 0 && h2hExpanded && (
-                                                <div className="space-y-2">
-                                                    {h2hMatches.map((h2hMatch) => {
-                                                        const homeLogo = teamLogoUrl(h2hMatch.homeTeamShortName)
-                                                        const awayLogo = teamLogoUrl(h2hMatch.awayTeamShortName)
-                                                        const ct = normalizeCompletionType(h2hMatch.completionType)
-                                                        return (
-                                                            <div
-                                                                key={h2hMatch.matchId}
-                                                                className="card rounded-lg px-4 py-3"
-                                                            >
-                                                                {/* Score row */}
-                                                                <div className="flex items-center gap-2 text-sm flex-wrap">
+                                                            return (
+                                                                <Link
+                                                                    key={m.matchId}
+                                                                    to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                                    className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
+                                                                    style={bgStyle}
+                                                                >
+                                                                    {/* Home team */}
                                                                     <img
                                                                         src={homeLogo}
-                                                                        alt={h2hMatch.homeTeamShortName}
-                                                                        className="w-6 h-6 object-contain flex-shrink-0"
+                                                                        alt={m.homeTeamShortName ?? ''}
+                                                                        className="w-7 h-7 object-contain flex-shrink-0"
                                                                         onError={(e) => {
                                                                             ; (e.target as HTMLImageElement).style.display = 'none'
                                                                         }}
                                                                     />
-                                                                    <span className="font-semibold w-8 flex-shrink-0">
-                                                                        {h2hMatch.homeTeamShortName}
+                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                        {m.homeTeamShortName}
                                                                     </span>
-                                                                    <span className="font-mono font-bold">
-                                                                        {h2hMatch.homeScore}
-                                                                    </span>
-                                                                    <span className="text-text-muted font-mono">–</span>
-                                                                    <span className="font-mono font-bold">
-                                                                        {h2hMatch.awayScore}
-                                                                    </span>
-                                                                    <span className="font-semibold w-8 flex-shrink-0">
-                                                                        {h2hMatch.awayTeamShortName}
+
+                                                                    {/* Score */}
+                                                                    <span className="font-mono text-lg">{m.homeScore}</span>
+                                                                    <span className="text-text-muted font-mono text-lg">–</span>
+                                                                    <span className="font-mono text-lg">{m.awayScore}</span>
+
+                                                                    {/* Completion badge */}
+                                                                    {completionType !== CompletionType.None && (
+                                                                        <CompletionBadge type={completionType} />
+                                                                    )}
+
+                                                                    {/* Away team */}
+                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">
+                                                                        {m.awayTeamShortName}
                                                                     </span>
                                                                     <img
                                                                         src={awayLogo}
-                                                                        alt={h2hMatch.awayTeamShortName}
-                                                                        className="w-6 h-6 object-contain flex-shrink-0"
+                                                                        alt={m.awayTeamShortName ?? ''}
+                                                                        className="w-7 h-7 object-contain flex-shrink-0"
                                                                         onError={(e) => {
                                                                             ; (e.target as HTMLImageElement).style.display = 'none'
                                                                         }}
                                                                     />
-                                                                    {ct !== CompletionType.None && (
-                                                                        <CompletionBadge type={ct} />
-                                                                    )}
-                                                                    <span className="text-xs text-text-muted ml-auto whitespace-nowrap">
-                                                                        {new Date(h2hMatch.matchDate).toLocaleDateString()}{' '}
-                                                                        · {h2hMatch.seasonName}
-                                                                    </span>
-                                                                </div>
-                                                                {/* Per-user +/- row */}
-                                                                {h2hMatch.userResults.length > 0 && (
-                                                                    <div className="flex flex-wrap gap-3 mt-1.5">
-                                                                        {h2hMatch.userResults.map((ur) => (
-                                                                            <span key={ur.userId} className="text-xs">
-                                                                                <span className="text-text-muted">
-                                                                                    {ur.userName}:
-                                                                                </span>{' '}
-                                                                                <span className="text-success">
-                                                                                    +{ur.totalPlus}
-                                                                                </span>
-                                                                                {' / '}
-                                                                                <span className="text-danger">
-                                                                                    −{ur.totalMinus}
-                                                                                </span>
+                                                                </Link>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </section>
+                                )}
+                            </div>
+
+                            <div>
+                                {/* Up Next + Upcoming unplayed matches */}
+                                {(() => {
+                                    const unplayed = allMatches
+                                        .filter((m) => m.matchDate === null)
+                                        .sort((a, b) => a.matchNumber - b.matchNumber)
+                                    if (unplayed.length === 0) return null
+                                    const upNext = unplayed[0]
+                                    const upcoming = unplayed.slice(1)
+                                    const season = seasons.find((s) => s.id === seasonId)
+                                    const hostedTeamId = season?.hostedTeamId ?? null
+                                    return (
+                                        <>
+                                            <section aria-label="Up next match">
+                                                <h2 className="text-lg font-semibold mb-3 text-primary">
+                                                    {t('season.upNext')}
+                                                </h2>
+                                                <Link
+                                                    to={`/seasons/${seasonId}/matches/${upNext.id}`}
+                                                    className="block card border-primary/40 rounded-xl px-6 py-5 hover:bg-primary/10 transition-colors"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-center flex-1">
+                                                            <p className="text-lg font-bold">
+                                                                {upNext.homeTeamName}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-center px-6">
+                                                            <p className="text-xs text-text-muted mb-1">
+                                                                {t('season.match', { number: upNext.matchNumber })}
+                                                            </p>
+                                                            <p className="text-2xl font-mono text-text-muted">
+                                                                {t('season.vs')}
+                                                            </p>
+                                                            <CompletionBadge
+                                                                type={normalizeCompletionType(upNext.completionType)}
+                                                            />
+                                                        </div>
+                                                        <div className="text-center flex-1">
+                                                            <p className="text-lg font-bold">
+                                                                {upNext.awayTeamName}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            </section>
+
+                                            {/* Head-to-head with upcoming opponent */}
+                                            {hostedTeamId && (
+                                                <div className="mt-4" aria-label="Previous meetings">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h3 className="text-base font-semibold text-primary/80">
+                                                            {t('season.previousMeetings')}
+                                                        </h3>
+                                                        {!loadingH2H && h2hMatches.length > 0 && (
+                                                            <button
+                                                                onClick={() => setH2hExpanded((prev) => !prev)}
+                                                                className="text-xs text-primary hover:underline"
+                                                            >
+                                                                {h2hExpanded
+                                                                    ? t('season.hide')
+                                                                    : t('season.showMatches', { count: h2hMatches.length })}
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {loadingH2H && (
+                                                        <div className="flex items-center gap-2 text-text-muted text-sm py-2">
+                                                            <svg
+                                                                className="animate-spin w-4 h-4 text-primary"
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <circle
+                                                                    className="opacity-25"
+                                                                    cx="12"
+                                                                    cy="12"
+                                                                    r="10"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="4"
+                                                                />
+                                                                <path
+                                                                    className="opacity-75"
+                                                                    fill="currentColor"
+                                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                                                />
+                                                            </svg>
+                                                            <span>{t('common.loading')}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {!loadingH2H && h2hMatches.length === 0 && (
+                                                        <p className="text-sm text-text-muted py-2">
+                                                            {t('common.noData')}
+                                                        </p>
+                                                    )}
+
+                                                    {!loadingH2H && h2hMatches.length > 0 && h2hExpanded && (
+                                                        <div className="space-y-2">
+                                                            {h2hMatches.map((h2hMatch) => {
+                                                                const homeLogo = teamLogoUrl(h2hMatch.homeTeamShortName)
+                                                                const awayLogo = teamLogoUrl(h2hMatch.awayTeamShortName)
+                                                                const ct = normalizeCompletionType(h2hMatch.completionType)
+                                                                return (
+                                                                    <div
+                                                                        key={h2hMatch.matchId}
+                                                                        className="card rounded-lg px-4 py-3"
+                                                                    >
+                                                                        {/* Score row */}
+                                                                        <div className="flex items-center gap-2 text-sm flex-wrap">
+                                                                            <img
+                                                                                src={homeLogo}
+                                                                                alt={h2hMatch.homeTeamShortName}
+                                                                                className="w-6 h-6 object-contain flex-shrink-0"
+                                                                                onError={(e) => {
+                                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                                }}
+                                                                            />
+                                                                            <span className="font-semibold w-8 flex-shrink-0">
+                                                                                {h2hMatch.homeTeamShortName}
                                                                             </span>
-                                                                        ))}
+                                                                            <span className="font-mono font-bold">
+                                                                                {h2hMatch.homeScore}
+                                                                            </span>
+                                                                            <span className="text-text-muted font-mono">–</span>
+                                                                            <span className="font-mono font-bold">
+                                                                                {h2hMatch.awayScore}
+                                                                            </span>
+                                                                            <span className="font-semibold w-8 flex-shrink-0">
+                                                                                {h2hMatch.awayTeamShortName}
+                                                                            </span>
+                                                                            <img
+                                                                                src={awayLogo}
+                                                                                alt={h2hMatch.awayTeamShortName}
+                                                                                className="w-6 h-6 object-contain flex-shrink-0"
+                                                                                onError={(e) => {
+                                                                                    ; (e.target as HTMLImageElement).style.display = 'none'
+                                                                                }}
+                                                                            />
+                                                                            {ct !== CompletionType.None && (
+                                                                                <CompletionBadge type={ct} />
+                                                                            )}
+                                                                            <span className="text-xs text-text-muted ml-auto whitespace-nowrap">
+                                                                                {new Date(h2hMatch.matchDate).toLocaleDateString()}{' '}
+                                                                                · {h2hMatch.seasonName}
+                                                                            </span>
+                                                                        </div>
+                                                                        {/* Per-user +/- row */}
+                                                                        {h2hMatch.userResults.length > 0 && (
+                                                                            <div className="flex flex-wrap gap-3 mt-1.5">
+                                                                                {h2hMatch.userResults.map((ur) => (
+                                                                                    <span key={ur.userId} className="text-xs">
+                                                                                        <span className="text-text-muted">
+                                                                                            {ur.userName}:
+                                                                                        </span>{' '}
+                                                                                        <span className="text-success">
+                                                                                            +{ur.totalPlus}
+                                                                                        </span>
+                                                                                        {' / '}
+                                                                                        <span className="text-danger">
+                                                                                            −{ur.totalMinus}
+                                                                                        </span>
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    })}
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
 
-                                    {upcoming.length > 0 && (
-                                        <section className="mt-6" aria-label="Upcoming matches">
-                                            <h2 className="text-lg font-semibold mb-3 text-primary">
-                                                {t('season.upcomingMatches')}
-                                            </h2>
-                                            <div className="space-y-2">
-                                                {upcoming.map((m) => (
-                                                    <Link
-                                                        key={m.id}
-                                                        to={`/seasons/${seasonId}/matches/${m.id}`}
-                                                        className="flex items-center justify-between card rounded-lg px-4 py-3 hover:bg-surface/80 transition-colors"
-                                                    >
-                                                        <span className="text-xs text-text-muted w-8">
-                                                            #{m.matchNumber}
-                                                        </span>
-                                                        <span className="flex-1">
-                                                            {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
-                                                        </span>
-                                                        <CompletionBadge
-                                                            type={normalizeCompletionType(m.completionType)}
-                                                        />
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </>
-                            )
-                        })()}
+                                            {upcoming.length > 0 && (
+                                                <section className="mt-6" aria-label="Upcoming matches">
+                                                    <h2 className="text-lg font-semibold mb-3 text-primary">
+                                                        {t('season.upcomingMatches')}
+                                                    </h2>
+                                                    <div className="space-y-2">
+                                                        {upcoming.map((m) => (
+                                                            <Link
+                                                                key={m.id}
+                                                                to={`/seasons/${seasonId}/matches/${m.id}`}
+                                                                className="flex items-center justify-between card rounded-lg px-4 py-3 hover:bg-surface/80 transition-colors"
+                                                            >
+                                                                <span className="text-xs text-text-muted w-8">
+                                                                    #{m.matchNumber}
+                                                                </span>
+                                                                <span className="flex-1">
+                                                                    {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
+                                                                </span>
+                                                                <CompletionBadge
+                                                                    type={normalizeCompletionType(m.completionType)}
+                                                                />
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                </section>
+                                            )}
+                                        </>
+                                    )
+                                })()}
+                            </div>
+                        </div>
 
                     </>
                 )}
