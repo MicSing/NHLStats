@@ -81,8 +81,6 @@ public class UserMatchTests : ApiTestBase
         body.GetProperty("matchId").GetInt32().Should().Be(matchId);
         body.GetProperty("seasonId").GetInt32().Should().Be(seasonId);
         body.GetProperty("userId").GetInt32().Should().Be(userId);
-        body.GetProperty("totalPlus").GetInt32().Should().Be(0);
-        body.GetProperty("totalMinus").GetInt32().Should().Be(0);
     }
 
     [Fact]

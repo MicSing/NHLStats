@@ -6,8 +6,6 @@ export interface UserMatch {
     userName: string | null
     matchId: number | null
     seasonId: number
-    totalPlus: number
-    totalMinus: number
 }
 
 export interface UserMatchPoint {

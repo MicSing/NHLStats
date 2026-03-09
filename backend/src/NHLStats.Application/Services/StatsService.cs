@@ -37,6 +37,17 @@ public class StatsService : IStatsService
     private static decimal RawEarnings(MoneyConfig config, int totalPlus, int totalMinus) =>
         totalMinus * config.NegativePointValue - totalPlus * config.PositivePointValue;
 
+    private static (int plus, int minus) GetTotalsFromPoints(IEnumerable<UserMatchPoint> points)
+    {
+        var plus = points
+            .Where(p => p.PointReason != null && p.PointReason.IsPositive)
+            .Sum(p => p.Count);
+        var minus = points
+            .Where(p => p.PointReason != null && !p.PointReason.IsPositive)
+            .Sum(p => p.Count);
+        return (plus, minus);
+    }
+
     // ─── Season stats ─────────────────────────────────────────────────────────
 
     public async Task<IEnumerable<SeasonPointsStatsSummaryDto>> FetchSeasonPointsStatisticsAsync()
@@ -69,9 +80,11 @@ public class StatsService : IStatsService
                 current = (0, 0);
             }
 
+            var totals = GetTotalsFromPoints(userMatch.Points);
+
             mergedBySeasonAndUser[key] = (
-                current.TotalPlus + userMatch.TotalPlus,
-                current.TotalMinus + userMatch.TotalMinus);
+                current.TotalPlus + totals.plus,
+                current.TotalMinus + totals.minus);
         }
 
         return mergedBySeasonAndUser
@@ -595,8 +608,11 @@ public class StatsService : IStatsService
                 var userSeasonMatches = seasonMatches.Where(um => um.UserId == su.UserId);
                 var aggregatedDataForUser = aggregatedDataForSeason.FirstOrDefault(a => a.UserId == su.UserId);
 
-                var totalPlus = aggregatedDataForUser?.TotalPlus ?? 0 + userSeasonMatches.Sum(um => um.TotalPlus);
-                var totalMinus = aggregatedDataForUser?.TotalMinus ?? 0 + userSeasonMatches.Sum(um => um.TotalMinus);
+                var points = userSeasonMatches.SelectMany(um => um.Points);
+                var totals = GetTotalsFromPoints(points);
+
+                var totalPlus = aggregatedDataForUser?.TotalPlus ?? 0 + totals.plus;
+                var totalMinus = aggregatedDataForUser?.TotalMinus ?? 0 + totals.minus;
                 var matchesPlayed = aggregatedDataForUser?.MatchesPlayed ?? 0 + userSeasonMatches.Select(um => um.MatchId).Distinct().Count();
 
                 return new UserPeriodPlusMinusDto(su.UserId, su.User?.Name ?? "", totalPlus, totalMinus, matchesPlayed);
@@ -676,12 +692,16 @@ public class StatsService : IStatsService
 
                 var users = weekMatches
                     .GroupBy(um => new { um.UserId, UserName = um.User?.Name ?? "" })
-                    .Select(g => new UserPeriodPlusMinusDto(
-                        g.Key.UserId,
-                        g.Key.UserName,
-                        g.Sum(um => um.TotalPlus),
-                        g.Sum(um => um.TotalMinus),
-                        g.Select(um => um.MatchId).Distinct().Count()))
+                    .Select(g =>
+                    {
+                        var totals = GetTotalsFromPoints(g.SelectMany(um => um.Points));
+                        return new UserPeriodPlusMinusDto(
+                            g.Key.UserId,
+                            g.Key.UserName,
+                            totals.plus,
+                            totals.minus,
+                            g.Select(um => um.MatchId).Distinct().Count());
+                    })
                     .OrderBy(u => u.UserName)
                     .ToList();
 
@@ -732,9 +752,11 @@ public class StatsService : IStatsService
                 current = (0, 0);
             }
 
+            var totals = GetTotalsFromPoints(userMatch.Points);
+
             mergedBySeasonAndUser[key] = (
-                current.TotalPlus + userMatch.TotalPlus,
-                current.TotalMinus + userMatch.TotalMinus);
+                current.TotalPlus + totals.plus,
+                current.TotalMinus + totals.minus);
         }
 
         var earningsBySeason = mergedBySeasonAndUser
@@ -903,6 +925,7 @@ public class StatsService : IStatsService
 
                 var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>()).Sum(g => g.Count);
                 var penaltyCount = (um.Penalties ?? Enumerable.Empty<UserMatchPenalty>()).Sum(p => p.Count);
+                var totals = GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>());
 
                 return new UserMatchSummaryDto(
                     match.Id,
@@ -912,8 +935,8 @@ public class StatsService : IStatsService
                     match.HomeScore,
                     match.AwayScore,
                     isHome,
-                    um.TotalPlus,
-                    um.TotalMinus,
+                    totals.plus,
+                    totals.minus,
                     goalCount,
                     penaltyCount,
                     um.SeasonId,
@@ -932,6 +955,7 @@ public class StatsService : IStatsService
             .Include(m => m.AwayTeam)
             .Include(m => m.Season)
             .Include(m => m.UserMatches!).ThenInclude(um => um.User)
+            .Include(m => m.UserMatches!).ThenInclude(um => um.Points).ThenInclude(p => p.PointReason)
             .Where(m =>
                 m.MatchDate != null &&
                 m.Season!.HostedTeamId == hostedTeamId &&
@@ -945,8 +969,8 @@ public class StatsService : IStatsService
                 .Select(um => new HeadToHeadUserResultDto(
                     um.UserId,
                     um.User?.Name ?? "",
-                    um.TotalPlus,
-                    um.TotalMinus))
+                    GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>()).plus,
+                    GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>()).minus))
                 .ToList();
 
             return new HeadToHeadMatchDto(

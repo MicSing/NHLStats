@@ -62,6 +62,12 @@ export default function UserMatchCard({
 
     const positiveReasons = pointReasons.filter((r) => r.isPositive)
     const negativeReasons = pointReasons.filter((r) => !r.isPositive)
+    const totalPlus = points
+        .filter((p) => p.isPositive)
+        .reduce((sum, p) => sum + p.count, 0)
+    const totalMinus = points
+        .filter((p) => !p.isPositive)
+        .reduce((sum, p) => sum + p.count, 0)
 
     const handleAddPoint = async (reasonId: number | '', count: number) => {
         if (reasonId === '') return
@@ -136,8 +142,8 @@ export default function UserMatchCard({
                 <h2 className="text-lg font-semibold">{um.userName}</h2>
                 <div className="flex items-center gap-4">
                     <div className="flex gap-4 text-sm">
-                        <span className="text-success">+{um.totalPlus}</span>
-                        <span className="text-danger">−{um.totalMinus}</span>
+                        <span className="text-success">+{totalPlus}</span>
+                        <span className="text-danger">−{totalMinus}</span>
                     </div>
                     {isAuth && (
                         <button

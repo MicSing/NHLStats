@@ -15,7 +15,7 @@ public class UserMatchService : IUserMatchService
     // ─── Projection helpers ───────────────────────────────────────────────────
 
     private static UserMatchDto ToDto(UserMatch um) => new(
-        um.Id, um.UserId, um.User?.Name, um.MatchId, um.SeasonId, um.TotalPlus, um.TotalMinus);
+        um.Id, um.UserId, um.User?.Name, um.MatchId, um.SeasonId);
 
     private static UserMatchPointDto ToPointDto(UserMatchPoint p) => new(
         p.Id, p.UserMatchId, p.PointReasonId, p.PointReason?.Name,
@@ -231,9 +231,6 @@ public class UserMatchService : IUserMatchService
             Count = dto.Count
         };
         _db.UserMatchPoints.Add(point);
-
-        // TotalPlus and TotalMinus are now calculated properties, no manual update needed
-
         await _db.SaveChangesAsync();
 
         var loaded = await _db.UserMatchPoints
@@ -259,8 +256,6 @@ public class UserMatchService : IUserMatchService
         if (newReason == null)
             return (null, $"PointReason {dto.PointReasonId} not found.");
 
-        // TotalPlus and TotalMinus are now calculated properties, no manual update needed
-
         point.PointReasonId = dto.PointReasonId;
         point.Count = dto.Count;
 
@@ -281,20 +276,6 @@ public class UserMatchService : IUserMatchService
 
         _db.UserMatchPoints.Remove(point);
         await _db.SaveChangesAsync();
-
-        // Recalculate totals from the remaining point rows (avoids incremental drift
-        // and is correct even when called from concurrent requests).
-        var userMatch = await _db.UserMatches.FindAsync(userMatchId);
-        if (userMatch != null)
-        {
-            var remaining = await _db.UserMatchPoints
-                .Include(p => p.PointReason)
-                .Where(p => p.UserMatchId == userMatchId)
-                .ToListAsync();
-
-            // TotalPlus and TotalMinus are now calculated properties from Points collection
-            await _db.SaveChangesAsync();
-        }
 
         return true;
     }

@@ -7,9 +7,7 @@ public record UserMatchDto(
     int UserId,
     string? UserName,
     int? MatchId,
-    int SeasonId,
-    int TotalPlus,
-    int TotalMinus);
+    int SeasonId);
 
 public record CreateUserMatchDto(
     int UserId);

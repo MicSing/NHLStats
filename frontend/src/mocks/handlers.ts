@@ -57,11 +57,11 @@ const mockMatches = [
 ]
 
 const mockUserMatchesForMatch = [
-    { id: 1, userId: 1, userName: 'Player One', matchId: 10, seasonId: 1, totalPlus: 2, totalMinus: 1 },
+    { id: 1, userId: 1, userName: 'Player One', matchId: 10, seasonId: 1 },
 ]
 
 const mockAggregatedUserMatches = [
-    { id: 2, userId: 1, userName: 'Player One', matchId: null, seasonId: 1, totalPlus: 5, totalMinus: 3 },
+    { id: 2, userId: 1, userName: 'Player One', matchId: null, seasonId: 1 },
 ]
 
 const mockPoints = [
@@ -463,7 +463,7 @@ export const handlers = [
         const body = await req.json() as { userId: number }
         return res(
             ctx.status(201),
-            ctx.json({ id: 99, userId: body.userId, userName: 'Player One', matchId: Number(req.params.matchId), seasonId: Number(req.params.seasonId), totalPlus: 0, totalMinus: 0 }),
+            ctx.json({ id: 99, userId: body.userId, userName: 'Player One', matchId: Number(req.params.matchId), seasonId: Number(req.params.seasonId) }),
         )
     }),
 
