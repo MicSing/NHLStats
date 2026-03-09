@@ -1,6 +1,8 @@
 export interface User {
     id: string
     email: string
+    userId: number | null
+    roles: string[]
 }
 
 export interface LoginCredentials {

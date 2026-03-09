@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavItems } from '../config/navConfig'
 
 export default function PublicLayout() {
     const { isAuthenticated, user, logout } = useAuth()
+    const isAdmin = useIsAdmin()
     const { t } = useTranslation()
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -52,7 +53,7 @@ export default function PublicLayout() {
                     </NavLink>
                 ))}
 
-                {isAuthenticated && (
+                {isAdmin && (
                     <>
                         <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
                         {adminNavItems.map((item) => (
@@ -80,10 +81,17 @@ export default function PublicLayout() {
                             <p className="text-xs text-text-muted mb-2 truncate">{user?.email}</p>
                             <button
                                 onClick={() => { logout(); closeSidebar() }}
-                                className="btn-ghost w-full text-sm"
+                                className="btn-ghost w-full text-sm mb-2"
                             >
                                 {t('layout.logout')}
                             </button>
+                            <NavLink
+                                to="/change-password"
+                                onClick={closeSidebar}
+                                className="block w-full text-center btn-ghost text-sm"
+                            >
+                                {t('common.changePassword') || 'Change Password'}
+                            </NavLink>
                         </>
                     ) : (
                         <NavLink

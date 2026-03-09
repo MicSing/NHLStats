@@ -49,3 +49,8 @@ export function useAuth(): AuthContextType {
     if (!context) throw new Error('useAuth must be used within AuthProvider')
     return context
 }
+
+export function useIsAdmin(): boolean {
+    const { user } = useAuth()
+    return user?.roles?.includes('Admin') ?? false
+}

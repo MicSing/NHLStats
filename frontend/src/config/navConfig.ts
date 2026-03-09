@@ -7,6 +7,7 @@ export const publicNavItems = [
 ]
 
 export const adminNavItems = [
+    { to: '/admin/logins', labelKey: 'nav.loginManagement' },
     { to: '/admin/users', labelKey: 'nav.users' },
     { to: '/admin/seasons', labelKey: 'nav.adminSeasons' },
     { to: '/admin/teams', labelKey: 'nav.teams' },

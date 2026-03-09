@@ -14,4 +14,15 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <>{children}</>
 }
 
+export function AdminProtectedRoute({ children }: ProtectedRouteProps) {
+    const { isAuthenticated, user } = useAuth()
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />
+    }
+    if (!user?.roles?.includes('Admin')) {
+        return <Navigate to="/" replace />
+    }
+    return <>{children}</>
+}
+
 export default ProtectedRoute

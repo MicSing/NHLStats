@@ -1,15 +1,21 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavItems } from '../config/navConfig'
 
 export default function AdminLayout() {
     const { user, logout } = useAuth()
+    const isAdmin = useIsAdmin()
     const { t } = useTranslation()
     const [sidebarOpen, setSidebarOpen] = useState(false)
+
+    // Extra safety check
+    if (!isAdmin) {
+        return <Navigate to="/" replace />
+    }
 
     const closeSidebar = () => setSidebarOpen(false)
 
@@ -49,22 +55,26 @@ export default function AdminLayout() {
                         {t(item.labelKey)}
                     </NavLink>
                 ))}
-                <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
-                {adminNavItems.map((item) => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={closeSidebar}
-                        className={({ isActive }) =>
-                            `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                ? 'bg-primary text-white'
-                                : 'text-text-muted hover:bg-border hover:text-text'
-                            }`
-                        }
-                    >
-                        {t(item.labelKey)}
-                    </NavLink>
-                ))}
+                {isAdmin && (
+                    <>
+                        <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
+                        {adminNavItems.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                onClick={closeSidebar}
+                                className={({ isActive }) =>
+                                    `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                        ? 'bg-primary text-white'
+                                        : 'text-text-muted hover:bg-border hover:text-text'
+                                    }`
+                                }
+                            >
+                                {t(item.labelKey)}
+                            </NavLink>
+                        ))}
+                    </>
+                )}
             </nav>
             <div className="px-4 py-4 border-t border-border space-y-2">
                 <p className="text-xs text-text-muted truncate px-3">{user?.email}</p>

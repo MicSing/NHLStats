@@ -24,7 +24,7 @@ var jwtIssuer = jwtSection["Issuer"] ?? "NHLStats";
 var jwtAudience = jwtSection["Audience"] ?? "NHLStatsClient";
 
 // Identity and Auth
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+builder.Services.AddIdentity<ApplicationUser, AppRole>(options =>
 {
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
@@ -123,14 +123,25 @@ using (var scope = app.Services.CreateScope())
         Console.Error.WriteLine($"Failed to migrate DB: {ex}");
     }
 
-    // Seed admin user if not present
+    // Seed roles and admin user if not present
     try
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
         var config = services.GetRequiredService<IConfiguration>();
         // Prefer IConfiguration (covers env vars, appsettings, and test overrides via UseSetting)
         var adminEmail = config["ADMIN_EMAIL"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "admin@nhlstats.local";
         var adminPassword = config["ADMIN_PASSWORD"] ?? Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? "P@ssw0rd!";
+
+        if (!roleManager.RoleExistsAsync(RoleNames.Admin).GetAwaiter().GetResult())
+        {
+            roleManager.CreateAsync(new AppRole { Name = RoleNames.Admin }).GetAwaiter().GetResult();
+        }
+
+        if (!roleManager.RoleExistsAsync(RoleNames.Participient).GetAwaiter().GetResult())
+        {
+            roleManager.CreateAsync(new AppRole { Name = RoleNames.Participient }).GetAwaiter().GetResult();
+        }
 
         var existing = userManager.FindByEmailAsync(adminEmail).GetAwaiter().GetResult();
         if (existing == null)
@@ -143,6 +154,8 @@ using (var scope = app.Services.CreateScope())
             }
             else
             {
+                userManager.AddToRoleAsync(admin, RoleNames.Participient).GetAwaiter().GetResult();
+                userManager.AddToRoleAsync(admin, RoleNames.Admin).GetAwaiter().GetResult();
                 Console.WriteLine($"Created admin user: {adminEmail}");
             }
         }

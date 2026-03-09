@@ -40,7 +40,10 @@
         "retry": "Try Again",
         "or": "or",
         "openMenu": "Open menu",
-        "closeMenu": "Close menu"
+        "closeMenu": "Close menu",
+        "add": "Add",
+        "user": "User",
+        "changePassword": "Change Password"
     },
     "pagination": {
         "showing": "{{from}}–{{to}} of {{total}}",
@@ -53,6 +56,9 @@
         "createSuccess": "Created successfully",
         "operationFailed": "Operation failed. Please try again."
     },
+    "confirm": {
+        "deleteUser": "Are you sure you want to delete this user?"
+    },
     "nav": {
         "dashboard": "📊 Dashboard",
         "seasons": "🏒 Seasons",
@@ -61,6 +67,7 @@
         "rules": "📋 Rules",
         "menu": "Menu",
         "admin": "Admin",
+        "loginManagement": "🔐 Login Management",
         "users": "Users",
         "adminSeasons": "Seasons",
         "teams": "Teams",
@@ -95,6 +102,12 @@
         "signingIn": "Signing in…",
         "signIn": "Sign In",
         "invalidCredentials": "Invalid email or password"
+    },
+    "changePassword": {
+        "title": "Change Password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm New Password"
     },
     "dashboard": {
         "title": "Dashboard",
@@ -434,7 +447,8 @@
         "failedToLoadEntries": "Failed to load aggregated entries",
         "invalidInput": "Please enter non-negative numbers.",
         "failedToCreateEntry": "Failed to create entry",
-        "batchCreateFailed": "Batch create failed"
+        "batchCreateFailed": "Batch create failed",
+        "allFieldsRequired": "All fields are required"
     },
     "penaltyChart": {
         "rosterPenalties": "Roster penalties",

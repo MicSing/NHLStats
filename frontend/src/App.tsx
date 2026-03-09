@@ -3,10 +3,12 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
-import ProtectedRoute from './components/ProtectedRoute'
+import { AdminProtectedRoute } from './components/ProtectedRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
+import LoginManagementPage from './pages/admin/LoginManagementPage'
 import UsersPage from './pages/admin/UsersPage'
 import SeasonsPage from './pages/admin/SeasonsPage'
 import RosterPage from './pages/admin/RosterPage'
@@ -35,6 +37,7 @@ function App() {
                 {/* Public routes — top navigation bar */}
                 <Route element={<PublicLayout />}>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/earnings" element={<EarningsExpensesPage />} />
                   <Route path="/seasons" element={<SeasonPage />} />
@@ -47,9 +50,10 @@ function App() {
                 {/* Admin routes — sidebar layout, auth-gated at the parent */}
                 <Route
                   path="/admin"
-                  element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}
+                  element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}
                 >
-                  <Route index element={<Navigate to="users" replace />} />
+                  <Route index element={<Navigate to="logins" replace />} />
+                  <Route path="logins" element={<LoginManagementPage />} />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="seasons" element={<SeasonsPage />} />
                   <Route path="roster" element={<RosterPage />} />

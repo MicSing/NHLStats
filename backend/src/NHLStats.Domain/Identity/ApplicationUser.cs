@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity;
+using NHLStats.Domain.Entities;
 
 namespace NHLStats.Domain.Identity;
 
 public class ApplicationUser : IdentityUser
 {
-    // Extend with profile fields if needed (display name, roles, etc.)
+    public int? UserId { get; set; }
+    public User? User { get; set; }
 }

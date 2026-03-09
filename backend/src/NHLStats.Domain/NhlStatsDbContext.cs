@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NHLStats.Domain.Entities;
@@ -5,7 +6,9 @@ using NHLStats.Domain.Identity;
 
 namespace NHLStats.Domain;
 
-public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
+public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, string,
+    IdentityUserClaim<string>, LoginRoleRelation, IdentityUserLogin<string>,
+    IdentityRoleClaim<string>, IdentityUserToken<string>>
 {
     public NhlStatsDbContext(DbContextOptions<NhlStatsDbContext> options) : base(options)
     {
@@ -30,6 +33,17 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AppRole>().ToTable("AppRoles");
+        modelBuilder.Entity<LoginRoleRelation>().ToTable("LoginRoleRelations");
+
+        modelBuilder.Entity<ApplicationUser>(b =>
+        {
+            b.HasOne(u => u.User)
+                .WithMany()
+                .HasForeignKey(u => u.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
 
         modelBuilder.Entity<User>(b =>
         {

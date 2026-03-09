@@ -40,7 +40,10 @@
         "retry": "Skúsiť znova",
         "or": "alebo",
         "openMenu": "Otvoriť menu",
-        "closeMenu": "Zavrieť menu"
+        "closeMenu": "Zatvoriť menu",
+        "add": "Pridať",
+        "user": "Používateľ",
+        "changePassword": "Zmeniť heslo"
     },
     "pagination": {
         "showing": "{{from}}–{{to}} z {{total}}",
@@ -53,6 +56,9 @@
         "createSuccess": "Úspešne vytvorené",
         "operationFailed": "Operácia zlyhala. Skúste to znova."
     },
+    "confirm": {
+        "deleteUser": "Ste si istí, že chcete odstrániť tohto používateľa?"
+    },
     "nav": {
         "dashboard": "📊 Prehľad",
         "seasons": "🏒 Sezóny",
@@ -61,6 +67,7 @@
         "rules": "📋 Pravidlá",
         "menu": "Menu",
         "admin": "Admin",
+        "loginManagement": "🔐 Správa prihlášok",
         "users": "Používatelia",
         "adminSeasons": "Sezóny",
         "teams": "Tímy",
@@ -95,6 +102,12 @@
         "signingIn": "Prihlasovanie…",
         "signIn": "Prihlásiť sa",
         "invalidCredentials": "Neplatný email alebo heslo"
+    },
+    "changePassword": {
+        "title": "Zmeniť heslo",
+        "currentPassword": "Aktuálne heslo",
+        "newPassword": "Nové heslo",
+        "confirmPassword": "Potvrďte nové heslo"
     },
     "dashboard": {
         "title": "Prehľad",
@@ -434,7 +447,8 @@
         "failedToLoadEntries": "Nepodarilo sa načítať súhrnné záznamy",
         "invalidInput": "Zadajte nezáporné čísla.",
         "failedToCreateEntry": "Nepodarilo sa vytvoriť záznam",
-        "batchCreateFailed": "Hromadné vytváranie zlyhalo"
+        "batchCreateFailed": "Hromadné vytvorenie zlyhalo",
+        "allFieldsRequired": "Všetky polia sú povinné"
     },
     "penaltyChart": {
         "rosterPenalties": "Tresty zo zostavy",
