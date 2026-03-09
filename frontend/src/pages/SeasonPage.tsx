@@ -23,6 +23,30 @@ function teamLogoUrl(shortName: string): string {
     return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
 }
 
+function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
+    if (value === null || value === undefined) return CompletionType.None
+    if (typeof value === 'number') {
+        return Object.values(CompletionType).includes(value) ? value : CompletionType.None
+    }
+
+    switch (value.toLowerCase()) {
+        case 'reg':
+        case 'regular':
+        case 'regulartime':
+            return CompletionType.RegularTime
+        case 'ot':
+        case 'overtime':
+            return CompletionType.Overtime
+        case 'so':
+        case 'shootout':
+            return CompletionType.Shootout
+        case 'none':
+            return CompletionType.None
+        default:
+            return CompletionType.None
+    }
+}
+
 function CompletionBadge({ type }: { type: CompletionType }) {
     const map: Record<CompletionType, { label: string; className: string }> = {
         [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
@@ -347,7 +371,7 @@ export default function SeasonPage() {
                                                     const opponentScore = isHome ? m.awayScore : isAway ? m.homeScore : null
                                                     const isWin = hostedScore != null && opponentScore != null && hostedScore > opponentScore
                                                     const isLoss = hostedScore != null && opponentScore != null && hostedScore < opponentScore
-                                                    const completionType = m.completionType as CompletionType
+                                                    const completionType = normalizeCompletionType(m.completionType)
 
                                                     // Inline background avoids CSS variable opacity issues
                                                     const bgStyle = {
@@ -447,7 +471,7 @@ export default function SeasonPage() {
                                                         {t('season.vs')}
                                                     </p>
                                                     <CompletionBadge
-                                                        type={upNext.completionType}
+                                                        type={normalizeCompletionType(upNext.completionType)}
                                                     />
                                                 </div>
                                                 <div className="text-center flex-1">
@@ -515,7 +539,7 @@ export default function SeasonPage() {
                                                     {h2hMatches.map((h2hMatch) => {
                                                         const homeLogo = teamLogoUrl(h2hMatch.homeTeamShortName)
                                                         const awayLogo = teamLogoUrl(h2hMatch.awayTeamShortName)
-                                                        const ct = h2hMatch.completionType as CompletionType
+                                                        const ct = normalizeCompletionType(h2hMatch.completionType)
                                                         return (
                                                             <div
                                                                 key={h2hMatch.matchId}
@@ -606,7 +630,7 @@ export default function SeasonPage() {
                                                             {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
                                                         </span>
                                                         <CompletionBadge
-                                                            type={m.completionType}
+                                                            type={normalizeCompletionType(m.completionType)}
                                                         />
                                                     </Link>
                                                 ))}

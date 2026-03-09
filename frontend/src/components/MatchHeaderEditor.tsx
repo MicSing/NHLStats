@@ -24,11 +24,37 @@ function CompletionBadge({ type }: { type: CompletionType }) {
     )
 }
 
+function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
+    if (value === null || value === undefined) return CompletionType.None
+    if (typeof value === 'number') {
+        return Object.values(CompletionType).includes(value) ? value : CompletionType.None
+    }
+
+    switch (value.toLowerCase()) {
+        case 'reg':
+        case 'regular':
+        case 'regulartime':
+            return CompletionType.RegularTime
+        case 'ot':
+        case 'overtime':
+            return CompletionType.Overtime
+        case 'so':
+        case 'shootout':
+            return CompletionType.Shootout
+        case 'none':
+            return CompletionType.None
+        default:
+            return CompletionType.None
+    }
+}
+
 export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: Props) {
     const { t } = useTranslation()
     const [homeScore, setHomeScore] = useState(match.homeScore)
     const [awayScore, setAwayScore] = useState(match.awayScore)
-    const [completionType, setCompletionType] = useState<CompletionType>(match.completionType)
+    const [completionType, setCompletionType] = useState<CompletionType>(
+        normalizeCompletionType(match.completionType),
+    )
     const [matchDate, setMatchDate] = useState<string>(
         match.matchDate ? match.matchDate.split('T')[0] : '',
     )
@@ -126,7 +152,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                     : t('match.notPlayedYet')}
                             </p>
                             <div className="mt-2">
-                                <CompletionBadge type={match.completionType} />
+                                <CompletionBadge type={normalizeCompletionType(match.completionType)} />
                             </div>
                         </>
                     )}
