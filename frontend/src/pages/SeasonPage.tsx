@@ -23,10 +23,16 @@ function teamLogoUrl(shortName: string): string {
     return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
 }
 
-function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
+function normalizeCompletionType(value: CompletionType | string | number | null | undefined): CompletionType {
     if (value === null || value === undefined) return CompletionType.None
     if (typeof value === 'number') {
-        return Object.values(CompletionType).includes(value) ? value : CompletionType.None
+        const completionValues: CompletionType[] = [
+            CompletionType.None,
+            CompletionType.RegularTime,
+            CompletionType.Overtime,
+            CompletionType.Shootout,
+        ]
+        return completionValues.includes(value as CompletionType) ? (value as CompletionType) : CompletionType.None
     }
 
     switch (value.toLowerCase()) {
