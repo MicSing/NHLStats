@@ -10,4 +10,5 @@ public class User
 
     public ICollection<SeasonUser>? SeasonUsers { get; set; }
     public ICollection<UserMatch>? UserMatches { get; set; }
+    public ICollection<Bet>? Bets { get; set; }
 }

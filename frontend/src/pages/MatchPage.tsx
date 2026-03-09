@@ -77,22 +77,6 @@ export default function MatchPage() {
             `/api/seasons/${seasonId}/matches/${matchId}/usermatches/initialize`,
             {},
         )
-        // Auto-set matchDate to today if currently null
-        if (match && match.matchDate === null) {
-            const today = new Date().toISOString().split('T')[0]
-            const updated = await apiClient.put<Match>(
-                `/api/seasons/${seasonId}/matches/${matchId}`,
-                {
-                    homeTeamId: match.homeTeamId,
-                    awayTeamId: match.awayTeamId,
-                    homeScore: match.homeScore,
-                    awayScore: match.awayScore,
-                    completionType: match.completionType,
-                    matchDate: today,
-                },
-            )
-            setMatch(updated)
-        }
         await loadAll()
     }
 

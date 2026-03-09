@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHLStats.Application.DTOs;
@@ -12,6 +14,13 @@ public class MatchesController : ControllerBase
     private readonly IMatchService _service;
 
     public MatchesController(IMatchService service) => _service = service;
+
+    [HttpGet("/api/matches/future")]
+    public async Task<IActionResult> GetFuture([FromQuery] int count = 10)
+    {
+        var loginId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        return Ok(await _service.GetFutureMatchesAsync(count, loginId));
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetBySeason(int seasonId) =>

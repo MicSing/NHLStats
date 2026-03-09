@@ -3,7 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
-import { AdminProtectedRoute } from './components/ProtectedRoute'
+import ProtectedRoute, { AdminProtectedRoute } from './components/ProtectedRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
@@ -25,6 +25,8 @@ import DashboardPage from './pages/DashboardPage'
 import EarningsExpensesPage from './pages/EarningsExpensesPage'
 import UserStatsPage from './pages/UserStatsPage'
 import RulesPage from './pages/RulesPage'
+import BettingHistoryPage from './pages/BettingHistoryPage'
+import BettingPage from './pages/BettingPage'
 
 function App() {
   return (
@@ -40,6 +42,8 @@ function App() {
                   <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/earnings" element={<EarningsExpensesPage />} />
+                  <Route path="/betting-history" element={<ProtectedRoute><BettingHistoryPage /></ProtectedRoute>} />
+                  <Route path="/betting-matches" element={<ProtectedRoute><BettingPage /></ProtectedRoute>} />
                   <Route path="/seasons" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId/matches/:matchId" element={<MatchPage />} />

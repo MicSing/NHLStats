@@ -37,13 +37,16 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
     const handleSave = async () => {
         setSaving(true)
         try {
+            const normalizedMatchDate =
+                completionType === CompletionType.None ? null : matchDate || null
+
             const dto: UpdateMatchDto = {
                 homeTeamId: match.homeTeamId,
                 awayTeamId: match.awayTeamId,
                 homeScore,
                 awayScore,
                 completionType,
-                matchDate: matchDate || null,
+                matchDate: normalizedMatchDate,
             }
             const updated = await apiClient.put<Match>(
                 `/api/seasons/${seasonId}/matches/${match.id}`,

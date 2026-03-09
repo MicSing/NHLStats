@@ -28,6 +28,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<MoneyConfig> MoneyConfigs => Set<MoneyConfig>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<UserPayout> UserPayouts => Set<UserPayout>();
+    public DbSet<Bet> Bets => Set<Bet>();
     public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -148,6 +149,16 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Bet>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.CreatedBy).IsRequired();
+            b.HasIndex(x => new { x.MatchId, x.CreatedBy }).IsUnique();
+            b.HasOne(x => x.Match).WithMany(m => m.Bets).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.User).WithMany(u => u.Bets).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(x => x.Team).WithMany(t => t.Bets).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Seed data: 32 NHL teams

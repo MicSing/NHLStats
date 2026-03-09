@@ -46,6 +46,112 @@ public class MatchesTests : ApiTestBase
         body.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
+    // ── GET /api/matches/future ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetFuture_returns_default_10_matches_when_more_are_available()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Future Limit Season");
+
+        for (var i = 0; i < 12; i++)
+        {
+            var created = await CreateMatchAsync(client, seasonId, 1, 2);
+            var matchId = created.GetProperty("id").GetInt32();
+
+            var futureDate = DateTime.UtcNow.AddDays(i + 1).ToString("O");
+            var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+            {
+                homeTeamId = 1,
+                awayTeamId = 2,
+                homeScore = 0,
+                awayScore = 0,
+                matchDate = futureDate,
+                completionType = 0
+            });
+            updateResp.EnsureSuccessStatusCode();
+        }
+
+        var resp = await client.GetAsync("/api/matches/future");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+        body.GetArrayLength().Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetFuture_returns_all_available_when_less_than_requested()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Future Available Season");
+
+        for (var i = 0; i < 3; i++)
+        {
+            var created = await CreateMatchAsync(client, seasonId, 1, 2);
+            var matchId = created.GetProperty("id").GetInt32();
+
+            var futureDate = DateTime.UtcNow.AddDays(i + 1).ToString("O");
+            var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+            {
+                homeTeamId = 1,
+                awayTeamId = 2,
+                homeScore = 0,
+                awayScore = 0,
+                matchDate = futureDate,
+                completionType = 0
+            });
+            updateResp.EnsureSuccessStatusCode();
+        }
+
+        var resp = await client.GetAsync("/api/matches/future?count=10");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+        body.GetArrayLength().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetFuture_includes_only_logged_in_user_bet_for_match()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Future Bet Payload Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var futureDate = DateTime.UtcNow.AddDays(1).ToString("O");
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = futureDate,
+            completionType = 0
+        });
+        updateResp.EnsureSuccessStatusCode();
+
+        var betResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}/bet", new
+        {
+            betType = 1,
+            teamId = 1
+        });
+        betResp.EnsureSuccessStatusCode();
+
+        var resp = await client.GetAsync("/api/matches/future?count=10");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+
+        var target = body.EnumerateArray().First(m => m.GetProperty("id").GetInt32() == matchId);
+        target.GetProperty("bet").ValueKind.Should().Be(JsonValueKind.Object);
+        target.GetProperty("bet").GetProperty("betType").GetString().Should().Be("TeamWin");
+        target.GetProperty("bet").GetProperty("teamId").GetInt32().Should().Be(1);
+    }
+
     // ── POST /api/seasons/{seasonId}/matches ────────────────────────────────
 
     [Fact]
@@ -123,6 +229,31 @@ public class MatchesTests : ApiTestBase
         updated.GetProperty("homeTeamId").GetInt32().Should().Be(3);
         updated.GetProperty("completionType").GetString().Should().Be("Overtime");
         updated.GetProperty("matchDate").ValueKind.Should().NotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Update_match_with_none_completion_type_forces_null_date()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match None Completion Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = "2026-03-09T20:00:00",
+            completionType = 0 // None / Not Played
+        });
+
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("completionType").GetString().Should().Be("None");
+        updated.GetProperty("matchDate").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     // ── DELETE /api/seasons/{seasonId}/matches/{id} ─────────────────────────

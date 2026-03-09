@@ -4,6 +4,7 @@ namespace NHLStats.Application.Interfaces;
 
 public interface IMatchService
 {
+    Task<IEnumerable<FutureMatchDto>> GetFutureMatchesAsync(int count = 10, string? loginId = null);
     Task<IEnumerable<MatchDto>> GetBySeasonAsync(int seasonId);
     Task<MatchDto?> GetByIdAsync(int id);
     Task<MatchDto> CreateAsync(int seasonId, CreateMatchDto dto);

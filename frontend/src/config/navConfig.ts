@@ -1,6 +1,8 @@
 export const publicNavItems = [
     { to: '/dashboard', labelKey: 'nav.dashboard' },
     { to: '/seasons', labelKey: 'nav.seasons' },
+    { to: '/betting-matches', labelKey: 'nav.bettingMatches' },
+    { to: '/betting-history', labelKey: 'nav.bettingHistory' },
     { to: '/earnings', labelKey: 'nav.finances' },
     { to: '/user-stats', labelKey: 'nav.playerStats' },
     { to: '/rules', labelKey: 'nav.rules' },

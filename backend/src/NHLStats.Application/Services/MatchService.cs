@@ -12,11 +12,72 @@ public class MatchService : IMatchService
 
     public MatchService(NhlStatsDbContext db) => _db = db;
 
+    private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
+        completionType == CompletionType.None ? null : matchDate;
+
     private static MatchDto ToDto(Match m) => new(
         m.Id, m.SeasonId, m.MatchNumber,
         m.HomeTeamId, m.HomeTeam?.Name,
         m.AwayTeamId, m.AwayTeam?.Name,
         m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
+
+    private static FutureMatchDto ToFutureDto(Match m, CurrentUserBetDto? bet) => new(
+        m.Id,
+        m.SeasonId,
+        m.Season?.Name ?? string.Empty,
+        m.MatchNumber,
+        m.HomeTeamId,
+        m.HomeTeam?.Name,
+        m.AwayTeamId,
+        m.AwayTeam?.Name,
+        m.Season?.HostedTeamId,
+        m.UserMatches?.Select(um => new UserMatchInfoDto(um.UserId, um.User?.Name)) ?? Enumerable.Empty<UserMatchInfoDto>(),
+        bet);
+
+    public async Task<IEnumerable<FutureMatchDto>> GetFutureMatchesAsync(int count = 10, string? loginId = null)
+    {
+        var normalizedCount = count <= 0 ? 10 : count;
+        var now = DateTime.UtcNow;
+
+        var matches = await _db.Matches
+            .Include(m => m.Season)
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Include(m => m.UserMatches!)
+                .ThenInclude(um => um.User)
+            .Where(m => m.CompletionType == CompletionType.None)
+            .Where(m => !m.MatchDate.HasValue || m.MatchDate.Value > now)
+            .OrderBy(m => m.MatchDate == null)
+            .ThenBy(m => m.MatchDate)
+            .ThenByDescending(m => m.Season!.StartedOn)
+            .ThenBy(m => m.MatchNumber)
+            .Take(normalizedCount)
+            .ToListAsync();
+
+        Dictionary<int, CurrentUserBetDto>? betsByMatchId = null;
+        if (!string.IsNullOrWhiteSpace(loginId) && matches.Count > 0)
+        {
+            var matchIds = matches.Select(m => m.Id).ToList();
+            betsByMatchId = await _db.Bets
+                .Where(b => b.CreatedBy == loginId && matchIds.Contains(b.MatchId))
+                .ToDictionaryAsync(
+                    b => b.MatchId,
+                    b => new CurrentUserBetDto(
+                        b.Id,
+                        b.BetType,
+                        b.UserId,
+                        b.TeamId,
+                        b.CreatedOn,
+                        b.UpdatedOn,
+                        b.EvaluatedOn));
+        }
+
+        return matches.Select(m =>
+        {
+            var bet = betsByMatchId != null && betsByMatchId.TryGetValue(m.Id, out var current) ? current : null;
+            return ToFutureDto(m, bet);
+        });
+    }
 
     public async Task<IEnumerable<MatchDto>> GetBySeasonAsync(int seasonId) =>
         await _db.Matches
@@ -70,8 +131,8 @@ public class MatchService : IMatchService
         match.AwayTeamId = dto.AwayTeamId;
         match.HomeScore = dto.HomeScore;
         match.AwayScore = dto.AwayScore;
-        match.MatchDate = dto.MatchDate;
         match.CompletionType = dto.CompletionType;
+        match.MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType);
         await _db.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
@@ -117,8 +178,8 @@ public class MatchService : IMatchService
             AwayTeamId = dto.AwayTeamId,
             HomeScore = dto.HomeScore,
             AwayScore = dto.AwayScore,
-            MatchDate = dto.MatchDate,
-            CompletionType = dto.CompletionType
+            CompletionType = dto.CompletionType,
+            MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType)
         }).ToList();
 
         _db.Matches.AddRange(matches);

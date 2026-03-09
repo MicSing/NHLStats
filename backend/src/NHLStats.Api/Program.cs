@@ -79,6 +79,7 @@ builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 builder.Services.AddScoped<IUserMatchService, UserMatchService>();
+builder.Services.AddScoped<IBetService, BetService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 

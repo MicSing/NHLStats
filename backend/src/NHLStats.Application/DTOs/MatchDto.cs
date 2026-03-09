@@ -15,6 +15,23 @@ public record MatchDto(
     DateTime? MatchDate,
     CompletionType CompletionType);
 
+public record FutureMatchDto(
+    int Id,
+    int SeasonId,
+    string SeasonName,
+    int MatchNumber,
+    int HomeTeamId,
+    string? HomeTeamName,
+    int AwayTeamId,
+    string? AwayTeamName,
+    int? HostedTeamId,
+    IEnumerable<UserMatchInfoDto>? UserMatches,
+    CurrentUserBetDto? Bet);
+
+public record UserMatchInfoDto(
+    int UserId,
+    string? UserName);
+
 public record CreateMatchDto(
     int HomeTeamId,
     int AwayTeamId);

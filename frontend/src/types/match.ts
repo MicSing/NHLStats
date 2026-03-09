@@ -21,6 +21,35 @@ export interface Match {
     completionType: CompletionType
 }
 
+export interface FutureMatch {
+    id: number
+    seasonId: number
+    seasonName: string
+    matchNumber: number
+    homeTeamId: number
+    homeTeamName: string | null
+    awayTeamId: number
+    awayTeamName: string | null
+    hostedTeamId: number | null
+    userMatches: UserMatchInfo[] | null
+    bet: MatchBetDto | null
+}
+
+export interface MatchBetDto {
+    id: string
+    betType: 'TeamWin' | 'UserGoal' | 'UserPenalty'
+    userId: number | null
+    teamId: number | null
+    createdOn: string
+    updatedOn: string | null
+    evaluatedOn: string | null
+}
+
+export interface UserMatchInfo {
+    userId: number
+    userName: string | null
+}
+
 export interface CreateMatchDto {
     homeTeamId: number
     awayTeamId: number
