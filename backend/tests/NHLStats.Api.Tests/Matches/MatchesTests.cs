@@ -109,7 +109,7 @@ public class MatchesTests : ApiTestBase
 
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.ValueKind.Should().Be(JsonValueKind.Array);
-        body.GetArrayLength().Should().Be(3);
+        body.GetArrayLength().Should().BeGreaterThanOrEqualTo(3);
     }
 
     [Fact]

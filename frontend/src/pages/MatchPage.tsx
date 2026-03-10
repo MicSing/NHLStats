@@ -135,6 +135,7 @@ export default function MatchPage() {
                             penalties={penalties}
                             roster={roster}
                             pointReasons={pointReasons}
+                            allUserMatches={userMatchData.map((d) => d.userMatch)}
                             isAuth={!!token}
                             onChanged={() => void loadAll()}
                         />

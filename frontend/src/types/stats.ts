@@ -1,4 +1,5 @@
 import type { Expense } from './expense'
+import type { PointType } from './pointReason'
 
 export interface UserSeasonStats {
     userId: number
@@ -179,7 +180,7 @@ export interface PeriodPlusMinus {
 export interface PointReasonBreakdownItem {
     pointReasonId: number
     pointReasonName: string
-    isPositive: boolean
+    pointType: PointType
     totalCount: number
 }
 

@@ -19,7 +19,7 @@ public class UserMatchService : IUserMatchService
 
     private static UserMatchPointDto ToPointDto(UserMatchPoint p) => new(
         p.Id, p.UserMatchId, p.PointReasonId, p.PointReason?.Name,
-        p.PointReason?.IsPositive ?? false, p.Count);
+        p.PointReason?.PointType.ToString() ?? "Negative", p.Count);
 
     private static UserMatchGoalDto ToGoalDto(UserMatchGoal g) => new(
         g.Id, g.UserMatchId, g.RosterPlayerId,

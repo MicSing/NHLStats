@@ -12,7 +12,7 @@ public class PointReasonService : IPointReasonService
 
     public PointReasonService(NhlStatsDbContext db) => _db = db;
 
-    private static PointReasonDto ToDto(PointReason p) => new(p.Id, p.Name, p.IsPositive, p.IsActive);
+    private static PointReasonDto ToDto(PointReason p) => new(p.Id, p.Name, p.PointType, p.IsActive);
 
     public async Task<IEnumerable<PointReasonDto>> GetAllAsync(bool activeOnly = false)
     {
@@ -29,7 +29,7 @@ public class PointReasonService : IPointReasonService
 
     public async Task<PointReasonDto> CreateAsync(CreatePointReasonDto dto)
     {
-        var reason = new PointReason { Name = dto.Name, IsPositive = dto.IsPositive };
+        var reason = new PointReason { Name = dto.Name, PointType = dto.PointType };
         _db.PointReasons.Add(reason);
         await _db.SaveChangesAsync();
         return ToDto(reason);
@@ -41,7 +41,7 @@ public class PointReasonService : IPointReasonService
         if (reason == null) return null;
 
         reason.Name = dto.Name;
-        reason.IsPositive = dto.IsPositive;
+        reason.PointType = dto.PointType;
         reason.IsActive = dto.IsActive;
         await _db.SaveChangesAsync();
         return ToDto(reason);

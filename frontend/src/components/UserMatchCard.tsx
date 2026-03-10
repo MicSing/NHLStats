@@ -10,13 +10,22 @@ import type {
     GoalType,
 } from '../types/userMatch'
 import type { RosterPlayer } from '../types/roster'
-import type { PointReason } from '../types/pointReason'
+import type { PointReason, PointType } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import SearchableSelect from './SearchableSelect'
+import Modal from './Modal'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../context/ToastContext'
 
 type Tab = 'goals' | 'penalties' | 'points'
+
+interface GoalModal {
+    goalType: GoalType
+    selectedUserMatchId: number | ''
+    pointReasonId: number | ''
+    rosterPlayerId: number | ''
+    count: number
+}
 
 interface Props {
     userMatch: UserMatch
@@ -25,6 +34,7 @@ interface Props {
     penalties: UserMatchPenalty[]
     roster: RosterPlayer[]
     pointReasons: PointReason[]
+    allUserMatches: UserMatch[]
     isAuth: boolean
     onChanged: () => void
 }
@@ -36,6 +46,7 @@ export default function UserMatchCard({
     penalties,
     roster,
     pointReasons,
+    allUserMatches,
     isAuth,
     onChanged,
 }: Props) {
@@ -50,23 +61,28 @@ export default function UserMatchCard({
         pointReasonId: '',
         count: 1,
     })
+    const [neutralPointForm, setNeutralPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
+        pointReasonId: '',
+        count: 1,
+    })
     const [goalForm, setGoalForm] = useState<{ rosterPlayerId: number | ''; count: number }>({
         rosterPlayerId: '',
         count: 1,
     })
-    const [showGoalTypes, setShowGoalTypes] = useState(false)
     const [penaltyForm, setPenaltyForm] = useState<{
         rosterPlayerId: number | ''
         count: number
     }>({ rosterPlayerId: '', count: 1 })
+    const [goalModal, setGoalModal] = useState<GoalModal | null>(null)
 
-    const positiveReasons = pointReasons.filter((r) => r.isPositive)
-    const negativeReasons = pointReasons.filter((r) => !r.isPositive)
+    const positiveReasons = pointReasons.filter((r) => r.pointType === 'Positive')
+    const negativeReasons = pointReasons.filter((r) => r.pointType === 'Negative')
+    const neutralReasons = pointReasons.filter((r) => r.pointType === 'Neutral')
     const totalPlus = points
-        .filter((p) => p.isPositive)
+        .filter((p) => p.pointType === 'Positive')
         .reduce((sum, p) => sum + p.count, 0)
     const totalMinus = points
-        .filter((p) => !p.isPositive)
+        .filter((p) => p.pointType === 'Negative')
         .reduce((sum, p) => sum + p.count, 0)
 
     const handleAddPoint = async (reasonId: number | '', count: number) => {
@@ -93,6 +109,39 @@ export default function UserMatchCard({
             goalType,
         } as CreateUserMatchGoalDto)
         onChanged()
+    }
+
+    const handleOpenGoalModal = (goalType: GoalType) => {
+        const modalReasons = goalType === 'PowerPlay'
+            ? positiveReasons.filter((r) => r.isActive)
+            : neutralReasons.filter((r) => r.isActive)
+        const preselectedReason = modalReasons.length === 1 ? modalReasons[0].id : ''
+        setGoalModal({
+            goalType,
+            selectedUserMatchId: um.id,
+            pointReasonId: preselectedReason,
+            rosterPlayerId: goalForm.rosterPlayerId,
+            count: 1,
+        })
+    }
+
+    const handleGoalModalConfirm = async () => {
+        if (!goalModal || goalModal.selectedUserMatchId === '' || goalModal.pointReasonId === '' || goalModal.rosterPlayerId === '') return
+        try {
+            await apiClient.post(`/api/usermatches/${goalModal.selectedUserMatchId}/points`, {
+                pointReasonId: goalModal.pointReasonId,
+                count: 1,
+            } as CreateUserMatchPointDto)
+            await apiClient.post(`/api/usermatches/${goalModal.selectedUserMatchId}/goals`, {
+                rosterPlayerId: goalModal.rosterPlayerId,
+                count: goalModal.count,
+                goalType: goalModal.goalType,
+            } as CreateUserMatchGoalDto)
+            setGoalModal(null)
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
     }
 
     const handleDeleteGoal = async (goalIds: number[]) => {
@@ -224,7 +273,6 @@ export default function UserMatchCard({
                             onSubmit={(e) => {
                                 e.preventDefault()
                                 void handleAddGoal('Regular')
-                                setShowGoalTypes(false)
                             }}
                             className="flex gap-2 mt-2"
                         >
@@ -252,45 +300,27 @@ export default function UserMatchCard({
                                 }
                                 className="input w-16 text-center text-sm py-1"
                             />
-                            <div className="relative flex">
+                            <div className="flex gap-1">
                                 <button
                                     type="submit"
-                                    className="btn-primary text-sm px-3 py-1 rounded-r-none border-r border-white/20"
+                                    className="btn-primary text-sm px-3 py-1"
                                 >
                                     {t('userMatchCard.addGoal')}
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn-primary text-sm px-2 py-1 rounded-l-none"
-                                    onClick={() => setShowGoalTypes((prev) => !prev)}
-                                    aria-label="More goal types"
+                                    className="btn-primary text-sm px-3 py-1"
+                                    onClick={() => handleOpenGoalModal('PowerPlay')}
                                 >
-                                    ▾
+                                    {t('userMatchCard.addGoalPP')}
                                 </button>
-                                {showGoalTypes && (
-                                    <div className="absolute top-full right-0 flex gap-1 mt-1 z-10">
-                                        <button
-                                            type="button"
-                                            className="btn-primary text-sm px-3 py-1"
-                                            onClick={() => {
-                                                void handleAddGoal('PowerPlay')
-                                                setShowGoalTypes(false)
-                                            }}
-                                        >
-                                            {t('userMatchCard.addGoalPP')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="btn-primary text-sm px-3 py-1"
-                                            onClick={() => {
-                                                void handleAddGoal('ShortHanded')
-                                                setShowGoalTypes(false)
-                                            }}
-                                        >
-                                            {t('userMatchCard.addGoalSH')}
-                                        </button>
-                                    </div>
-                                )}
+                                <button
+                                    type="button"
+                                    className="btn-primary text-sm px-3 py-1"
+                                    onClick={() => handleOpenGoalModal('ShortHanded')}
+                                >
+                                    {t('userMatchCard.addGoalSH')}
+                                </button>
                             </div>
                         </form>
                     )}
@@ -395,7 +425,7 @@ export default function UserMatchCard({
                                     {
                                         pointReasonId: number
                                         pointReasonName: string | null
-                                        isPositive: boolean
+                                        pointType: PointType
                                         totalCount: number
                                         ids: number[]
                                     }
@@ -408,7 +438,7 @@ export default function UserMatchCard({
                                     acc[p.pointReasonId] = {
                                         pointReasonId: p.pointReasonId,
                                         pointReasonName: p.pointReasonName,
-                                        isPositive: p.isPositive,
+                                        pointType: p.pointType,
                                         totalCount: p.count,
                                         ids: [p.id],
                                     }
@@ -418,9 +448,11 @@ export default function UserMatchCard({
                         ).map((g) => (
                             <span
                                 key={g.pointReasonId}
-                                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.isPositive
-                                    ? 'bg-success/20 text-success'
-                                    : 'bg-danger/20 text-danger'
+                                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.pointType === 'Positive'
+                                        ? 'bg-success/20 text-success'
+                                        : g.pointType === 'Negative'
+                                            ? 'bg-danger/20 text-danger'
+                                            : 'bg-border text-text-muted'
                                     }`}
                             >
                                 {g.pointReasonName} × {g.totalCount}
@@ -512,9 +544,133 @@ export default function UserMatchCard({
                                     {t('userMatchCard.addNegative')}
                                 </button>
                             </div>
+                            {/* Neutral points */}
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addNeutral')}</span>
+                                <SearchableSelect
+                                    options={neutralReasons.map((r) => ({
+                                        value: r.id,
+                                        label: r.name,
+                                    }))}
+                                    value={neutralPointForm.pointReasonId}
+                                    onChange={(v) =>
+                                        setNeutralPointForm((prev) => ({
+                                            ...prev,
+                                            pointReasonId: v === '' ? '' : Number(v),
+                                        }))
+                                    }
+                                    placeholder={t('common.neutral')}
+                                />
+                                <input
+                                    type="number"
+                                    aria-label="point count"
+                                    min={1}
+                                    value={neutralPointForm.count}
+                                    onChange={(e) =>
+                                        setNeutralPointForm((prev) => ({
+                                            ...prev,
+                                            count: Number(e.target.value),
+                                        }))
+                                    }
+                                    className="input w-16 text-center text-sm py-1"
+                                />
+                                <button
+                                    onClick={() => void handleAddPoint(neutralPointForm.pointReasonId, neutralPointForm.count)}
+                                    className="btn-ghost text-sm px-3 py-1"
+                                >
+                                    {t('userMatchCard.addNeutral')}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* PP/SH goal modal */}
+            {goalModal && (
+                <Modal
+                    title={goalModal.goalType === 'PowerPlay' ? t('userMatchCard.ppGoalTitle') : t('userMatchCard.shGoalTitle')}
+                    onClose={() => setGoalModal(null)}
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="label block mb-1 text-sm">{t('common.type')}</label>
+                            <SearchableSelect
+                                options={(goalModal.goalType === 'PowerPlay'
+                                    ? positiveReasons.filter((r) => r.isActive)
+                                    : neutralReasons.filter((r) => r.isActive)
+                                ).map((r) => ({ value: r.id, label: r.name }))}
+                                value={goalModal.pointReasonId}
+                                onChange={(v) =>
+                                    setGoalModal((prev) =>
+                                        prev ? { ...prev, pointReasonId: v === '' ? '' : Number(v) } : null,
+                                    )
+                                }
+                                placeholder={t('common.select')}
+                            />
+                        </div>
+                        <div>
+                            <label className="label block mb-1 text-sm">{t('common.user')}</label>
+                            <SearchableSelect
+                                options={allUserMatches.map((u) => ({ value: u.id, label: u.userName ?? '' }))}
+                                value={goalModal.selectedUserMatchId}
+                                onChange={(v) =>
+                                    setGoalModal((prev) =>
+                                        prev ? { ...prev, selectedUserMatchId: v === '' ? '' : Number(v) } : null,
+                                    )
+                                }
+                                placeholder={t('userMatchCard.selectUser')}
+                            />
+                        </div>
+                        <div>
+                            <label className="label block mb-1 text-sm">{t('common.player')}</label>
+                            <SearchableSelect
+                                options={roster.map((r) => ({
+                                    value: r.id,
+                                    label: `${r.firstName} ${r.surname}`,
+                                }))}
+                                value={goalModal.rosterPlayerId}
+                                onChange={(v) =>
+                                    setGoalModal((prev) =>
+                                        prev ? { ...prev, rosterPlayerId: v === '' ? '' : Number(v) } : null,
+                                    )
+                                }
+                                placeholder={t('userMatchCard.selectPlayer')}
+                            />
+                        </div>
+                        <div>
+                            <label className="label block mb-1 text-sm">{t('userMatchCard.count')}</label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={goalModal.count}
+                                onChange={(e) =>
+                                    setGoalModal((prev) =>
+                                        prev ? { ...prev, count: Number(e.target.value) } : null,
+                                    )
+                                }
+                                className="input w-16 text-center text-sm py-1"
+                            />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={() => setGoalModal(null)} className="btn-ghost text-sm">
+                                {t('common.cancel')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleGoalModalConfirm()}
+                                disabled={
+                                    goalModal.selectedUserMatchId === '' ||
+                                    goalModal.pointReasonId === '' ||
+                                    goalModal.rosterPlayerId === ''
+                                }
+                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded disabled:opacity-50"
+                            >
+                                {t('userMatchCard.confirm')}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     )

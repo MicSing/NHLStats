@@ -41,13 +41,14 @@ export default function RulesPage() {
 
     // Active reasons only, deduplicated by name (keep one entry per name)
     const activeReasons = reasons.filter((r) => r.isActive)
-    const negativeReasons = activeReasons.filter((r) => !r.isPositive)
-    const positiveReasons = activeReasons.filter((r) => r.isPositive)
+    const negativeReasons = activeReasons.filter((r) => r.pointType === 'Negative')
+    const positiveReasons = activeReasons.filter((r) => r.pointType === 'Positive')
+    const neutralReasons = activeReasons.filter((r) => r.pointType === 'Neutral')
 
     // Unique names across all active reasons (preserving negative order first)
     const seenNames = new Set<string>()
     const uniqueReasons: PointReason[] = []
-    for (const r of [...negativeReasons, ...positiveReasons]) {
+    for (const r of [...negativeReasons, ...positiveReasons, ...neutralReasons]) {
         const key = r.name.toLowerCase()
         if (!seenNames.has(key)) {
             seenNames.add(key)
@@ -117,6 +118,9 @@ export default function RulesPage() {
                         const hasPositive = positiveReasons.some(
                             (r) => r.name.toLowerCase() === reason.name.toLowerCase(),
                         ) && getPositiveDescription(reason.name) !== ''
+                        const hasNeutral = neutralReasons.some(
+                            (r) => r.name.toLowerCase() === reason.name.toLowerCase(),
+                        )
                         return (
                             <div key={reason.id} className="px-5 py-4">
                                 <p className="font-semibold text-text text-sm mb-2">{reason.name}</p>
@@ -139,6 +143,13 @@ export default function RulesPage() {
                                             <p className="text-xs text-text-muted leading-relaxed">
                                                 {getPositiveDescription(reason.name)}
                                             </p>
+                                        </div>
+                                    )}
+                                    {hasNeutral && (
+                                        <div className="flex items-start gap-2">
+                                            <span className="shrink-0 inline-flex items-center rounded-full bg-border px-2.5 py-0.5 text-xs font-semibold text-text-muted mt-0.5">
+                                                {t('rules.neutralLabel')}
+                                            </span>
                                         </div>
                                     )}
                                 </div>

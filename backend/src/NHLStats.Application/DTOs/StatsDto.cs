@@ -120,6 +120,28 @@ public record AllTimeEarningsDto(
     decimal CanBeCollected,
     decimal TotalExpenses);
 
+// ─── Season stats endpoint response ─────────────────────────────────────────
+
+public record SeasonStatsUserDto(
+    int UserId,
+    int TotalPlus,
+    int TotalMinus,
+    decimal Earnings);
+
+// ─── All-time earnings summary endpoint response ─────────────────────────────
+
+public record EarningsSummaryUserDto(
+    int UserId,
+    decimal Earnings,
+    int TotalPlus,
+    int TotalMinus);
+
+public record EarningsSummaryDto(
+    IEnumerable<EarningsSummaryUserDto> UserEarnings,
+    decimal TotalCollected,
+    decimal TotalExpenses,
+    decimal Balance);
+
 // ─── Per-user goals & penalties totals for a season ──────────────────────────
 
 public record UserSeasonTotalsDto(
@@ -147,7 +169,7 @@ public record PeriodPlusMinusDto(
 public record PointReasonBreakdownItemDto(
     int PointReasonId,
     string PointReasonName,
-    bool IsPositive,
+    string PointType,
     int TotalCount);
 
 public record UserPointReasonBreakdownDto(

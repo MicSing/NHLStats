@@ -40,10 +40,10 @@ public class StatsService : IStatsService
     private static (int plus, int minus) GetTotalsFromPoints(IEnumerable<UserMatchPoint> points)
     {
         var plus = points
-            .Where(p => p.PointReason != null && p.PointReason.IsPositive)
+            .Where(p => p.PointReason != null && p.PointReason.PointType == PointType.Positive)
             .Sum(p => p.Count);
         var minus = points
-            .Where(p => p.PointReason != null && !p.PointReason.IsPositive)
+            .Where(p => p.PointReason != null && p.PointReason.PointType == PointType.Negative)
             .Sum(p => p.Count);
         return (plus, minus);
     }
@@ -181,7 +181,7 @@ public class StatsService : IStatsService
                 MatchId = p.UserMatch!.MatchId,
                 UserId = p.UserMatch.UserId,
                 p.Count,
-                IsPositive = p.PointReason != null && p.PointReason.IsPositive
+                IsPositive = p.PointReason != null && p.PointReason.PointType == PointType.Positive
             })
             .ToListAsync();
 
@@ -297,7 +297,7 @@ public class StatsService : IStatsService
 
         return weeklyMatches
             .GroupBy(m => m.WeekNumber)
-            .OrderByDescending(g => g.Key)
+            .OrderBy(g => g.Key)
             .Select(g =>
             {
                 var totals = totalsByWeek.TryGetValue(g.Key, out var value)
@@ -932,6 +932,108 @@ public class StatsService : IStatsService
         return new AllTimeEarningsDto(userEarnings, totalCollected, canBeCollected, totalExpenses);
     }
 
+    // ─── Season stats endpoint — per-user totals + earnings ──────────────────
+
+    public async Task<IEnumerable<SeasonStatsUserDto>> GetSeasonStatsAsync(int seasonId)
+    {
+        var configs = await _db.MoneyConfigs
+            .AsNoTracking()
+            .OrderBy(m => m.EffectiveFrom)
+            .ToListAsync();
+
+        var userMatches = await _db.UserMatches
+            .AsNoTracking()
+            .Include(um => um.Match)
+            .Include(um => um.Points).ThenInclude(p => p.PointReason)
+            .Where(um => um.SeasonId == seasonId)
+            .ToListAsync();
+
+        if (userMatches.Count == 0)
+            return Enumerable.Empty<SeasonStatsUserDto>();
+
+        return userMatches
+            .GroupBy(um => um.UserId)
+            .Select(g =>
+            {
+                var totalPlus = 0;
+                var totalMinus = 0;
+                var rawEarnings = 0m;
+
+                foreach (var um in g)
+                {
+                    var totals = GetTotalsFromPoints(um.Points);
+                    totalPlus += totals.plus;
+                    totalMinus += totals.minus;
+
+                    var date = um.Match?.MatchDate;
+                    if (date.HasValue && configs.Count > 0)
+                    {
+                        var config = GetEffectiveConfig(configs, date.Value);
+                        if (config != null)
+                            rawEarnings += RawEarnings(config, totals.plus, totals.minus);
+                    }
+                }
+
+                return new SeasonStatsUserDto(g.Key, totalPlus, totalMinus, Math.Max(0m, rawEarnings));
+            })
+            .OrderBy(s => s.UserId)
+            .ToList();
+    }
+
+    // ─── All-time earnings summary endpoint ──────────────────────────────────
+
+    public async Task<EarningsSummaryDto> GetEarningsSummaryAsync()
+    {
+        var configs = await _db.MoneyConfigs
+            .AsNoTracking()
+            .OrderBy(m => m.EffectiveFrom)
+            .ToListAsync();
+
+        var userMatches = await _db.UserMatches
+            .AsNoTracking()
+            .Include(um => um.Match)
+            .Include(um => um.Points).ThenInclude(p => p.PointReason)
+            .ToListAsync();
+
+        var userTotals = new Dictionary<int, (int Plus, int Minus, decimal RawEarnings)>();
+
+        foreach (var um in userMatches)
+        {
+            var totals = GetTotalsFromPoints(um.Points);
+            var date = um.Match?.MatchDate;
+            var matchEarnings = 0m;
+
+            if (date.HasValue && configs.Count > 0)
+            {
+                var config = GetEffectiveConfig(configs, date.Value);
+                if (config != null)
+                    matchEarnings = RawEarnings(config, totals.plus, totals.minus);
+            }
+
+            if (!userTotals.TryGetValue(um.UserId, out var current))
+                current = (0, 0, 0m);
+
+            userTotals[um.UserId] = (
+                current.Plus + totals.plus,
+                current.Minus + totals.minus,
+                current.RawEarnings + matchEarnings);
+        }
+
+        var totalCollected = (await _db.UserPayouts.AsNoTracking().Select(up => up.Amount).ToListAsync()).Sum();
+        var totalExpenses = (await _db.Expenses.AsNoTracking().Select(e => e.Amount).ToListAsync()).Sum();
+
+        var userEarnings = userTotals
+            .Select(kv => new EarningsSummaryUserDto(
+                kv.Key,
+                Math.Max(0m, kv.Value.RawEarnings),
+                kv.Value.Plus,
+                kv.Value.Minus))
+            .OrderByDescending(u => u.Earnings)
+            .ToList();
+
+        return new EarningsSummaryDto(userEarnings, totalCollected, totalExpenses, totalCollected - totalExpenses);
+    }
+
     // ─── Per-user goals & penalties totals for a season ──────────────────────
 
     public async Task<IEnumerable<UserSeasonTotalsDto>> GetUserSeasonTotalsAsync(int seasonId)
@@ -997,7 +1099,7 @@ public class StatsService : IStatsService
             .Select(g => new PointReasonBreakdownItemDto(
                 g.Key,
                 g.First().PointReason?.Name ?? "",
-                g.First().PointReason?.IsPositive ?? false,
+                g.First().PointReason?.PointType.ToString() ?? "Negative",
                 g.Sum(p => p.Count)))
             .OrderBy(x => x.PointReasonId)
             .ToList();
@@ -1326,8 +1428,8 @@ public class StatsService : IStatsService
             .Select(x => new
             {
                 x.UserMatch!.UserId,
-                plus = x.PointReason != null && x.PointReason.IsPositive ? x.Count : 0,
-                minus = x.PointReason != null && !x.PointReason.IsPositive ? x.Count : 0
+                plus = x.PointReason != null && x.PointReason.PointType == PointType.Positive ? x.Count : 0,
+                minus = x.PointReason != null && x.PointReason.PointType == PointType.Negative ? x.Count : 0
             }).ToListAsync();
         var userMatchPointsByUser = userMatchPoints
             .GroupBy(x => x.UserId)

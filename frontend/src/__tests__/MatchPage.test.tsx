@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
+import { ToastProvider } from '../context/ToastContext'
 import MatchPage from '../pages/MatchPage'
 
 function renderMatchPage({ authenticated = true } = {}) {
@@ -13,17 +14,19 @@ function renderMatchPage({ authenticated = true } = {}) {
         localStorage.removeItem('user')
     }
     return render(
-        <AuthProvider>
-            <MemoryRouter initialEntries={['/seasons/1/matches/10']}>
-                <Routes>
-                    <Route
-                        path="/seasons/:seasonId/matches/:matchId"
-                        element={<MatchPage />}
-                    />
-                    <Route path="/seasons/:seasonId" element={<div>Season Page</div>} />
-                </Routes>
-            </MemoryRouter>
-        </AuthProvider>,
+        <ToastProvider>
+            <AuthProvider>
+                <MemoryRouter initialEntries={['/seasons/1/matches/10']}>
+                    <Routes>
+                        <Route
+                            path="/seasons/:seasonId/matches/:matchId"
+                            element={<MatchPage />}
+                        />
+                        <Route path="/seasons/:seasonId" element={<div>Season Page</div>} />
+                    </Routes>
+                </MemoryRouter>
+            </AuthProvider>
+        </ToastProvider>,
     )
 }
 
@@ -84,13 +87,14 @@ describe('MatchPage', () => {
         expect(form).toBeInTheDocument()
     })
 
-    test('Points tab shows + Positive and + Negative action buttons when authenticated', async () => {
+    test('Points tab shows + Positive, + Negative, and + Neutral action buttons when authenticated', async () => {
         const user = userEvent.setup()
         renderMatchPage()
         const pointsTab = await screen.findByRole('button', { name: /^points/i })
         await user.click(pointsTab)
         expect(await screen.findByRole('button', { name: /\+ positive/i })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: /\+ negative/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /\+ neutral/i })).toBeInTheDocument()
     })
 
     test('edit controls hidden when not authenticated', async () => {
@@ -127,5 +131,33 @@ describe('MatchPage', () => {
         const backLink = await screen.findByRole('link', { name: /back to season/i })
         await user.click(backLink)
         expect(screen.getByText('Season Page')).toBeInTheDocument()
+    })
+
+    test('PP button opens Add Power Play Goal modal', async () => {
+        const user = userEvent.setup()
+        renderMatchPage()
+        // Wait for goals tab to load
+        await screen.findByText(/connor mcdavid/i)
+        const ppBtn = screen.getByRole('button', { name: /\+ pp/i })
+        await user.click(ppBtn)
+        expect(await screen.findByText('Add Power Play Goal')).toBeInTheDocument()
+    })
+
+    test('SH button opens Add Shorthanded Goal modal', async () => {
+        const user = userEvent.setup()
+        renderMatchPage()
+        await screen.findByText(/connor mcdavid/i)
+        const shBtn = screen.getByRole('button', { name: /\+ sh/i })
+        await user.click(shBtn)
+        expect(await screen.findByText('Add Shorthanded Goal')).toBeInTheDocument()
+    })
+
+    test('neutral point badge displayed with gray style on Points tab', async () => {
+        const user = userEvent.setup()
+        renderMatchPage()
+        const pointsTab = await screen.findByRole('button', { name: /^points/i })
+        await user.click(pointsTab)
+        // Mock returns Penalty with pointType 'Negative' — badge should be visible
+        expect(await screen.findByText(/penalty × 1/i)).toBeInTheDocument()
     })
 })

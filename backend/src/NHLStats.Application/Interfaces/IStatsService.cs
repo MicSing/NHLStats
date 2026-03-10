@@ -122,4 +122,16 @@ public interface IStatsService
     /// <param name="seasonId">The ID of the season to retrieve financial stats for. If null, aggregates across all seasons.</param>
     /// <returns>A <see cref="FinancialStatsDto"/> containing the financial stats for all seasons.</returns>
     Task<FinancialStatsDto> GetFinancialStatsAsync();
+
+    /// <summary>
+    /// Returns per-user point totals and earnings for a specific season,
+    /// using the MoneyConfig rate effective at each match date.
+    /// </summary>
+    Task<IEnumerable<SeasonStatsUserDto>> GetSeasonStatsAsync(int seasonId);
+
+    /// <summary>
+    /// Returns all-time earnings summary: per-user totals (earnings, totalPlus, totalMinus),
+    /// total collected, total expenses, and balance (collected - expenses).
+    /// </summary>
+    Task<EarningsSummaryDto> GetEarningsSummaryAsync();
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { PointReason, CreatePointReasonDto, UpdatePointReasonDto } from '../../types/pointReason'
+import type { PointReason, PointType, CreatePointReasonDto, UpdatePointReasonDto } from '../../types/pointReason'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
@@ -19,13 +19,13 @@ export default function PointReasonsPage() {
 
     // Add modal
     const [showAddModal, setShowAddModal] = useState(false)
-    const [addForm, setAddForm] = useState<CreatePointReasonDto>({ name: '', isPositive: false })
+    const [addForm, setAddForm] = useState<CreatePointReasonDto>({ name: '', pointType: 'Negative' })
 
     // Edit modal
     const [editReason, setEditReason] = useState<PointReason | null>(null)
     const [editForm, setEditForm] = useState<UpdatePointReasonDto>({
         name: '',
-        isPositive: false,
+        pointType: 'Negative',
         isActive: true,
     })
 
@@ -54,7 +54,7 @@ export default function PointReasonsPage() {
         try {
             await apiClient.post<PointReason>('/api/pointreasons', addForm)
             setShowAddModal(false)
-            setAddForm({ name: '', isPositive: false })
+            setAddForm({ name: '', pointType: 'Negative' })
             toast.success(t('toast.createSuccess'))
             await loadReasons()
         } catch {
@@ -64,7 +64,7 @@ export default function PointReasonsPage() {
 
     const openEdit = (reason: PointReason) => {
         setEditReason(reason)
-        setEditForm({ name: reason.name, isPositive: reason.isPositive, isActive: reason.isActive })
+        setEditForm({ name: reason.name, pointType: reason.pointType, isActive: reason.isActive })
     }
 
     const handleEdit = async (e: React.FormEvent) => {
@@ -84,7 +84,7 @@ export default function PointReasonsPage() {
         try {
             await apiClient.put<PointReason>(`/api/pointreasons/${reason.id}`, {
                 name: reason.name,
-                isPositive: reason.isPositive,
+                pointType: reason.pointType,
                 isActive: false,
             } satisfies UpdatePointReasonDto)
             toast.success(t('toast.saveSuccess'))
@@ -129,12 +129,18 @@ export default function PointReasonsPage() {
                                 <td className="py-3 pr-4">{reason.name}</td>
                                 <td className="py-3 pr-4">
                                     <span
-                                        className={`text-xs px-2 py-1 rounded-full ${reason.isPositive
-                                            ? 'bg-primary/20 text-primary'
-                                            : 'bg-warning/20 text-warning'
+                                        className={`text-xs px-2 py-1 rounded-full ${reason.pointType === 'Positive'
+                                                ? 'bg-primary/20 text-primary'
+                                                : reason.pointType === 'Negative'
+                                                    ? 'bg-warning/20 text-warning'
+                                                    : 'bg-border text-text-muted'
                                             }`}
                                     >
-                                        {reason.isPositive ? t('common.positive') : t('common.negative')}
+                                        {reason.pointType === 'Positive'
+                                            ? t('common.positive')
+                                            : reason.pointType === 'Negative'
+                                                ? t('common.negative')
+                                                : t('common.neutral')}
                                     </span>
                                 </td>
                                 <td className="py-3 pr-4">
@@ -181,11 +187,11 @@ export default function PointReasonsPage() {
                 <Modal title={t('admin.pointReasons.addTitle')} onClose={() => setShowAddModal(false)}>
                     <PointReasonForm
                         name={addForm.name}
-                        isPositive={addForm.isPositive}
+                        pointType={addForm.pointType}
                         showIsActive={false}
                         isActive={true}
                         onNameChange={(v) => setAddForm((f) => ({ ...f, name: v }))}
-                        onIsPositiveChange={(v) => setAddForm((f) => ({ ...f, isPositive: v }))}
+                        onPointTypeChange={(v) => setAddForm((f) => ({ ...f, pointType: v }))}
                         onIsActiveChange={() => { }}
                         onSubmit={(e) => void handleAdd(e)}
                         onCancel={() => setShowAddModal(false)}
@@ -198,11 +204,11 @@ export default function PointReasonsPage() {
                 <Modal title={t('admin.pointReasons.editReason')} onClose={() => setEditReason(null)}>
                     <PointReasonForm
                         name={editForm.name}
-                        isPositive={editForm.isPositive}
+                        pointType={editForm.pointType}
                         showIsActive={true}
                         isActive={editForm.isActive}
                         onNameChange={(v) => setEditForm((f) => ({ ...f, name: v }))}
-                        onIsPositiveChange={(v) => setEditForm((f) => ({ ...f, isPositive: v }))}
+                        onPointTypeChange={(v) => setEditForm((f) => ({ ...f, pointType: v }))}
                         onIsActiveChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
                         onSubmit={(e) => void handleEdit(e)}
                         onCancel={() => setEditReason(null)}
@@ -217,11 +223,11 @@ export default function PointReasonsPage() {
 
 interface PointReasonFormProps {
     name: string
-    isPositive: boolean
+    pointType: PointType
     showIsActive: boolean
     isActive: boolean
     onNameChange: (v: string) => void
-    onIsPositiveChange: (v: boolean) => void
+    onPointTypeChange: (v: PointType) => void
     onIsActiveChange: (v: boolean) => void
     onSubmit: (e: React.FormEvent) => void
     onCancel: () => void
@@ -229,11 +235,11 @@ interface PointReasonFormProps {
 
 function PointReasonForm({
     name,
-    isPositive,
+    pointType,
     showIsActive,
     isActive,
     onNameChange,
-    onIsPositiveChange,
+    onPointTypeChange,
     onIsActiveChange,
     onSubmit,
     onCancel,
@@ -258,21 +264,31 @@ function PointReasonForm({
                     <input
                         type="radio"
                         name="pr-type"
-                        checked={!isPositive}
-                        onChange={() => onIsPositiveChange(false)}
+                        checked={pointType === 'Negative'}
+                        onChange={() => onPointTypeChange('Negative')}
                         className="accent-[var(--color-warning)]"
                     />
                     {t('common.negative')}
+                </label>
+                <label className="flex items-center gap-2 mb-1 text-sm text-text cursor-pointer">
+                    <input
+                        type="radio"
+                        name="pr-type"
+                        checked={pointType === 'Positive'}
+                        onChange={() => onPointTypeChange('Positive')}
+                        className="accent-[var(--color-primary)]"
+                    />
+                    {t('common.positive')}
                 </label>
                 <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
                     <input
                         type="radio"
                         name="pr-type"
-                        checked={isPositive}
-                        onChange={() => onIsPositiveChange(true)}
-                        className="accent-[var(--color-primary)]"
+                        checked={pointType === 'Neutral'}
+                        onChange={() => onPointTypeChange('Neutral')}
+                        className="accent-[var(--color-text-muted)]"
                     />
-                    {t('common.positive')}
+                    {t('common.neutral')}
                 </label>
             </fieldset>
 

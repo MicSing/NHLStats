@@ -220,6 +220,7 @@ export default function UserStatsPage() {
 
     // When season selection changes, refresh the user list and auto-select first user
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingUsers(true)
         setSelectedUserId(null)
         setUsers([])
@@ -239,11 +240,14 @@ export default function UserStatsPage() {
     // When user or season changes, fetch point-reason breakdown and match history
     useEffect(() => {
         if (selectedUserId == null) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setBreakdownItems([])
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMatchData([])
             return
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingData(true)
 
         Promise.all([

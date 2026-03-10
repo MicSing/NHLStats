@@ -30,6 +30,13 @@ public class UserMatchesController : ControllerBase
     public async Task<IActionResult> GetBySeason(int seasonId) =>
         Ok(await _service.GetBySeasonAsync(seasonId));
 
+    // ── POST api/seasons/{seasonId}/usermatches — Deprecated ─────────────────
+
+    [Authorize]
+    [HttpPost("api/seasons/{seasonId:int}/usermatches")]
+    public IActionResult CreateAggregatedDeprecated(int seasonId) =>
+        BadRequest(new { error = "This endpoint is no longer supported. Use POST /api/seasons/{seasonId}/matches/{matchId}/usermatches instead." });
+
     // ── POST api/seasons/{seasonId}/matches/{matchId}/usermatches ────────────
 
     [Authorize]

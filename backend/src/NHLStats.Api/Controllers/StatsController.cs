@@ -14,6 +14,15 @@ public class SeasonStatsController : ControllerBase
 
     public SeasonStatsController(IStatsService stats) => _stats = stats;
 
+    /// <summary>GET /api/seasons/{seasonId}/stats</summary>
+    /// <remarks>Returns per-user point totals and earnings for the season.</remarks>
+    [HttpGet]
+    public async Task<IActionResult> GetSeasonStats(int seasonId)
+    {
+        var result = await _stats.GetSeasonStatsAsync(seasonId);
+        return Ok(result);
+    }
+
     /// <summary>GET /api/seasons/{seasonId}/stats/weekly</summary>
     /// <remarks>Returns all matches in the season grouped by sequential week number.</remarks>
     [HttpGet("weekly")]
@@ -170,6 +179,15 @@ public class StatsController : ControllerBase
     public async Task<IActionResult> GetFinancialStats()
     {
         var result = await _stats.GetFinancialStatsAsync();
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/stats/earnings</summary>
+    /// <remarks>Returns all-time earnings summary: per-user totals, total collected, total expenses, and balance.</remarks>
+    [HttpGet("earnings")]
+    public async Task<IActionResult> GetEarningsSummary()
+    {
+        var result = await _stats.GetEarningsSummaryAsync();
         return Ok(result);
     }
 }

@@ -59,7 +59,7 @@ function makeRenderCustomLabel(fillColor: string) {
 export default function MinusPointsPieChart({ items }: Props) {
     const ct = useChartTheme()
     // Pre-filter to negatives only (caller may pass already filtered, but guard here too)
-    const negativeItems = items.filter((i) => !i.isPositive)
+    const negativeItems = items.filter((i) => i.pointType === 'Negative')
 
     if (negativeItems.length === 0) {
         return (

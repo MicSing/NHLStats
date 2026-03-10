@@ -1,3 +1,5 @@
+import type { PointType } from './pointReason'
+
 export type GoalType = 'Regular' | 'PowerPlay' | 'ShortHanded'
 
 export interface UserMatch {
@@ -13,7 +15,7 @@ export interface UserMatchPoint {
     userMatchId: number
     pointReasonId: number
     pointReasonName: string | null
-    isPositive: boolean
+    pointType: PointType
     count: number
 }
 

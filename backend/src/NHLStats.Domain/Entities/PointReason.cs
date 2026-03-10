@@ -6,6 +6,6 @@ public class PointReason
     public int Id { get; set; }
     [Required]
     public string Name { get; set; } = null!;
-    public bool IsPositive { get; set; }
+    public PointType PointType { get; set; }
     public bool IsActive { get; set; } = true;
 }

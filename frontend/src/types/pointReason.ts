@@ -1,17 +1,19 @@
+export type PointType = 'Negative' | 'Positive' | 'Neutral'
+
 export interface PointReason {
     id: number
     name: string
-    isPositive: boolean
+    pointType: PointType
     isActive: boolean
 }
 
 export interface CreatePointReasonDto {
     name: string
-    isPositive: boolean
+    pointType: PointType
 }
 
 export interface UpdatePointReasonDto {
     name: string
-    isPositive: boolean
+    pointType: PointType
     isActive: boolean
 }

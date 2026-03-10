@@ -27,11 +27,11 @@ export default function PenaltyPointedChart({ items, rosterPenaltyCount }: Props
     const totalRoster = rosterPenaltyCount
 
     const penaltyPts = items.find(
-        (i) => !i.isPositive && i.pointReasonName.toLowerCase() === 'penalty',
+        (i) => i.pointType === 'Negative' && i.pointReasonName.toLowerCase() === 'penalty',
     )?.totalCount ?? 0
 
     const secPenaltyPts = items.find(
-        (i) => !i.isPositive && i.pointReasonName.toLowerCase() === 'secondary penalty',
+        (i) => i.pointType === 'Negative' && i.pointReasonName.toLowerCase() === 'secondary penalty',
     )?.totalCount ?? 0
 
     const hasData = totalRoster > 0 || penaltyPts > 0 || secPenaltyPts > 0

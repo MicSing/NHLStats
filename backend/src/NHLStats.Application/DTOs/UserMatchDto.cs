@@ -44,7 +44,7 @@ public record UserMatchPointDto(
     int UserMatchId,
     int PointReasonId,
     string? PointReasonName,
-    bool IsPositive,
+    string PointType,
     int Count);
 
 public record CreateUserMatchPointDto(

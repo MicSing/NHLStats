@@ -174,6 +174,7 @@ export default function SeasonPage() {
     useEffect(() => {
         if (!seasonId || !seasonTotals) return
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingData(true)
         setH2hMatches([])
         setH2hExpanded(false)
@@ -273,6 +274,7 @@ export default function SeasonPage() {
         const opponentTeamId =
             upNext.homeTeamId === season.hostedTeamId ? upNext.awayTeamId : upNext.homeTeamId
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingH2H(true)
         statsService
             .getHeadToHead(opponentTeamId, season.hostedTeamId)

@@ -395,7 +395,7 @@ public class UserMatchTests : ApiTestBase
         pointResp.StatusCode.Should().Be(HttpStatusCode.Created);
         var goalResp = await client.PostAsJsonAsync(
             $"/api/usermatches/{umId}/goals",
-            new { rosterPlayerId, count = 1, goalType = "EvenStrength" });
+            new { rosterPlayerId, count = 1, goalType = "Regular" });
         goalResp.StatusCode.Should().Be(HttpStatusCode.Created);
         var penaltyResp = await client.PostAsJsonAsync(
             $"/api/usermatches/{umId}/penalties",

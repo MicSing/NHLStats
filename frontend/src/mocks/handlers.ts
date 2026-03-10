@@ -65,7 +65,8 @@ const mockAggregatedUserMatches = [
 ]
 
 const mockPoints = [
-    { id: 1, userMatchId: 1, pointReasonId: 1, pointReasonName: 'Penalty', isPositive: false, count: 1 },
+    { id: 1, userMatchId: 1, pointReasonId: 1, pointReasonName: 'Penalty', pointType: 'Negative', count: 1 },
+    { id: 2, userMatchId: 1, pointReasonId: 2, pointReasonName: 'Scoring 10 Goals', pointType: 'Positive', count: 2 },
 ]
 
 const mockGoals = [
@@ -202,8 +203,9 @@ const mockRosterPlayers = [
 ]
 
 const mockPointReasons = [
-    { id: 1, name: 'Penalty', isPositive: false, isActive: true },
-    { id: 2, name: 'Scoring 10 Goals', isPositive: true, isActive: true },
+    { id: 1, name: 'Penalty', pointType: 'Negative', isActive: true },
+    { id: 2, name: 'Scoring 10 Goals', pointType: 'Positive', isActive: true },
+    { id: 17, name: 'Shorthanded Goal', pointType: 'Neutral', isActive: true },
 ]
 
 const mockMoneyConfigCurrent = {
@@ -404,12 +406,12 @@ export const handlers = [
     }),
 
     rest.post(`${BASE}/api/pointreasons`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; isPositive: boolean }
-        return res(ctx.status(201), ctx.json({ id: 99, name: body.name, isPositive: body.isPositive, isActive: true }))
+        const body = await req.json() as { name: string; pointType: string }
+        return res(ctx.status(201), ctx.json({ id: 99, name: body.name, pointType: body.pointType, isActive: true }))
     }),
 
     rest.put(`${BASE}/api/pointreasons/:id`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; isPositive: boolean; isActive: boolean }
+        const body = await req.json() as { name: string; pointType: string; isActive: boolean }
         return res(ctx.json({ id: Number(req.params.id), ...body }))
     }),
 
@@ -612,13 +614,13 @@ export const handlers = [
         const body = await req.json() as { pointReasonId: number; count: number }
         return res(
             ctx.status(201),
-            ctx.json({ id: 99, userMatchId: Number(req.params.userMatchId), pointReasonId: body.pointReasonId, pointReasonName: 'Penalty', isPositive: false, count: body.count }),
+            ctx.json({ id: 99, userMatchId: Number(req.params.userMatchId), pointReasonId: body.pointReasonId, pointReasonName: 'Penalty', pointType: 'Negative', count: body.count }),
         )
     }),
 
     rest.put(`${BASE}/api/usermatches/:userMatchId/points/:pointId`, async (req, res, ctx) => {
         const body = await req.json() as { pointReasonId: number; count: number }
-        return res(ctx.json({ id: Number(req.params.pointId), userMatchId: Number(req.params.userMatchId), ...body, pointReasonName: 'Penalty', isPositive: false }))
+        return res(ctx.json({ id: Number(req.params.pointId), userMatchId: Number(req.params.userMatchId), ...body, pointReasonName: 'Penalty', pointType: 'Negative' }))
     }),
 
     rest.delete(`${BASE}/api/usermatches/:userMatchId/points/:pointId`, (_req, res, ctx) => {
@@ -871,8 +873,8 @@ export const handlers = [
             userId: 1,
             userName: 'Player One',
             items: [
-                { pointReasonId: 1, pointReasonName: 'Goal', isPositive: true, totalCount: 5 },
-                { pointReasonId: 2, pointReasonName: 'Penalty', isPositive: false, totalCount: 2 },
+                { pointReasonId: 1, pointReasonName: 'Goal', pointType: 'Positive', totalCount: 5 },
+                { pointReasonId: 2, pointReasonName: 'Penalty', pointType: 'Negative', totalCount: 2 },
             ],
         }))
     }),

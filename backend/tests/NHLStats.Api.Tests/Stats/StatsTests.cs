@@ -611,22 +611,22 @@ public class StatsTests : ApiTestBase
 
         var penalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 1);
         penalty.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        penalty.GetProperty("isPositive").GetBoolean().Should().BeFalse();
+        penalty.GetProperty("pointType").GetString().Should().Be("Negative");
         penalty.GetProperty("totalCount").GetInt32().Should().Be(3);
 
         var secondary = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 2);
         secondary.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        secondary.GetProperty("isPositive").GetBoolean().Should().BeFalse();
+        secondary.GetProperty("pointType").GetString().Should().Be("Negative");
         secondary.GetProperty("totalCount").GetInt32().Should().Be(1);
 
         var lastMinute = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 13);
         lastMinute.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        lastMinute.GetProperty("isPositive").GetBoolean().Should().BeTrue();
+        lastMinute.GetProperty("pointType").GetString().Should().Be("Positive");
         lastMinute.GetProperty("totalCount").GetInt32().Should().Be(2);
 
         var positivePenalty = itemsList.FirstOrDefault(x => x.GetProperty("pointReasonId").GetInt32() == 9);
         positivePenalty.ValueKind.Should().NotBe(JsonValueKind.Undefined);
-        positivePenalty.GetProperty("isPositive").GetBoolean().Should().BeTrue();
+        positivePenalty.GetProperty("pointType").GetString().Should().Be("Positive");
         positivePenalty.GetProperty("totalCount").GetInt32().Should().Be(5);
     }
 

@@ -35,6 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme(): ThemeContextType {
     const ctx = useContext(ThemeContext)
     if (!ctx) throw new Error('useTheme must be used within ThemeProvider')

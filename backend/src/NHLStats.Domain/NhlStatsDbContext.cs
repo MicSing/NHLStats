@@ -95,6 +95,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.Name).IsRequired();
+            b.Property(x => x.PointType).HasConversion<int>();
         });
 
         modelBuilder.Entity<UserMatch>(b =>
@@ -204,23 +205,25 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         var pointReasons = new List<PointReason>
         {
             // Negative reasons
-            new PointReason{ Id=1, Name="Penalty", IsPositive=false, IsActive=true},
-            new PointReason{ Id=2, Name="Secondary Penalty", IsPositive=false, IsActive=true},
-            new PointReason{ Id=3, Name="Not Scoring A Goal", IsPositive=false, IsActive=true},
-            new PointReason{ Id=4, Name="Scoring 10 Goals", IsPositive=false, IsActive=true},
-            new PointReason{ Id=5, Name="Last Minute Action", IsPositive=false, IsActive=true},
-            new PointReason{ Id=6, Name="Own Goal", IsPositive=false, IsActive=true},
-            new PointReason{ Id=7, Name="Error In Defense", IsPositive=false, IsActive=true},
-            new PointReason{ Id=8, Name="Prediction", IsPositive=false, IsActive=true},
+            new PointReason{ Id=1, Name="Penalty", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=2, Name="Secondary Penalty", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=3, Name="Not Scoring A Goal", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=4, Name="Scoring 10 Goals", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=5, Name="Last Minute Action", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=6, Name="Own Goal", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=7, Name="Error In Defense", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=8, Name="Prediction", PointType=PointType.Negative, IsActive=true},
             // Positive reasons (mirrors of the above)
-            new PointReason{ Id=9,  Name="Penalty", IsPositive=true, IsActive=true},
-            new PointReason{ Id=10, Name="Secondary Penalty", IsPositive=true, IsActive=true},
-            new PointReason{ Id=11, Name="Not Scoring A Goal", IsPositive=true, IsActive=true},
-            new PointReason{ Id=12, Name="Scoring 10 Goals", IsPositive=true, IsActive=true},
-            new PointReason{ Id=13, Name="Last Minute Action", IsPositive=true, IsActive=true},
-            new PointReason{ Id=14, Name="Own Goal", IsPositive=true, IsActive=true},
-            new PointReason{ Id=15, Name="Error In Defense", IsPositive=true, IsActive=true},
-            new PointReason{ Id=16, Name="Prediction", IsPositive=true, IsActive=true},
+            new PointReason{ Id=9,  Name="Penalty", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=10, Name="Secondary Penalty", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=11, Name="Not Scoring A Goal", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=12, Name="Scoring 10 Goals", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=13, Name="Last Minute Action", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=14, Name="Own Goal", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=15, Name="Error In Defense", PointType=PointType.Positive, IsActive=true},
+            new PointReason{ Id=16, Name="Prediction", PointType=PointType.Positive, IsActive=true},
+            // Neutral reasons
+            new PointReason{ Id=17, Name="Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
         };
 
         modelBuilder.Entity<PointReason>().HasData(pointReasons);
