@@ -2,7 +2,7 @@ import apiClient from './apiClient'
 import { cacheService } from './cacheService'
 import type {
     HeadToHeadMatch,
-    UserMatchSummary,
+    SeasonMatchHistory,
     UserPointReasonBreakdown,
 } from '../types/stats'
 import type { User } from '../types/user'
@@ -23,9 +23,9 @@ export const statsService = {
     getUserMatchHistory(
         userId: number,
         seasonId?: number,
-    ): Promise<UserMatchSummary[]> {
+    ): Promise<SeasonMatchHistory[]> {
         const query = seasonId != null ? `?seasonId=${seasonId}` : ''
-        return apiClient.get<UserMatchSummary[]>(
+        return apiClient.get<SeasonMatchHistory[]>(
             `/api/stats/users/${userId}/match-history${query}`,
         )
     },

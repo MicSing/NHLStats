@@ -95,11 +95,12 @@ public interface IStatsService
     Task<IEnumerable<HeadToHeadMatchDto>> GetHeadToHeadAsync(int teamId, int hostedTeamId);
 
     /// <summary>
-    /// Returns per-match summary for a user, ordered by MatchDate ascending.
-    /// Opponent is resolved from Season.HostedTeamId: if hosted team is home, opponent is away and vice-versa.
+    /// Returns match history for a user grouped by Season → Week → Match.
+    /// Weeks are sequential numbers assigned from distinct match dates.
+    /// Opponent is resolved from Season.HostedTeamId.
     /// Optionally filtered by seasonId.
     /// </summary>
-    Task<IEnumerable<UserMatchSummaryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null);
+    Task<IEnumerable<SeasonMatchHistoryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null);
 
     /// <summary>
     /// Returns consolidated dashboard data for a season or all seasons aggregated.

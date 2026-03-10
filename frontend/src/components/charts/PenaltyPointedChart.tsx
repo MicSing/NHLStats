@@ -16,20 +16,15 @@ const ROSTER_COLOR = '#ef4444'   // red — actual ice penalties
 const PENALTY_COLOR = '#f97316'  // orange — Penalty point deductions
 const SEC_PEN_COLOR = '#eab308'  // yellow — Secondary Penalty point deductions
 
-interface RosterPenalty {
-    playerName: string
-    count: number
-}
-
 interface Props {
     items: PointReasonBreakdownItem[]
-    rosterPenalties: RosterPenalty[]
+    rosterPenaltyCount: number
 }
 
-export default function PenaltyPointedChart({ items, rosterPenalties }: Props) {
+export default function PenaltyPointedChart({ items, rosterPenaltyCount }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
-    const totalRoster = rosterPenalties.reduce((s, p) => s + p.count, 0)
+    const totalRoster = rosterPenaltyCount
 
     const penaltyPts = items.find(
         (i) => !i.isPositive && i.pointReasonName.toLowerCase() === 'penalty',

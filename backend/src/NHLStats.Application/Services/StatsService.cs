@@ -1007,7 +1007,7 @@ public class StatsService : IStatsService
 
     // ─── User match history ───────────────────────────────────────────────────
 
-    public async Task<IEnumerable<UserMatchSummaryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null)
+    public async Task<IEnumerable<SeasonMatchHistoryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null)
     {
         var query = _db.UserMatches
             .Include(um => um.Match).ThenInclude(m => m!.HomeTeam)
@@ -1023,39 +1023,54 @@ public class StatsService : IStatsService
 
         var userMatches = await query.ToListAsync();
 
-        return userMatches
-            .Select(um =>
+        // Load aggregated season data for this user
+        var aggQuery = _db.UserSeasonAggregatedData
+            .Include(a => a.Season)
+            .Where(a => a.UserId == userId);
+
+        if (seasonId.HasValue)
+            aggQuery = aggQuery.Where(a => a.SeasonId == seasonId.Value);
+
+        var aggregatedData = await aggQuery.ToListAsync();
+        var aggBySeasonId = aggregatedData.ToDictionary(a => a.SeasonId);
+
+        // Map each UserMatch to a flat intermediate with season context
+        var mapped = userMatches.Select(um =>
+        {
+            var match = um.Match!;
+            var hostedTeamId = match.Season?.HostedTeamId;
+
+            bool isHome;
+            string opponentName;
+            string opponentShortName;
+
+            if (hostedTeamId.HasValue)
             {
-                var match = um.Match!;
-                var hostedTeamId = match.Season?.HostedTeamId;
+                isHome = match.HomeTeamId == hostedTeamId.Value;
+                opponentName = isHome
+                    ? (match.AwayTeam?.Name ?? "")
+                    : (match.HomeTeam?.Name ?? "");
+                opponentShortName = isHome
+                    ? (match.AwayTeam?.ShortName ?? "")
+                    : (match.HomeTeam?.ShortName ?? "");
+            }
+            else
+            {
+                isHome = true;
+                opponentName = match.AwayTeam?.Name ?? "";
+                opponentShortName = match.AwayTeam?.ShortName ?? "";
+            }
 
-                bool isHome;
-                string opponentName;
-                string opponentShortName;
+            var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>()).Sum(g => g.Count);
+            var penaltyCount = (um.Penalties ?? Enumerable.Empty<UserMatchPenalty>()).Sum(p => p.Count);
+            var totals = GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>());
 
-                if (hostedTeamId.HasValue)
-                {
-                    isHome = match.HomeTeamId == hostedTeamId.Value;
-                    opponentName = isHome
-                        ? (match.AwayTeam?.Name ?? "")
-                        : (match.HomeTeam?.Name ?? "");
-                    opponentShortName = isHome
-                        ? (match.AwayTeam?.ShortName ?? "")
-                        : (match.HomeTeam?.ShortName ?? "");
-                }
-                else
-                {
-                    isHome = true;
-                    opponentName = match.AwayTeam?.Name ?? "";
-                    opponentShortName = match.AwayTeam?.ShortName ?? "";
-                }
-
-                var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>()).Sum(g => g.Count);
-                var penaltyCount = (um.Penalties ?? Enumerable.Empty<UserMatchPenalty>()).Sum(p => p.Count);
-                var totals = GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>());
-
-                return new UserMatchSummaryDto(
-                    match.Id,
+            return new
+            {
+                SeasonId = um.SeasonId,
+                SeasonName = match.Season?.Name ?? "",
+                MatchDate = match.MatchDate!.Value,
+                Item = new MatchHistoryItemDto(
                     match.MatchDate!.Value,
                     opponentName,
                     opponentShortName,
@@ -1065,12 +1080,82 @@ public class StatsService : IStatsService
                     totals.plus,
                     totals.minus,
                     goalCount,
-                    penaltyCount,
-                    um.SeasonId,
-                    match.Season?.Name ?? "");
+                    penaltyCount)
+            };
+        }).ToList();
+
+        // Build season DTOs from match-based data, merging aggregated totals
+        var matchSeasonIds = mapped.Select(x => x.SeasonId).Distinct().ToHashSet();
+        var result = new List<SeasonMatchHistoryDto>();
+
+        // Seasons that have match data
+        var matchSeasons = mapped
+            .GroupBy(x => x.SeasonId)
+            .OrderBy(g => g.Min(x => x.MatchDate))
+            .Select(seasonGroup =>
+            {
+                var seasonName = seasonGroup.First().SeasonName;
+                var distinctDates = seasonGroup
+                    .Select(x => x.MatchDate.Date)
+                    .Distinct()
+                    .OrderBy(d => d)
+                    .ToList();
+
+                var dateToWeek = distinctDates
+                    .Select((date, index) => new { date, week = index + 1 })
+                    .ToDictionary(x => x.date, x => x.week);
+
+                var weeks = seasonGroup
+                    .GroupBy(x => dateToWeek[x.MatchDate.Date])
+                    .OrderBy(wg => wg.Key)
+                    .Select(wg =>
+                    {
+                        var items = wg.OrderBy(x => x.MatchDate).Select(x => x.Item).ToList();
+                        return new WeekMatchHistoryDto(
+                            wg.Key,
+                            items.Sum(i => i.TotalPlus),
+                            items.Sum(i => i.TotalMinus),
+                            items.Sum(i => i.GoalCount),
+                            items.Sum(i => i.PenaltyCount),
+                            items);
+                    })
+                    .ToList();
+
+                // Merge aggregated data into season-level totals
+                aggBySeasonId.TryGetValue(seasonGroup.Key, out var agg);
+                var aggPlus = agg?.TotalPlus ?? 0;
+                var aggMinus = agg?.TotalMinus ?? 0;
+
+                return new SeasonMatchHistoryDto(
+                    seasonGroup.Key,
+                    seasonName,
+                    weeks.Sum(w => w.TotalPlus) + aggPlus,
+                    weeks.Sum(w => w.TotalMinus) + aggMinus,
+                    weeks.Sum(w => w.GoalCount),
+                    weeks.Sum(w => w.PenaltyCount),
+                    weeks);
             })
-            .OrderBy(s => s.MatchDate)
             .ToList();
+
+        result.AddRange(matchSeasons);
+
+        // Seasons that only have aggregated data (no matches)
+        var aggOnlySeasons = aggregatedData
+            .Where(a => !matchSeasonIds.Contains(a.SeasonId))
+            .OrderBy(a => a.Season?.StartedOn)
+            .Select(a => new SeasonMatchHistoryDto(
+                a.SeasonId,
+                a.Season?.Name ?? "",
+                a.TotalPlus,
+                a.TotalMinus,
+                0,
+                0,
+                Enumerable.Empty<WeekMatchHistoryDto>()))
+            .ToList();
+
+        result.AddRange(aggOnlySeasons);
+
+        return result;
     }
 
     // ─── Head-to-head ─────────────────────────────────────────────────────────

@@ -211,8 +211,7 @@ export interface HeadToHeadMatch {
     userResults: HeadToHeadUserResult[]
 }
 
-export interface UserMatchSummary {
-    matchId: number
+export interface MatchHistoryItem {
     matchDate: string
     opponentName: string
     opponentShortName: string
@@ -223,8 +222,25 @@ export interface UserMatchSummary {
     totalMinus: number
     goalCount: number
     penaltyCount: number
+}
+
+export interface WeekMatchHistory {
+    weekNumber: number
+    totalPlus: number
+    totalMinus: number
+    goalCount: number
+    penaltyCount: number
+    matches: MatchHistoryItem[]
+}
+
+export interface SeasonMatchHistory {
     seasonId: number
     seasonName: string
+    totalPlus: number
+    totalMinus: number
+    goalCount: number
+    penaltyCount: number
+    weeks: WeekMatchHistory[]
 }
 
 export interface DashboardData {

@@ -229,7 +229,12 @@
         "goal_other": "{{count}} goals",
         "penaltyChartSummary": "{{roster}} roster pen · {{pen}} pen · {{secPen}} sec pen",
         "penaltyChartChance": "{{pct}}% chance opponent scores",
-        "penaltyChartExtra": "(+{{pct}}% extra)"
+        "penaltyChartExtra": "(+{{pct}}% extra)",
+        "totalPlus": "Total Plus",
+        "totalMinus": "Total Minus",
+        "netPoints": "Net Points",
+        "goals": "Goals",
+        "matchesPlayed": "Matches"
     },
     "rules": {
         "title": "📋 Rules",

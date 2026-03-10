@@ -67,7 +67,7 @@ public class StatsTests : ApiTestBase
             homeScore = 0,
             awayScore = 0,
             matchDate,
-            completionType = 0
+            completionType = 1
         });
         updateResp.EnsureSuccessStatusCode();
 
@@ -724,7 +724,7 @@ public class StatsTests : ApiTestBase
             homeScore = 2,
             awayScore = 1,
             matchDate,
-            completionType = 0
+            completionType = 1
         });
         updateResp.EnsureSuccessStatusCode();
         return matchId;
@@ -740,6 +740,20 @@ public class StatsTests : ApiTestBase
         });
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task CreateAggregatedDataAsync(HttpClient client, int userId, int seasonId,
+        int totalPlus, int totalMinus, int matchesPlayed)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/users/{userId}/seasons/{seasonId}/aggregated-data", new
+        {
+            userId,
+            seasonId,
+            totalPlus,
+            totalMinus,
+            matchesPlayed
+        });
+        resp.EnsureSuccessStatusCode();
     }
 
     // ─── GET /api/stats/head-to-head/{teamId} ─────────────────────────────────
@@ -919,7 +933,7 @@ public class StatsTests : ApiTestBase
     // ─── GET /api/stats/users/{userId}/match-history — User match history ──────
 
     [Fact]
-    public async Task MatchHistory_ReturnsPerMatchSummary()
+    public async Task MatchHistory_ReturnsHierarchicalStructure()
     {
         var client = await CreateAuthenticatedClientAsync();
         // hosted=LAK(14), opponent=MIN(15)
@@ -927,19 +941,19 @@ public class StatsTests : ApiTestBase
         var userId = await CreateUserAsync(client, "MH Returns Player");
         await AssignUserAsync(client, seasonId, userId);
 
-        // Match 1: 3 plus, 1 minus
+        // Match 1 (week 1): 3 plus, 1 minus
         var m1 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-01T20:00:00");
         var um1 = await CreateUserMatchAsync(client, seasonId, m1, userId);
         await AddPointAsync(client, um1, 9 /* IsPositive */, 3);
         await AddPointAsync(client, um1, 1 /* Penalty */, 1);
 
-        // Match 2: 1 plus, 2 minus
+        // Match 2 (week 2): 1 plus, 2 minus
         var m2 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-08T20:00:00");
         var um2 = await CreateUserMatchAsync(client, seasonId, m2, userId);
         await AddPointAsync(client, um2, 9, 1);
         await AddPointAsync(client, um2, 1, 2);
 
-        // Match 3: 0 plus, 3 minus
+        // Match 3 (week 3): 0 plus, 3 minus
         var m3 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 14, awayTeamId: 15, "2024-02-15T20:00:00");
         var um3 = await CreateUserMatchAsync(client, seasonId, m3, userId);
         await AddPointAsync(client, um3, 1, 3);
@@ -948,11 +962,36 @@ public class StatsTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.ValueKind.Should().Be(JsonValueKind.Array);
-        body.GetArrayLength().Should().Be(3);
 
-        var first = body[0];
-        first.TryGetProperty("matchId", out _).Should().BeTrue();
+        // Root is an array of seasons
+        body.ValueKind.Should().Be(JsonValueKind.Array);
+        body.GetArrayLength().Should().Be(1, "one season");
+
+        var season = body[0];
+        season.TryGetProperty("seasonId", out _).Should().BeTrue();
+        season.TryGetProperty("seasonName", out _).Should().BeTrue();
+        season.TryGetProperty("weeks", out _).Should().BeTrue();
+
+        var weeks = season.GetProperty("weeks");
+        weeks.GetArrayLength().Should().Be(3, "3 distinct dates = 3 weeks");
+
+        // Season-level aggregates: (3+1+0) plus, (1+2+3) minus
+        season.GetProperty("totalPlus").GetInt32().Should().Be(4);
+        season.GetProperty("totalMinus").GetInt32().Should().Be(6);
+
+        // First week should have weekNumber=1 and one match
+        var week1 = weeks[0];
+        week1.GetProperty("weekNumber").GetInt32().Should().Be(1);
+
+        // Week-level aggregates: match 1 has 3 plus, 1 minus
+        week1.GetProperty("totalPlus").GetInt32().Should().Be(3);
+        week1.GetProperty("totalMinus").GetInt32().Should().Be(1);
+
+        var matches = week1.GetProperty("matches");
+        matches.GetArrayLength().Should().Be(1);
+
+        // Verify match fields
+        var first = matches[0];
         first.TryGetProperty("matchDate", out _).Should().BeTrue();
         first.TryGetProperty("opponentName", out _).Should().BeTrue();
         first.TryGetProperty("opponentShortName", out _).Should().BeTrue();
@@ -962,6 +1001,10 @@ public class StatsTests : ApiTestBase
         first.TryGetProperty("totalPlus", out _).Should().BeTrue();
         first.TryGetProperty("totalMinus", out _).Should().BeTrue();
         first.TryGetProperty("goalCount", out _).Should().BeTrue();
+        first.TryGetProperty("penaltyCount", out _).Should().BeTrue();
+
+        // matchId should NOT be in the new model
+        first.TryGetProperty("matchId", out _).Should().BeFalse();
 
         first.GetProperty("totalPlus").GetInt32().Should().Be(3);
         first.GetProperty("totalMinus").GetInt32().Should().Be(1);
@@ -988,15 +1031,18 @@ public class StatsTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(2);
+        body.GetArrayLength().Should().Be(1, "one season");
 
-        // First match (2024-03-01): hosted is home → isHome=true, opponent=NSH
-        var matchA = body[0];
+        var weeks = body[0].GetProperty("weeks");
+        weeks.GetArrayLength().Should().Be(2, "2 distinct dates = 2 weeks");
+
+        // Week 1 match (2024-03-01): hosted is home → isHome=true, opponent=NSH
+        var matchA = weeks[0].GetProperty("matches")[0];
         matchA.GetProperty("isHome").GetBoolean().Should().BeTrue();
         matchA.GetProperty("opponentShortName").GetString().Should().Be("NSH");
 
-        // Second match (2024-03-08): hosted is away → isHome=false, opponent=NSH
-        var matchB = body[1];
+        // Week 2 match (2024-03-08): hosted is away → isHome=false, opponent=NSH
+        var matchB = weeks[1].GetProperty("matches")[0];
         matchB.GetProperty("isHome").GetBoolean().Should().BeFalse();
         matchB.GetProperty("opponentShortName").GetString().Should().Be("NSH");
     }
@@ -1023,8 +1069,9 @@ public class StatsTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(1, "only matches from season 1 should be returned");
-        body[0].GetProperty("matchId").GetInt32().Should().Be(mA);
+        body.GetArrayLength().Should().Be(1, "only season 1 should be returned");
+        body[0].GetProperty("seasonId").GetInt32().Should().Be(s1);
+        body[0].GetProperty("weeks").GetArrayLength().Should().Be(1);
     }
 
     [Fact]
@@ -1051,7 +1098,8 @@ public class StatsTests : ApiTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetArrayLength().Should().Be(1);
-        body[0].GetProperty("goalCount").GetInt32().Should().Be(5);
+        var match = body[0].GetProperty("weeks")[0].GetProperty("matches")[0];
+        match.GetProperty("goalCount").GetInt32().Should().Be(5);
     }
 
     [Fact]
@@ -1075,12 +1123,14 @@ public class StatsTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(1, "unplayed match must be excluded");
-        body[0].GetProperty("matchId").GetInt32().Should().Be(playedId);
+        body.GetArrayLength().Should().Be(1, "one season");
+        var weeks = body[0].GetProperty("weeks");
+        weeks.GetArrayLength().Should().Be(1, "only the played match should appear");
+        weeks[0].GetProperty("matches").GetArrayLength().Should().Be(1, "unplayed match must be excluded");
     }
 
     [Fact]
-    public async Task MatchHistory_OrderedByDateAscending()
+    public async Task MatchHistory_WeeksAndMatchesOrderedCorrectly()
     {
         var client = await CreateAuthenticatedClientAsync();
         // hosted=SJS(24), opponent=SEA(25)
@@ -1088,7 +1138,7 @@ public class StatsTests : ApiTestBase
         var userId = await CreateUserAsync(client, "MH Order Player");
         await AssignUserAsync(client, seasonId, userId);
 
-        // Create matches out of order
+        // Create matches out of order — 3 different dates = 3 weeks
         var m3 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-15T20:00:00");
         var m1 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-01T20:00:00");
         var m2 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 24, awayTeamId: 25, "2024-06-08T20:00:00");
@@ -1101,12 +1151,93 @@ public class StatsTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(3);
+        body.GetArrayLength().Should().Be(1);
 
-        var dates = Enumerable.Range(0, 3)
-            .Select(i => body[i].GetProperty("matchDate").GetDateTime())
+        var weeks = body[0].GetProperty("weeks");
+        weeks.GetArrayLength().Should().Be(3);
+
+        // Week numbers should be sequential 1, 2, 3
+        var weekNumbers = Enumerable.Range(0, 3)
+            .Select(i => weeks[i].GetProperty("weekNumber").GetInt32())
             .ToList();
+        weekNumbers.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+        weekNumbers.Should().BeInAscendingOrder();
 
+        // Matches within weeks should be in date order
+        var dates = Enumerable.Range(0, 3)
+            .Select(i => weeks[i].GetProperty("matches")[0].GetProperty("matchDate").GetDateTime())
+            .ToList();
         dates.Should().BeInAscendingOrder();
+    }
+
+    [Fact]
+    public async Task MatchHistory_MergesAggregatedDataIntoSeasonTotals()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // hosted=ANA(1), opponent=ARI(2)
+        var seasonId = await CreateSeasonWithHostedTeamAsync(client, "MH Agg Merge Season", hostedTeamId: 1);
+        var userId = await CreateUserAsync(client, "MH Agg Merge Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // One match: 3 plus, 1 minus
+        var m1 = await CreateMatchWithTeamsAsync(client, seasonId, homeTeamId: 1, awayTeamId: 2, "2024-02-01T20:00:00");
+        var um1 = await CreateUserMatchAsync(client, seasonId, m1, userId);
+        await AddPointAsync(client, um1, 9 /* IsPositive */, 3);
+        await AddPointAsync(client, um1, 1 /* Penalty */, 1);
+
+        // Aggregated data for same season: 10 plus, 5 minus
+        await CreateAggregatedDataAsync(client, userId, seasonId, totalPlus: 10, totalMinus: 5, matchesPlayed: 4);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(1, "one season");
+
+        var season = body[0];
+        // Season totals should merge: match(3+10=13 plus, 1+5=6 minus)
+        season.GetProperty("totalPlus").GetInt32().Should().Be(13);
+        season.GetProperty("totalMinus").GetInt32().Should().Be(6);
+
+        // Week totals remain match-only (no aggregated data)
+        var week1 = season.GetProperty("weeks")[0];
+        week1.GetProperty("totalPlus").GetInt32().Should().Be(3);
+        week1.GetProperty("totalMinus").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MatchHistory_IncludesAggregatedOnlySeasons()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        // Season with matches: hosted=BOS(3), opponent=BUF(4)
+        var matchSeason = await CreateSeasonWithHostedTeamAsync(client, "MH AggOnly Match Season", hostedTeamId: 3, "2024-01-01T00:00:00");
+        // Season with aggregated data only (no matches)
+        var aggSeason = await CreateSeasonWithHostedTeamAsync(client, "MH AggOnly Agg Season", hostedTeamId: 3, "2023-01-01T00:00:00");
+
+        var userId = await CreateUserAsync(client, "MH AggOnly Player");
+        await AssignUserAsync(client, matchSeason, userId);
+        await AssignUserAsync(client, aggSeason, userId);
+
+        // Match in first season
+        var m1 = await CreateMatchWithTeamsAsync(client, matchSeason, homeTeamId: 3, awayTeamId: 4, "2024-02-01T20:00:00");
+        await CreateUserMatchAsync(client, matchSeason, m1, userId);
+
+        // Aggregated data in second season only
+        await CreateAggregatedDataAsync(client, userId, aggSeason, totalPlus: 20, totalMinus: 8, matchesPlayed: 6);
+
+        var resp = await client.GetAsync($"/api/stats/users/{userId}/match-history");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(2, "two seasons: one with matches + one aggregated-only");
+
+        // Find the aggregated-only season
+        var aggSeasonDto = Enumerable.Range(0, body.GetArrayLength())
+            .Select(i => body[i])
+            .First(s => s.GetProperty("seasonId").GetInt32() == aggSeason);
+
+        aggSeasonDto.GetProperty("totalPlus").GetInt32().Should().Be(20);
+        aggSeasonDto.GetProperty("totalMinus").GetInt32().Should().Be(8);
+        aggSeasonDto.GetProperty("weeks").GetArrayLength().Should().Be(0, "no matches = no weeks");
     }
 }

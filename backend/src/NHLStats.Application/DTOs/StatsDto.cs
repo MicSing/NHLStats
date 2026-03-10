@@ -179,8 +179,7 @@ public record HeadToHeadMatchDto(
 
 // ─── User match history ───────────────────────────────────────────────────────
 
-public record UserMatchSummaryDto(
-    int MatchId,
+public record MatchHistoryItemDto(
     DateTime MatchDate,
     string OpponentName,
     string OpponentShortName,
@@ -190,9 +189,24 @@ public record UserMatchSummaryDto(
     int TotalPlus,
     int TotalMinus,
     int GoalCount,
+    int PenaltyCount);
+
+public record WeekMatchHistoryDto(
+    int WeekNumber,
+    int TotalPlus,
+    int TotalMinus,
+    int GoalCount,
     int PenaltyCount,
+    IEnumerable<MatchHistoryItemDto> Matches);
+
+public record SeasonMatchHistoryDto(
     int SeasonId,
-    string SeasonName);
+    string SeasonName,
+    int TotalPlus,
+    int TotalMinus,
+    int GoalCount,
+    int PenaltyCount,
+    IEnumerable<WeekMatchHistoryDto> Weeks);
 
 // ─── Consolidated dashboard data ──────────────────────────────────────────────
 

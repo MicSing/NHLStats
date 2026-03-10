@@ -229,7 +229,12 @@
         "goal_other": "{{count}} gólov",
         "penaltyChartSummary": "{{roster}} trest. zo zostavy · {{pen}} trest. · {{secPen}} druhotný trest.",
         "penaltyChartChance": "{{pct}}% šanca, že súper skóruje",
-        "penaltyChartExtra": "(+{{pct}}% navyše)"
+        "penaltyChartExtra": "(+{{pct}}% navyše)",
+        "totalPlus": "Celkove plus",
+        "totalMinus": "Celkove mínus",
+        "netPoints": "Čisté body",
+        "goals": "Góly",
+        "matchesPlayed": "Zápasy"
     },
     "rules": {
         "title": "📋 Pravidlá",

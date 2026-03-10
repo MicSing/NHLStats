@@ -10,7 +10,7 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
-import type { UserMatchSummary } from '../../types/stats'
+import type { SeasonMatchHistory } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
 import { useTranslation } from 'react-i18next'
 
@@ -18,42 +18,7 @@ const WEEK_OPTIONS = [4, 8, 12, 16] as const
 type WeekOption = typeof WEEK_OPTIONS[number] | 'all'
 
 interface Props {
-    matches: UserMatchSummary[]
-}
-
-/** Compute sequential week groups per season, sorted chronologically. */
-function computeSeasonWeekGroups(matches: UserMatchSummary[]): {
-    seasonName: string; weekNumber: number; matches: UserMatchSummary[]
-}[] {
-    const bySeasonId = new Map<number, UserMatchSummary[]>()
-    for (const m of matches) {
-        const group = bySeasonId.get(m.seasonId) ?? []
-        group.push(m)
-        bySeasonId.set(m.seasonId, group)
-    }
-    const weekGroups: { seasonId: number; seasonName: string; weekNumber: number; matches: UserMatchSummary[] }[] = []
-    for (const [seasonId, seasonMatches] of bySeasonId) {
-        const seasonName = seasonMatches[0].seasonName
-        const distinctDates = [...new Set(seasonMatches.map((m) => m.matchDate.slice(0, 10)))].sort()
-        const dateToWeek = new Map<string, number>()
-        distinctDates.forEach((date, idx) => dateToWeek.set(date, idx + 1))
-        const weekMap = new Map<number, UserMatchSummary[]>()
-        for (const m of seasonMatches) {
-            const wn = dateToWeek.get(m.matchDate.slice(0, 10)) ?? 1
-            const group = weekMap.get(wn) ?? []
-            group.push(m)
-            weekMap.set(wn, group)
-        }
-        for (const [wn, ms] of weekMap) {
-            weekGroups.push({ seasonId, seasonName, weekNumber: wn, matches: ms })
-        }
-    }
-    weekGroups.sort((a, b) => {
-        const dateA = Math.min(...a.matches.map((m) => new Date(m.matchDate).getTime()))
-        const dateB = Math.min(...b.matches.map((m) => new Date(m.matchDate).getTime()))
-        return dateA - dateB
-    })
-    return weekGroups
+    seasons: SeasonMatchHistory[]
 }
 
 function abbreviateSeasonName(name: string): string {
@@ -61,12 +26,13 @@ function abbreviateSeasonName(name: string): string {
     return m ? `S${m[1]}` : name
 }
 
-export default function UserWeekTrendChart({ matches }: Props) {
+export default function UserWeekTrendChart({ seasons }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
     const [weekLimit, setWeekLimit] = useState<WeekOption>(12)
 
-    if (matches.length === 0) {
+    const totalMatches = seasons.reduce((sum, s) => sum + s.weeks.reduce((ws, w) => ws + w.matches.length, 0), 0)
+    if (totalMatches === 0) {
         return (
             <div role="img" aria-label="user week trend chart" className="w-full flex items-center justify-center py-12">
                 <p className="text-text-muted text-sm">{t('trendChart.noData')}</p>
@@ -74,32 +40,28 @@ export default function UserWeekTrendChart({ matches }: Props) {
         )
     }
 
-    // Group matches by season week number
-    const weekGroups = computeSeasonWeekGroups(matches)
-
     const avgPlusLabel = t('trendChart.avgPlus')
     const avgMinusLabel = t('trendChart.avgMinus')
     const avgGoalsLabel = t('trendChart.avgGoals')
 
-    // Build chart data sorted chronologically, then slice to the chosen window
-    const allChartData = weekGroups.map(({ seasonName, weekNumber, matches: ms }) => {
-        const count = ms.length
-        const totalPlus = ms.reduce((s, m) => s + m.totalPlus, 0)
-        const totalMinus = ms.reduce((s, m) => s + m.totalMinus, 0)
-        const totalGoals = ms.reduce((s, m) => s + m.goalCount, 0)
-        const abbr = abbreviateSeasonName(seasonName)
-        return {
-            label: `${abbr} W${weekNumber}`,
-            fullLabel: t('trendChart.seasonWeekLabel', { season: seasonName, week: weekNumber }),
-            matchCount: count,
-            [avgPlusLabel]: parseFloat((totalPlus / count).toFixed(1)),
-            [avgMinusLabel]: parseFloat((totalMinus / count).toFixed(1)),
-            [avgGoalsLabel]: parseFloat((totalGoals / count).toFixed(1)),
-            _totalPlus: totalPlus,
-            _totalMinus: totalMinus,
-            _totalGoals: totalGoals,
-        }
-    })
+    // Data arrives pre-grouped with aggregates; flatten into chart data points
+    const allChartData = seasons.flatMap((s) =>
+        s.weeks.map((w) => {
+            const count = w.matches.length
+            const abbr = abbreviateSeasonName(s.seasonName)
+            return {
+                label: `${abbr} W${w.weekNumber}`,
+                fullLabel: t('trendChart.seasonWeekLabel', { season: s.seasonName, week: w.weekNumber }),
+                matchCount: count,
+                [avgPlusLabel]: parseFloat((w.totalPlus / count).toFixed(1)),
+                [avgMinusLabel]: parseFloat((w.totalMinus / count).toFixed(1)),
+                [avgGoalsLabel]: parseFloat((w.goalCount / count).toFixed(1)),
+                _totalPlus: w.totalPlus,
+                _totalMinus: w.totalMinus,
+                _totalGoals: w.goalCount,
+            }
+        }),
+    )
 
     const chartData =
         weekLimit === 'all' ? allChartData : allChartData.slice(-weekLimit)

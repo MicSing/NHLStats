@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
 import type { User } from '../types/user'
-import type { PointReasonBreakdownItem, RosterPenalizedByUser, UserMatchSummary } from '../types/stats'
-import apiClient from '../services/apiClient'
+import type { MatchHistoryItem, PointReasonBreakdownItem, SeasonMatchHistory } from '../types/stats'
 import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
@@ -23,24 +22,14 @@ function teamLogoUrl(shortName: string): string {
     return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
 }
 
-/** Compute sequential week numbers per season: seasonId → (dateStr → weekNumber) */
-function computeWeekNumbersBySeasonId(matches: UserMatchSummary[]): Map<number, Map<string, number>> {
-    const bySeasonId = new Map<number, UserMatchSummary[]>()
-    for (const m of matches) {
-        const group = bySeasonId.get(m.seasonId) ?? []
-        group.push(m)
-        bySeasonId.set(m.seasonId, group)
-    }
-    const result = new Map<number, Map<string, number>>()
-    for (const [seasonId, seasonMatches] of bySeasonId) {
-        const distinctDates = [...new Set(seasonMatches.map((m) => m.matchDate.slice(0, 10)))].sort()
-        const dateToWeek = new Map<string, number>()
-        distinctDates.forEach((date, idx) => dateToWeek.set(date, idx + 1))
-        result.set(seasonId, dateToWeek)
-    }
-    return result
+/** A match with its season/week context attached for display */
+interface MatchWithContext extends MatchHistoryItem {
+    seasonId: number
+    seasonName: string
+    weekNumber: number
 }
 
+/** Aggregated week summary derived from SeasonMatchHistory */
 interface WeekSummary {
     seasonId: number
     seasonName: string
@@ -54,40 +43,39 @@ interface WeekSummary {
     opponents: { name: string; shortName: string }[]
 }
 
-function groupMatchesByWeek(matches: UserMatchSummary[]): WeekSummary[] {
-    const weeksBySeasonId = computeWeekNumbersBySeasonId(matches)
-    const weekMap = new Map<string, UserMatchSummary[]>()
-    for (const m of matches) {
-        const wn = weeksBySeasonId.get(m.seasonId)?.get(m.matchDate.slice(0, 10)) ?? 1
-        const key = `${m.seasonId}:${wn}`
-        const group = weekMap.get(key) ?? []
-        group.push(m)
-        weekMap.set(key, group)
-    }
-    return Array.from(weekMap.entries())
-        .map(([, ms]) => {
-            const seasonId = ms[0].seasonId
-            const wn = weeksBySeasonId.get(seasonId)?.get(ms[0].matchDate.slice(0, 10)) ?? 1
-            return {
-                seasonId,
-                seasonName: ms[0].seasonName,
-                weekNumber: wn,
-                matchDates: [...new Set(ms.map((m) => m.matchDate.slice(0, 10)))].sort(),
-                matchCount: ms.length,
-                totalPlus: ms.reduce((s, m) => s + m.totalPlus, 0),
-                totalMinus: ms.reduce((s, m) => s + m.totalMinus, 0),
-                goalCount: ms.reduce((s, m) => s + m.goalCount, 0),
-                penaltyCount: ms.reduce((s, m) => s + m.penaltyCount, 0),
-                opponents: ms.map((m) => ({ name: m.opponentName, shortName: m.opponentShortName })),
-            }
-        })
-        .sort((a, b) => {
-            if (a.seasonId !== b.seasonId) return a.seasonId - b.seasonId
-            return a.weekNumber - b.weekNumber
-        })
+/** Flatten seasons → weeks → matches into a flat list with context */
+function flattenMatches(data: SeasonMatchHistory[]): MatchWithContext[] {
+    return data.flatMap((s) =>
+        s.weeks.flatMap((w) =>
+            w.matches.map((m) => ({
+                ...m,
+                seasonId: s.seasonId,
+                seasonName: s.seasonName,
+                weekNumber: w.weekNumber,
+            })),
+        ),
+    )
 }
 
-function MatchCard({ title, match, seasonWeekLabel }: { title: string; match: UserMatchSummary | null; seasonWeekLabel?: string }) {
+/** Flatten seasons → weeks into WeekSummary list, using pre-computed aggregates */
+function flattenWeeks(data: SeasonMatchHistory[]): WeekSummary[] {
+    return data.flatMap((s) =>
+        s.weeks.map((w) => ({
+            seasonId: s.seasonId,
+            seasonName: s.seasonName,
+            weekNumber: w.weekNumber,
+            matchDates: [...new Set(w.matches.map((m) => m.matchDate.slice(0, 10)))].sort(),
+            matchCount: w.matches.length,
+            totalPlus: w.totalPlus,
+            totalMinus: w.totalMinus,
+            goalCount: w.goalCount,
+            penaltyCount: w.penaltyCount,
+            opponents: w.matches.map((m) => ({ name: m.opponentName, shortName: m.opponentShortName })),
+        })),
+    )
+}
+
+function MatchCard({ title, match, seasonWeekLabel }: { title: string; match: MatchHistoryItem | null; seasonWeekLabel?: string }) {
     const { t } = useTranslation()
     if (!match) {
         return (
@@ -213,20 +201,19 @@ export default function UserStatsPage() {
     const [loadingUsers, setLoadingUsers] = useState(false)
     const [loadingData, setLoadingData] = useState(false)
     const [breakdownItems, setBreakdownItems] = useState<PointReasonBreakdownItem[]>([])
-    const [matchHistory, setMatchHistory] = useState<UserMatchSummary[]>([])
-    const [rosterPenalties, setRosterPenalties] = useState<{ playerName: string; count: number }[]>([])
+    const [matchData, setMatchData] = useState<SeasonMatchHistory[]>([])
+
 
     // Load seasons on mount
     useEffect(() => {
-        apiClient
-            .get<Season[]>('/api/seasons')
+        cacheService
+            .getSeasons()
             .then((data) => {
                 const sorted = [...data].sort(
                     (a, b) =>
                         new Date(b.startedOn).getTime() - new Date(a.startedOn).getTime(),
                 )
                 setSeasons(sorted)
-                // Default to "All seasons" (null)
             })
             .finally(() => setLoadingSeasons(false))
     }, [])
@@ -237,15 +224,9 @@ export default function UserStatsPage() {
         setSelectedUserId(null)
         setUsers([])
         setBreakdownItems([])
-        setMatchHistory([])
-        setRosterPenalties([])
+        setMatchData([])
 
-        const promise: Promise<User[]> =
-            selectedSeasonId != null
-                ? cacheService.getUsers()
-                : cacheService.getUsers()
-
-        promise
+        cacheService.getUsers()
             .then((fetched) => {
                 const active = fetched.filter((u) => u.isActive !== false)
                 setUsers(active)
@@ -259,33 +240,11 @@ export default function UserStatsPage() {
     useEffect(() => {
         if (selectedUserId == null) {
             setBreakdownItems([])
-            setMatchHistory([])
+            setMatchData([])
             return
         }
 
         setLoadingData(true)
-
-        const fetchRosterPenalties: Promise<{ playerName: string; count: number }[]> =
-            selectedSeasonId != null
-                ? apiClient
-                    .get<RosterPenalizedByUser[]>(
-                        `/api/seasons/${selectedSeasonId}/stats/roster-penalized-by-user`,
-                    )
-                    .then((data) =>
-                        data
-                            .flatMap((p) =>
-                                p.userCounts
-                                    .filter((uc) => uc.userId === selectedUserId)
-                                    .map((uc) => ({
-                                        playerName: `${p.firstName} ${p.surname}${p.teamShortName ? ` (${p.teamShortName})` : ''}`,
-                                        count: uc.count,
-                                    }))
-                            )
-                            .filter((p) => p.count > 0)
-                            .sort((a, b) => b.count - a.count),
-                    )
-                    .catch(() => [])
-                : Promise.resolve([])
 
         Promise.all([
             statsService.getUserPointReasonBreakdown(
@@ -296,57 +255,60 @@ export default function UserStatsPage() {
                 selectedUserId,
                 selectedSeasonId ?? undefined,
             ),
-            fetchRosterPenalties,
         ])
-            .then(([breakdown, history, rosterPens]) => {
+            .then(([breakdown, history]) => {
                 setBreakdownItems(breakdown.items)
-                setMatchHistory(history)
-                setRosterPenalties(rosterPens)
+                setMatchData(history)
             })
             .catch(() => {
                 setBreakdownItems([])
-                setMatchHistory([])
-                setRosterPenalties([])
+                setMatchData([])
             })
             .finally(() => setLoadingData(false))
     }, [selectedUserId, selectedSeasonId])
 
+    // ── Derived data from hierarchical matchData ────────────────────
+    const allMatches = flattenMatches(matchData)
+    const allWeeks = flattenWeeks(matchData)
+
+    // Overall totals from season-level aggregates (includes UserSeasonAggregatedData)
+    const overallTotalPlus = matchData.reduce((sum, s) => sum + s.totalPlus, 0)
+    const overallTotalMinus = matchData.reduce((sum, s) => sum + s.totalMinus, 0)
+    const overallGoalCount = matchData.reduce((sum, s) => sum + s.goalCount, 0)
+    const overallPenaltyCount = matchData.reduce((sum, s) => sum + s.penaltyCount, 0)
+    const overallMatchCount = allMatches.length
+
     // Best match: max(plus − minus), then most goals, then fewest penalties
-    function compareBest(a: UserMatchSummary, b: UserMatchSummary): number {
+    function compareBest(a: MatchHistoryItem, b: MatchHistoryItem): number {
         const netA = a.totalPlus - a.totalMinus
         const netB = b.totalPlus - b.totalMinus
-        if (netB !== netA) return netB - netA          // higher net wins
-        if (b.goalCount !== a.goalCount) return b.goalCount - a.goalCount  // more goals wins
-        return a.penaltyCount - b.penaltyCount          // fewer penalties wins
+        if (netB !== netA) return netB - netA
+        if (b.goalCount !== a.goalCount) return b.goalCount - a.goalCount
+        return a.penaltyCount - b.penaltyCount
     }
 
     // Worst match: max(minus − plus), then most penalties, then fewest goals
-    function compareWorst(a: UserMatchSummary, b: UserMatchSummary): number {
+    function compareWorst(a: MatchHistoryItem, b: MatchHistoryItem): number {
         const netA = a.totalMinus - a.totalPlus
         const netB = b.totalMinus - b.totalPlus
-        if (netB !== netA) return netB - netA          // higher deficit wins
-        if (b.penaltyCount !== a.penaltyCount) return b.penaltyCount - a.penaltyCount  // more penalties wins
-        return a.goalCount - b.goalCount                // fewer goals wins
+        if (netB !== netA) return netB - netA
+        if (b.penaltyCount !== a.penaltyCount) return b.penaltyCount - a.penaltyCount
+        return a.goalCount - b.goalCount
     }
 
-    const bestMatch = matchHistory.length > 0
-        ? [...matchHistory].sort(compareBest)[0]
+    const bestMatch = allMatches.length > 0
+        ? [...allMatches].sort(compareBest)[0]
         : null
 
-    const worstMatch = matchHistory.length > 0
-        ? [...matchHistory].sort(compareWorst)[0]
+    const worstMatch = allMatches.length > 0
+        ? [...allMatches].sort(compareWorst)[0]
         : null
 
-    // ── Season/Week lookup ──────────────────────────────────────────
-    const weeksBySeasonId = computeWeekNumbersBySeasonId(matchHistory)
-    function getSeasonWeekLabel(m: UserMatchSummary): string {
-        const wn = weeksBySeasonId.get(m.seasonId)?.get(m.matchDate.slice(0, 10)) ?? 1
-        return t('userStats.seasonWeekLabel', { season: m.seasonName, week: wn })
+    function getSeasonWeekLabel(m: MatchWithContext): string {
+        return t('userStats.seasonWeekLabel', { season: m.seasonName, week: m.weekNumber })
     }
 
     // ── Best / Worst Week ───────────────────────────────────────────
-    const weeks = groupMatchesByWeek(matchHistory)
-
     function compareWeekBest(a: WeekSummary, b: WeekSummary): number {
         const netA = a.totalPlus - a.totalMinus
         const netB = b.totalPlus - b.totalMinus
@@ -363,12 +325,12 @@ export default function UserStatsPage() {
         return a.goalCount - b.goalCount
     }
 
-    const bestWeek = weeks.length > 0
-        ? [...weeks].sort(compareWeekBest)[0]
+    const bestWeek = allWeeks.length > 0
+        ? [...allWeeks].sort(compareWeekBest)[0]
         : null
 
-    const worstWeek = weeks.length > 0
-        ? [...weeks].sort(compareWeekWorst)[0]
+    const worstWeek = allWeeks.length > 0
+        ? [...allWeeks].sort(compareWeekWorst)[0]
         : null
 
     return (
@@ -416,13 +378,41 @@ export default function UserStatsPage() {
                 )}
             </div>
 
+            {/* ── Overall summary stats (includes aggregated data) ────── */}
+            {matchData.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="bg-surface rounded-xl p-4 text-center">
+                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wide">{t('userStats.totalPlus')}</p>
+                        <p className="text-success text-2xl font-bold mt-1">+{overallTotalPlus}</p>
+                    </div>
+                    <div className="bg-surface rounded-xl p-4 text-center">
+                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wide">{t('userStats.totalMinus')}</p>
+                        <p className="text-danger text-2xl font-bold mt-1">−{overallTotalMinus}</p>
+                    </div>
+                    <div className="bg-surface rounded-xl p-4 text-center">
+                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wide">{t('userStats.netPoints')}</p>
+                        <p className={`text-2xl font-bold mt-1 ${overallTotalPlus - overallTotalMinus >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {overallTotalPlus - overallTotalMinus >= 0 ? '+' : ''}{overallTotalPlus - overallTotalMinus}
+                        </p>
+                    </div>
+                    <div className="bg-surface rounded-xl p-4 text-center">
+                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wide">{t('userStats.goals')}</p>
+                        <p className="text-text text-2xl font-bold mt-1">{overallGoalCount}</p>
+                    </div>
+                    <div className="bg-surface rounded-xl p-4 text-center">
+                        <p className="text-text-muted text-xs font-semibold uppercase tracking-wide">{t('userStats.matchesPlayed')}</p>
+                        <p className="text-text text-2xl font-bold mt-1">{overallMatchCount}</p>
+                    </div>
+                </div>
+            )}
+
             {/* ── Top row: Penalty/Pointed bar chart + Minus-points pie ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-surface rounded-xl p-4">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
                         {t('userStats.penalties')}
                     </h2>
-                    <PenaltyPointedChart items={breakdownItems} rosterPenalties={rosterPenalties} />
+                    <PenaltyPointedChart items={breakdownItems} rosterPenaltyCount={overallPenaltyCount} />
                 </div>
                 <div className="bg-surface rounded-xl p-4">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
@@ -437,7 +427,7 @@ export default function UserStatsPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
                     {t('userStats.weekTrend')}
                 </h2>
-                <UserWeekTrendChart matches={matchHistory} />
+                <UserWeekTrendChart seasons={matchData} />
             </div>
 
             {/* ── Bottom row: best / worst match highlight cards ─────────── */}
