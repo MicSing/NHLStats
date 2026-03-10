@@ -70,9 +70,10 @@ describe('EarningsExpensesPage — balance summary', () => {
         renderWithProviders(<EarningsExpensesPage />)
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
-        expect(screen.getByText(/can be collected/i)).toBeInTheDocument()
-        expect(screen.getByText(/total collected/i)).toBeInTheDocument()
-        expect(screen.getByText(/total expenses/i)).toBeInTheDocument()
+        const summary = screen.getByTestId('balance-summary')
+        expect(summary).toHaveTextContent(/can be collected/i)
+        expect(summary).toHaveTextContent(/total collected/i)
+        expect(summary).toHaveTextContent(/total expenses/i)
     })
 
     test('displays correct summary values', async () => {

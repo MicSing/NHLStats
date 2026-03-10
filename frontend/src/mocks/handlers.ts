@@ -79,6 +79,39 @@ const mockSeasonStats = [
     { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
 ]
 
+const mockSeasonTotals = {
+    usersData: [
+        {
+            seasonId: 1,
+            usersData: [
+                { userId: 1, totalPlus: 5, totalMinus: 3, totalGoals: 3, totalPenalties: 3, earnings: 0.75 },
+            ],
+        },
+        {
+            seasonId: 2,
+            usersData: [
+                { userId: 1, totalPlus: 4, totalMinus: 1, totalGoals: 2, totalPenalties: 1, earnings: 0.75 },
+            ],
+        },
+    ],
+    topRosterPlayers: [
+        {
+            seasonId: 1,
+            topScorer: { name: 'Connor McDavid', count: 10 },
+            topPenalty: { name: 'Connor McDavid', count: 3 },
+            topPpScorer: null,
+            topShScorer: null,
+        },
+        {
+            seasonId: 2,
+            topScorer: null,
+            topPenalty: null,
+            topPpScorer: null,
+            topShScorer: null,
+        },
+    ],
+}
+
 const mockDashboardSeasonStats = [
     {
         seasonId: 1,
@@ -556,6 +589,10 @@ export const handlers = [
     rest.get(`${BASE}/api/seasons/:seasonId/stats`, (req, res, ctx) => {
         if (Number(req.params.seasonId) === 1) return res(ctx.json(mockSeasonStats))
         return res(ctx.json([]))
+    }),
+
+    rest.get(`${BASE}/api/stats/season`, (_req, res, ctx) => {
+        return res(ctx.json(mockSeasonTotals))
     }),
 
     // ── Aggregated Season Data ────────────────────────────────────────────────

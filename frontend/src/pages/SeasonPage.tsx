@@ -142,6 +142,7 @@ export default function SeasonPage() {
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingData, setLoadingData] = useState(false)
+    const [aggregatedEntries, setAggregatedEntries] = useState<{ id: number; userId: number; userName: string; totalPlus: number; totalMinus: number; matchesPlayed: number }[]>([])
     const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
     const [loadingH2H, setLoadingH2H] = useState(false)
     const [h2hExpanded, setH2hExpanded] = useState(false)
@@ -188,8 +189,9 @@ export default function SeasonPage() {
             apiClient.get<WeekGroup[]>(`/api/seasons/${seasonId}/stats/weekly`),
             cacheService.getUsers(),
             apiClient.get<Match[]>(`/api/seasons/${seasonId}/matches`),
+            apiClient.get<{ id: number; userId: number; seasonId: number; totalPlus: number; totalMinus: number; matchesPlayed: number }[]>(`/api/seasons/${seasonId}/aggregated-data`),
         ])
-            .then(([weeks, users, matches]) => {
+            .then(([weeks, users, matches, aggData]) => {
                 const userNameById = new Map(users.map(u => [u.id, u.name]))
 
                 // Map SeasonUserData to UserSeasonStats format
@@ -247,6 +249,15 @@ export default function SeasonPage() {
                     }
                     : null
 
+                const aggEntries = aggData.map(e => ({
+                    id: e.id,
+                    userId: e.userId,
+                    userName: userNameById.get(e.userId) ?? `User ${e.userId}`,
+                    totalPlus: e.totalPlus,
+                    totalMinus: e.totalMinus,
+                    matchesPlayed: e.matchesPlayed,
+                }))
+
                 setWeekGroups(weeks)
                 setStats(seasonStats)
                 setTopScorer(scorer)
@@ -255,6 +266,7 @@ export default function SeasonPage() {
                 setTopShScorer(shScorer)
                 setAllMatches(matches)
                 setUserTotals(totals)
+                setAggregatedEntries(aggEntries)
             })
             .finally(() => setLoadingData(false))
     }, [seasonId, seasonTotals])
@@ -349,6 +361,37 @@ export default function SeasonPage() {
                                                     </tr>
                                                 )
                                             })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Aggregated Entries */}
+                        {aggregatedEntries.length > 0 && (
+                            <section className="mb-8" aria-label={t('season.aggregatedEntries')}>
+                                <h2 className="text-lg font-semibold mb-3 text-primary/80">
+                                    {t('season.aggregatedEntries')}
+                                </h2>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="text-left text-text-muted border-b border-border">
+                                                <th className="pb-2">{t('season.player')}</th>
+                                                <th className="pb-2">+</th>
+                                                <th className="pb-2">−</th>
+                                                <th className="pb-2">{t('match.matchesPlayed', { defaultValue: 'Matches Played' })}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {aggregatedEntries.map((e) => (
+                                                <tr key={e.id} className="border-b border-border">
+                                                    <td className="py-2">{e.userName}</td>
+                                                    <td className="py-2 text-success">{e.totalPlus}</td>
+                                                    <td className="py-2 text-danger">{e.totalMinus}</td>
+                                                    <td className="py-2">{e.matchesPlayed}</td>
+                                                </tr>
+                                            ))}
                                         </tbody>
                                     </table>
                                 </div>
