@@ -21,10 +21,8 @@ type Tab = 'goals' | 'penalties' | 'points'
 
 interface GoalModal {
     goalType: GoalType
-    selectedUserMatchId: number | ''
+    pointRecipientUserMatchId: number | ''
     pointReasonId: number | ''
-    rosterPlayerId: number | ''
-    count: number
 }
 
 interface Props {
@@ -112,29 +110,29 @@ export default function UserMatchCard({
     }
 
     const handleOpenGoalModal = (goalType: GoalType) => {
-        const modalReasons = goalType === 'PowerPlay'
-            ? positiveReasons.filter((r) => r.isActive)
-            : neutralReasons.filter((r) => r.isActive)
-        const preselectedReason = modalReasons.length === 1 ? modalReasons[0].id : ''
+        const activePositiveReasons = positiveReasons.filter((r) => r.isActive)
+        const activeNeutralReasons = neutralReasons.filter((r) => r.isActive)
+        const preselectedReason = goalType === 'PowerPlay'
+            ? (activePositiveReasons.find((r) => r.name === 'Penalty')?.id ?? (activePositiveReasons.length === 1 ? activePositiveReasons[0].id : ''))
+            : (activeNeutralReasons.find((r) => r.name === 'Shorthanded Goal')?.id ?? (activeNeutralReasons.length === 1 ? activeNeutralReasons[0].id : ''))
         setGoalModal({
             goalType,
-            selectedUserMatchId: um.id,
+            pointRecipientUserMatchId: '',
             pointReasonId: preselectedReason,
-            rosterPlayerId: goalForm.rosterPlayerId,
-            count: 1,
         })
     }
 
     const handleGoalModalConfirm = async () => {
-        if (!goalModal || goalModal.selectedUserMatchId === '' || goalModal.pointReasonId === '' || goalModal.rosterPlayerId === '') return
+        if (!goalModal || goalModal.pointRecipientUserMatchId === '' || goalModal.pointReasonId === '') return
+        if (goalForm.rosterPlayerId === '') return
         try {
-            await apiClient.post(`/api/usermatches/${goalModal.selectedUserMatchId}/points`, {
+            await apiClient.post(`/api/usermatches/${goalModal.pointRecipientUserMatchId}/points`, {
                 pointReasonId: goalModal.pointReasonId,
                 count: 1,
             } as CreateUserMatchPointDto)
-            await apiClient.post(`/api/usermatches/${goalModal.selectedUserMatchId}/goals`, {
-                rosterPlayerId: goalModal.rosterPlayerId,
-                count: goalModal.count,
+            await apiClient.post(`/api/usermatches/${um.id}/goals`, {
+                rosterPlayerId: goalForm.rosterPlayerId,
+                count: 1,
                 goalType: goalModal.goalType,
             } as CreateUserMatchGoalDto)
             setGoalModal(null)
@@ -449,10 +447,10 @@ export default function UserMatchCard({
                             <span
                                 key={g.pointReasonId}
                                 className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.pointType === 'Positive'
-                                        ? 'bg-success/20 text-success'
-                                        : g.pointType === 'Negative'
-                                            ? 'bg-danger/20 text-danger'
-                                            : 'bg-border text-text-muted'
+                                    ? 'bg-success/20 text-success'
+                                    : g.pointType === 'Negative'
+                                        ? 'bg-danger/20 text-danger'
+                                        : 'bg-border text-text-muted'
                                     }`}
                             >
                                 {g.pointReasonName} × {g.totalCount}
@@ -610,46 +608,16 @@ export default function UserMatchCard({
                             />
                         </div>
                         <div>
-                            <label className="label block mb-1 text-sm">{t('common.user')}</label>
+                            <label className="label block mb-1 text-sm">{t('userMatchCard.pointRecipient')}</label>
                             <SearchableSelect
                                 options={allUserMatches.map((u) => ({ value: u.id, label: u.userName ?? '' }))}
-                                value={goalModal.selectedUserMatchId}
+                                value={goalModal.pointRecipientUserMatchId}
                                 onChange={(v) =>
                                     setGoalModal((prev) =>
-                                        prev ? { ...prev, selectedUserMatchId: v === '' ? '' : Number(v) } : null,
+                                        prev ? { ...prev, pointRecipientUserMatchId: v === '' ? '' : Number(v) } : null,
                                     )
                                 }
                                 placeholder={t('userMatchCard.selectUser')}
-                            />
-                        </div>
-                        <div>
-                            <label className="label block mb-1 text-sm">{t('common.player')}</label>
-                            <SearchableSelect
-                                options={roster.map((r) => ({
-                                    value: r.id,
-                                    label: `${r.firstName} ${r.surname}`,
-                                }))}
-                                value={goalModal.rosterPlayerId}
-                                onChange={(v) =>
-                                    setGoalModal((prev) =>
-                                        prev ? { ...prev, rosterPlayerId: v === '' ? '' : Number(v) } : null,
-                                    )
-                                }
-                                placeholder={t('userMatchCard.selectPlayer')}
-                            />
-                        </div>
-                        <div>
-                            <label className="label block mb-1 text-sm">{t('userMatchCard.count')}</label>
-                            <input
-                                type="number"
-                                min={1}
-                                value={goalModal.count}
-                                onChange={(e) =>
-                                    setGoalModal((prev) =>
-                                        prev ? { ...prev, count: Number(e.target.value) } : null,
-                                    )
-                                }
-                                className="input w-16 text-center text-sm py-1"
                             />
                         </div>
                         <div className="flex gap-2 justify-end">
@@ -660,9 +628,9 @@ export default function UserMatchCard({
                                 type="button"
                                 onClick={() => void handleGoalModalConfirm()}
                                 disabled={
-                                    goalModal.selectedUserMatchId === '' ||
+                                    goalModal.pointRecipientUserMatchId === '' ||
                                     goalModal.pointReasonId === '' ||
-                                    goalModal.rosterPlayerId === ''
+                                    goalForm.rosterPlayerId === ''
                                 }
                                 className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded disabled:opacity-50"
                             >

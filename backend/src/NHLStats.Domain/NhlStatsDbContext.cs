@@ -224,6 +224,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             new PointReason{ Id=16, Name="Prediction", PointType=PointType.Positive, IsActive=true},
             // Neutral reasons
             new PointReason{ Id=17, Name="Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
+            new PointReason{ Id=18, Name="Secondary Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
         };
 
         modelBuilder.Entity<PointReason>().HasData(pointReasons);
