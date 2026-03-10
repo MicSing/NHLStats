@@ -297,7 +297,7 @@ public class StatsService : IStatsService
 
         return weeklyMatches
             .GroupBy(m => m.WeekNumber)
-            .OrderBy(g => g.Key)
+            .OrderByDescending(g => g.Key)
             .Select(g =>
             {
                 var totals = totalsByWeek.TryGetValue(g.Key, out var value)

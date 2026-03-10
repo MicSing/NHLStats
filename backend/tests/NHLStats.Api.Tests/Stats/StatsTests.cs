@@ -519,8 +519,8 @@ public class StatsTests : ApiTestBase
             .Select(i => body[i].GetProperty("weekNumber").GetInt32())
             .ToList();
 
-        weekNumbers.Should().BeInAscendingOrder();
-        weekNumbers.Should().Equal(1, 2, 3);
+        weekNumbers.Should().BeInDescendingOrder();
+        weekNumbers.Should().Equal(3, 2, 1);
     }
 
     [Fact]
