@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import type { FinancialStats } from '../types/stats'
 import type { Expense } from '../types/expense'
 import apiClient from '../services/apiClient'
@@ -56,7 +57,7 @@ export default function EarningsExpensesPage() {
     const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0)
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <div className="max-w-5xl mx-auto space-y-8">
                 <h1 className="text-2xl font-bold text-primary">{t('earnings.title')}</h1>
 
@@ -209,6 +210,6 @@ export default function EarningsExpensesPage() {
                     </section>
                 )}
             </div>
-        </div>
+        </PageLayout>
     )
 }

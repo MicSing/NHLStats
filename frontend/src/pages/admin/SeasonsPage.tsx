@@ -8,6 +8,7 @@ import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import AdminPageHeader from '../../components/AdminPageHeader'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
 import useTable from '../../hooks/useTable'
@@ -150,18 +151,7 @@ export default function SeasonsPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.seasons.title')}</h1>
-                <button
-                    onClick={() => {
-                        resetForm()
-                        setShowAddModal(true)
-                    }}
-                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
-                >
-                    {t('admin.seasons.addSeason')}
-                </button>
-            </div>
+            <AdminPageHeader title={t('admin.seasons.title')} action={{ label: t('admin.seasons.addSeason'), onClick: () => { resetForm(); setShowAddModal(true) } }} />
 
             <div className="mb-4">
                 <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />

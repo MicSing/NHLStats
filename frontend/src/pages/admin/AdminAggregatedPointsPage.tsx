@@ -6,6 +6,7 @@ import Modal from '../../components/Modal'
 import { useAuth } from '../../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import AdminPageHeader from '../../components/AdminPageHeader'
 import { useToast } from '../../context/ToastContext'
 
 interface AggregatedSeasonData {
@@ -165,9 +166,7 @@ export default function AdminAggregatedPointsPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.aggregated.title')}</h1>
-            </div>
+            <AdminPageHeader title={t('admin.aggregated.title')} />
 
             <p className="text-sm text-text-muted mb-6">
                 {t('admin.aggregated.description')}

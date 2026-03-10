@@ -8,6 +8,8 @@ import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import AdminPageHeader from '../../components/AdminPageHeader'
+import StatusBadge from '../../components/StatusBadge'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
 import useTable from '../../hooks/useTable'
@@ -170,9 +172,7 @@ export default function RosterPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.roster.title')}</h1>
-            </div>
+            <AdminPageHeader title={t('admin.roster.title')} />
 
             {/* Season selector */}
             <div className="mb-6">
@@ -255,14 +255,9 @@ export default function RosterPage() {
                                                 <td className="py-3 pr-4 text-text">{p.position ?? '—'}</td>
                                                 <td className="py-3 pr-4 text-text">{p.teamShortName}</td>
                                                 <td className="py-3 pr-4">
-                                                    <span
-                                                        className={`text-xs px-2 py-1 rounded-full ${p.isActive
-                                                            ? 'bg-success/20 text-success'
-                                                            : 'bg-border text-text-muted'
-                                                            }`}
-                                                    >
+                                                    <StatusBadge variant={p.isActive ? 'success' : 'muted'}>
                                                         {p.isActive ? t('common.active') : t('common.inactive')}
-                                                    </span>
+                                                    </StatusBadge>
                                                 </td>
                                                 <td className="py-3 flex gap-2">
                                                     <button

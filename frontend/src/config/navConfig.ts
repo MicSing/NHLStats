@@ -1,8 +1,14 @@
-export const publicNavItems = [
+export interface NavItem {
+    to: string
+    labelKey: string
+    requiresAuth?: boolean
+}
+
+export const publicNavItems: NavItem[] = [
     { to: '/dashboard', labelKey: 'nav.dashboard' },
     { to: '/seasons', labelKey: 'nav.seasons' },
-    { to: '/betting-matches', labelKey: 'nav.bettingMatches' },
-    { to: '/betting-history', labelKey: 'nav.bettingHistory' },
+    { to: '/betting-matches', labelKey: 'nav.bettingMatches', requiresAuth: true },
+    { to: '/betting-history', labelKey: 'nav.bettingHistory', requiresAuth: true },
     { to: '/earnings', labelKey: 'nav.finances' },
     { to: '/user-stats', labelKey: 'nav.playerStats' },
     { to: '/rules', labelKey: 'nav.rules' },

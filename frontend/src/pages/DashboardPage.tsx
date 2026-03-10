@@ -11,6 +11,7 @@ import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
 
 export default function DashboardPage() {
@@ -134,7 +135,7 @@ export default function DashboardPage() {
     const showTrendCharts = !selectedSeasonId || isLastSeason
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
@@ -247,6 +248,6 @@ export default function DashboardPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </PageLayout>
     )
 }

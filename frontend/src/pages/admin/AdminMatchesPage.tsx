@@ -12,25 +12,12 @@ import SearchableSelect from '../../components/SearchableSelect'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import AdminPageHeader from '../../components/AdminPageHeader'
+import CompletionBadge from '../../components/CompletionBadge'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
 import useTable from '../../hooks/useTable'
 import { useToast } from '../../context/ToastContext'
-
-// ── Completion type badge ─────────────────────────────────────────────────────
-
-function CompletionBadge({ type }: { type: CompletionType }) {
-    const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
-        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
-        [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
-        [CompletionType.Shootout]: { label: 'SO', className: 'bg-warning/20 text-warning' },
-    }
-    const { label, className } = map[type] ?? map[CompletionType.None]
-    return (
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${className}`}>{label}</span>
-    )
-}
 
 // ── CSV Bulk creator ──────────────────────────────────────────────────────────
 
@@ -814,9 +801,7 @@ export default function AdminMatchesPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.matches.title')}</h1>
-            </div>
+            <AdminPageHeader title={t('admin.matches.title')} />
 
             {/* Season selector */}
             <div className="mb-6">

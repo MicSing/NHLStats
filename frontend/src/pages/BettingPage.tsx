@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import apiClient from '../services/apiClient'
@@ -163,22 +164,22 @@ export default function BettingPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <LoadingSpinner />
-            </div>
+            </PageLayout>
         )
     }
 
     if (!userId) {
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <p>{t('betting.loginRequired')}</p>
-            </div>
+            </PageLayout>
         )
     }
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <h1 className="text-3xl font-bold mb-6">{t('betting.title')}</h1>
 
             {matches.length === 0 ? (
@@ -369,6 +370,6 @@ export default function BettingPage() {
                     })}
                 </div>
             )}
-        </div>
+        </PageLayout>
     )
 }

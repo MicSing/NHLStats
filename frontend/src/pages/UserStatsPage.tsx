@@ -9,18 +9,7 @@ import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
 import MinusPointsPieChart from '../components/charts/MinusPointsPieChart'
 import UserWeekTrendChart from '../components/charts/UserWeekTrendChart'
 import { useTranslation } from 'react-i18next'
-
-// ESPN CDN uses different codes for some NHL teams (same mapping as SeasonPage)
-const ESPN_NHL_CODES: Record<string, string> = {
-    LAK: 'la',
-    NJD: 'nj',
-    SJS: 'sj',
-    TBL: 'tb',
-}
-function teamLogoUrl(shortName: string): string {
-    const code = ESPN_NHL_CODES[shortName.toUpperCase()] ?? shortName.toLowerCase()
-    return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
-}
+import { teamLogoUrl } from '../utils/teamLogoUrl'
 
 /** A match with its season/week context attached for display */
 interface MatchWithContext extends MatchHistoryItem {

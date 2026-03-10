@@ -9,19 +9,10 @@ import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
-
-// ESPN CDN uses different codes for some NHL teams
-const ESPN_NHL_CODES: Record<string, string> = {
-    LAK: 'la',
-    NJD: 'nj',
-    SJS: 'sj',
-    TBL: 'tb',
-}
-function teamLogoUrl(shortName: string): string {
-    const code = ESPN_NHL_CODES[shortName.toUpperCase()] ?? shortName.toLowerCase()
-    return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
-}
+import { teamLogoUrl } from '../utils/teamLogoUrl'
+import CompletionBadge from '../components/CompletionBadge'
 
 function normalizeCompletionType(value: CompletionType | string | number | null | undefined): CompletionType {
     if (value === null || value === undefined) return CompletionType.None
@@ -51,19 +42,6 @@ function normalizeCompletionType(value: CompletionType | string | number | null 
         default:
             return CompletionType.None
     }
-}
-
-function CompletionBadge({ type }: { type: CompletionType }) {
-    const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
-        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
-        [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
-        [CompletionType.Shootout]: { label: 'SO', className: 'bg-secondary/20 text-secondary' },
-    }
-    const { label, className } = map[type] ?? map[CompletionType.None]
-    return (
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${className}`}>{label}</span>
-    )
 }
 
 function StatsTooltip({ users }: { users: { userId: number; userName: string; totalPlus: number; totalMinus: number; totalGoals: number; totalPenalties: number }[] }) {
@@ -301,7 +279,7 @@ export default function SeasonPage() {
     }
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
@@ -763,6 +741,6 @@ export default function SeasonPage() {
                     </>
                 )}
             </div>
-        </div>
+        </PageLayout>
     )
 }

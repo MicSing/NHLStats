@@ -12,6 +12,7 @@ import type { PointReason } from '../types/pointReason'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
 import MatchHeaderEditor from '../components/MatchHeaderEditor'
 import UserMatchCard from '../components/UserMatchCard'
@@ -82,19 +83,19 @@ export default function MatchPage() {
 
     if (loading)
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <LoadingSpinner />
-            </div>
+            </PageLayout>
         )
     if (!match)
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <p className="text-text-muted">{t('match.matchNotFound')}</p>
-            </div>
+            </PageLayout>
         )
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <div className="max-w-4xl mx-auto">
                 {/* Back link */}
                 <Link
@@ -146,6 +147,6 @@ export default function MatchPage() {
                     <p className="text-text-muted mt-4">{t('match.noUserEntries')}</p>
                 )}
             </div>
-        </div>
+        </PageLayout>
     )
 }

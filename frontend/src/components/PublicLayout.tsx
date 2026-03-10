@@ -37,7 +37,7 @@ export default function PublicLayout() {
             </div>
             <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
                 <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
-                {publicNavItems.map((item) => (
+                {publicNavItems.filter((item) => !item.requiresAuth || isAuthenticated).map((item) => (
                     <NavLink
                         key={item.to}
                         to={item.to}

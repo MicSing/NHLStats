@@ -7,6 +7,7 @@ import { cacheService } from '../../services/cacheService'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import AdminPageHeader from '../../components/AdminPageHeader'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
 import useTable from '../../hooks/useTable'
@@ -131,8 +132,7 @@ export default function PayoutsPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.payouts.title')}</h1>
+            <AdminPageHeader title={t('admin.payouts.title')}>
                 <div className="flex items-center gap-3">
                     <select
                         value={selectedSeasonId ?? ''}
@@ -157,7 +157,7 @@ export default function PayoutsPage() {
                         </button>
                     )}
                 </div>
-            </div>
+            </AdminPageHeader>
 
             {error && <p className="text-danger mb-4">{error}</p>}
 

@@ -5,6 +5,7 @@ import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import AdminPageHeader from '../../components/AdminPageHeader'
 import { useToast } from '../../context/ToastContext'
 
 export default function MoneyConfigPage() {
@@ -64,15 +65,7 @@ export default function MoneyConfigPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.moneyConfig.title')}</h1>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
-                >
-                    {t('admin.moneyConfig.addConfig')}
-                </button>
-            </div>
+            <AdminPageHeader title={t('admin.moneyConfig.title')} action={{ label: t('admin.moneyConfig.addConfig'), onClick: () => setShowAddModal(true) }} />
 
             {/* Current config card */}
             {current && (

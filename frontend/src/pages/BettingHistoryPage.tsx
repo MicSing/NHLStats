@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
+import PageLayout from '../components/PageLayout'
 import { useAuth } from '../context/AuthContext'
 import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
@@ -114,28 +115,28 @@ export default function BettingHistoryPage() {
 
     if (loadError) {
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <div className="max-w-5xl mx-auto card p-6 text-center">
                     <h1 className="text-2xl font-bold text-primary mb-2">{t('betting.historyTitle')}</h1>
                     <p className="text-text-muted">{t('betting.loadError')}</p>
                 </div>
-            </div>
+            </PageLayout>
         )
     }
 
     if (!userId) {
         return (
-            <div className="min-h-screen bg-bg text-text p-6">
+            <PageLayout>
                 <div className="max-w-5xl mx-auto card p-6 text-center">
                     <h1 className="text-2xl font-bold text-primary mb-2">{t('betting.historyTitle')}</h1>
                     <p className="text-text-muted">{t('betting.userIdMissing')}</p>
                 </div>
-            </div>
+            </PageLayout>
         )
     }
 
     return (
-        <div className="min-h-screen bg-bg text-text p-6">
+        <PageLayout>
             <div className="max-w-5xl mx-auto space-y-6">
                 <header className="flex flex-wrap items-end justify-between gap-3">
                     <div>
@@ -204,6 +205,6 @@ export default function BettingHistoryPage() {
                     </section>
                 )}
             </div>
-        </div>
+        </PageLayout>
     )
 }

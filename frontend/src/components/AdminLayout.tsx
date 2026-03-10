@@ -7,7 +7,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavItems } from '../config/navConfig'
 
 export default function AdminLayout() {
-    const { user, logout } = useAuth()
+    const { user, logout, isAuthenticated } = useAuth()
     const isAdmin = useIsAdmin()
     const { t } = useTranslation()
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -40,7 +40,7 @@ export default function AdminLayout() {
             </div>
             <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
                 <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
-                {publicNavItems.map((item) => (
+                {publicNavItems.filter((item) => !item.requiresAuth || isAuthenticated).map((item) => (
                     <NavLink
                         key={item.to}
                         to={item.to}

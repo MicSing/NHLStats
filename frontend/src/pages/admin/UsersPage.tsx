@@ -6,6 +6,8 @@ import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import AdminPageHeader from '../../components/AdminPageHeader'
+import StatusBadge from '../../components/StatusBadge'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
 import useTable from '../../hooks/useTable'
@@ -101,15 +103,7 @@ export default function UsersPage() {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-primary">{t('admin.users.title')}</h1>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm font-medium"
-                >
-                    {t('admin.users.addUser')}
-                </button>
-            </div>
+            <AdminPageHeader title={t('admin.users.title')} action={{ label: t('admin.users.addUser'), onClick: () => setShowAddModal(true) }} />
 
             <div className="mb-4">
                 <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
@@ -129,14 +123,9 @@ export default function UsersPage() {
                             <tr key={user.id} className="border-b border-border/50">
                                 <td className="py-3 pr-4">{user.name}</td>
                                 <td className="py-3 pr-4">
-                                    <span
-                                        className={`text-xs px-2 py-1 rounded-full ${user.isActive
-                                            ? 'bg-success/20 text-success'
-                                            : 'bg-border text-text-muted'
-                                            }`}
-                                    >
+                                    <StatusBadge variant={user.isActive ? 'success' : 'muted'}>
                                         {user.isActive ? t('common.active') : t('common.inactive')}
-                                    </span>
+                                    </StatusBadge>
                                 </td>
                                 <td className="py-3 flex gap-2">
                                     <button
