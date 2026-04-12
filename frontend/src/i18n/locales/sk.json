@@ -235,7 +235,9 @@
         "totalMinus": "Celkove mínus",
         "netPoints": "Čisté body",
         "goals": "Góly",
-        "matchesPlayed": "Zápasy"
+        "matchesPlayed": "Zápasy",
+        "yourTopScorers": "Tvoji najlepší strelci",
+        "yourPenaltyLeaders": "Tvoji najviac trestaní"
     },
     "rules": {
         "title": "📋 Pravidlá",

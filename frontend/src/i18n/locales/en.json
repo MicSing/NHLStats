@@ -235,7 +235,9 @@
         "totalMinus": "Total Minus",
         "netPoints": "Net Points",
         "goals": "Goals",
-        "matchesPlayed": "Matches"
+        "matchesPlayed": "Matches",
+        "yourTopScorers": "Your Top Scorers",
+        "yourPenaltyLeaders": "Your Penalty Leaders"
     },
     "rules": {
         "title": "📋 Rules",

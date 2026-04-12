@@ -212,7 +212,6 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             new PointReason{ Id=5, Name="Last Minute Action", PointType=PointType.Negative, IsActive=true},
             new PointReason{ Id=6, Name="Own Goal", PointType=PointType.Negative, IsActive=true},
             new PointReason{ Id=7, Name="Error In Defense", PointType=PointType.Negative, IsActive=true},
-            new PointReason{ Id=8, Name="Prediction", PointType=PointType.Negative, IsActive=true},
             // Positive reasons (mirrors of the above)
             new PointReason{ Id=9,  Name="Penalty", PointType=PointType.Positive, IsActive=true},
             new PointReason{ Id=10, Name="Secondary Penalty", PointType=PointType.Positive, IsActive=true},
@@ -221,7 +220,6 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             new PointReason{ Id=13, Name="Last Minute Action", PointType=PointType.Positive, IsActive=true},
             new PointReason{ Id=14, Name="Own Goal", PointType=PointType.Positive, IsActive=true},
             new PointReason{ Id=15, Name="Error In Defense", PointType=PointType.Positive, IsActive=true},
-            new PointReason{ Id=16, Name="Prediction", PointType=PointType.Positive, IsActive=true},
             // Neutral reasons
             new PointReason{ Id=17, Name="Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
             new PointReason{ Id=18, Name="Secondary Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},

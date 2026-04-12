@@ -1,7 +1,7 @@
 import apiClient from './apiClient'
 import type { User } from '../types/user'
 import type { Season } from '../types/season'
-import type { SeasonMatchHistory, UserPointReasonBreakdown } from '../types/stats'
+import type { DashboardData, SeasonMatchHistory, UserPointReasonBreakdown } from '../types/stats'
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 day
 const USER_STATS_CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
@@ -14,6 +14,7 @@ interface CacheEntry<T> {
 const CACHE_KEYS = {
     USERS: 'nhl-stats-users-cache',
     SEASONS: 'nhl-stats-seasons-cache',
+    DASHBOARD: 'nhl-stats-dashboard-cache',
 } as const
 
 function userMatchHistoryKey(userId: number): string {
@@ -154,6 +155,28 @@ export const cacheService = {
     },
 
     /**
+     * Get dashboard data from cache or fetch from API if cache is invalid/empty.
+     * Cache is valid for 5 minutes.
+     */
+    async getDashboardData(force = false): Promise<DashboardData> {
+        const key = CACHE_KEYS.DASHBOARD
+        if (!force) {
+            const cached = getFromCache<DashboardData>(key, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+        const data = await apiClient.get<DashboardData>('/api/stats/dashboard')
+        setInCache(key, data)
+        return data
+    },
+
+    /**
+     * Invalidate (clear) the dashboard cache.
+     */
+    invalidateDashboard(): void {
+        sessionStorage.removeItem(CACHE_KEYS.DASHBOARD)
+    },
+
+    /**
      * Invalidate match history cache for a specific user.
      */
     invalidateUserMatchHistory(userId: number): void {
@@ -173,5 +196,6 @@ export const cacheService = {
     clearAll(): void {
         this.invalidateUsers()
         this.invalidateSeasons()
+        this.invalidateDashboard()
     },
 }

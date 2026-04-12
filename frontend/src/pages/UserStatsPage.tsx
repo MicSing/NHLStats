@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
 import type { User } from '../types/user'
-import type { MatchHistoryItem, PointReasonBreakdownItem, SeasonMatchHistory } from '../types/stats'
+import type { DashboardData, MatchHistoryItem, PointReasonBreakdownItem, RosterPenalizedByUser, RosterScorerByUser, SeasonMatchHistory } from '../types/stats'
 import { cacheService } from '../services/cacheService'
 import SeasonSelector from '../components/SeasonSelector'
 import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
 import MinusPointsPieChart from '../components/charts/MinusPointsPieChart'
 import UserWeekTrendChart from '../components/charts/UserWeekTrendChart'
+import TopScorersChart from '../components/charts/TopScorersChart'
+import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import { useTranslation } from 'react-i18next'
 import { teamLogoUrl } from '../utils/teamLogoUrl'
 
@@ -190,6 +192,7 @@ export default function UserStatsPage() {
     const [loadingData, setLoadingData] = useState(false)
     const [breakdownItems, setBreakdownItems] = useState<PointReasonBreakdownItem[]>([])
     const [allMatchData, setAllMatchData] = useState<SeasonMatchHistory[]>([])
+    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
 
 
     // Load seasons on mount
@@ -218,6 +221,13 @@ export default function UserStatsPage() {
             })
             .catch(() => setUsers([]))
             .finally(() => setLoadingUsers(false))
+    }, [])
+
+    // Fetch dashboard data on mount for scorer/penalty sections
+    useEffect(() => {
+        cacheService.getDashboardData()
+            .then((data) => setDashboardData(data))
+            .catch(() => setDashboardData(null))
     }, [])
 
     // When user changes, fetch all-seasons match history and cache for 5 minutes
@@ -257,6 +267,50 @@ export default function UserStatsPage() {
 
     const allMatches = flattenMatches(matchData)
     const allWeeks = flattenWeeks(matchData)
+
+    const userTopScorers: RosterScorerByUser[] = (() => {
+        if (!dashboardData || selectedUserId == null) return []
+        const source = selectedSeasonId
+            ? dashboardData.rosterScorers.filter((s) => s.seasonId === selectedSeasonId)
+            : dashboardData.allTimeRosterScorers
+        return source
+            .map((player) => {
+                const match = player.userCounts.find((uc) => uc.userId === selectedUserId)
+                const userCount = match?.count ?? 0
+                return {
+                    rosterPlayerId: player.rosterPlayerId,
+                    firstName: player.firstName,
+                    surname: player.surname,
+                    teamShortName: null,
+                    totalCount: userCount,
+                    userCounts: match ? [match] : [],
+                }
+            })
+            .filter((p) => p.totalCount > 0)
+            .sort((a, b) => b.totalCount - a.totalCount)
+    })()
+
+    const userPenaltyLeaders: RosterPenalizedByUser[] = (() => {
+        if (!dashboardData || selectedUserId == null) return []
+        const source = selectedSeasonId
+            ? dashboardData.rosterPenalized.filter((p) => p.seasonId === selectedSeasonId)
+            : dashboardData.allTimeRosterPenalized
+        return source
+            .map((player) => {
+                const match = player.userCounts.find((uc) => uc.userId === selectedUserId)
+                const userCount = match?.count ?? 0
+                return {
+                    rosterPlayerId: player.rosterPlayerId,
+                    firstName: player.firstName,
+                    surname: player.surname,
+                    teamShortName: null,
+                    totalCount: userCount,
+                    userCounts: match ? [match] : [],
+                }
+            })
+            .filter((p) => p.totalCount > 0)
+            .sort((a, b) => b.totalCount - a.totalCount)
+    })()
 
     // Overall totals from season-level aggregates (includes UserSeasonAggregatedData)
     const overallTotalPlus = matchData.reduce((sum, s) => sum + s.totalPlus, 0)
@@ -416,6 +470,28 @@ export default function UserStatsPage() {
                 </h2>
                 <UserWeekTrendChart seasons={matchData} />
             </div>
+
+            {/* ── Your Top Scorers + Penalty Leaders ───────────────────── */}
+            {(userTopScorers.length > 0 || userPenaltyLeaders.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {userTopScorers.length > 0 && (
+                        <div className="bg-surface rounded-xl p-4">
+                            <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
+                                {t('userStats.yourTopScorers')}
+                            </h2>
+                            <TopScorersChart data={userTopScorers} hideLegend />
+                        </div>
+                    )}
+                    {userPenaltyLeaders.length > 0 && (
+                        <div className="bg-surface rounded-xl p-4">
+                            <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted mb-3">
+                                {t('userStats.yourPenaltyLeaders')}
+                            </h2>
+                            <PenaltyLeadersChart data={userPenaltyLeaders} hideLegend />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Bottom row: best / worst match highlight cards ─────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
