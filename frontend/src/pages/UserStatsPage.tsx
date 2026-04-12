@@ -3,7 +3,6 @@ import type { Season } from '../types/season'
 import type { User } from '../types/user'
 import type { MatchHistoryItem, PointReasonBreakdownItem, SeasonMatchHistory } from '../types/stats'
 import { cacheService } from '../services/cacheService'
-import { statsService } from '../services/statsService'
 import SeasonSelector from '../components/SeasonSelector'
 import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
 import MinusPointsPieChart from '../components/charts/MinusPointsPieChart'
@@ -190,7 +189,7 @@ export default function UserStatsPage() {
     const [loadingUsers, setLoadingUsers] = useState(false)
     const [loadingData, setLoadingData] = useState(false)
     const [breakdownItems, setBreakdownItems] = useState<PointReasonBreakdownItem[]>([])
-    const [matchData, setMatchData] = useState<SeasonMatchHistory[]>([])
+    const [allMatchData, setAllMatchData] = useState<SeasonMatchHistory[]>([])
 
 
     // Load seasons on mount
@@ -207,15 +206,10 @@ export default function UserStatsPage() {
             .finally(() => setLoadingSeasons(false))
     }, [])
 
-    // When season selection changes, refresh the user list and auto-select first user
+    // Load users on mount and auto-select first user
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingUsers(true)
-        setSelectedUserId(null)
-        setUsers([])
-        setBreakdownItems([])
-        setMatchData([])
-
         cacheService.getUsers()
             .then((fetched) => {
                 const active = fetched.filter((u) => u.isActive !== false)
@@ -224,43 +218,43 @@ export default function UserStatsPage() {
             })
             .catch(() => setUsers([]))
             .finally(() => setLoadingUsers(false))
-    }, [selectedSeasonId])
+    }, [])
 
-    // When user or season changes, fetch point-reason breakdown and match history
+    // When user changes, fetch all-seasons match history and cache for 5 minutes
+    useEffect(() => {
+        if (selectedUserId == null) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setAllMatchData([])
+            return
+        }
+
+        cacheService.getUserMatchHistory(selectedUserId)
+            .then((matchHistory) => setAllMatchData(matchHistory))
+            .catch(() => setAllMatchData([]))
+    }, [selectedUserId])
+
+    // When user or season changes, fetch breakdown for that specific (user, season) combination
     useEffect(() => {
         if (selectedUserId == null) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setBreakdownItems([])
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setMatchData([])
             return
         }
 
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingData(true)
 
-        Promise.all([
-            statsService.getUserPointReasonBreakdown(
-                selectedUserId,
-                selectedSeasonId ?? undefined,
-            ),
-            statsService.getUserMatchHistory(
-                selectedUserId,
-                selectedSeasonId ?? undefined,
-            ),
-        ])
-            .then(([breakdown, history]) => {
-                setBreakdownItems(breakdown.items)
-                setMatchData(history)
-            })
-            .catch(() => {
-                setBreakdownItems([])
-                setMatchData([])
-            })
+        cacheService.getUserBreakdown(selectedUserId, selectedSeasonId ?? undefined)
+            .then((breakdown) => setBreakdownItems(breakdown.items))
+            .catch(() => setBreakdownItems([]))
             .finally(() => setLoadingData(false))
     }, [selectedUserId, selectedSeasonId])
 
     // ── Derived data from hierarchical matchData ────────────────────
+    const matchData = selectedSeasonId
+        ? allMatchData.filter((s) => s.seasonId === selectedSeasonId)
+        : allMatchData
+
     const allMatches = flattenMatches(matchData)
     const allWeeks = flattenWeeks(matchData)
 

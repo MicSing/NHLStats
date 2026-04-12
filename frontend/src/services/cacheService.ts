@@ -1,8 +1,10 @@
 import apiClient from './apiClient'
 import type { User } from '../types/user'
 import type { Season } from '../types/season'
+import type { SeasonMatchHistory, UserPointReasonBreakdown } from '../types/stats'
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 day
+const USER_STATS_CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
 
 interface CacheEntry<T> {
     data: T
@@ -14,19 +16,27 @@ const CACHE_KEYS = {
     SEASONS: 'nhl-stats-seasons-cache',
 } as const
 
-function isCacheValid<T>(entry: CacheEntry<T> | null): entry is CacheEntry<T> {
-    if (!entry) return false
-    const now = Date.now()
-    return now - entry.timestamp < CACHE_DURATION_MS
+function userMatchHistoryKey(userId: number): string {
+    return `nhl-stats-user-match-history-${userId}`
 }
 
-function getFromCache<T>(key: string): T | null {
+function userBreakdownKey(userId: number, seasonId?: number): string {
+    return `nhl-stats-user-breakdown-${userId}-${seasonId ?? 'all'}`
+}
+
+function isCacheValid<T>(entry: CacheEntry<T> | null, duration = CACHE_DURATION_MS): entry is CacheEntry<T> {
+    if (!entry) return false
+    const now = Date.now()
+    return now - entry.timestamp < duration
+}
+
+function getFromCache<T>(key: string, duration = CACHE_DURATION_MS): T | null {
     try {
         const cached = sessionStorage.getItem(key)
         if (!cached) return null
 
         const entry = JSON.parse(cached) as CacheEntry<T>
-        if (isCacheValid(entry)) {
+        if (isCacheValid(entry, duration)) {
             return entry.data
         }
 
@@ -104,6 +114,57 @@ export const cacheService = {
      */
     invalidateSeasons(): void {
         sessionStorage.removeItem(CACHE_KEYS.SEASONS)
+    },
+
+    /**
+     * Get all-seasons match history for a user from cache or fetch from API.
+     * Cache is valid for 5 minutes. Season filtering is done client-side from the cached data.
+     */
+    async getUserMatchHistory(userId: number, force = false): Promise<SeasonMatchHistory[]> {
+        const key = userMatchHistoryKey(userId)
+        if (!force) {
+            const cached = getFromCache<SeasonMatchHistory[]>(key, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+
+        const matchHistory = await apiClient.get<SeasonMatchHistory[]>(
+            `/api/stats/users/${userId}/match-history`,
+        )
+        setInCache(key, matchHistory)
+        return matchHistory
+    },
+
+    /**
+     * Get point-reason breakdown for a user and optional season from cache or fetch from API.
+     * Cached separately per (userId, seasonId) for 5 minutes.
+     */
+    async getUserBreakdown(userId: number, seasonId?: number, force = false): Promise<UserPointReasonBreakdown> {
+        const key = userBreakdownKey(userId, seasonId)
+        if (!force) {
+            const cached = getFromCache<UserPointReasonBreakdown>(key, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+
+        const query = seasonId != null ? `?seasonId=${seasonId}` : ''
+        const breakdown = await apiClient.get<UserPointReasonBreakdown>(
+            `/api/stats/users/${userId}/point-reasons${query}`,
+        )
+        setInCache(key, breakdown)
+        return breakdown
+    },
+
+    /**
+     * Invalidate match history cache for a specific user.
+     */
+    invalidateUserMatchHistory(userId: number): void {
+        sessionStorage.removeItem(userMatchHistoryKey(userId))
+    },
+
+    /**
+     * Invalidate breakdown cache for a specific user and optional season.
+     */
+    invalidateUserBreakdown(userId: number, seasonId?: number): void {
+        sessionStorage.removeItem(userBreakdownKey(userId, seasonId))
     },
 
     /**
