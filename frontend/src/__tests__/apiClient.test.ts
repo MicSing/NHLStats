@@ -55,17 +55,27 @@ describe('apiClient silent token refresh', () => {
         localStorage.setItem('token', makeJwt(60))
         localStorage.setItem('user', JSON.stringify({ id: '1' }))
 
-        const fetchMock = vi.fn()
-            .mockResolvedValueOnce(new Response(null, { status: 401 }))
-            .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
+        const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }))
         vi.stubGlobal('fetch', fetchMock)
 
         Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
 
-        await apiClient.get('/api/test')
+        await expect(apiClient.get('/api/test')).rejects.toThrow('Session expired')
 
+        expect(fetchMock).toHaveBeenCalledTimes(1)
         expect(localStorage.getItem('token')).toBeNull()
         expect(localStorage.getItem('user')).toBeNull()
         expect(window.location.href).toBe('/login')
+    })
+
+    it('does not clear session on network error during refresh', async () => {
+        localStorage.setItem('token', makeJwt(60))
+
+        const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(apiClient.get('/api/test')).rejects.toThrow('Failed to fetch')
+
+        expect(localStorage.getItem('token')).not.toBeNull()
     })
 })

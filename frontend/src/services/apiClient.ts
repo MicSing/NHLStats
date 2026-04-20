@@ -2,6 +2,8 @@
 // Override with VITE_API_BASE_URL for deployments that host API on a different domain.
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
+const TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1000
+
 async function ensureFreshToken(): Promise<void> {
     const token = localStorage.getItem('token')
     if (!token) return
@@ -11,25 +13,28 @@ async function ensureFreshToken(): Promise<void> {
         if (parts.length !== 3) return
         const payload = JSON.parse(atob(parts[1])) as { exp?: number }
         const expMs = (payload.exp ?? 0) * 1000
-        if (expMs - Date.now() > 5 * 60 * 1000) return
-
-        const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        })
-
-        if (!response.ok) throw new Error('Refresh failed')
-
-        const data = await response.json() as { token: string }
-        localStorage.setItem('token', data.token)
+        if (expMs - Date.now() > TOKEN_REFRESH_THRESHOLD_MS) return
     } catch {
+        return
+    }
+
+    const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+    })
+
+    if (!response.ok) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         window.location.href = '/login'
+        throw new Error('Session expired')
     }
+
+    const data = await response.json() as { token: string }
+    localStorage.setItem('token', data.token)
 }
 
 function getHeaders(): Record<string, string> {
