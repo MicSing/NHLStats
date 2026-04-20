@@ -53,7 +53,8 @@ builder.Services.AddAuthentication(options =>
             ValidIssuer = jwtIssuer,
             ValidateAudience = true,
             ValidAudience = jwtAudience,
-            ValidateLifetime = true
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
         };
     })
     .AddJwtBearer("RefreshBearer", options =>

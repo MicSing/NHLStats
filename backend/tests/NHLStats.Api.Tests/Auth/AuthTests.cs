@@ -1,8 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace NHLStats.Api.Tests;
 
@@ -173,5 +177,55 @@ public class AuthTests : IClassFixture<CustomWebApplicationFactory>
         var resp = await client.PostAsync("/api/auth/refresh", null);
 
         resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Refresh_accepts_recently_expired_token_that_default_scheme_rejects()
+    {
+        // Log in to get a real user ID for claim construction
+        var client = _factory.CreateClient();
+        var loginResp = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = AdminEmail,
+            password = AdminPassword
+        });
+        loginResp.EnsureSuccessStatusCode();
+        var validToken = (await loginResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("token").GetString()!;
+
+        var handler = new JwtSecurityTokenHandler();
+        var parsed = handler.ReadJwtToken(validToken);
+        var userId = parsed.Claims.First(c => c.Type == ClaimTypes.NameIdentifier).Value;
+        var userEmail = parsed.Claims.First(c => c.Type == ClaimTypes.Email).Value;
+
+        // Build a token that expired 3 minutes ago — within RefreshBearer's 5-min ClockSkew
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("REPLACE_WITH_SECURE_VALUE_IN_PRODUCTION"));
+        var expiredToken = handler.WriteToken(new JwtSecurityToken(
+            issuer: "NHLStats",
+            audience: "NHLStatsClient",
+            claims: new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userId),
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.Email, userEmail),
+            },
+            expires: DateTime.UtcNow.AddMinutes(-3),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+        ));
+
+        // Default scheme (ClockSkew=0) should reject it
+        var meClient = _factory.CreateClient();
+        meClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", expiredToken);
+        var meResp = await meClient.GetAsync("/api/auth/me");
+        meResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        // RefreshBearer (ClockSkew=5min) should accept it and return a new token
+        var refreshClient = _factory.CreateClient();
+        refreshClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", expiredToken);
+        var refreshResp = await refreshClient.PostAsync("/api/auth/refresh", null);
+        refreshResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await refreshResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("token").GetString()
+            .Should().NotBeNullOrWhiteSpace();
     }
 }
