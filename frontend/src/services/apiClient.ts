@@ -2,6 +2,36 @@
 // Override with VITE_API_BASE_URL for deployments that host API on a different domain.
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
 
+async function ensureFreshToken(): Promise<void> {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    try {
+        const parts = token.split('.')
+        if (parts.length !== 3) return
+        const payload = JSON.parse(atob(parts[1])) as { exp?: number }
+        const expMs = (payload.exp ?? 0) * 1000
+        if (expMs - Date.now() > 5 * 60 * 1000) return
+
+        const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        })
+
+        if (!response.ok) throw new Error('Refresh failed')
+
+        const data = await response.json() as { token: string }
+        localStorage.setItem('token', data.token)
+    } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+    }
+}
+
 function getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -26,6 +56,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 const apiClient = {
     async get<T>(path: string): Promise<T> {
+        await ensureFreshToken()
         const response = await fetch(`${BASE_URL}${path}`, {
             headers: getHeaders(),
         })
@@ -33,6 +64,7 @@ const apiClient = {
     },
 
     async post<T>(path: string, body: unknown): Promise<T> {
+        await ensureFreshToken()
         const response = await fetch(`${BASE_URL}${path}`, {
             method: 'POST',
             headers: getHeaders(),
@@ -42,6 +74,7 @@ const apiClient = {
     },
 
     async put<T>(path: string, body: unknown): Promise<T> {
+        await ensureFreshToken()
         const response = await fetch(`${BASE_URL}${path}`, {
             method: 'PUT',
             headers: getHeaders(),
@@ -51,6 +84,7 @@ const apiClient = {
     },
 
     async delete<T>(path: string): Promise<T> {
+        await ensureFreshToken()
         const response = await fetch(`${BASE_URL}${path}`, {
             method: 'DELETE',
             headers: getHeaders(),
