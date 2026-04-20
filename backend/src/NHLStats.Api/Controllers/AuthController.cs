@@ -67,6 +67,16 @@ public class AuthController : ControllerBase
         return Ok(new { token });
     }
 
+    [HttpPost("refresh")]
+    [Authorize(AuthenticationSchemes = "RefreshBearer")]
+    public async Task<IActionResult> Refresh()
+    {
+        var user = await GetCurrentUser();
+        if (user == null) return Unauthorized();
+        var token = await GenerateJwtToken(user);
+        return Ok(new { token });
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me()

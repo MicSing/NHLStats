@@ -55,6 +55,22 @@ builder.Services.AddAuthentication(options =>
             ValidAudience = jwtAudience,
             ValidateLifetime = true
         };
+    })
+    .AddJwtBearer("RefreshBearer", options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = key,
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -79,7 +95,10 @@ builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 builder.Services.AddScoped<IUserMatchService, UserMatchService>();
+builder.Services.AddScoped<IBettingBalanceService, BettingBalanceService>();
+builder.Services.AddScoped<IBettingOddsService, BettingOddsService>();
 builder.Services.AddScoped<IBetService, BetService>();
+builder.Services.AddScoped<IPointManagementService, PointManagementService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 
@@ -164,6 +183,21 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Failed to seed admin user: {ex}");
+    }
+}
+
+// Recalculate betting odds for all upcoming matches on startup
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    using var oddsScope = app.Services.CreateScope();
+    try
+    {
+        var oddsService = oddsScope.ServiceProvider.GetRequiredService<IBettingOddsService>();
+        await oddsService.RecalculateAllUpcomingAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Failed to recalculate odds on startup: {ex}");
     }
 }
 

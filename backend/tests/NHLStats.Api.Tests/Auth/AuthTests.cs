@@ -134,4 +134,44 @@ public class AuthTests : IClassFixture<CustomWebApplicationFactory>
         me.GetProperty("email").GetString()
             .Should().Be(AdminEmail);
     }
+
+    // -----------------------------------------------------------------------
+    // Refresh
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Refresh_with_valid_token_returns_200_and_new_token()
+    {
+        var client = _factory.CreateClient();
+
+        var loginResp = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = AdminEmail,
+            password = AdminPassword
+        });
+        loginResp.EnsureSuccessStatusCode();
+        var loginBody = await loginResp.Content.ReadFromJsonAsync<JsonElement>();
+        var token = loginBody.GetProperty("token").GetString()!;
+
+        var refreshClient = _factory.CreateClient();
+        refreshClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        var resp = await refreshClient.PostAsync("/api/auth/refresh", null);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("token").GetString()
+            .Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Refresh_without_token_returns_401()
+    {
+        var client = _factory.CreateClient();
+
+        var resp = await client.PostAsync("/api/auth/refresh", null);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }
