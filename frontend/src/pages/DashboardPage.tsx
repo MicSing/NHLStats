@@ -84,6 +84,7 @@ export default function DashboardPage() {
         totalPlus: stat.totalPlus,
         totalMinus: stat.totalMinus,
         earnings: 0,
+        bettingBalance: 0,
     }))
 
     const rosterScorersData: RosterScorerByUser[] = selectedSeasonId

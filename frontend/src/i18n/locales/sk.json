@@ -44,7 +44,9 @@
         "closeMenu": "Zatvoriť menu",
         "add": "Pridať",
         "user": "Používateľ",
-        "changePassword": "Zmeniť heslo"
+        "changePassword": "Zmeniť heslo",
+        "previous": "Predchádzajúca",
+        "next": "Nasledujúca"
     },
     "pagination": {
         "showing": "{{from}}–{{to}} z {{total}}",
@@ -81,7 +83,8 @@
         "pointReasons": "Dôvody bodov",
         "moneyConfig": "Konfigurácia peňazí",
         "expenses": "Výdavky",
-        "payouts": "Výplaty"
+        "payouts": "Výplaty",
+        "pointsManagement": "Správa bodov"
     },
     "layout": {
         "appName": "🏒 NHL Stats",
@@ -138,6 +141,7 @@
         "goals": "Góly",
         "penalties": "Tresty",
         "earnings": "Zárobky",
+        "betBalance": "Stávkový zostatok",
         "topScorer": "Najlepší strelec",
         "topPowerPlayScorer": "Najviac gólov v presilovke",
         "topShortHandedScorer": "Najviac gólov v oslabení",
@@ -160,7 +164,12 @@
         "notPlayed": "Neodohraný",
         "reg": "REG",
         "ot": "OT",
-        "so": "SO"
+        "so": "SO",
+        "editMatch": "Upraviť",
+        "reEvaluateBets": "Prehodnotiť stávky",
+        "reEvaluateSuccess": "Stávky boli úspešne prehodnotené",
+        "reEvaluateError": "Nepodarilo sa prehodnotiť stávky",
+        "bet": "Stávka"
     },
     "match": {
         "matchNotFound": "Zápas nebol nájdený",
@@ -173,6 +182,7 @@
         "reg": "REG",
         "ot": "OT",
         "so": "SO",
+        "inProgress": "LIVE",
         "homeScore": "skóre domáci",
         "awayScore": "skóre hostia",
         "completionType": "typ ukončenia",
@@ -187,7 +197,11 @@
         "minusPoints": "− Body",
         "paid": "Zaplatené",
         "balance": "Zostatok",
-        "earnings": "Zárobky",
+        "dues": "Celkové záväzky",
+        "stakes": "Stávky",
+        "betWins": "Výhry stávok",
+        "betLosses": "Prehry stávok",
+        "betBalance": "Stávkový zostatok",
         "noBalanceData": "Žiadne údaje o zostatku.",
         "noFinancialData": "Žiadne finančné údaje.",
         "total": "Celkom",
@@ -316,7 +330,41 @@
         "betOnHomeWin": "Tipnúť výhru domácich",
         "betOnAwayWin": "Tipnúť výhru hostí",
         "whoWillScore": "Kto dá gól?",
-        "whoWillBePenalized": "Kto dostane trest?"
+        "whoWillBePenalized": "Kto dostane trest?",
+        "availableBalance": "Dostupný zostatok",
+        "maxWinCap": "Max. výhra",
+        "betPlacedBadge": "Tip zadaný",
+        "cancelBet": "Zrušiť tip",
+        "betCancelled": "Tip bol zrušený.",
+        "oddsLabel": "Kurz",
+        "wonAmountLabel": "Výhra",
+        "totalWon": "Celková výhra",
+        "outcomeCancelled": "Zrušené",
+        "potentialWin": "potenciálna výhra"
+    },
+    "points": {
+        "title": "Správa bodov",
+        "subtitle": "Prehľad a úprava finančných hodnôt jednotlivých bodov.",
+        "totals": "Celkom",
+        "allTypes": "Všetky typy",
+        "allSeasons": "Všetky sezóny",
+        "allPlayers": "Všetci hráči",
+        "positive": "Kladné",
+        "negative": "Záporné",
+        "player": "Hráč",
+        "season": "Sezóna",
+        "matchNumber": "Zápas",
+        "reason": "Dôvod",
+        "type": "Typ",
+        "count": "Počet",
+        "amount": "Suma (€)",
+        "createdOn": "Vytvorené",
+        "saveAll": "Uložiť zmeny",
+        "noChanges": "Žiadne zmeny neboli vykonané.",
+        "saved": "Sumy boli úspešne aktualizované.",
+        "saveError": "Nepodarilo sa uložiť sumy.",
+        "loadError": "Nepodarilo sa načítať body.",
+        "showing": "Zobrazujem {{from}}–{{to}} z {{total}}"
     },
     "seasonSelector": {
         "allSeasons": "Všetky sezóny",

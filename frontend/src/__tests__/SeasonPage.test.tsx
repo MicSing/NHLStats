@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthProvider } from '../context/AuthContext'
+import { ToastProvider } from '../context/ToastContext'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SeasonPage from '../pages/SeasonPage'
 
@@ -8,18 +9,20 @@ function renderSeasonPage(route = '/seasons') {
     localStorage.setItem('token', 'fake-jwt-token')
     localStorage.setItem('user', JSON.stringify({ id: '1', email: 'admin@test.com' }))
     return render(
-        <AuthProvider>
-            <MemoryRouter initialEntries={[route]}>
-                <Routes>
-                    <Route path="/seasons" element={<SeasonPage />} />
-                    <Route path="/seasons/:seasonId" element={<SeasonPage />} />
-                    <Route
-                        path="/seasons/:seasonId/matches/:matchId"
-                        element={<div>Match Page</div>}
-                    />
-                </Routes>
-            </MemoryRouter>
-        </AuthProvider>,
+        <ToastProvider>
+            <AuthProvider>
+                <MemoryRouter initialEntries={[route]}>
+                    <Routes>
+                        <Route path="/seasons" element={<SeasonPage />} />
+                        <Route path="/seasons/:seasonId" element={<SeasonPage />} />
+                        <Route
+                            path="/seasons/:seasonId/matches/:matchId"
+                            element={<div>Match Page</div>}
+                        />
+                    </Routes>
+                </MemoryRouter>
+            </AuthProvider>
+        </ToastProvider>,
     )
 }
 
@@ -99,13 +102,14 @@ describe('SeasonPage', () => {
             expect(screen.getByText(/3 penalties/i)).toBeInTheDocument()
         })
 
-        test('clicking a match navigates to match page', async () => {
+        test('clicking a match expands it inline', async () => {
             const user = userEvent.setup()
             renderSeasonPage('/seasons/1')
-            // Click the match row via the BOS short name (first visible match element)
-            const matchLink = await screen.findByText('BOS')
-            await user.click(matchLink)
-            expect(screen.getByText('Match Page')).toBeInTheDocument()
+            // Click the expand button on the match card
+            const expandBtn = await screen.findByRole('button', { name: /▼/ })
+            await user.click(expandBtn)
+            // Expanded section shows the bet column header
+            expect(await screen.findAllByText(/bet/i)).not.toHaveLength(0)
         })
     })
 

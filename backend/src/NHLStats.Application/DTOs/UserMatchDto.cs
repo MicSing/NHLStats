@@ -45,15 +45,19 @@ public record UserMatchPointDto(
     int PointReasonId,
     string? PointReasonName,
     string PointType,
-    int Count);
+    int Count,
+    decimal Amount,
+    DateTime? CreatedOn);
 
 public record CreateUserMatchPointDto(
     int PointReasonId,
-    int Count);
+    int Count,
+    decimal? Amount = null);
 
 public record UpdateUserMatchPointDto(
     int PointReasonId,
-    int Count);
+    int Count,
+    decimal? Amount = null);
 
 // ─── Goals ───────────────────────────────────────────────────────────────────
 
@@ -93,3 +97,21 @@ public record CreateUserMatchPenaltyDto(
 public record UpdateUserMatchPenaltyDto(
     int RosterPlayerId,
     int Count);
+
+// ─── Points Management (Admin) ────────────────────────────────────────────────
+
+public record PointListItemDto(
+    int Id,
+    int UserMatchId,
+    string? UserName,
+    int MatchNumber,
+    string? SeasonName,
+    string? PointReasonName,
+    string PointType,
+    int Count,
+    decimal Amount,
+    DateTime? CreatedOn);
+
+public record BulkUpdatePointItemDto(int Id, decimal Amount);
+
+public record BulkUpdatePointsDto(IReadOnlyList<BulkUpdatePointItemDto> Items);

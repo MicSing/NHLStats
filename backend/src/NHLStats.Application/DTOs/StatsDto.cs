@@ -81,7 +81,12 @@ public record WeeklyMatchUserDto(
     int TotalPlus,
     int TotalMinus,
     int TotalGoals,
-    int TotalPenalties);
+    int TotalPenalties,
+    BetStatus? BetResult,
+    decimal? BetAmount,
+    decimal? BetWonAmount,
+    BetType? BetType,
+    string? BetTargetName);
 
 public record WeeklyMatchDto(
     int MatchId,
@@ -126,7 +131,8 @@ public record SeasonStatsUserDto(
     int UserId,
     int TotalPlus,
     int TotalMinus,
-    decimal Earnings);
+    decimal Earnings,
+    decimal BettingBalance);
 
 // ─── All-time earnings summary endpoint response ─────────────────────────────
 
@@ -253,7 +259,8 @@ public record SeasonUserDataDto(
     int TotalMinus,
     int TotalGoals,
     int TotalPenalties,
-    decimal Earnings);
+    decimal Earnings,
+    decimal BettingBalance);
 
 public record SeasonalUserDataDto(
     int SeasonId,
@@ -285,7 +292,12 @@ public record UserFinancialStatsDto(
     int TotalMinuses,
     decimal Collected,
     decimal TotalEarnings,
-    decimal CanBeCollected);
+    decimal CanBeCollected,
+    decimal BettingBalance,
+    decimal Stakes,
+    decimal BetWins,
+    decimal BetLosses,
+    decimal NegativeCash);
 
 public record FinancialStatsDto(
     decimal TotalCollected,

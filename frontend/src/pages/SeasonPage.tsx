@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { Season } from '../types/season'
-import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch, SeasonTotals } from '../types/stats'
+import type { WeekGroup, WeeklyMatchUser, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch, SeasonTotals } from '../types/stats'
 import { CompletionType } from '../types/match'
 import type { Match } from '../types/match'
+import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../types/userMatch'
 import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
@@ -13,6 +14,180 @@ import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
 import { teamLogoUrl } from '../utils/teamLogoUrl'
 import CompletionBadge from '../components/CompletionBadge'
+import { useIsAdmin } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+
+interface MatchUserDetail {
+    userMatchId: number
+    userId: number
+    points: UserMatchPoint[]
+    goals: UserMatchGoal[]
+    penalties: UserMatchPenalty[]
+}
+
+interface MatchExpandDetail {
+    users: MatchUserDetail[]
+}
+
+function PointsTooltip({ points }: { points: UserMatchPoint[] }) {
+    if (points.length === 0) return null
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                {points.map((p) => (
+                    <div key={p.id} className="flex gap-2 justify-between">
+                        <span>{p.pointReasonName}</span>
+                        <span className="font-mono">×{p.count}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function GoalsTooltip({ goals }: { goals: UserMatchGoal[] }) {
+    if (goals.length === 0) return null
+    const aggregated = Array.from(
+        goals.reduce((map, g) => {
+            const key = g.rosterPlayerId
+            const existing = map.get(key)
+            if (existing) {
+                existing.count += g.count
+            } else {
+                map.set(key, { name: `${g.playerFirstName ?? ''} ${g.playerSurname ?? ''}`.trim(), count: g.count })
+            }
+            return map
+        }, new Map<number, { name: string; count: number }>()).values()
+    )
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                {aggregated.map((g) => (
+                    <div key={g.name}>{g.name} ×{g.count}</div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function PenaltiesTooltip({ penalties }: { penalties: UserMatchPenalty[] }) {
+    if (penalties.length === 0) return null
+    const aggregated = Array.from(
+        penalties.reduce((map, p) => {
+            const key = p.rosterPlayerId
+            const existing = map.get(key)
+            if (existing) {
+                existing.count += p.count
+            } else {
+                map.set(key, { name: `${p.playerFirstName ?? ''} ${p.playerSurname ?? ''}`.trim(), count: p.count })
+            }
+            return map
+        }, new Map<number, { name: string; count: number }>()).values()
+    )
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                {aggregated.map((p) => (
+                    <div key={p.name}>{p.name} ×{p.count}</div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function BetCellTooltip({ betType, targetName }: { betType: string | null; targetName: string | null }) {
+    if (!betType) return null
+    const typeLabel = betType === 'TeamWin' ? 'Team Win' : betType === 'UserGoal' ? 'Goal' : 'Penalty'
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                <div>{typeLabel}{targetName ? `: ${targetName}` : ''}</div>
+            </div>
+        </div>
+    )
+}
+
+function ExpandedMatchSection({
+    users,
+    detail,
+}: {
+    users: WeeklyMatchUser[]
+    detail: MatchExpandDetail | undefined
+}) {
+    const { t } = useTranslation()
+    return (
+        <div className="border-t border-border bg-surface/40 rounded-b-lg px-4 py-2 overflow-visible">
+            <table className="w-full text-xs">
+                <thead>
+                    <tr className="text-text-muted border-b border-border">
+                        <th className="pb-1 text-left font-medium">{t('season.player')}</th>
+                        <th className="pb-1 text-center font-medium">+</th>
+                        <th className="pb-1 text-center font-medium">−</th>
+                        <th className="pb-1 text-center font-medium">{t('season.goals')}</th>
+                        <th className="pb-1 text-center font-medium">{t('season.penalties')}</th>
+                        <th className="pb-1 text-center font-medium">{t('season.bet')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.map((u) => {
+                        const ud = detail?.users.find((d) => d.userId === u.userId)
+                        const posPoints = ud?.points.filter((p) => p.pointType === 'Positive') ?? []
+                        const negPoints = ud?.points.filter((p) => p.pointType === 'Negative') ?? []
+                        return (
+                            <tr key={u.userId} className="border-b border-border/50 last:border-b-0">
+                                <td className="py-1 font-medium">{u.userName}</td>
+                                <td className="py-1 text-center">
+                                    <div className="relative group inline-block cursor-default">
+                                        <span className="text-success">{u.totalPlus > 0 ? `+${u.totalPlus}` : '0'}</span>
+                                        <PointsTooltip points={posPoints} />
+                                    </div>
+                                </td>
+                                <td className="py-1 text-center">
+                                    <div className="relative group inline-block cursor-default">
+                                        <span className="text-danger">{u.totalMinus > 0 ? u.totalMinus : '0'}</span>
+                                        <PointsTooltip points={negPoints} />
+                                    </div>
+                                </td>
+                                <td className="py-1 text-center">
+                                    <div className="relative group inline-block cursor-default">
+                                        <span>{u.totalGoals}</span>
+                                        {ud && <GoalsTooltip goals={ud.goals} />}
+                                    </div>
+                                </td>
+                                <td className="py-1 text-center">
+                                    <div className="relative group inline-block cursor-default">
+                                        <span>{u.totalPenalties}</span>
+                                        {ud && <PenaltiesTooltip penalties={ud.penalties} />}
+                                    </div>
+                                </td>
+                                <td className="py-1 text-center">
+                                    {u.betResult && u.betResult !== 'Cancelled' && u.betAmount != null ? (
+                                        <div className="relative group inline-block cursor-default">
+                                            <span className={
+                                                u.betResult === 'Won' ? 'text-success font-medium' :
+                                                u.betResult === 'Lost' ? 'text-danger' :
+                                                'text-text-muted'
+                                            }>
+                                                {u.betResult === 'Won' && u.betWonAmount != null
+                                                    ? `+${u.betWonAmount.toFixed(2)}€`
+                                                    : u.betResult === 'Lost'
+                                                        ? `-${u.betAmount.toFixed(2)}€`
+                                                        : `${u.betAmount.toFixed(2)}€`}
+                                            </span>
+                                            <BetCellTooltip betType={u.betType ?? null} targetName={u.betTargetName ?? null} />
+                                        </div>
+                                    ) : (
+                                        <span className="text-text-muted">—</span>
+                                    )}
+                                </td>
+                            </tr>
+                        )
+                    })}
+                </tbody>
+            </table>
+        </div>
+    )
+}
 
 function normalizeCompletionType(value: CompletionType | string | number | null | undefined): CompletionType {
     if (value === null || value === undefined) return CompletionType.None
@@ -22,6 +197,7 @@ function normalizeCompletionType(value: CompletionType | string | number | null 
             CompletionType.RegularTime,
             CompletionType.Overtime,
             CompletionType.Shootout,
+            CompletionType.InProgress,
         ]
         return completionValues.includes(value as CompletionType) ? (value as CompletionType) : CompletionType.None
     }
@@ -37,6 +213,10 @@ function normalizeCompletionType(value: CompletionType | string | number | null 
         case 'so':
         case 'shootout':
             return CompletionType.Shootout
+        case 'inprogress':
+        case 'in_progress':
+        case 'live':
+            return CompletionType.InProgress
         case 'none':
             return CompletionType.None
         default:
@@ -104,6 +284,8 @@ export default function SeasonPage() {
     const navigate = useNavigate()
     const seasonId = seasonIdParam ? Number(seasonIdParam) : null
     const { t } = useTranslation()
+    const isAdmin = useIsAdmin()
+    const toast = useToast()
     // Cache of all seasons' totals data (fetched once)
     const [seasonTotals, setSeasonTotals] = useState<SeasonTotals | null>(null)
     const [loadingTotals, setLoadingTotals] = useState(true)
@@ -120,6 +302,9 @@ export default function SeasonPage() {
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingData, setLoadingData] = useState(false)
+    const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null)
+    const [matchDetailCache, setMatchDetailCache] = useState<Map<number, MatchExpandDetail>>(new Map())
+    const [reEvaluatingMatchId, setReEvaluatingMatchId] = useState<number | null>(null)
     const [aggregatedEntries, setAggregatedEntries] = useState<{ id: number; userId: number; userName: string; totalPlus: number; totalMinus: number; matchesPlayed: number }[]>([])
     const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
     const [loadingH2H, setLoadingH2H] = useState(false)
@@ -158,6 +343,8 @@ export default function SeasonPage() {
         setH2hMatches([])
         setH2hExpanded(false)
         setLoadingH2H(false)
+        setExpandedMatchId(null)
+        setMatchDetailCache(new Map())
         // Find data for the selected season from cached totals
         const seasonUserData = seasonTotals.usersData.find(s => s.seasonId === seasonId)
         const seasonTopPlayers = seasonTotals.topRosterPlayers.find(s => s.seasonId === seasonId)
@@ -179,6 +366,7 @@ export default function SeasonPage() {
                     totalPlus: ud.totalPlus,
                     totalMinus: ud.totalMinus,
                     earnings: ud.earnings,
+                    bettingBalance: ud.bettingBalance,
                 }))
 
                 // Map to UserSeasonTotals format
@@ -273,6 +461,53 @@ export default function SeasonPage() {
             .finally(() => setLoadingH2H(false))
     }, [allMatches]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    const fetchMatchDetail = async (matchId: number) => {
+        if (!seasonId || matchDetailCache.has(matchId)) return
+        try {
+            const userMatches = await apiClient.get<UserMatch[]>(
+                `/api/seasons/${seasonId}/matches/${matchId}/usermatches`
+            )
+            const userDetails = await Promise.all(
+                userMatches.map(async (um) => {
+                    const [points, goals, penalties] = await Promise.all([
+                        apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`),
+                        apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`),
+                        apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`),
+                    ])
+                    return { userMatchId: um.id, userId: um.userId, points, goals, penalties }
+                })
+            )
+            setMatchDetailCache((prev) => {
+                const next = new Map(prev)
+                next.set(matchId, { users: userDetails })
+                return next
+            })
+        } catch {
+            // silently ignore fetch errors
+        }
+    }
+
+    const toggleExpand = async (matchId: number) => {
+        if (expandedMatchId === matchId) {
+            setExpandedMatchId(null)
+        } else {
+            setExpandedMatchId(matchId)
+            await fetchMatchDetail(matchId)
+        }
+    }
+
+    const reEvaluateBets = async (matchId: number) => {
+        setReEvaluatingMatchId(matchId)
+        try {
+            await apiClient.post(`/api/admin/matches/${matchId}/re-evaluate-bets`, {})
+            toast.success(t('season.reEvaluateSuccess'))
+        } catch {
+            toast.error(t('season.reEvaluateError'))
+        } finally {
+            setReEvaluatingMatchId(null)
+        }
+    }
+
     const handleSeasonChange = (id: number | null) => {
         if (id === null) navigate('/seasons')
         else navigate(`/seasons/${id}`)
@@ -323,6 +558,7 @@ export default function SeasonPage() {
                                                 <th className="pb-2">{t('season.goals')}</th>
                                                 <th className="pb-2">{t('season.penalties')}</th>
                                                 <th className="pb-2">{t('season.earnings')}</th>
+                                                <th className="pb-2">{t('season.betBalance')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -336,6 +572,7 @@ export default function SeasonPage() {
                                                         <td className="py-2 text-primary">{totals?.totalGoals ?? 0}</td>
                                                         <td className="py-2 text-warning">{totals?.totalPenalties ?? 0}</td>
                                                         <td className="py-2">{s.earnings.toFixed(2)} €</td>
+                                                        <td className="py-2 text-primary">{s.bettingBalance.toFixed(2)} €</td>
                                                     </tr>
                                                 )
                                             })}
@@ -482,50 +719,101 @@ export default function SeasonPage() {
                                                             const homeLogo = teamLogoUrl(m.homeTeamShortName ?? '')
                                                             const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
 
-                                                            return (
-                                                                <div key={m.matchId} className="relative group">
-                                                                    <StatsTooltip users={m.users ?? []} />
-                                                                    <Link
-                                                                        to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                                        className="flex items-center gap-3 card rounded-lg px-4 py-2.5 hover:brightness-110 transition-all"
-                                                                        style={bgStyle}
-                                                                    >
-                                                                        {/* Home team */}
-                                                                        <img
-                                                                            src={homeLogo}
-                                                                            alt={m.homeTeamShortName ?? ''}
-                                                                            className="w-7 h-7 object-contain flex-shrink-0"
-                                                                            onError={(e) => {
-                                                                                ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                            }}
-                                                                        />
-                                                                        <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                            {m.homeTeamShortName}
-                                                                        </span>
+                                                            const isCompleted =
+                                                                completionType === CompletionType.RegularTime ||
+                                                                completionType === CompletionType.Overtime ||
+                                                                completionType === CompletionType.Shootout
 
-                                                                        {/* Score */}
-                                                                        <span className="font-mono text-lg">{m.homeScore}</span>
-                                                                        <span className="text-text-muted font-mono text-lg">–</span>
-                                                                        <span className="font-mono text-lg">{m.awayScore}</span>
+                                                            const matchInner = (
+                                                                <>
+                                                                    <img
+                                                                        src={homeLogo}
+                                                                        alt={m.homeTeamShortName ?? ''}
+                                                                        className="w-7 h-7 object-contain flex-shrink-0"
+                                                                        onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                                    />
+                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">{m.homeTeamShortName}</span>
+                                                                    <span className="font-mono text-lg">{m.homeScore}</span>
+                                                                    <span className="text-text-muted font-mono text-lg">–</span>
+                                                                    <span className="font-mono text-lg">{m.awayScore}</span>
+                                                                    {completionType !== CompletionType.None && (
+                                                                        <CompletionBadge type={completionType} />
+                                                                    )}
+                                                                    <span className="font-semibold text-sm w-9 flex-shrink-0">{m.awayTeamShortName}</span>
+                                                                    <img
+                                                                        src={awayLogo}
+                                                                        alt={m.awayTeamShortName ?? ''}
+                                                                        className="w-7 h-7 object-contain flex-shrink-0"
+                                                                        onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                                    />
+                                                                </>
+                                                            )
 
-                                                                        {/* Completion badge */}
-                                                                        {completionType !== CompletionType.None && (
-                                                                            <CompletionBadge type={completionType} />
+                                                            const isExpanded = expandedMatchId === m.matchId
+                                                            const detail = matchDetailCache.get(m.matchId)
+
+                                                            if (isAdmin) {
+                                                                return (
+                                                                    <div key={m.matchId}>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => void toggleExpand(m.matchId)}
+                                                                            className="flex items-center gap-3 card rounded-lg px-4 py-2.5 w-full text-left hover:brightness-110 transition-all"
+                                                                            style={bgStyle}
+                                                                        >
+                                                                            {matchInner}
+                                                                            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                                                                                <Link
+                                                                                    to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                                                    className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                >
+                                                                                    {t('season.editMatch')}
+                                                                                </Link>
+                                                                                {isCompleted && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={(e) => { e.stopPropagation(); void reEvaluateBets(m.matchId) }}
+                                                                                        disabled={reEvaluatingMatchId === m.matchId}
+                                                                                        className="text-xs px-2 py-0.5 rounded bg-warning/20 text-warning hover:bg-warning/30 transition-colors disabled:opacity-50"
+                                                                                    >
+                                                                                        {reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}
+                                                                                    </button>
+                                                                                )}
+                                                                                <span className="text-text-muted text-xs">{isExpanded ? '▲' : '▼'}</span>
+                                                                            </div>
+                                                                        </button>
+                                                                        {isExpanded && (
+                                                                            <ExpandedMatchSection
+                                                                                users={m.users ?? []}
+                                                                                detail={detail}
+                                                                            />
                                                                         )}
+                                                                    </div>
+                                                                )
+                                                            }
 
-                                                                        {/* Away team */}
-                                                                        <span className="font-semibold text-sm w-9 flex-shrink-0">
-                                                                            {m.awayTeamShortName}
-                                                                        </span>
-                                                                        <img
-                                                                            src={awayLogo}
-                                                                            alt={m.awayTeamShortName ?? ''}
-                                                                            className="w-7 h-7 object-contain flex-shrink-0"
-                                                                            onError={(e) => {
-                                                                                ; (e.target as HTMLImageElement).style.display = 'none'
-                                                                            }}
+                                                            return (
+                                                                <div key={m.matchId}>
+                                                                    <div className="relative group">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => void toggleExpand(m.matchId)}
+                                                                            className="flex items-center gap-3 card rounded-lg px-4 py-2.5 w-full text-left hover:brightness-110 transition-all"
+                                                                            style={bgStyle}
+                                                                        >
+                                                                            {matchInner}
+                                                                            <span className="ml-auto text-text-muted text-xs flex-shrink-0">
+                                                                                {isExpanded ? '▲' : '▼'}
+                                                                            </span>
+                                                                        </button>
+                                                                    </div>
+                                                                    {isExpanded && (
+                                                                        <ExpandedMatchSection
+                                                                            users={m.users ?? []}
+                                                                            detail={detail}
                                                                         />
-                                                                    </Link>
+                                                                    )}
                                                                 </div>
                                                             )
                                                         })}

@@ -3,14 +3,14 @@ import { renderWithProviders } from './testUtils'
 import EarningsExpensesPage from '../pages/EarningsExpensesPage'
 
 // MSW handlers already provide:
-//   GET /api/stats/financial-stats → { totalCollected:0.75, totalExpenses:80.0, canBeCollected:0.75, expenses:[...], financesByUser:[{ userId:1, totalPluses:5, totalMinuses:3, collected:0.75, earnings:0.75 }] }
+//   GET /api/stats/financial-stats → { totalCollected:0.75, totalExpenses:80.0, canBeCollected:0, totalEarnings:0.75, expenses:[...], financesByUser:[{ userId:1, totalPluses:5, totalMinuses:3, collected:0.75, totalEarnings:0.75, canBeCollected:0, bettingBalance:0, stakes:0, betWins:0, betLosses:0, negativeCash:1.50 }] }
 //   GET /api/users → [{ id:1, name:'Player One', isActive:true }, ...]
 // Note: EarningsExpensesPage uses € (euro) as the currency symbol.
 
 // ── Earnings Table ──────────────────────────────────────────────────────────
 
 describe('EarningsExpensesPage — earnings table', () => {
-    test('renders row for each user with Plus, Minus, Paid, Earnings', async () => {
+    test('renders row for each user with Plus, Minus, Paid, Can Be Collected', async () => {
         renderWithProviders(<EarningsExpensesPage />)
         await waitFor(() => expect(screen.getByText('Player One')).toBeInTheDocument())
 
@@ -18,7 +18,6 @@ describe('EarningsExpensesPage — earnings table', () => {
         expect(row).toHaveTextContent('5')       // totalPluses
         expect(row).toHaveTextContent('3')       // totalMinuses
         expect(row).toHaveTextContent('0.75 €')  // collected
-        expect(row).toHaveTextContent('0.75 €')  // earnings
     })
 
     test('totals row sums all users', async () => {
@@ -28,9 +27,8 @@ describe('EarningsExpensesPage — earnings table', () => {
         const table = screen.getByTestId('earnings-table')
         const tfoot = table.querySelector('tfoot')!
         expect(tfoot).toHaveTextContent('Total')
-        expect(tfoot).toHaveTextContent('5')       // sum of totalPlus
-        expect(tfoot).toHaveTextContent('3')       // sum of totalMinus
-        expect(tfoot).toHaveTextContent('0.75 €')   // totalCollected and totalEarnings
+        expect(tfoot).toHaveTextContent('1.50 €')  // sum of negativeCash
+        expect(tfoot).toHaveTextContent('80.00 €') // totalExpenses
     })
 
     test('handles users with no data gracefully', async () => {

@@ -26,4 +26,5 @@ export const adminNavItems = [
     { to: '/admin/money-config', labelKey: 'nav.moneyConfig' },
     { to: '/admin/expenses', labelKey: 'nav.expenses' },
     { to: '/admin/payouts', labelKey: 'nav.payouts' },
+    { to: '/admin/points', labelKey: 'nav.pointsManagement' },
 ]

@@ -44,7 +44,9 @@
         "closeMenu": "Close menu",
         "add": "Add",
         "user": "User",
-        "changePassword": "Change Password"
+        "changePassword": "Change Password",
+        "previous": "Previous",
+        "next": "Next"
     },
     "pagination": {
         "showing": "{{from}}–{{to}} of {{total}}",
@@ -81,7 +83,8 @@
         "pointReasons": "Point Reasons",
         "moneyConfig": "Money Config",
         "expenses": "Expenses",
-        "payouts": "Payouts"
+        "payouts": "Payouts",
+        "pointsManagement": "Points Management"
     },
     "layout": {
         "appName": "🏒 NHL Stats",
@@ -138,6 +141,7 @@
         "goals": "Goals",
         "penalties": "Penalties",
         "earnings": "Earnings",
+        "betBalance": "Bet Balance",
         "topScorer": "Top Scorer",
         "topPowerPlayScorer": "Most Power-Play Goals",
         "topShortHandedScorer": "Most Short-Handed Goals",
@@ -160,7 +164,12 @@
         "notPlayed": "Not Played",
         "reg": "REG",
         "ot": "OT",
-        "so": "SO"
+        "so": "SO",
+        "editMatch": "Edit",
+        "reEvaluateBets": "Re-evaluate Bets",
+        "reEvaluateSuccess": "Bets re-evaluated successfully",
+        "reEvaluateError": "Failed to re-evaluate bets",
+        "bet": "Bet"
     },
     "match": {
         "matchNotFound": "Match not found",
@@ -173,6 +182,7 @@
         "reg": "REG",
         "ot": "OT",
         "so": "SO",
+        "inProgress": "LIVE",
         "homeScore": "home score",
         "awayScore": "away score",
         "completionType": "completion type",
@@ -187,7 +197,11 @@
         "minusPoints": "− Points",
         "paid": "Paid",
         "balance": "Balance",
-        "earnings": "Earnings",
+        "dues": "Total Dues",
+        "stakes": "Stakes",
+        "betWins": "Bet Wins",
+        "betLosses": "Bet Losses",
+        "betBalance": "Bet Balance",
         "noBalanceData": "No balance data available.",
         "noFinancialData": "No financial data available.",
         "total": "Total",
@@ -316,7 +330,41 @@
         "betOnHomeWin": "Bet on home team to win",
         "betOnAwayWin": "Bet on away team to win",
         "whoWillScore": "Who will score?",
-        "whoWillBePenalized": "Who will be penalized?"
+        "whoWillBePenalized": "Who will be penalized?",
+        "availableBalance": "Available Balance",
+        "maxWinCap": "Max Win Cap",
+        "betPlacedBadge": "Bet Placed",
+        "cancelBet": "Cancel Bet",
+        "betCancelled": "Bet cancelled.",
+        "oddsLabel": "Odds",
+        "wonAmountLabel": "Won",
+        "totalWon": "Total Won",
+        "outcomeCancelled": "Cancelled",
+        "potentialWin": "potential win"
+    },
+    "points": {
+        "title": "Points Management",
+        "subtitle": "Review and adjust individual point cash amounts.",
+        "totals": "Totals",
+        "allTypes": "All Types",
+        "allSeasons": "All Seasons",
+        "allPlayers": "All Players",
+        "positive": "Positive",
+        "negative": "Negative",
+        "player": "Player",
+        "season": "Season",
+        "matchNumber": "Match",
+        "reason": "Reason",
+        "type": "Type",
+        "count": "Count",
+        "amount": "Amount (€)",
+        "createdOn": "Created",
+        "saveAll": "Save Changes",
+        "noChanges": "No amounts have been changed.",
+        "saved": "Amounts updated successfully.",
+        "saveError": "Failed to save amounts.",
+        "loadError": "Failed to load points.",
+        "showing": "Showing {{from}}–{{to}} of {{total}}"
     },
     "seasonSelector": {
         "allSeasons": "All seasons",

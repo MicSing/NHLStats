@@ -3,107 +3,45 @@ import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
 import PageLayout from '../components/PageLayout'
 import { useAuth } from '../context/AuthContext'
-import apiClient from '../services/apiClient'
-import { cacheService } from '../services/cacheService'
 import { bettingService } from '../services/bettingService'
-import { CompletionType } from '../types/match'
-import type { Match } from '../types/match'
-import type { BetOutcome, UserBet } from '../types/bet'
+import type { BetHistoryItem } from '../types/bet'
 
-interface HistoryRow {
-    bet: UserBet
-    outcome: BetOutcome
-}
-
-function formatMatchDate(matchDate: string | null): string {
-    if (!matchDate) return 'TBD'
-
-    const parsed = new Date(matchDate)
-    return Number.isNaN(parsed.getTime()) ? 'TBD' : parsed.toLocaleString()
-}
-
-function resolveOutcome(bet: UserBet, match: Match | undefined): BetOutcome {
-    if (!match || match.completionType === CompletionType.None) {
-        return 'pending'
-    }
-
-    if (match.homeScore === match.awayScore) {
-        return 'pending'
-    }
-
-    const winnerTeamId = match.homeScore > match.awayScore ? match.homeTeamId : match.awayTeamId
-    return winnerTeamId === bet.selectedTeamId ? 'won' : 'lost'
+function formatDate(value: string | null): string {
+    if (!value) return '—'
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString()
 }
 
 export default function BettingHistoryPage() {
     const { t } = useTranslation()
     const { user } = useAuth()
-    const [loading, setLoading] = useState(() => (user?.userId ?? null) !== null)
+    const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState(false)
-    const [rows, setRows] = useState<HistoryRow[]>([])
+    const [items, setItems] = useState<BetHistoryItem[]>([])
 
     const userId = user?.userId ?? null
 
     useEffect(() => {
         if (!userId) {
+            setLoading(false)
             return
         }
 
-        let isMounted = true
-
-        const bets = bettingService.getUserBets(userId)
-
-        cacheService
-            .getSeasons()
-            .then(async (seasons) => {
-                const seasonMatches = await Promise.all(
-                    seasons.map(async (season) => {
-                        try {
-                            const matches = await apiClient.get<Match[]>(`/api/seasons/${season.id}/matches`)
-                            return matches
-                        } catch {
-                            return [] as Match[]
-                        }
-                    }),
-                )
-
-                if (!isMounted) return
-
-                const byId = new Map<number, Match>()
-                for (const matches of seasonMatches) {
-                    for (const match of matches) {
-                        byId.set(match.id, match)
-                    }
-                }
-
-                const resolved: HistoryRow[] = bets.map((bet) => ({
-                    bet,
-                    outcome: resolveOutcome(bet, byId.get(bet.matchId)),
-                }))
-
-                setRows(resolved)
+        bettingService
+            .getHistory()
+            .then((data) => {
+                setItems(data)
                 setLoadError(false)
             })
-            .catch(() => {
-                if (!isMounted) return
-                setLoadError(true)
-            })
-            .finally(() => {
-                if (!isMounted) return
-                setLoading(false)
-            })
-
-        return () => {
-            isMounted = false
-        }
+            .catch(() => setLoadError(true))
+            .finally(() => setLoading(false))
     }, [userId])
 
-    const totalStake = useMemo(() => rows.reduce((sum, row) => sum + row.bet.stake, 0), [rows])
-
-    const removeBet = (betId: string) => {
-        bettingService.removeBet(betId)
-        setRows((prev) => prev.filter((row) => row.bet.id !== betId))
-    }
+    const totalStake = useMemo(() => items.reduce((sum, i) => sum + i.amount, 0), [items])
+    const totalWon = useMemo(
+        () => items.filter(i => i.status === 'Won').reduce((sum, i) => sum + (i.wonAmount ?? 0), 0),
+        [items],
+    )
 
     if (loading) {
         return (
@@ -143,12 +81,19 @@ export default function BettingHistoryPage() {
                         <h1 className="text-2xl font-bold text-primary">{t('betting.historyTitle')}</h1>
                         <p className="text-sm text-text-muted mt-1">{t('betting.historySubtitle')}</p>
                     </div>
-                    <div className="text-xs text-text-muted bg-surface border border-border rounded-full px-3 py-1.5">
-                        {t('betting.historySummary', { count: rows.length, amount: totalStake.toFixed(2) })}
+                    <div className="flex gap-3">
+                        <div className="text-xs text-text-muted bg-surface border border-border rounded-full px-3 py-1.5">
+                            {t('betting.historySummary', { count: items.length, amount: totalStake.toFixed(2) })}
+                        </div>
+                        {totalWon > 0 && (
+                            <div className="text-xs bg-success/20 text-success border border-success/30 rounded-full px-3 py-1.5">
+                                {t('betting.totalWon')}: {totalWon.toFixed(2)} €
+                            </div>
+                        )}
                     </div>
                 </header>
 
-                {rows.length === 0 ? (
+                {items.length === 0 ? (
                     <section className="card p-6 text-center">
                         <p className="text-text-muted">{t('betting.noBetHistory')}</p>
                     </section>
@@ -160,44 +105,56 @@ export default function BettingHistoryPage() {
                                     <th className="text-left px-4 py-3">{t('betting.match')}</th>
                                     <th className="text-left px-4 py-3">{t('betting.pick')}</th>
                                     <th className="text-right px-4 py-3">{t('betting.stakeLabel')}</th>
+                                    <th className="text-right px-4 py-3">{t('betting.oddsLabel')}</th>
                                     <th className="text-left px-4 py-3">{t('betting.outcome')}</th>
+                                    <th className="text-right px-4 py-3">{t('betting.wonAmountLabel')}</th>
                                     <th className="text-left px-4 py-3">{t('betting.placedAtColumn')}</th>
-                                    <th className="text-right px-4 py-3">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {rows.map(({ bet, outcome }) => (
-                                    <tr key={bet.id} className="bg-bg hover:bg-surface transition-colors">
+                                {items.map((item) => (
+                                    <tr key={item.id} className="bg-bg hover:bg-surface transition-colors">
                                         <td className="px-4 py-3">
-                                            <p className="font-medium">{bet.homeTeamName} vs {bet.awayTeamName}</p>
+                                            <p className="font-medium">
+                                                {item.homeTeamName} vs {item.awayTeamName}
+                                            </p>
                                             <p className="text-xs text-text-muted">
-                                                {bet.seasonName} - {t('betting.matchNumber', { number: bet.matchNumber })} - {formatMatchDate(bet.matchDate)}
+                                                {t('betting.matchNumber', { number: item.matchNumber })}
                                             </p>
                                         </td>
-                                        <td className="px-4 py-3 font-medium">{bet.selectedTeamName}</td>
-                                        <td className="px-4 py-3 text-right">{bet.stake.toFixed(2)} €</td>
+                                        <td className="px-4 py-3">
+                                            <p className="font-medium">{item.betTargetName ?? '—'}</p>
+                                            <p className="text-xs text-text-muted">{item.betType}</p>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">{item.amount.toFixed(2)} €</td>
+                                        <td className="px-4 py-3 text-right text-text-muted">×{item.odds.toFixed(2)}</td>
                                         <td className="px-4 py-3">
                                             <span
-                                                className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${outcome === 'won'
-                                                    ? 'bg-success/20 text-success'
-                                                    : outcome === 'lost'
-                                                        ? 'bg-danger/20 text-danger'
-                                                        : 'bg-border text-text-muted'
-                                                    }`}
+                                                className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
+                                                    item.status === 'Won'
+                                                        ? 'bg-success/20 text-success'
+                                                        : item.status === 'Lost'
+                                                            ? 'bg-danger/20 text-danger'
+                                                            : item.status === 'Cancelled'
+                                                                ? 'bg-border text-text-muted line-through'
+                                                                : 'bg-border text-text-muted'
+                                                }`}
                                             >
-                                                {outcome === 'won' ? t('betting.outcomeWon') : outcome === 'lost' ? t('betting.outcomeLost') : t('betting.outcomePending')}
+                                                {item.status === 'Won'
+                                                    ? t('betting.outcomeWon')
+                                                    : item.status === 'Lost'
+                                                        ? t('betting.outcomeLost')
+                                                        : item.status === 'Cancelled'
+                                                            ? t('betting.outcomeCancelled')
+                                                            : t('betting.outcomePending')}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-text-muted">{new Date(bet.placedAt).toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                className="btn-ghost text-xs"
-                                                onClick={() => removeBet(bet.id)}
-                                            >
-                                                {t('betting.removeBet')}
-                                            </button>
+                                            {item.wonAmount != null
+                                                ? <span className="text-success font-medium">{item.wonAmount.toFixed(2)} €</span>
+                                                : <span className="text-text-muted">—</span>}
                                         </td>
+                                        <td className="px-4 py-3 text-text-muted text-xs">{formatDate(item.createdOn)}</td>
                                     </tr>
                                 ))}
                             </tbody>

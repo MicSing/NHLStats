@@ -9,8 +9,15 @@ namespace NHLStats.Application.Services;
 public class MatchService : IMatchService
 {
     private readonly NhlStatsDbContext _db;
+    private readonly IBetService _betService;
+    private readonly IBettingOddsService _oddsService;
 
-    public MatchService(NhlStatsDbContext db) => _db = db;
+    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService)
+    {
+        _db = db;
+        _betService = betService;
+        _oddsService = oddsService;
+    }
 
     private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
         completionType == CompletionType.None ? null : matchDate;
@@ -21,7 +28,7 @@ public class MatchService : IMatchService
         m.AwayTeamId, m.AwayTeam?.Name,
         m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
 
-    private static FutureMatchDto ToFutureDto(Match m, CurrentUserBetDto? bet) => new(
+    private static FutureMatchDto ToFutureDto(Match m, BetDto? bet) => new(
         m.Id,
         m.SeasonId,
         m.Season?.Name ?? string.Empty,
@@ -54,7 +61,7 @@ public class MatchService : IMatchService
             .Take(normalizedCount)
             .ToListAsync();
 
-        Dictionary<int, CurrentUserBetDto>? betsByMatchId = null;
+        Dictionary<int, BetDto>? betsByMatchId = null;
         if (!string.IsNullOrWhiteSpace(loginId) && matches.Count > 0)
         {
             var matchIds = matches.Select(m => m.Id).ToList();
@@ -62,11 +69,16 @@ public class MatchService : IMatchService
                 .Where(b => b.CreatedBy == loginId && matchIds.Contains(b.MatchId))
                 .ToDictionaryAsync(
                     b => b.MatchId,
-                    b => new CurrentUserBetDto(
+                    b => new BetDto(
                         b.Id,
+                        b.MatchId,
                         b.BetType,
                         b.UserId,
                         b.TeamId,
+                        b.Amount,
+                        b.Odds,
+                        b.Status,
+                        b.CreatedBy,
                         b.CreatedOn,
                         b.UpdatedOn,
                         b.EvaluatedOn));
@@ -127,6 +139,8 @@ public class MatchService : IMatchService
             .FirstOrDefaultAsync(m => m.Id == id);
         if (match == null) return null;
 
+        var previousCompletionType = match.CompletionType;
+
         match.HomeTeamId = dto.HomeTeamId;
         match.AwayTeamId = dto.AwayTeamId;
         match.HomeScore = dto.HomeScore;
@@ -134,6 +148,16 @@ public class MatchService : IMatchService
         match.CompletionType = dto.CompletionType;
         match.MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType);
         await _db.SaveChangesAsync();
+
+        var justCompleted = previousCompletionType is CompletionType.None or CompletionType.InProgress
+            && dto.CompletionType is CompletionType.RegularTime or CompletionType.Overtime or CompletionType.Shootout;
+
+        if (justCompleted)
+            await _betService.EvaluateMatchBetsAsync(id);
+
+        if (dto.CompletionType == CompletionType.None)
+            await _oddsService.RecalculateForMatchAsync(id);
+
         return await GetByIdAsync(id);
     }
 

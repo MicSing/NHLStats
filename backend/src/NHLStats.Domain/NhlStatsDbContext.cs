@@ -29,6 +29,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<UserPayout> UserPayouts => Set<UserPayout>();
     public DbSet<Bet> Bets => Set<Bet>();
+    public DbSet<MatchOdds> MatchOdds => Set<MatchOdds>();
     public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -156,10 +157,19 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.CreatedBy).IsRequired();
+            b.Property(x => x.Status).HasConversion<int>();
             b.HasIndex(x => new { x.MatchId, x.CreatedBy }).IsUnique();
             b.HasOne(x => x.Match).WithMany(m => m.Bets).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.User).WithMany(u => u.Bets).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.Team).WithMany(t => t.Bets).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchOdds>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BetType).HasConversion<int>();
+            b.HasIndex(x => new { x.MatchId, x.BetType, x.TargetId }).IsUnique();
+            b.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Seed data: 32 NHL teams

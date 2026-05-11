@@ -6,6 +6,8 @@ public class UserMatchPoint
     public int UserMatchId { get; set; }
     public int PointReasonId { get; set; }
     public int Count { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime? CreatedOn { get; set; }
 
     public UserMatch? UserMatch { get; set; }
     public PointReason? PointReason { get; set; }

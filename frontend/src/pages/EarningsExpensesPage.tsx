@@ -52,8 +52,7 @@ export default function EarningsExpensesPage() {
     }
 
     const users = stats?.financesByUser ?? []
-    const totalPlus = users.reduce((s, u) => s + u.totalPluses, 0)
-    const totalMinus = users.reduce((s, u) => s + u.totalMinuses, 0)
+    const totalNegativeCash = users.reduce((s, u) => s + u.negativeCash, 0)
     const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0)
 
     return (
@@ -73,11 +72,14 @@ export default function EarningsExpensesPage() {
                             <thead className="bg-surface text-text-muted uppercase text-xs tracking-wider">
                                 <tr>
                                     <th className="text-left px-4 py-3">{t('earnings.player')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.plusPoints')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.minusPoints')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.paid')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.earnings')}</th>
-                                    <th className="text-right px-4 py-3">{t('earnings.canBeCollected')}</th>
+                                    <th className="text-right px-4 py-3">
+                                        {t('earnings.dues')} <span className="opacity-50 normal-case">ℹ</span>
+                                    </th>
+                                    <th className="text-right px-4 py-3 border-l border-border">
+                                        {t('earnings.betBalance')} <span className="opacity-50 normal-case">ℹ</span>
+                                    </th>
+                                    <th className="text-right px-4 py-3 border-l border-border">{t('earnings.paid')}</th>
+                                    <th className="text-right px-4 py-3 border-l border-border">{t('earnings.canBeCollected')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
@@ -91,15 +93,48 @@ export default function EarningsExpensesPage() {
                                     users.map((u) => (
                                         <tr key={u.userId} className="bg-bg hover:bg-surface transition-colors">
                                             <td className="px-4 py-3 font-medium">{userNames[u.userId] ?? `User ${u.userId}`}</td>
-                                            <td className="px-4 py-3 text-right text-success">{u.totalPluses}</td>
-                                            <td className="px-4 py-3 text-right text-danger">{u.totalMinuses}</td>
-                                            <td className="px-4 py-3 text-right text-text-muted">
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="relative group inline-block cursor-default">
+                                                    <span className="font-medium text-danger">{formatCurrency(u.negativeCash)}</span>
+                                                    <div className="absolute right-0 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                                        <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap text-left">
+                                                            <div className="flex gap-3 justify-between">
+                                                                <span className="text-text-muted">{t('earnings.minusPoints')}</span>
+                                                                <span className="font-mono">{u.totalMinuses}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right border-l border-border">
+                                                <div className="relative group inline-block cursor-default">
+                                                    <span className="font-medium text-primary">{formatCurrency(u.bettingBalance)}</span>
+                                                    <div className="absolute right-0 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                                        <div className="bg-surface border border-border rounded shadow-lg px-3 py-2 text-xs whitespace-nowrap text-left space-y-1">
+                                                            <div className="flex gap-3 justify-between">
+                                                                <span className="text-text-muted">{t('earnings.plusPoints')}</span>
+                                                                <span className="font-mono">{u.totalPluses}</span>
+                                                            </div>
+                                                            <div className="flex gap-3 justify-between">
+                                                                <span className="text-text-muted">{t('earnings.stakes')}</span>
+                                                                <span className="font-mono">{u.stakes > 0 ? formatCurrency(u.stakes) : '—'}</span>
+                                                            </div>
+                                                            <div className="flex gap-3 justify-between">
+                                                                <span className="text-text-muted">{t('earnings.betWins')}</span>
+                                                                <span className="font-mono text-success">{u.betWins > 0 ? formatCurrency(u.betWins) : '—'}</span>
+                                                            </div>
+                                                            <div className="flex gap-3 justify-between">
+                                                                <span className="text-text-muted">{t('earnings.betLosses')}</span>
+                                                                <span className="font-mono text-danger">{u.betLosses > 0 ? formatCurrency(u.betLosses) : '—'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-text-muted border-l border-border">
                                                 {u.collected > 0 ? formatCurrency(u.collected) : '—'}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-text-muted">
-                                                {formatCurrency(u.totalEarnings)}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-medium text-warning">
+                                            <td className="px-4 py-3 text-right font-medium text-warning border-l border-border">
                                                 {formatCurrency(u.canBeCollected)}
                                             </td>
                                         </tr>
@@ -110,11 +145,10 @@ export default function EarningsExpensesPage() {
                                 <tfoot className="bg-surface border-t-2 border-border font-semibold text-sm">
                                     <tr>
                                         <td className="px-4 py-3 text-text">{t('earnings.total')}</td>
-                                        <td className="px-4 py-3 text-right text-success">{totalPlus}</td>
-                                        <td className="px-4 py-3 text-right text-danger">{totalMinus}</td>
-                                        <td className="px-4 py-3 text-right text-text-muted">{formatCurrency(stats?.totalExpenses ?? 0)}</td>
-                                        <td className="px-4 py-3 text-right text-text-muted">{formatCurrency(stats?.totalEarnings ?? 0)}</td>
-                                        <td className={`px-4 py-3 text-right ${(stats?.canBeCollected ?? 0) > 0 ? 'text-warning' : 'text-success'}`}>
+                                        <td className="px-4 py-3 text-right text-danger">{formatCurrency(totalNegativeCash)}</td>
+                                        <td className="px-4 py-3 border-l border-border" />
+                                        <td className="px-4 py-3 text-right text-text-muted border-l border-border">{formatCurrency(stats?.totalExpenses ?? 0)}</td>
+                                        <td className={`px-4 py-3 text-right border-l border-border ${(stats?.canBeCollected ?? 0) > 0 ? 'text-warning' : 'text-success'}`}>
                                             {formatCurrency(stats?.canBeCollected ?? 0)}
                                         </td>
                                     </tr>

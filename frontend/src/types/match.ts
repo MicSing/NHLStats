@@ -3,6 +3,7 @@ export const CompletionType = {
     RegularTime: 1,
     Overtime: 2,
     Shootout: 3,
+    InProgress: 4,
 } as const
 
 export type CompletionType = (typeof CompletionType)[keyof typeof CompletionType]
@@ -40,6 +41,9 @@ export interface MatchBetDto {
     betType: 'TeamWin' | 'UserGoal' | 'UserPenalty'
     userId: number | null
     teamId: number | null
+    amount: number
+    odds: number
+    status: 'Pending' | 'Won' | 'Lost' | 'Cancelled'
     createdOn: string
     updatedOn: string | null
     evaluatedOn: string | null

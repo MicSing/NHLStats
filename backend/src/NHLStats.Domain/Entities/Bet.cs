@@ -7,6 +7,9 @@ public class Bet
     public BetType BetType { get; set; }
     public int? UserId { get; set; }
     public int? TeamId { get; set; }
+    public decimal Amount { get; set; }
+    public decimal Odds { get; set; }
+    public BetStatus Status { get; set; } = BetStatus.Pending;
     public string CreatedBy { get; set; } = null!;
     public DateTime CreatedOn { get; set; }
     public DateTime? UpdatedOn { get; set; }

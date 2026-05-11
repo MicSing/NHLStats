@@ -423,6 +423,413 @@ For each admin page, follow this TDD cycle:
 
 ---
 
+### Phase 16: Betting System Rewrite, Season Page Enhancement & Points Management
+**Status:** Not started
+**Goal:** Complete rewrite of the betting system with real odds calculation, cash-backed bets, and proper win/loss tracking. Extend `UserMatchPoint` with stored cash amounts. Rework the Season Page to show inline match details for non-admins with hover tooltips. Add a new admin Points Management page for bulk point review/editing.
+
+#### Sub-phase 16.1: Database & Entity Changes
+
+##### Step 16.1.1 — Add `InProgress` CompletionType
+- [ ] Add `InProgress = 4` to `CompletionType` enum in `backend/src/NHLStats.Domain/Entities/CompletionType.cs`
+- [ ] Update `MatchService.NormalizeMatchDate()` to treat `InProgress` like other non-None types (keeps the date)
+- [ ] Update frontend `CompletionType` enum in `frontend/src/types/match.ts`
+- [ ] Update `normalizeCompletionType()` in `SeasonPage.tsx` to handle the new value
+- [ ] Update `CompletionBadge` component with InProgress variant (pulsing dot or "LIVE" indicator)
+
+##### Step 16.1.2 — Extend `UserMatchPoint` with `Amount` and `CreatedOn`
+- [ ] Add `decimal? Amount` (nullable) and `DateTime? CreatedOn` (nullable) to `UserMatchPoint`
+- [ ] EF migration adds the two columns as nullable (no default needed — backfill handles existing rows)
+
+##### Step 16.1.2b — Backfill existing `UserMatchPoint.Amount` via SQL data migration
+- [ ] In the **same EF migration** (after `AddColumn`), execute raw SQL to backfill using SQLite-compatible correlated UPDATE:
+  ```sql
+  UPDATE UserMatchPoints
+  SET Amount = (
+      SELECT CASE
+          WHEN pr.PointType = 0 THEN UserMatchPoints."Count" * mc.NegativePointValue
+          WHEN pr.PointType = 1 THEN UserMatchPoints."Count" * mc.PositivePointValue
+          ELSE 0
+      END
+      FROM PointReasons pr,
+           UserMatches um,
+           Matches m,
+           MoneyConfigs mc
+      WHERE pr.Id = UserMatchPoints.PointReasonId
+        AND um.Id = UserMatchPoints.UserMatchId
+        AND m.Id = um.MatchId
+        AND mc.Id = (
+            SELECT mc2.Id FROM MoneyConfigs mc2
+            WHERE mc2.EffectiveFrom <= COALESCE(m.MatchDate, datetime('now'))
+            ORDER BY mc2.EffectiveFrom DESC
+            LIMIT 1
+        )
+  ),
+  CreatedOn = (
+      SELECT m.MatchDate
+      FROM UserMatches um
+      INNER JOIN Matches m ON m.Id = um.MatchId
+      WHERE um.Id = UserMatchPoints.UserMatchId
+  )
+  WHERE EXISTS (SELECT 1 FROM UserMatches um WHERE um.Id = UserMatchPoints.UserMatchId);
+  ```
+- [ ] For rows where match has no date (`MatchDate IS NULL`), use the latest `MoneyConfig` (fallback)
+- [ ] For matches with no `MoneyConfig` at all, default: negative = `Count * 0.50`, positive = `Count * 1.00`
+- [ ] After backfill, a second `AlterColumn` makes `Amount` non-nullable with default `0`
+- [ ] `CreatedOn` remains nullable (old points without match dates stay null; new points always set it)
+
+##### Step 16.1.3 — Rewrite `Bet` entity
+- [ ] Modify `Bet` entity to add: `decimal Amount` (stake), `decimal Odds`
+- [ ] Add `BetStatus` enum: `Pending = 0, Won = 1, Lost = 2, Cancelled = 3` — replaces `IsWon` bool
+- [ ] Create `backend/src/NHLStats.Domain/Entities/BetStatus.cs`
+- [ ] Keep `EvaluatedOn` (timestamp of evaluation)
+- [ ] Keep unique index on `(MatchId, CreatedBy)` — one bet per user per match
+- [ ] EF migration
+
+##### Step 16.1.4 — Betting balance (computed, not stored)
+- [ ] Betting balance = `Σ(positive point cash) + Σ(won bet profits: Amount × Odds) - Σ(lost bet amounts) - Σ(pending bet amounts)` — cancelled bets don't affect balance
+- [ ] Max bet cap: `odds × betAmount ≤ (Σ(negative point cash) - Σ(user payouts))`
+- [ ] Create `BettingBalanceService` method to calculate from data
+
+---
+
+#### Sub-phase 16.2: Backend — Point Cash Management
+
+##### Step 16.2.1 — Auto-calculate cash on point creation
+- [ ] Modify `UserMatchService.AddPointAsync()`: lookup effective `MoneyConfig` for the match date
+- [ ] Compute `Amount = Count × config.NegativePointValue` or `config.PositivePointValue` depending on `PointReason.PointType`
+- [ ] Neutral points get `Amount = 0`. Default negative = -0.5 if no config
+- [ ] Update DTOs: `UserMatchPointDto` gets `Amount` and `CreatedOn` fields
+- [ ] `CreateUserMatchPointDto` gets optional `Amount?` override
+- [ ] `UpdateUserMatchPointDto` gets optional `Amount?` override
+
+##### Step 16.2.2 — Bulk point update endpoint (admin)
+- [ ] `GET /api/admin/points?seasonId=X&pointType=Positive|Negative&page=1&size=50` — paginated list of all points with filters
+- [ ] `PUT /api/admin/points/bulk` — accept array of `{ id, amount }` to update multiple point amounts at once
+- [ ] Returns updated point records
+- [ ] New `PointManagementService` or extend `UserMatchService`
+
+##### Step 16.2.3 — Points Management DTOs
+- [ ] `PointListItemDto`: Id, UserMatchId, UserName, MatchNumber, SeasonName, PointReasonName, PointType, Count, Amount, CreatedOn
+- [ ] `BulkUpdatePointDto`: array of `{ Id, Amount }`
+
+---
+
+#### Sub-phase 16.3: Backend — Odds Calculation Engine
+
+##### Step 16.3.1 — SQL views for probability factors
+- [ ] Create migration with raw SQL views:
+  - **`vw_team_win_factors`**: For each unplayed match, computes per-team: streak win rate (last 10), season win rate, home/away win rate, H2H win rate, all-time win rate. Joins `Matches`, `Seasons`, `Teams`.
+  - **`vw_user_goal_factors`**: For each active user × unplayed match, computes: streak scoring rate (last 10), season scoring rate, home/away scoring rate, H2H scoring rate, all-time scoring rate. Joins `UserMatchGoals`, `UserMatches`, `Matches`.
+  - **`vw_user_penalty_factors`**: Same structure as goal view but using `UserMatchPenalties`.
+- [ ] Views handle NULL/zero-data fallback (use 0.5 when no history for a factor)
+- [ ] Weight formula applied in the view: `P = 0.30*streak + 0.30*season + 0.15*homeAway + 0.15*h2h + 0.10*allTime`
+
+**Team Win probability formula:**
+```
+P = 0.30 × streakRate + 0.30 × seasonRate + 0.15 × homeAwayRate + 0.15 × h2hRate + 0.10 × allTimeRate
+```
+- **streakRate**: wins in team's last 10 completed matches / 10
+- **seasonRate**: wins in current season / total season matches
+- **homeAwayRate**: home win rate (if team is home) or away win rate (if away)
+- **h2hRate**: win rate against this specific opponent across all history
+- **allTimeRate**: total wins / total matches all time
+- Fallback: 0.5 when no data exists for a factor
+
+**User Goal/Penalty probability formula (same structure):**
+- **streakRate**: matches where user had ≥1 goal/penalty in last 10 matches / 10
+- **seasonRate**: matches with goals/penalties this season / total matches this season
+- **homeAwayRate**: scoring/penalty rate at home vs away
+- **h2hRate**: scoring/penalty rate against upcoming opponent
+- **allTimeRate**: all-time matches with goals/penalties / total matches
+
+**Odds formula:** `Odds = (0.85 / P) - 1` (15% house margin, net profit multiplier)
+
+##### Step 16.3.2 — `MatchOdds` table (pre-computed storage)
+- [ ] New entity `MatchOdds`:
+  - `Id` (int PK), `MatchId` (FK), `BetType` (TeamWin/UserGoal/UserPenalty), `TargetId` (int? — TeamId or UserId depending on type), `Probability` (decimal), `Odds` (decimal), `ComputedOn` (DateTime)
+  - Unique index on `(MatchId, BetType, TargetId)`
+- [ ] Create `backend/src/NHLStats.Domain/Entities/MatchOdds.cs`
+- [ ] EF Core maps this to table (writable storage, NOT a view)
+
+##### Step 16.3.3 — `BettingOddsService` (compute + store)
+- [ ] New service: `IBettingOddsService` / `BettingOddsService`
+- [ ] **`RecalculateForMatchAsync(int matchId)`**: Reads from the three SQL views for that match, applies odds formula `Odds = (0.85 / P) - 1`, upserts rows into `MatchOdds` table
+- [ ] **`RecalculateAllUpcomingAsync()`**: Recalculates odds for all unplayed/non-InProgress matches
+- [ ] **`GetMatchOddsAsync(int matchId)`**: Simple read from `MatchOdds` table → returns DTOs
+- [ ] Odds floor: minimum odds of 0.05 (avoid division by zero when P ≈ 0.85+)
+
+##### Step 16.3.4 — Recalculation triggers
+- [ ] Call `RecalculateAllUpcomingAsync()` when:
+  - A match is completed (in `MatchService.UpdateAsync` hook, after bet evaluation)
+  - A new match is created (in `MatchService.CreateAsync` / `BatchCreateAsync`)
+  - On application startup (ensure odds exist for all upcoming matches)
+- [ ] Call `RecalculateForMatchAsync(matchId)` when individual match data changes
+
+##### Step 16.3.5 — Odds endpoint
+- [ ] `GET /api/betting/matches/{matchId}/odds` reads from `MatchOdds` table, returns:
+  ```json
+  {
+    "teamWin": { "homeTeamId": 1, "homeOdds": 0.85, "awayTeamId": 2, "awayOdds": 1.20 },
+    "userGoal": [{ "userId": 1, "userName": "Player1", "odds": 0.70 }],
+    "userPenalty": [{ "userId": 1, "userName": "Player1", "odds": 0.55 }],
+    "computedOn": "2026-04-12T10:30:00Z"
+  }
+  ```
+
+---
+
+#### Sub-phase 16.4: Backend — Betting Service Rewrite
+
+##### Step 16.4.1 — Rewrite `BetService`
+- [ ] `PlaceBetAsync(matchId, loginId, dto)`: validates balance, max cap, match is not InProgress/completed, reads odds from `MatchOdds` table at placement time, stores bet with locked-in odds
+- [ ] `UpdateBetAsync(matchId, loginId, dto)`: recalculate odds if target changed, validate new amount, adjust balance
+- [ ] `CancelBetAsync(matchId, loginId)`: only if match not InProgress/completed, sets status to Cancelled (refund to balance)
+- [ ] `GetUserBetsForSeasonAsync(loginId, seasonId)`: betting history with outcomes
+- [ ] `GetBettingBalanceAsync(loginId)`: compute available balance
+
+##### Step 16.4.2 — Auto-evaluate bets on match completion
+- [ ] Hook into `MatchService.UpdateAsync()`: when `CompletionType` changes from `None`/`InProgress` to `RegularTime`/`Overtime`/`Shootout`, call `BetService.EvaluateMatchBetsAsync(matchId)`
+- [ ] Evaluation logic:
+  - **TeamWin**: compare `Bet.TeamId` with winning team (higher score)
+  - **UserGoal**: check if `Bet.UserId` has ≥1 goal in `UserMatchGoal` for that match
+  - **UserPenalty**: check if `Bet.UserId` has ≥1 penalty in `UserMatchPenalty` for that match
+- [ ] Set `BetStatus` (Won/Lost) and `EvaluatedOn` on each bet
+
+##### Step 16.4.2b — Admin re-evaluate bets for a match
+- [ ] `POST /api/admin/matches/{matchId}/re-evaluate-bets` (admin-only)
+- [ ] Re-runs evaluation for UserGoal and UserPenalty bets on an already-completed match
+- [ ] Use case: admin completes match first, adds goals/penalties later, then re-evaluates
+- [ ] Only re-evaluates bets with `BetType = UserGoal` or `UserPenalty`; TeamWin stays unchanged (score doesn't change after completion)
+- [ ] Updates `BetStatus` and `EvaluatedOn` on affected bets
+
+##### Step 16.4.3 — Lock bets on InProgress
+- [ ] When match moves to `InProgress`, all existing bets for that match become immutable
+- [ ] Reject new bets / updates / deletes for InProgress or completed matches
+
+##### Step 16.4.4 — Betting balance computation
+- [ ] `GetBettingBalanceAsync(userId/loginId)`:
+  - Sum all positive point `Amount` values for the user across all matches
+  - Sum all won bet net profits: `Σ(Bet.Amount × Bet.Odds)` where `BetStatus = Won`
+  - Subtract pending bet amounts: `Σ(Bet.Amount)` where `BetStatus = Pending`
+  - Subtract lost bet amounts: `Σ(Bet.Amount)` where `BetStatus = Lost`
+  - Cancelled bets don't affect balance (refunded)
+  - Balance = `Σ(positive point cash) + Σ(won bet net profit) - Σ(pending bet amounts) - Σ(lost bet amounts)`
+
+##### Step 16.4.5 — Max bet validation
+- [ ] When placing a bet: `odds × amount ≤ maxWinCap`
+- [ ] `maxWinCap = Σ(negative point cash for user across all matches) - Σ(user payouts amount)`
+- [ ] This limits the house's exposure to each user's total negative balance minus what they've already been paid
+
+---
+
+#### Sub-phase 16.5: Backend — API Endpoints
+
+##### Step 16.5.1 — Betting endpoints (rewrite `BetsController`)
+- [ ] `GET /api/betting/balance` — current user's available betting balance + max win cap
+- [ ] `GET /api/betting/matches` — upcoming bettable matches with odds (replaces future matches for betting context)
+- [ ] `GET /api/betting/matches/{matchId}/odds` — detailed odds for a match
+- [ ] `POST /api/betting/matches/{matchId}/bet` — place bet (body: `{ betType, userId?, teamId?, amount }`)
+- [ ] `PUT /api/betting/matches/{matchId}/bet` — update bet
+- [ ] `DELETE /api/betting/matches/{matchId}/bet` — cancel bet
+- [ ] `GET /api/betting/history?seasonId=X` — user's bet history with outcomes, odds, amounts won/lost
+
+##### Step 16.5.2 — Points management endpoints (admin)
+- [ ] `GET /api/admin/points?seasonId=X&pointType=Positive|Negative&page=1&size=50` — paginated list of all points
+- [ ] `PUT /api/admin/points/bulk` — bulk update amounts
+- [ ] New `PointsManagementController`
+
+##### Step 16.5.3 — Enhanced weekly match data
+- [ ] Extend `WeeklyMatchUserDto` to include betting info per user per match:
+  - `BetResult` (won/lost/none), `BetAmount`, `BetWonAmount`
+- [ ] Extend the weekly stats endpoint or create a new one that includes this data
+
+---
+
+#### Sub-phase 16.6: Frontend — Season Page Rework
+
+##### Step 16.6.1 — Role-based match interaction
+- [ ] Detect admin role from `AuthContext`
+- [ ] **Admin**: Show small "Edit" button on each match card → links to `/seasons/{id}/matches/{matchId}` (current MatchPage)
+- [ ] **Admin on completed match**: Show "Re-evaluate Bets" button (calls `POST /api/admin/matches/{matchId}/re-evaluate-bets`). Visible only on completed matches. Confirms with a toast on success.
+- [ ] **Non-admin**: Match card is clickable and expands inline (no navigation)
+
+##### Step 16.6.2 — Inline match expansion (non-admin)
+- [ ] Expandable section shows a table with columns:
+  - User Name | + (positive points) | − (negative points) | Goals | Penalties | Bet result + amount
+- [ ] Data source: extend `WeeklyMatchUserDto` or fetch additional data when match is expanded
+
+##### Step 16.6.3 — Hover tooltips on expanded match
+- [ ] **Hover on +/−**: Popover showing point reason breakdown (e.g., "Win: 2, Assist: 1")
+- [ ] **Hover on Goals**: Popover showing roster player names who scored
+- [ ] **Hover on Penalties**: Popover showing roster player names penalized
+- [ ] **Hover on Bet**: Popover showing odds and amount bet
+- [ ] Data: fetch per-match details on expand (point reasons, goals, penalties, bet info)
+
+##### Step 16.6.4 — InProgress badge
+- [ ] New `CompletionBadge` variant for `InProgress` (pulsing dot or "LIVE" indicator)
+
+---
+
+#### Sub-phase 16.7: Frontend — Betting Page Rewrite
+
+##### Step 16.7.1 — Balance header card
+- [ ] Prominently display user's betting balance at the **top of the page** (fetched from `GET /api/betting/balance`)
+- [ ] Show: **Available Balance (€)** and **Max Win Cap (€)**
+- [ ] Styled as a sticky/always-visible card so the user always knows their budget
+- [ ] Balance refreshes after every bet action (place, update, cancel)
+- [ ] When balance is 0, show a message and disable bet placement across all matches
+
+##### Step 16.7.2 — Expandable match list
+- [ ] Fetch upcoming matches from `GET /api/betting/matches`
+- [ ] Each match shown as a compact card (similar to season page style)
+- [ ] Click to expand → shows betting options
+
+##### Step 16.7.3 — Betting options UI
+- [ ] **Team Win**: Two buttons (Home / Away) with odds displayed next to each
+- [ ] **User Goal**: List of active users (excluding current user) with odds next to each
+- [ ] **User Penalty**: Same list with penalty odds
+- [ ] One bet per match — radio-button behavior across all three types
+
+##### Step 16.7.4 — Amount input & validation
+- [ ] Input box for bet amount next to the selected option
+- [ ] Validate: amount ≤ available balance, odds × amount ≤ max win cap
+- [ ] Display potential winnings: `amount × odds`
+- [ ] Disable "Place Bet" button when amount is empty, 0, or exceeds balance
+
+##### Step 16.7.5 — Bet management
+- [ ] Already bet: show current bet, amount, odds
+- [ ] "Update" — change selection or amount
+- [ ] "Cancel" — delete the bet (refund, balance updates)
+- [ ] Locked indicator when match is InProgress
+
+---
+
+#### Sub-phase 16.8: Frontend — Betting History Page Rewrite
+
+##### Step 16.8.1 — Season selector
+- [ ] Season dropdown at the top (reuse `SeasonSelector` component)
+- [ ] Default to current/latest season
+
+##### Step 16.8.2 — Bet history table
+- [ ] Fetch from `GET /api/betting/history?seasonId=X`
+- [ ] Columns: Match (teams), Bet Type, Bet Target (team/user name), Odds, Amount Bet, Won/Lost/Pending badge, Amount Won/Lost
+- [ ] Color coding: green for won, red for lost, gray for pending
+
+##### Step 16.8.3 — Summary stats
+- [ ] Total bets placed, total won, total lost, net profit/loss
+- [ ] Win rate percentage
+
+---
+
+#### Sub-phase 16.9: Frontend — Points Management Page (Admin)
+
+##### Step 16.9.1 — Page setup
+- [ ] New route: `/admin/points`
+- [ ] Add to admin nav in `navConfig.ts`
+- [ ] Protected by admin role
+
+##### Step 16.9.2 — Points list with filters
+- [ ] Season selector (filter by season, default to all)
+- [ ] Point type toggle: Positive / Negative / All
+- [ ] Table columns: User Name, Match #, Season, Point Reason, Count, Amount (€), Awarded On
+- [ ] Pagination
+
+##### Step 16.9.3 — Bulk editing
+- [ ] Checkbox column for multi-select
+- [ ] "Select All" on current page/filtered results
+- [ ] Bulk action: "Update Amount" — apply a new amount to all selected points
+- [ ] Individual inline edit for amount
+
+---
+
+#### Phase 16 — Files to Modify
+
+**Backend — Modify:**
+- `backend/src/NHLStats.Domain/Entities/CompletionType.cs` — add `InProgress = 4`
+- `backend/src/NHLStats.Domain/Entities/UserMatchPoint.cs` — add `Amount`, `CreatedOn`
+- `backend/src/NHLStats.Domain/Entities/Bet.cs` — add `Amount`, `Odds`, `BetStatus`
+- `backend/src/NHLStats.Domain/NhlStatsDbContext.cs` — new `BetStatus`, updated configs, `MatchOdds` DbSet
+- `backend/src/NHLStats.Application/Services/BetService.cs` — full rewrite
+- `backend/src/NHLStats.Application/Services/MatchService.cs` — hook bet evaluation into `UpdateAsync`
+- `backend/src/NHLStats.Application/Services/UserMatchService.cs` — auto-calculate cash on `AddPointAsync`, bulk point update
+- `backend/src/NHLStats.Application/DTOs/BetDto.cs` — rewrite with new fields
+- `backend/src/NHLStats.Application/DTOs/UserMatchDto.cs` — add `Amount`/`CreatedOn` to point DTOs
+- `backend/src/NHLStats.Application/DTOs/StatsDto.cs` — extend `WeeklyMatchUserDto` with bet info
+- `backend/src/NHLStats.Api/Controllers/BetsController.cs` — rewrite with new routes
+- `backend/src/NHLStats.Api/Program.cs` — register new services
+
+**Backend — Create:**
+- `backend/src/NHLStats.Domain/Entities/BetStatus.cs` — new enum
+- `backend/src/NHLStats.Domain/Entities/MatchOdds.cs` — pre-computed odds entity
+- `backend/src/NHLStats.Application/Interfaces/IBettingOddsService.cs` — new interface
+- `backend/src/NHLStats.Application/Services/BettingOddsService.cs` — reads SQL views, writes to `MatchOdds` table
+- `backend/src/NHLStats.Application/Interfaces/IBettingBalanceService.cs` — new interface
+- `backend/src/NHLStats.Application/Services/BettingBalanceService.cs` — balance computation
+- `backend/src/NHLStats.Application/DTOs/BettingOddsDto.cs` — odds response DTOs
+- `backend/src/NHLStats.Api/Controllers/PointsManagementController.cs` — admin points CRUD
+- EF migration(s) with raw SQL for `vw_team_win_factors`, `vw_user_goal_factors`, `vw_user_penalty_factors` views + `MatchOdds` table
+
+**Frontend — Modify:**
+- `frontend/src/types/match.ts` — add `InProgress` to `CompletionType`
+- `frontend/src/types/bet.ts` — rewrite types for new API shape
+- `frontend/src/pages/SeasonPage.tsx` — role-based match rendering, expandable matches
+- `frontend/src/pages/BettingPage.tsx` — full rewrite
+- `frontend/src/pages/BettingHistoryPage.tsx` — full rewrite
+- `frontend/src/services/bettingService.ts` — rewrite to use API (drop localStorage)
+- `frontend/src/config/navConfig.ts` — add admin points page
+- `frontend/src/App.tsx` — add new routes
+- `frontend/src/components/CompletionBadge.tsx` — InProgress variant
+- `frontend/src/i18n/locales/en.json` — new i18n keys
+- `frontend/src/i18n/locales/sk.json` — new i18n keys
+
+**Frontend — Create:**
+- `frontend/src/pages/admin/PointsManagementPage.tsx` — admin points page
+- `frontend/src/services/bettingOddsService.ts` (or inline in bettingService)
+
+**Tests — Modify/Create:**
+- `backend/tests/NHLStats.Api.Tests/Bets/BetsTests.cs` — rewrite for new API
+- New test files for odds calculation, balance computation, bet evaluation
+- Frontend tests for new pages
+
+---
+
+#### Phase 16 — Verification
+
+1. **Unit tests**: Odds calculation edge cases (no data, all wins, all losses, no H2H, single match)
+2. **Unit tests**: Balance computation (positive points only, with won/lost bets, with cancelled bets)
+3. **Unit tests**: Max bet cap validation
+4. **Integration tests**: Place bet → complete match → verify auto-evaluation
+5. **Integration tests**: InProgress locking (reject bet placement/update on InProgress match)
+6. **Integration tests**: Points bulk update endpoint
+7. **Frontend tests**: Season page expansion (admin vs non-admin rendering)
+8. **Frontend tests**: Betting page amount validation
+9. **Manual test**: Full flow — add points → verify cash stored → place bet → complete match → check history
+10. **Manual test**: Verify existing data migration (backfill point amounts)
+
+---
+
+#### Phase 16 — Key Decisions
+
+| Decision | Detail |
+|----------|--------|
+| **Betting balance** | Computed from data (not stored on User) — `Σ(positive cash) + Σ(won bet profits) - Σ(pending amounts) - Σ(lost amounts)` |
+| **BetStatus enum** | Replaces `IsWon` bool: `Pending`, `Won`, `Lost`, `Cancelled` — cleaner state machine |
+| **One bet per match per user** | Unchanged from current implementation |
+| **Odds locked at placement** | Stored on bet, even if future calculations would differ |
+| **Auto-evaluation** | On match completion (CompletionType set to RegularTime/Overtime/Shootout) |
+| **Re-evaluation** | Admin can re-evaluate UserGoal/UserPenalty bets after adding goals/penalties post-completion |
+| **InProgress** | Freezes all betting on the match (no create/update/delete) |
+| **Match date normalization** | InProgress keeps the date (like other completed types) |
+| **Streak window** | Last 10 matches for short-term form factor |
+| **House margin** | 15% (0.85 factor in odds formula) |
+| **Odds format** | Net profit multiplier (e.g. 0.70 means bet 1€, win 0.70€ profit) |
+| **Negative point default** | -0.5€ when no MoneyConfig exists |
+| **Pre-computed odds** | SQL views for probability factors → `MatchOdds` table for instant reads |
+| **Data migration** | Three-phase: add nullable columns → backfill via raw SQL → make `Amount` non-nullable |
+| **Scope excluded** | Admin bet management UI, notifications, real-time odds updates |
+
+---
+
 ## Folder Structure
 
 ```

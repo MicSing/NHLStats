@@ -28,8 +28,8 @@ function renderDashboard() {
 }
 
 const mockStats: UserSeasonStats[] = [
-    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
-    { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, earnings: -2.5 },
+    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75, bettingBalance: 0 },
+    { userId: 2, userName: 'Player Two', totalPlus: 2, totalMinus: 7, earnings: -2.5, bettingBalance: 0 },
 ]
 
 const mockRosterScorers: RosterScorerByUser[] = [

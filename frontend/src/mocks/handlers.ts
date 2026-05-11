@@ -76,7 +76,7 @@ const mockGoals = [
 const mockPenalties: object[] = []
 
 const mockSeasonStats = [
-    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75 },
+    { userId: 1, userName: 'Player One', totalPlus: 5, totalMinus: 3, earnings: 0.75, bettingBalance: 0 },
 ]
 
 const mockSeasonTotals = {
@@ -84,13 +84,13 @@ const mockSeasonTotals = {
         {
             seasonId: 1,
             usersData: [
-                { userId: 1, totalPlus: 5, totalMinus: 3, totalGoals: 3, totalPenalties: 3, earnings: 0.75 },
+                { userId: 1, totalPlus: 5, totalMinus: 3, totalGoals: 3, totalPenalties: 3, earnings: 0.75, bettingBalance: 0 },
             ],
         },
         {
             seasonId: 2,
             usersData: [
-                { userId: 1, totalPlus: 4, totalMinus: 1, totalGoals: 2, totalPenalties: 1, earnings: 0.75 },
+                { userId: 1, totalPlus: 4, totalMinus: 1, totalGoals: 2, totalPenalties: 1, earnings: 0.75, bettingBalance: 0 },
             ],
         },
     ],
@@ -845,10 +845,11 @@ export const handlers = [
         return res(ctx.json({
             totalCollected: 0.75,
             totalExpenses: 80.0,
-            canBeCollected: 0.75,
+            canBeCollected: 0,
+            totalEarnings: 0.75,
             expenses: mockExpenses,
             financesByUser: [
-                { userId: 1, totalPluses: 5, totalMinuses: 3, collected: 0.75, earnings: 0.75 },
+                { userId: 1, totalPluses: 5, totalMinuses: 3, collected: 0.75, totalEarnings: 0.75, canBeCollected: 0, bettingBalance: 0, stakes: 0, betWins: 0, betLosses: 0, negativeCash: 1.50 },
             ],
         }))
     }),
@@ -962,5 +963,22 @@ export const handlers = [
             { id: 1, name: 'Player One', isActive: true },
             { id: 2, name: 'Player Two', isActive: true },
         ]))
+    }),
+
+    // Points Management
+    rest.get(`${BASE}/api/admin/points`, (_req, res, ctx) => {
+        return res(ctx.json({
+            items: [
+                { id: 1, userMatchId: 1, userName: 'Player One', matchNumber: 1, seasonName: '2023-24', pointReasonName: 'Penalty', pointType: 'Positive', count: 2, amount: 1.5, createdOn: '2024-01-01T00:00:00' },
+                { id: 2, userMatchId: 2, userName: 'Player Two', matchNumber: 1, seasonName: '2023-24', pointReasonName: 'Own Goal', pointType: 'Negative', count: 1, amount: -0.5, createdOn: '2024-01-02T00:00:00' },
+            ],
+            total: 2,
+            page: 1,
+            size: 20,
+        }))
+    }),
+
+    rest.put(`${BASE}/api/admin/points/bulk`, async (_req, res, ctx) => {
+        return res(ctx.json([]))
     }),
 ]

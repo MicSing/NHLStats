@@ -14,7 +14,8 @@ public class BetsTests : ApiTestBase
         var resp = await client.PostAsJsonAsync("/api/seasons", new
         {
             name,
-            startedOn = "2024-01-01T00:00:00"
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1
         });
         resp.EnsureSuccessStatusCode();
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -159,13 +160,13 @@ public class BetsTests : ApiTestBase
         var updateResp = await client.PutAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
         {
             betType = "TeamWin",
-            teamId = 2,
-            amount = 1.0
+            teamId = 1,
+            amount = 2.0
         });
 
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
-        updated.GetProperty("teamId").GetInt32().Should().Be(2);
+        updated.GetProperty("amount").GetDecimal().Should().Be(2.0m);
         updated.GetProperty("updatedOn").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 

@@ -7,6 +7,7 @@ export interface UserSeasonStats {
     totalPlus: number
     totalMinus: number
     earnings: number
+    bettingBalance: number
 }
 
 export interface TopRosterPlayer {
@@ -53,6 +54,11 @@ export interface WeeklyMatchUser {
     totalMinus: number
     totalGoals: number
     totalPenalties: number
+    betResult: 'Pending' | 'Won' | 'Lost' | 'Cancelled' | null
+    betAmount: number | null
+    betWonAmount: number | null
+    betType: 'TeamWin' | 'UserGoal' | 'UserPenalty' | null
+    betTargetName: string | null
 }
 
 export interface WeeklyMatch {
@@ -102,6 +108,11 @@ export interface UserFinancialStats {
     collected: number
     totalEarnings: number
     canBeCollected: number
+    bettingBalance: number
+    stakes: number
+    betWins: number
+    betLosses: number
+    negativeCash: number
 }
 
 export interface FinancialStats {
@@ -134,6 +145,7 @@ export interface SeasonUserData {
     totalGoals: number
     totalPenalties: number
     earnings: number
+    bettingBalance: number
 }
 
 export interface SeasonalUserData {

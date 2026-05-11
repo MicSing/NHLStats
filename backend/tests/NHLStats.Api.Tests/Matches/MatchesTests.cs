@@ -14,7 +14,8 @@ public class MatchesTests : ApiTestBase
         var resp = await client.PostAsJsonAsync("/api/seasons", new
         {
             name,
-            startedOn = "2024-01-01T00:00:00"
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1
         });
         resp.EnsureSuccessStatusCode();
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -133,10 +134,14 @@ public class MatchesTests : ApiTestBase
         });
         updateResp.EnsureSuccessStatusCode();
 
-        var betResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}/bet", new
+        // Seed positive points so user has betting balance
+        await SeedBettingBalanceAsync(client, seasonId);
+
+        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
         {
-            betType = 1,
-            teamId = 1
+            betType = "TeamWin",
+            teamId = 1,
+            amount = 1.0
         });
         betResp.EnsureSuccessStatusCode();
 

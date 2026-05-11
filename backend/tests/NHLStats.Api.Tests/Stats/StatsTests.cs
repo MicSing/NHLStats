@@ -251,8 +251,8 @@ public class StatsTests : ApiTestBase
 
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         var stat = body[0];
-        // New rate: 3 * 1.00 + 2 * (-1.00) = 3.00 - 2.00 = 1.00
-        stat.GetProperty("earnings").GetDecimal().Should().Be(0);
+        // New rate: negCash=2*1.00=2.00, bettingBalance=3*1.00=3.00 → earnings=2.00-3.00=-1.00
+        stat.GetProperty("earnings").GetDecimal().Should().Be(-1.0m);
     }
 
     [Fact]
@@ -276,8 +276,9 @@ public class StatsTests : ApiTestBase
 
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         var stat = body[0];
-        // Earliest config: 2 * 0.25 = 0.50
-        stat.GetProperty("earnings").GetDecimal().Should().Be(0m);
+        // No config for 1999 → AddPoint uses default pos rate 1.00 → Amount=2.0 stored
+        // negCash=0, bettingBalance=2.0 → earnings=0-2.0=-2.0
+        stat.GetProperty("earnings").GetDecimal().Should().Be(-2.0m);
     }
 
     [Fact]
@@ -568,6 +569,167 @@ public class StatsTests : ApiTestBase
 
         week.GetProperty("totalPlus").GetInt32().Should().Be(4);
         week.GetProperty("totalMinus").GetInt32().Should().Be(2);
+    }
+
+    // ─── Weekly bet info per user ──────────────────────────────────────────────
+
+    private async Task<int> CreateOpenMatchAsync(HttpClient client, int seasonId)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2
+        });
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task CompleteMatchAsync(HttpClient client, int seasonId, int matchId, string matchDate)
+    {
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 2,
+            awayScore = 1,
+            matchDate,
+            completionType = 1 // RegularTime
+        });
+        updateResp.EnsureSuccessStatusCode();
+    }
+
+    private JsonElement FindMatchInWeekly(JsonElement weeklyBody, int matchId)
+    {
+        foreach (var week in weeklyBody.EnumerateArray())
+        {
+            foreach (var m in week.GetProperty("matches").EnumerateArray())
+            {
+                if (m.GetProperty("matchId").GetInt32() == matchId)
+                    return m;
+            }
+        }
+        return default;
+    }
+
+    [Fact]
+    public async Task Weekly_includes_lost_bet_info_for_user()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Weekly Bet Lost Season");
+
+        // Seed admin balance — returns admin's game userId (the bettor)
+        var bettorUserId = await SeedBettingBalanceAsync(client, seasonId);
+
+        var targetUserId = await CreateUserAsync(client, "Bet Lost Target");
+        await AssignUserAsync(client, seasonId, targetUserId);
+
+        // Create open match — bettor appears via their bet even without stats
+        var matchId = await CreateOpenMatchAsync(client, seasonId);
+        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
+        await AddPointAsync(client, userMatchId, 9, 1); // target has a point but no goal → bet loses
+
+        // Place a UserGoal bet on the target user while the match is open
+        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        {
+            betType = "UserGoal",
+            userId = targetUserId,
+            amount = 1.0
+        });
+        betResp.EnsureSuccessStatusCode();
+
+        // Completing the match auto-evaluates bets; target has no goal so bet is Lost
+        await CompleteMatchAsync(client, seasonId, matchId, "2025-01-10T20:00:00");
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/stats/weekly");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        var match = FindMatchInWeekly(body, matchId);
+        match.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+
+        // Bet appears in the BETTOR's row (admin), not the target's row
+        var users = match.GetProperty("users").EnumerateArray().ToList();
+        var betUser = users.First(u => u.GetProperty("userId").GetInt32() == bettorUserId);
+
+        betUser.GetProperty("betResult").GetString().Should().Be("Lost");
+        betUser.GetProperty("betAmount").GetDecimal().Should().Be(1.0m);
+        betUser.GetProperty("betWonAmount").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Weekly_includes_won_bet_info_for_user()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Weekly Bet Won Season");
+
+        // Returns admin's game userId (the bettor)
+        var bettorUserId = await SeedBettingBalanceAsync(client, seasonId);
+
+        var targetUserId = await CreateUserAsync(client, "Bet Won Target");
+        await AssignUserAsync(client, seasonId, targetUserId);
+
+        // Bettor appears via their bet even without stats
+        var matchId = await CreateOpenMatchAsync(client, seasonId);
+        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
+        var rosterPlayerId = await CreateRosterPlayerAsync(client, seasonId, "Won", "BetPlayer");
+        await AddGoalAsync(client, userMatchId, rosterPlayerId, 1); // goal → UserGoal bet wins
+
+        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        {
+            betType = "UserGoal",
+            userId = targetUserId,
+            amount = 1.0
+        });
+        betResp.EnsureSuccessStatusCode();
+
+        // Complete the match so it appears in weekly
+        await CompleteMatchAsync(client, seasonId, matchId, "2025-02-15T20:00:00");
+
+        // Re-evaluate: target has a goal so the UserGoal bet wins
+        var evalResp = await client.PostAsync($"/api/admin/matches/{matchId}/re-evaluate-bets", null);
+        evalResp.EnsureSuccessStatusCode();
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/stats/weekly");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        var match = FindMatchInWeekly(body, matchId);
+        match.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+
+        // Bet appears in the BETTOR's row (admin), not the target's row
+        var users = match.GetProperty("users").EnumerateArray().ToList();
+        var betUser = users.First(u => u.GetProperty("userId").GetInt32() == bettorUserId);
+
+        betUser.GetProperty("betResult").GetString().Should().Be("Won");
+        betUser.GetProperty("betAmount").GetDecimal().Should().Be(1.0m);
+        betUser.GetProperty("betWonAmount").GetDecimal().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Weekly_has_null_bet_info_when_no_bet_on_user()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Weekly No Bet Season");
+        var userId = await CreateUserAsync(client, "No Bet Player");
+        await AssignUserAsync(client, seasonId, userId);
+
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-09-15T20:00:00");
+        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
+        await AddPointAsync(client, userMatchId, 9, 1);
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/stats/weekly");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+        var match = FindMatchInWeekly(body, matchId);
+        match.ValueKind.Should().NotBe(JsonValueKind.Undefined);
+
+        var users = match.GetProperty("users").EnumerateArray().ToList();
+        var user = users.First(u => u.GetProperty("userId").GetInt32() == userId);
+
+        user.GetProperty("betResult").ValueKind.Should().Be(JsonValueKind.Null);
+        user.GetProperty("betAmount").ValueKind.Should().Be(JsonValueKind.Null);
+        user.GetProperty("betWonAmount").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     // ─── GET /api/stats/users/{userId}/point-reasons — Point reason breakdown ──
@@ -1239,5 +1401,110 @@ public class StatsTests : ApiTestBase
         aggSeasonDto.GetProperty("totalPlus").GetInt32().Should().Be(20);
         aggSeasonDto.GetProperty("totalMinus").GetInt32().Should().Be(8);
         aggSeasonDto.GetProperty("weeks").GetArrayLength().Should().Be(0, "no matches = no weeks");
+    }
+
+    // ─── GET /api/stats/financial-stats ───────────────────────────────────────
+
+    [Fact]
+    public async Task FinancialStats_bettingBalance_includes_aggregated_positive_points()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "FinStats Agg Season");
+        var userId = await CreateUserAsync(client, "FinStats Agg User");
+        await AssignUserAsync(client, seasonId, userId);
+
+        // MoneyConfig: neg=0.50, pos=0.25 — effective before our match date
+        await CreateMoneyConfigAsync(client, neg: 0.50m, pos: 0.25m, effectiveFrom: "2023-01-01");
+
+        // Match with 13 positive (Amount=3.25) and 59 negative (Amount=29.50) match points
+        var matchId = await CreateMatchAsync(client, seasonId, "2024-02-01T20:00:00");
+        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, userId);
+        await AddPointAsync(client, userMatchId, 9 /* positive */, 13);
+        await AddPointAsync(client, userMatchId, 1 /* negative */, 59);
+
+        // Aggregated data: 3 positive + 10 negative (10 neg adds 5.00€ to dues)
+        await CreateAggregatedDataAsync(client, userId, seasonId, totalPlus: 3, totalMinus: 10, matchesPlayed: 5);
+
+        // Payout of 12.00€
+        var payoutResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/payouts", new
+        {
+            userId,
+            amount = 12.00m,
+            paidOn = "2024-03-01T00:00:00"
+        });
+        payoutResp.EnsureSuccessStatusCode();
+
+        // Act
+        var resp = await client.GetAsync("/api/stats/financial-stats");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var financesByUser = body.GetProperty("financesByUser");
+
+        var user = Enumerable.Range(0, financesByUser.GetArrayLength())
+            .Select(i => financesByUser[i])
+            .First(u => u.GetProperty("userId").GetInt32() == userId);
+
+        // bettingBalance = 13×0.25 + 3×0.25 = 3.25 + 0.75 = 4.00
+        user.GetProperty("bettingBalance").GetDecimal().Should().Be(4.00m);
+        // totalEarnings = (59×0.50 + 10×0.50) − 4.00 = 34.50 − 4.00 = 30.50
+        user.GetProperty("totalEarnings").GetDecimal().Should().Be(30.50m);
+        // canBeCollected = 30.50 − 12.00 = 18.50
+        user.GetProperty("canBeCollected").GetDecimal().Should().Be(18.50m);
+        // totalPluses = 13 (match) + 3 (agg) = 16
+        user.GetProperty("totalPluses").GetInt32().Should().Be(16);
+        // totalMinuses = 59 (match) + 10 (agg) = 69
+        user.GetProperty("totalMinuses").GetInt32().Should().Be(69);
+    }
+
+    [Fact]
+    public async Task FinancialStats_bettingBalance_includes_lost_bet_on_match_with_no_user_match()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "FinStats Lost Bet No UM Season");
+
+        // Seed admin balance via a separate completed match WITH UserMatch entries
+        var bettorUserId = await SeedBettingBalanceAsync(client, seasonId);
+        var targetUserId = await CreateUserAsync(client, "FinStats Lost Bet Target");
+        await AssignUserAsync(client, seasonId, targetUserId);
+
+        // Create a match with NO UserMatch entries — this is the key for the bug
+        var betMatchId = await CreateOpenMatchAsync(client, seasonId);
+
+        // Place a UserGoal bet on targetUserId — target has no goals so it will be Lost
+        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{betMatchId}/bet", new
+        {
+            betType = "UserGoal",
+            userId = targetUserId,
+            amount = 1.0
+        });
+        betResp.EnsureSuccessStatusCode();
+
+        // Complete match with no goals — auto-evaluates bet as Lost, no UserMatch created
+        var completeResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{betMatchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 2,
+            awayScore = 1,
+            matchDate = "2025-03-01T20:00:00",
+            completionType = 1
+        });
+        completeResp.EnsureSuccessStatusCode();
+
+        var resp = await client.GetAsync("/api/stats/financial-stats");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var financesByUser = body.GetProperty("financesByUser");
+
+        var bettor = Enumerable.Range(0, financesByUser.GetArrayLength())
+            .Select(i => financesByUser[i])
+            .First(u => u.GetProperty("userId").GetInt32() == bettorUserId);
+
+        // The lost stake must appear even though the bet match has no UserMatch entries
+        bettor.GetProperty("betLosses").GetDecimal().Should().Be(1.0m);
+        bettor.GetProperty("betWins").GetDecimal().Should().Be(0m);
+        bettor.GetProperty("stakes").GetDecimal().Should().Be(0m);
     }
 }

@@ -19,7 +19,8 @@ public class UserMatchService : IUserMatchService
 
     private static UserMatchPointDto ToPointDto(UserMatchPoint p) => new(
         p.Id, p.UserMatchId, p.PointReasonId, p.PointReason?.Name,
-        p.PointReason?.PointType.ToString() ?? "Negative", p.Count);
+        p.PointReason?.PointType.ToString() ?? "Negative", p.Count,
+        p.Amount, p.CreatedOn);
 
     private static UserMatchGoalDto ToGoalDto(UserMatchGoal g) => new(
         g.Id, g.UserMatchId, g.RosterPlayerId,
@@ -213,10 +214,32 @@ public class UserMatchService : IUserMatchService
             .Select(p => ToPointDto(p))
             .ToListAsync();
 
+    private async Task<decimal> ComputePointAmountAsync(int userMatchId, PointReason reason, int count)
+    {
+        var userMatch = await _db.UserMatches
+            .Include(um => um.Match)
+            .FirstOrDefaultAsync(um => um.Id == userMatchId);
+        var matchDate = userMatch?.Match?.MatchDate;
+
+        var config = await _db.MoneyConfigs
+            .Where(mc => mc.EffectiveFrom <= (matchDate ?? DateTime.UtcNow))
+            .OrderByDescending(mc => mc.EffectiveFrom)
+            .FirstOrDefaultAsync();
+
+        if (config == null)
+            return reason.PointType == PointType.Negative ? count * 0.50m :
+                   reason.PointType == PointType.Positive ? count * 1.00m : 0m;
+
+        return reason.PointType == PointType.Negative ? count * config.NegativePointValue :
+               reason.PointType == PointType.Positive ? count * config.PositivePointValue : 0m;
+    }
+
     public async Task<(UserMatchPointDto? result, string? error)> AddPointAsync(
         int userMatchId, CreateUserMatchPointDto dto)
     {
-        var userMatch = await _db.UserMatches.FindAsync(userMatchId);
+        var userMatch = await _db.UserMatches
+            .Include(um => um.Match)
+            .FirstOrDefaultAsync(um => um.Id == userMatchId);
         if (userMatch == null)
             return (null, $"UserMatch {userMatchId} not found.");
 
@@ -224,11 +247,14 @@ public class UserMatchService : IUserMatchService
         if (reason == null)
             return (null, $"PointReason {dto.PointReasonId} not found.");
 
+        var amount = dto.Amount ?? await ComputePointAmountAsync(userMatchId, reason, dto.Count);
         var point = new UserMatchPoint
         {
             UserMatchId = userMatchId,
             PointReasonId = dto.PointReasonId,
-            Count = dto.Count
+            Count = dto.Count,
+            Amount = amount,
+            CreatedOn = userMatch.Match?.MatchDate
         };
         _db.UserMatchPoints.Add(point);
         await _db.SaveChangesAsync();
@@ -258,6 +284,7 @@ public class UserMatchService : IUserMatchService
 
         point.PointReasonId = dto.PointReasonId;
         point.Count = dto.Count;
+        point.Amount = dto.Amount ?? await ComputePointAmountAsync(userMatchId, newReason, dto.Count);
 
         await _db.SaveChangesAsync();
 

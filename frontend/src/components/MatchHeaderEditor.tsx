@@ -17,6 +17,7 @@ function CompletionBadge({ type }: { type: CompletionType }) {
         [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
         [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
         [CompletionType.Shootout]: { label: 'SO', className: 'bg-secondary/20 text-secondary' },
+        [CompletionType.InProgress]: { label: 'LIVE', className: 'bg-danger/20 text-danger animate-pulse' },
     }
     const { label, className } = map[type] ?? map[CompletionType.None]
     return (
@@ -43,6 +44,9 @@ function normalizeCompletionType(value: CompletionType | string | null | undefin
             return CompletionType.Shootout
         case 'none':
             return CompletionType.None
+        case 'inprogress':
+        case 'live':
+            return CompletionType.InProgress
         default:
             return CompletionType.None
     }
@@ -124,6 +128,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                     <option value={CompletionType.RegularTime}>{t('match.reg')}</option>
                                     <option value={CompletionType.Overtime}>{t('match.ot')}</option>
                                     <option value={CompletionType.Shootout}>{t('match.so')}</option>
+                                    <option value={CompletionType.InProgress}>{t('match.inProgress')}</option>
                                 </select>
                                 <input
                                     type="date"

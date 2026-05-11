@@ -12,6 +12,21 @@ public class BettingBalanceService : IBettingBalanceService
 
     public BettingBalanceService(NhlStatsDbContext db) => _db = db;
 
+    public static decimal ComputeBettingBalance(
+        IEnumerable<decimal> positivePointAmounts,
+        IEnumerable<int> aggregatedPositiveCounts,
+        IEnumerable<(decimal Amount, decimal Odds)> wonBets,
+        IEnumerable<decimal> pendingStakeAmounts,
+        IEnumerable<decimal> lostStakeAmounts)
+    {
+        var positiveCash = positivePointAmounts.Sum();
+        var aggregatedPosCash = aggregatedPositiveCounts.Sum() * 0.25m;
+        var wonNetProfit = wonBets.Sum(b => b.Amount * b.Odds - b.Amount);
+        var pendingStakes = pendingStakeAmounts.Sum();
+        var lostStakes = lostStakeAmounts.Sum();
+        return positiveCash + aggregatedPosCash + wonNetProfit - pendingStakes - lostStakes;
+    }
+
     public async Task<BettingBalanceDto> GetBalanceAsync(string loginId)
     {
         // Resolve userId from loginId (ApplicationUser → User)
@@ -29,45 +44,54 @@ public class BettingBalanceService : IBettingBalanceService
             .Where(p => p.UserMatch!.UserId == userId.Value && p.PointReason!.PointType == PointType.Positive)
             .Select(p => p.Amount)
             .ToListAsync();
-        var totalPositiveCash = positivePoints.Sum();
 
         // Aggregated positive points (historical seasons) are always worth 0.25€ each
         var aggregatedPlusPoints = await _db.UserSeasonAggregatedData
             .Where(a => a.UserId == userId.Value)
             .Select(a => a.TotalPlus)
             .ToListAsync();
-        totalPositiveCash += aggregatedPlusPoints.Sum() * 0.25m;
 
         // Won bet profits — already client-side
         var wonBets = await _db.Bets
             .Where(b => b.CreatedBy == loginId && b.Status == BetStatus.Won)
             .Select(b => new { b.Amount, b.Odds })
             .ToListAsync();
-        var totalWonProfit = wonBets.Sum(b => b.Amount * b.Odds - b.Amount);
 
         // Pending stakes
         var pendingAmounts = await _db.Bets
             .Where(b => b.CreatedBy == loginId && b.Status == BetStatus.Pending)
             .Select(b => b.Amount)
             .ToListAsync();
-        var totalPendingStake = pendingAmounts.Sum();
 
         // Lost stakes
         var lostAmounts = await _db.Bets
             .Where(b => b.CreatedBy == loginId && b.Status == BetStatus.Lost)
             .Select(b => b.Amount)
             .ToListAsync();
+
+        var totalPositiveCash = positivePoints.Sum() + aggregatedPlusPoints.Sum() * 0.25m;
+        var totalWonProfit = wonBets.Sum(b => b.Amount * b.Odds - b.Amount);
+        var totalPendingStake = pendingAmounts.Sum();
         var totalLostStake = lostAmounts.Sum();
 
-        var availableBalance = totalPositiveCash + totalWonProfit - totalPendingStake - totalLostStake;
+        var availableBalance = ComputeBettingBalance(
+            positivePoints,
+            aggregatedPlusPoints,
+            wonBets.Select(b => (b.Amount, b.Odds)),
+            pendingAmounts,
+            lostAmounts);
 
-        // Max win cap: Σ(negative point cash) - Σ(user payouts)
+        // Max win cap: Σ(negative point cash) + Σ(aggregated negative cash) - Σ(user payouts)
         var negativePoints = await _db.UserMatchPoints
             .Include(p => p.PointReason)
             .Where(p => p.UserMatch!.UserId == userId.Value && p.PointReason!.PointType == PointType.Negative)
             .Select(p => p.Amount)
             .ToListAsync();
-        var totalNegativeCash = negativePoints.Sum();
+        var aggregatedMinusPoints = await _db.UserSeasonAggregatedData
+            .Where(a => a.UserId == userId.Value)
+            .Select(a => a.TotalMinus)
+            .ToListAsync();
+        var totalNegativeCash = negativePoints.Sum() + aggregatedMinusPoints.Sum() * 0.50m;
 
         var payoutAmounts = await _db.UserPayouts
             .Where(up => up.UserId == userId.Value)

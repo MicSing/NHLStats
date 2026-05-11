@@ -26,7 +26,7 @@ public record FutureMatchDto(
     string? AwayTeamName,
     int? HostedTeamId,
     IEnumerable<UserMatchInfoDto>? UserMatches,
-    CurrentUserBetDto? Bet);
+    BetDto? Bet);
 
 public record UserMatchInfoDto(
     int UserId,
