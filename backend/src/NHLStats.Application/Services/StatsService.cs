@@ -9,8 +9,13 @@ namespace NHLStats.Application.Services;
 public class StatsService : IStatsService
 {
     private readonly NhlStatsDbContext _db;
+    private readonly IBettingCalculator _calculator;
 
-    public StatsService(NhlStatsDbContext db) => _db = db;
+    public StatsService(NhlStatsDbContext db, IBettingCalculator calculator)
+    {
+        _db = db;
+        _calculator = calculator;
+    }
 
     // ─── Money calculation helper ─────────────────────────────────────────────
 
@@ -33,108 +38,15 @@ public class StatsService : IStatsService
         return active ?? configs.OrderBy(m => m.EffectiveFrom).First();
     }
 
-    private record UserFinancials(decimal Earnings, decimal BettingBalance, decimal NegativeCash, decimal WonNetProfit, decimal PendingStakes, decimal LostStakes);
-
-    /// <summary>
-    /// Computes earnings and betting balance per game-user for a set of matches.
-    /// earnings = negative_cash - betting_balance
-    /// betting_balance = positive_cash + won_net_profit - pending_stakes - lost_stakes
-    /// </summary>
-    private async Task<Dictionary<int, UserFinancials>> ComputeEarningsAsync(
+    private async Task<Dictionary<int, BettingBreakdown>> ComputeEarningsAsync(
         List<int> matchIds,
         IReadOnlyDictionary<int, int>? aggregatedPlusCountByUser = null,
         IReadOnlyDictionary<int, int>? aggregatedMinusCountByUser = null,
         bool allTimeBets = false)
     {
-        var points = await _db.UserMatchPoints
-            .AsNoTracking()
-            .Include(p => p.PointReason)
-            .Where(p => p.UserMatch != null && matchIds.Contains(p.UserMatch.MatchId))
-            .Select(p => new { p.UserMatch!.UserId, p.Amount, IsNegative = p.PointReason!.PointType == PointType.Negative })
-            .ToListAsync();
-
-        var negativeCash = points.Where(p => p.IsNegative)
-            .GroupBy(p => p.UserId)
-            .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
-
-        if (aggregatedMinusCountByUser != null)
-        {
-            foreach (var (userId, count) in aggregatedMinusCountByUser)
-            {
-                var aggAmount = count * 0.50m;
-                negativeCash[userId] = negativeCash.TryGetValue(userId, out var existing)
-                    ? existing + aggAmount
-                    : aggAmount;
-            }
-        }
-
-        var betRows = allTimeBets
-            ? await _db.Bets
-                .AsNoTracking()
-                .Select(b => new { b.CreatedBy, b.Amount, b.Odds, b.Status })
-                .ToListAsync()
-            : await _db.Bets
-                .AsNoTracking()
-                .Where(b => matchIds.Contains(b.MatchId))
-                .Select(b => new { b.CreatedBy, b.Amount, b.Odds, b.Status })
-                .ToListAsync();
-
-        var creatorIds = betRows.Select(b => b.CreatedBy).Distinct().ToList();
-        var creatorToUserId = await _db.Set<NHLStats.Domain.Identity.ApplicationUser>()
-            .AsNoTracking()
-            .Where(u => creatorIds.Contains(u.Id) && u.UserId.HasValue)
-            .ToDictionaryAsync(u => u.Id, u => u.UserId!.Value);
-
-        var betsByUser = betRows
-            .Where(b => creatorToUserId.ContainsKey(b.CreatedBy))
-            .GroupBy(b => creatorToUserId[b.CreatedBy])
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var allUserIds = negativeCash.Keys
-            .Union(points.Where(p => !p.IsNegative).Select(p => p.UserId))
-            .Union(betsByUser.Keys)
-            .Union(aggregatedPlusCountByUser?.Keys ?? Enumerable.Empty<int>())
-            .Union(aggregatedMinusCountByUser?.Keys ?? Enumerable.Empty<int>())
-            .Distinct();
-
-        return allUserIds.ToDictionary(
-            userId => userId,
-            userId =>
-            {
-                negativeCash.TryGetValue(userId, out var negCash);
-
-                var userPosAmounts = points
-                    .Where(p => !p.IsNegative && p.UserId == userId)
-                    .Select(p => p.Amount);
-
-                var userAggCounts = aggregatedPlusCountByUser != null
-                    && aggregatedPlusCountByUser.TryGetValue(userId, out var cnt)
-                    ? new[] { cnt }
-                    : Array.Empty<int>();
-
-                var userBets = betsByUser.TryGetValue(userId, out var bets) ? bets : [];
-                var userWonBets = userBets
-                    .Where(b => b.Status == BetStatus.Won)
-                    .Select(b => (b.Amount, b.Odds))
-                    .ToList();
-                var userPending = userBets
-                    .Where(b => b.Status == BetStatus.Pending)
-                    .Select(b => b.Amount)
-                    .ToList();
-                var userLost = userBets
-                    .Where(b => b.Status == BetStatus.Lost)
-                    .Select(b => b.Amount)
-                    .ToList();
-
-                var bettingBalance = BettingBalanceService.ComputeBettingBalance(
-                    userPosAmounts, userAggCounts, userWonBets, userPending, userLost);
-
-                var wonNetProfit = userWonBets.Sum(b => b.Amount * b.Odds - b.Amount);
-                var pendingStakes = userPending.Sum();
-                var lostStakes = userLost.Sum();
-
-                return new UserFinancials(negCash - bettingBalance, bettingBalance, negCash, wonNetProfit, pendingStakes, lostStakes);
-            });
+        var dataByUser = await _calculator.LoadForUsersAsync(
+            matchIds, allTimeBets, aggregatedPlusCountByUser, aggregatedMinusCountByUser);
+        return dataByUser.ToDictionary(kv => kv.Key, kv => _calculator.Compute(kv.Value));
     }
 
     /// <summary>Raw (unclamped) contribution for one UserMatch entry. Clamp to 0 only at the per-user aggregate level.</summary>
@@ -355,7 +267,7 @@ public class StatsService : IStatsService
                                  g.Any(b => b.Status == BetStatus.Pending) ? BetStatus.Pending :
                                  BetStatus.Cancelled,
                         Amount = g.Sum(b => b.Amount),
-                        WonAmount = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.Amount * b.Odds),
+                        WonAmount = g.Where(b => b.Status == BetStatus.Won).Sum(b => BettingConstants.GrossPayout(b.Amount, b.Odds)),
                         BetType = primary.BetType,
                         TargetName = targetName
                     };
@@ -1103,7 +1015,7 @@ public class StatsService : IStatsService
                     totalMinus += totals.minus;
                 }
                 earningsByUser.TryGetValue(g.Key, out var fin);
-                return new SeasonStatsUserDto(g.Key, totalPlus, totalMinus, fin?.Earnings ?? 0m, fin?.BettingBalance ?? 0m);
+                return new SeasonStatsUserDto(g.Key, totalPlus, totalMinus, fin?.Earnings ?? 0m, fin?.AvailableBalance ?? 0m);
             })
             .OrderBy(s => s.UserId)
             .ToList();
@@ -1476,7 +1388,7 @@ public class StatsService : IStatsService
             .ToListAsync();
 
         // compute earnings + betting balance per season
-        var earningsBySeasonAndUser = new Dictionary<int, Dictionary<int, UserFinancials>>();
+        var earningsBySeasonAndUser = new Dictionary<int, Dictionary<int, BettingBreakdown>>();
         foreach (var season in seasons)
         {
             var matchIds = matchesBySeason
@@ -1499,7 +1411,7 @@ public class StatsService : IStatsService
                     var pointsStat = seasonPointStats?.UserStats.FirstOrDefault(us => us.UserId == su.UserId);
                     var goalStat = seasonGoalStats?.UserStats.FirstOrDefault(us => us.UserId == su.UserId);
                     var penaltyStat = seasonPenaltyStats?.UserStats.FirstOrDefault(us => us.UserId == su.UserId);
-                    UserFinancials? fin = null;
+                    BettingBreakdown? fin = null;
                     seasonEarnings?.TryGetValue(su.UserId, out fin);
 
                     return new SeasonUserDataDto(
@@ -1509,7 +1421,7 @@ public class StatsService : IStatsService
                         goalStat?.TotalGoals ?? 0,
                         penaltyStat?.TotalPenalties ?? 0,
                         fin?.Earnings ?? 0m,
-                        fin?.BettingBalance ?? 0m);
+                        fin?.AvailableBalance ?? 0m);
                 }).ToList();
 
                 return new SeasonalUserDataDto(s.Id, userData);
@@ -1593,7 +1505,7 @@ public class StatsService : IStatsService
 
                 earningsByUser.TryGetValue(u.Key, out var fin);
                 var earnings = fin?.Earnings ?? 0m;
-                var bettingBalance = fin?.BettingBalance ?? 0m;
+                var bettingBalance = fin?.AvailableBalance ?? 0m;
                 var canBeCollected = earnings - collected;
 
                 return new UserFinancialStatsDto(
@@ -1604,10 +1516,10 @@ public class StatsService : IStatsService
                     earnings,
                     canBeCollected,
                     bettingBalance,
-                    fin?.PendingStakes ?? 0m,
-                    fin?.WonNetProfit ?? 0m,
-                    fin?.LostStakes ?? 0m,
-                    fin?.NegativeCash ?? 0m);
+                    fin?.TotalPendingStake ?? 0m,
+                    fin?.TotalWonProfit ?? 0m,
+                    fin?.TotalLostStake ?? 0m,
+                    fin?.TotalNegativeCash ?? 0m);
             })
             .OrderByDescending(x => x.CanBeCollected)
             .ThenBy(x => x.UserId)

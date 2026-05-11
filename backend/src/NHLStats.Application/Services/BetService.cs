@@ -71,7 +71,7 @@ public class BetService : IBetService
             b.Amount,
             b.Odds,
             b.Status,
-            b.Status == BetStatus.Won ? b.Amount * b.Odds : null,
+            b.Status == BetStatus.Won ? BettingConstants.GrossPayout(b.Amount, b.Odds) : null,
             b.CreatedOn,
             b.EvaluatedOn));
     }
