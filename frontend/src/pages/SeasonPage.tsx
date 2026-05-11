@@ -110,9 +110,11 @@ function BetCellTooltip({ betType, targetName }: { betType: string | null; targe
 function ExpandedMatchSection({
     users,
     detail,
+    isLive,
 }: {
     users: WeeklyMatchUser[]
     detail: MatchExpandDetail | undefined
+    isLive?: boolean
 }) {
     const { t } = useTranslation()
     return (
@@ -174,7 +176,7 @@ function ExpandedMatchSection({
                                                         ? `-${u.betAmount.toFixed(2)}€`
                                                         : `${u.betAmount.toFixed(2)}€`}
                                             </span>
-                                            <BetCellTooltip betType={u.betType ?? null} targetName={u.betTargetName ?? null} />
+                                            {!isLive && <BetCellTooltip betType={u.betType ?? null} targetName={u.betTargetName ?? null} />}
                                         </div>
                                     ) : (
                                         <span className="text-text-muted">—</span>
@@ -787,6 +789,7 @@ export default function SeasonPage() {
                                                                             <ExpandedMatchSection
                                                                                 users={m.users ?? []}
                                                                                 detail={detail}
+                                                                                isLive={completionType === CompletionType.InProgress}
                                                                             />
                                                                         )}
                                                                     </div>
@@ -812,6 +815,7 @@ export default function SeasonPage() {
                                                                         <ExpandedMatchSection
                                                                             users={m.users ?? []}
                                                                             detail={detail}
+                                                                            isLive={completionType === CompletionType.InProgress}
                                                                         />
                                                                     )}
                                                                 </div>

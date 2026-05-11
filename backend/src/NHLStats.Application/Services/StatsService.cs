@@ -1481,7 +1481,6 @@ public class StatsService : IStatsService
 
         var allMatchIds = await _db.UserMatches
             .AsNoTracking()
-            .Where(um => um.MatchId != 0)
             .Select(um => um.MatchId)
             .Distinct()
             .ToListAsync();
