@@ -9,8 +9,33 @@ namespace NHLStats.Application.Services;
 public class UserMatchService : IUserMatchService
 {
     private readonly NhlStatsDbContext _db;
+    private readonly ISeasonEventBroadcaster? _broadcaster;
+    private readonly ICurrentActorProvider? _actorProvider;
 
     public UserMatchService(NhlStatsDbContext db) => _db = db;
+
+    public UserMatchService(
+        NhlStatsDbContext db,
+        ISeasonEventBroadcaster broadcaster,
+        ICurrentActorProvider actorProvider)
+    {
+        _db = db;
+        _broadcaster = broadcaster;
+        _actorProvider = actorProvider;
+    }
+
+    private async Task TryBroadcastAsync(SeasonEventNotificationDto evt)
+    {
+        if (_broadcaster == null) return;
+        try
+        {
+            await _broadcaster.BroadcastEventAsync(evt);
+        }
+        catch
+        {
+            // best-effort: broadcast failures must never affect the write
+        }
+    }
 
     // ─── Projection helpers ───────────────────────────────────────────────────
 
@@ -262,6 +287,18 @@ public class UserMatchService : IUserMatchService
         var loaded = await _db.UserMatchPoints
             .Include(p => p.PointReason)
             .FirstAsync(p => p.Id == point.Id);
+
+        await TryBroadcastAsync(new SeasonEventNotificationDto(
+            SeasonId: userMatch.SeasonId,
+            MatchId: userMatch.MatchId,
+            UserMatchId: userMatchId,
+            ActorUserId: _actorProvider?.ActorUserId,
+            ActorUserName: _actorProvider?.ActorUserName,
+            EventType: "Point",
+            EventSubType: reason.PointType.ToString(),
+            PlayerName: reason.Name,
+            Count: dto.Count));
+
         return (ToPointDto(loaded), null);
     }
 
@@ -343,6 +380,18 @@ public class UserMatchService : IUserMatchService
         var loaded = await _db.UserMatchGoals
             .Include(g => g.RosterPlayer)
             .FirstAsync(g => g.Id == goal.Id);
+
+        await TryBroadcastAsync(new SeasonEventNotificationDto(
+            SeasonId: userMatch.SeasonId,
+            MatchId: userMatch.MatchId,
+            UserMatchId: userMatchId,
+            ActorUserId: _actorProvider?.ActorUserId,
+            ActorUserName: _actorProvider?.ActorUserName,
+            EventType: "Goal",
+            EventSubType: dto.GoalType.ToString(),
+            PlayerName: $"{loaded.RosterPlayer?.FirstName} {loaded.RosterPlayer?.Surname}".Trim(),
+            Count: dto.Count));
+
         return (ToGoalDto(loaded), null);
     }
 
@@ -422,6 +471,18 @@ public class UserMatchService : IUserMatchService
         var loaded = await _db.UserMatchPenalties
             .Include(p => p.RosterPlayer)
             .FirstAsync(p => p.Id == penalty.Id);
+
+        await TryBroadcastAsync(new SeasonEventNotificationDto(
+            SeasonId: userMatch.SeasonId,
+            MatchId: userMatch.MatchId,
+            UserMatchId: userMatchId,
+            ActorUserId: _actorProvider?.ActorUserId,
+            ActorUserName: _actorProvider?.ActorUserName,
+            EventType: "Penalty",
+            EventSubType: "Standard",
+            PlayerName: $"{loaded.RosterPlayer?.FirstName} {loaded.RosterPlayer?.Surname}".Trim(),
+            Count: dto.Count));
+
         return (ToPenaltyDto(loaded), null);
     }
 

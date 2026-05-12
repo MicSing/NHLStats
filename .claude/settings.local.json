@@ -5,7 +5,10 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet test:*)",
       "Bash(npm run:*)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(npm install *)",
+      "Bash(npx vitest *)",
+      "Bash(git add *)"
     ]
   }
 }

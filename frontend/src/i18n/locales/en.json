@@ -132,6 +132,16 @@
         "byWeek": "(by Week)",
         "bySeason": "(by Season)"
     },
+    "notifications": {
+        "banner": "Get a desktop alert when goals, penalties, or points are recorded.",
+        "enable": "Enable notifications",
+        "blocked": "Notifications blocked in your browser settings.",
+        "goal": "Goal",
+        "penalty": "Penalty",
+        "pointPositive": "Positive point",
+        "pointNegative": "Negative point",
+        "pointNeutral": "Point"
+    },
     "season": {
         "title": "Season Overview",
         "dashboardLink": "📊 Dashboard",

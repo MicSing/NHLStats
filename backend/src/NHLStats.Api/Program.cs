@@ -8,6 +8,8 @@ using System.IO;
 using System.Text;
 using NHLStats.Application.Interfaces;
 using NHLStats.Application.Services;
+using NHLStats.Api.Hubs;
+using NHLStats.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -56,6 +58,19 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    ctx.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     })
     .AddJwtBearer("RefreshBearer", options =>
     {
@@ -84,8 +99,12 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
+
+builder.Services.AddSignalR();
+builder.Services.AddHttpContextAccessor();
 
 // Application services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -103,6 +122,8 @@ builder.Services.AddScoped<IBetService, BetService>();
 builder.Services.AddScoped<IPointManagementService, PointManagementService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
+builder.Services.AddScoped<ISeasonEventBroadcaster, SignalRSeasonEventBroadcaster>();
+builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvider>();
 
 // Configure EF Core to always use SQLite and place DB under HOME/data/nhlstats.db
 var home = Environment.GetEnvironmentVariable("HOME") ?? ".";
@@ -214,6 +235,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<SeasonEventsHub>("/hubs/season-events");
 
 if (!app.Environment.IsDevelopment())
 {

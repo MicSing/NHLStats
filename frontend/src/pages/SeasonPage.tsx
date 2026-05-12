@@ -16,6 +16,7 @@ import { teamLogoUrl } from '../utils/teamLogoUrl'
 import CompletionBadge from '../components/CompletionBadge'
 import { useIsAdmin } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useSeasonEventNotifications } from '../hooks/useSeasonEventNotifications'
 
 interface MatchUserDetail {
     userMatchId: number
@@ -311,6 +312,8 @@ export default function SeasonPage() {
     const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
     const [loadingH2H, setLoadingH2H] = useState(false)
     const [h2hExpanded, setH2hExpanded] = useState(false)
+    const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
+        useSeasonEventNotifications(seasonId)
     // Fetch all seasons' totals data once on mount
     useEffect(() => {
         apiClient
@@ -535,6 +538,24 @@ export default function SeasonPage() {
                         {t('season.dashboardLink')}
                     </Link>
                 </div>
+
+                {seasonId && notificationPermission === 'default' && (
+                    <div className="mb-4 flex items-center justify-between rounded border border-border bg-surface p-3 text-sm">
+                        <span className="text-text-muted">{t('notifications.banner')}</span>
+                        <button
+                            type="button"
+                            onClick={() => { void requestNotificationPermission() }}
+                            className="ml-3 rounded bg-primary px-3 py-1 text-xs font-medium text-white hover:opacity-90"
+                        >
+                            {t('notifications.enable')}
+                        </button>
+                    </div>
+                )}
+                {seasonId && notificationPermission === 'denied' && (
+                    <div className="mb-4 rounded border border-border bg-surface p-3 text-xs text-text-muted">
+                        {t('notifications.blocked')}
+                    </div>
+                )}
 
                 {!seasonId && (
                     <p className="text-text-muted">{t('season.selectSeason')}</p>
