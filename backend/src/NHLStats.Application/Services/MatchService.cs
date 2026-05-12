@@ -66,7 +66,7 @@ public class MatchService : IMatchService
         {
             var matchIds = matches.Select(m => m.Id).ToList();
             betsByMatchId = await _db.Bets
-                .Where(b => b.CreatedBy == loginId && matchIds.Contains(b.MatchId))
+                .Where(b => b.CreatedBy == loginId && matchIds.Contains(b.MatchId) && b.Status != BetStatus.Cancelled)
                 .ToDictionaryAsync(
                     b => b.MatchId,
                     b => new BetDto(

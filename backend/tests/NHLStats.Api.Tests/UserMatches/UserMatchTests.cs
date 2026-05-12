@@ -501,6 +501,108 @@ public class UserMatchTests : ApiTestBase
         getResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task DeleteUserMatch_cancels_pending_bets_on_that_player()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        // Create season with hosted team so TeamWin bets work; we'll use UserGoal
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "UM BetCancel Season",
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1
+        });
+        seasonResp.EnsureSuccessStatusCode();
+        var seasonId = (await seasonResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        // Ensure admin has a linked User with positive points for betting balance
+        var meResp = await client.GetAsync("/api/auth/me");
+        meResp.EnsureSuccessStatusCode();
+        var me = await meResp.Content.ReadFromJsonAsync<JsonElement>();
+        var loginId = me.GetProperty("id").GetString()!;
+
+        int adminUserId;
+        if (me.TryGetProperty("userId", out var adminUserIdProp) && adminUserIdProp.ValueKind != JsonValueKind.Null)
+        {
+            adminUserId = adminUserIdProp.GetInt32();
+        }
+        else
+        {
+            var createAdminUserResp = await client.PostAsJsonAsync("/api/users", new { name = "BetCancel Admin" });
+            createAdminUserResp.EnsureSuccessStatusCode();
+            adminUserId = (await createAdminUserResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+            var attachResp = await client.PutAsJsonAsync($"/api/auth/users/{loginId}/attach-user", new { userId = adminUserId });
+            attachResp.EnsureSuccessStatusCode();
+        }
+
+        await client.PostAsync($"/api/seasons/{seasonId}/users/{adminUserId}", null);
+
+        // Seed positive points via a completed match so the admin has betting balance
+        var completedMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
+        completedMatchResp.EnsureSuccessStatusCode();
+        var completedMatchId = (await completedMatchResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}", new
+        {
+            homeTeamId = 3, awayTeamId = 4,
+            homeScore = 2, awayScore = 1,
+            matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"),
+            completionType = 1
+        });
+        await client.PostAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}/usermatches/initialize", null);
+        var completedUmsResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}/usermatches");
+        var completedUms = await completedUmsResp.Content.ReadFromJsonAsync<JsonElement>();
+        var adminUmId = completedUms.EnumerateArray()
+            .First(u => u.GetProperty("userId").GetInt32() == adminUserId)
+            .GetProperty("id").GetInt32();
+        await client.PostAsJsonAsync($"/api/usermatches/{adminUmId}/points", new { pointReasonId = 9, count = 4 });
+
+        // Create the player to bet on
+        var playerUserId = await CreateUserAsync(client, "BetCancel Target Player");
+        await AssignUserToSeasonAsync(client, seasonId, playerUserId);
+
+        // Create a future match for betting
+        var futureMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 1, awayTeamId = 2 });
+        futureMatchResp.EnsureSuccessStatusCode();
+        var futureMatchId = (await futureMatchResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{futureMatchId}", new
+        {
+            homeTeamId = 1, awayTeamId = 2,
+            homeScore = 0, awayScore = 0,
+            matchDate = DateTime.UtcNow.AddDays(1).ToString("O"),
+            completionType = 0
+        });
+
+        // Assign player to the future match
+        var umResp = await client.PostAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{futureMatchId}/usermatches",
+            new { userId = playerUserId });
+        umResp.EnsureSuccessStatusCode();
+        var umId = (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        // Place a UserGoal bet on the player
+        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{futureMatchId}/bet", new
+        {
+            betType = "UserGoal",
+            userId = playerUserId,
+            amount = 1.0
+        });
+        betResp.EnsureSuccessStatusCode();
+
+        // Unassign the player from the match
+        var delResp = await client.DeleteAsync($"/api/usermatches/{umId}");
+        delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Bet should now appear in history with Cancelled status
+        var historyResp = await client.GetAsync($"/api/betting/history?seasonId={seasonId}");
+        historyResp.EnsureSuccessStatusCode();
+        var history = await historyResp.Content.ReadFromJsonAsync<JsonElement>();
+        var cancelledBet = history.EnumerateArray()
+            .FirstOrDefault(b => b.GetProperty("matchId").GetInt32() == futureMatchId);
+        cancelledBet.ValueKind.Should().NotBe(JsonValueKind.Undefined, "bet should still appear in history");
+        cancelledBet.GetProperty("status").GetString().Should().Be("Cancelled");
+    }
+
     // ─── Points — GET list ────────────────────────────────────────────────────
 
     [Fact]

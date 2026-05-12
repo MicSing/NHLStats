@@ -11,17 +11,20 @@ public class UserMatchService : IUserMatchService
     private readonly NhlStatsDbContext _db;
     private readonly ISeasonEventBroadcaster? _broadcaster;
     private readonly ICurrentActorProvider? _actorProvider;
+    private readonly IBetService? _betService;
 
     public UserMatchService(NhlStatsDbContext db) => _db = db;
 
     public UserMatchService(
         NhlStatsDbContext db,
         ISeasonEventBroadcaster broadcaster,
-        ICurrentActorProvider actorProvider)
+        ICurrentActorProvider actorProvider,
+        IBetService betService)
     {
         _db = db;
         _broadcaster = broadcaster;
         _actorProvider = actorProvider;
+        _betService = betService;
     }
 
     private async Task TryBroadcastAsync(SeasonEventNotificationDto evt)
@@ -115,6 +118,8 @@ public class UserMatchService : IUserMatchService
     {
         var um = await _db.UserMatches.FindAsync(id);
         if (um == null) return false;
+        if (_betService != null)
+            await _betService.CancelBetsForPlayerInMatchAsync(um.MatchId, um.UserId);
         _db.UserMatches.Remove(um);
         await _db.SaveChangesAsync();
         return true;

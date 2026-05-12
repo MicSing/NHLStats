@@ -183,6 +183,20 @@ public class BetService : IBetService
         return (true, null);
     }
 
+    public async Task CancelBetsForPlayerInMatchAsync(int matchId, int userId)
+    {
+        var bets = await _db.Bets
+            .Where(b => b.MatchId == matchId && b.UserId == userId && b.Status == BetStatus.Pending)
+            .ToListAsync();
+        foreach (var bet in bets)
+        {
+            bet.Status = BetStatus.Cancelled;
+            bet.UpdatedOn = DateTime.UtcNow;
+        }
+        if (bets.Count > 0)
+            await _db.SaveChangesAsync();
+    }
+
     public async Task EvaluateMatchBetsAsync(int matchId)
     {
         var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);

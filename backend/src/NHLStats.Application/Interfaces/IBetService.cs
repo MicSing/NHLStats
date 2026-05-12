@@ -9,5 +9,6 @@ public interface IBetService
     Task<(BetDto? Bet, string? Error)> PlaceBetAsync(int matchId, string loginId, CreateBetDto dto);
     Task<(BetDto? Bet, string? Error)> UpdateBetAsync(int matchId, string loginId, UpdateBetDto dto);
     Task<(bool Success, string? Error)> CancelBetAsync(int matchId, string loginId);
+    Task CancelBetsForPlayerInMatchAsync(int matchId, int userId);
     Task EvaluateMatchBetsAsync(int matchId);
 }
