@@ -700,7 +700,9 @@ export default function SeasonPage() {
                                         <h2 className="text-lg font-semibold mb-4 text-primary">
                                             {t('season.matchesByWeek')}
                                         </h2>
-                                        {weekGroups.map((group) => {
+                                        {(() => {
+                                            const matchNumberById = new Map(allMatches.map((m) => [m.id, m.matchNumber]))
+                                            return weekGroups.map((group) => {
                                             const season = seasons.find((s) => s.id === seasonId)
                                             const hostedTeamId = season?.hostedTeamId ?? null
 
@@ -721,7 +723,9 @@ export default function SeasonPage() {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {group.matches.map((m) => {
+                                                        {[...group.matches]
+                                                            .sort((a, b) => (matchNumberById.get(b.matchId) ?? 0) - (matchNumberById.get(a.matchId) ?? 0))
+                                                            .map((m) => {
                                                             const isHome = hostedTeamId != null && m.homeTeamId === hostedTeamId
                                                             const isAway = hostedTeamId != null && m.awayTeamId === hostedTeamId
                                                             const hostedScore = isHome ? m.homeScore : isAway ? m.awayScore : null
@@ -747,8 +751,13 @@ export default function SeasonPage() {
                                                                 completionType === CompletionType.Overtime ||
                                                                 completionType === CompletionType.Shootout
 
+                                                            const matchNumber = matchNumberById.get(m.matchId)
+
                                                             const matchInner = (
                                                                 <>
+                                                                    <span className="text-xs text-text-muted font-mono w-8 flex-shrink-0">
+                                                                        {matchNumber != null ? `#${matchNumber}` : ''}
+                                                                    </span>
                                                                     <img
                                                                         src={homeLogo}
                                                                         alt={m.homeTeamShortName ?? ''}
@@ -845,7 +854,8 @@ export default function SeasonPage() {
                                                     </div>
                                                 </div>
                                             )
-                                        })}
+                                        })
+                                        })()}
                                     </section>
                                 )}
                             </div>
