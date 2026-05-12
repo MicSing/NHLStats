@@ -8,7 +8,7 @@ function LoginPage() {
     const { login } = useAuth()
     const navigate = useNavigate()
     const { t } = useTranslation()
-    const [email, setEmail] = useState('')
+    const [identifier, setIdentifier] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -18,7 +18,7 @@ function LoginPage() {
         setError(null)
         setLoading(true)
         try {
-            await login({ email, password })
+            await login({ identifier, password })
             navigate('/admin')
         } catch {
             setError(t('login.invalidCredentials'))
@@ -37,14 +37,15 @@ function LoginPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label htmlFor="email" className="label">{t('login.email')}</label>
+                        <label htmlFor="identifier" className="label">{t('login.identifier')}</label>
                         <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            id="identifier"
+                            type="text"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
                             required
-                            placeholder={t('login.emailPlaceholder')}
+                            autoComplete="username"
+                            placeholder={t('login.identifierPlaceholder')}
                             className="input"
                         />
                     </div>
@@ -56,6 +57,7 @@ function LoginPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            autoComplete="current-password"
                             placeholder={t('login.passwordPlaceholder')}
                             className="input"
                         />

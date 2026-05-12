@@ -20,6 +20,7 @@ export default function LoginManagementPage() {
     // Add user modal
     const [showAddModal, setShowAddModal] = useState(false)
     const [newEmail, setNewEmail] = useState('')
+    const [newAlias, setNewAlias] = useState('')
     const [newPassword, setNewPassword] = useState('')
     const [newRoles, setNewRoles] = useState<string[]>(['Participient'])
     const [newUserId, setNewUserId] = useState<number | undefined>(undefined)
@@ -74,7 +75,9 @@ export default function LoginManagementPage() {
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newEmail || !newPassword) {
+        const emailTrim = newEmail.trim()
+        const aliasTrim = newAlias.trim()
+        if ((!emailTrim && !aliasTrim) || !newPassword) {
             toast.error(t('errors.allFieldsRequired'))
             return
         }
@@ -82,7 +85,8 @@ export default function LoginManagementPage() {
         setAddLoading(true)
         try {
             const dto: CreateLoginDto = {
-                email: newEmail,
+                email: emailTrim || undefined,
+                alias: aliasTrim || undefined,
                 password: newPassword,
                 userId: newUserId,
             }
@@ -90,6 +94,7 @@ export default function LoginManagementPage() {
             toast.success(t('toast.createSuccess'))
             setShowAddModal(false)
             setNewEmail('')
+            setNewAlias('')
             setNewPassword('')
             setNewRoles(['Participient'])
             setNewUserId(undefined)
@@ -209,8 +214,19 @@ export default function LoginManagementPage() {
                                 type="email"
                                 value={newEmail}
                                 onChange={(e) => setNewEmail(e.target.value)}
-                                required
                                 className="w-full px-3 py-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+                                placeholder={t('login.emailPlaceholder')}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">{t('common.emailOrAliasHint') || 'Email or Alias is required.'}</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">{t('login.alias')}</label>
+                            <input
+                                type="text"
+                                value={newAlias}
+                                onChange={(e) => setNewAlias(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+                                placeholder={t('login.aliasPlaceholder')}
                             />
                         </div>
                         <div>
@@ -309,6 +325,7 @@ export default function LoginManagementPage() {
                     <thead className="bg-gray-100 dark:bg-gray-700">
                         <tr>
                             <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
+                            <th className="px-6 py-3 text-left text-sm font-semibold">{t('login.alias')}</th>
                             <th className="px-6 py-3 text-left text-sm font-semibold">Roles</th>
                             <th className="px-6 py-3 text-left text-sm font-semibold">Linked User</th>
                             <th className="px-6 py-3 text-left text-sm font-semibold">{t('common.actions')}</th>
@@ -320,7 +337,8 @@ export default function LoginManagementPage() {
                                 key={user.id}
                                 className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
-                                <td className="px-6 py-4 text-sm">{user.email}</td>
+                                <td className="px-6 py-4 text-sm">{user.email ?? <span className="text-gray-400">—</span>}</td>
+                                <td className="px-6 py-4 text-sm">{user.alias ?? <span className="text-gray-400">—</span>}</td>
                                 <td className="px-6 py-4 text-sm">
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         {user.roles.map((role) => (

@@ -1,12 +1,13 @@
 export interface User {
     id: string
-    email: string
+    email: string | null
+    alias?: string | null
     userId: number | null
     roles: string[]
 }
 
 export interface LoginCredentials {
-    email: string
+    identifier: string
     password: string
 }
 

@@ -50,7 +50,28 @@ function getHeaders(): Record<string, string> {
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`)
+        let message = `HTTP error ${response.status}`
+        try {
+            const body = await response.clone().json() as unknown
+            if (typeof body === 'string') {
+                message = body
+            } else if (Array.isArray(body) && body.every((x) => typeof x === 'string')) {
+                message = (body as string[]).join('; ')
+            } else if (body && typeof body === 'object') {
+                const obj = body as Record<string, unknown>
+                if (typeof obj.error === 'string') message = obj.error
+                else if (typeof obj.title === 'string') message = obj.title
+                else if (obj.errors && typeof obj.errors === 'object') {
+                    const flat = Object.values(obj.errors as Record<string, unknown>)
+                        .flatMap((v) => Array.isArray(v) ? v : [v])
+                        .filter((v) => typeof v === 'string')
+                    if (flat.length > 0) message = flat.join('; ')
+                }
+            }
+        } catch {
+            // body not JSON; keep default message
+        }
+        throw new Error(message)
     }
     // 204 No Content — return null (typed as T, callers should use T | null)
     if (response.status === 204) {

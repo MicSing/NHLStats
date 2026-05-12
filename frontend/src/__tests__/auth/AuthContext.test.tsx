@@ -37,7 +37,7 @@ describe('AuthContext', () => {
     test('login stores user and token', async () => {
         const { result } = renderHook(() => useAuth(), { wrapper })
         await act(async () => {
-            await result.current.login({ email: 'admin@test.com', password: 'Admin123!' })
+            await result.current.login({ identifier: 'admin@test.com', password: 'Admin123!' })
         })
         expect(result.current.token).toBe('fake-jwt-token')
         expect(result.current.user).toEqual({ id: 'user-1', email: 'admin@test.com' })
@@ -47,7 +47,7 @@ describe('AuthContext', () => {
     test('login persists token and user to localStorage', async () => {
         const { result } = renderHook(() => useAuth(), { wrapper })
         await act(async () => {
-            await result.current.login({ email: 'admin@test.com', password: 'Admin123!' })
+            await result.current.login({ identifier: 'admin@test.com', password: 'Admin123!' })
         })
         expect(localStorage.getItem('token')).toBe('fake-jwt-token')
         expect(JSON.parse(localStorage.getItem('user') ?? '{}')).toEqual({
@@ -59,7 +59,7 @@ describe('AuthContext', () => {
     test('logout clears user and token', async () => {
         const { result } = renderHook(() => useAuth(), { wrapper })
         await act(async () => {
-            await result.current.login({ email: 'admin@test.com', password: 'Admin123!' })
+            await result.current.login({ identifier: 'admin@test.com', password: 'Admin123!' })
         })
         act(() => {
             result.current.logout()
@@ -74,7 +74,7 @@ describe('AuthContext', () => {
         const { result } = renderHook(() => useAuth(), { wrapper })
         await expect(
             act(async () => {
-                await result.current.login({ email: 'wrong@test.com', password: 'wrong' })
+                await result.current.login({ identifier: 'wrong@test.com', password: 'wrong' })
             }),
         ).rejects.toThrow()
     })

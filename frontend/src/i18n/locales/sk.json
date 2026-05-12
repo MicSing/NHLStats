@@ -103,12 +103,16 @@
         "title": "NHL Stats",
         "subtitle": "Prihláste sa do svojho účtu",
         "email": "Email",
+        "identifier": "Email alebo alias",
+        "alias": "Alias",
         "password": "Heslo",
         "emailPlaceholder": "vas@email.com",
+        "identifierPlaceholder": "vas@email.com alebo alias",
+        "aliasPlaceholder": "alias",
         "passwordPlaceholder": "••••••••",
         "signingIn": "Prihlasovanie…",
         "signIn": "Prihlásiť sa",
-        "invalidCredentials": "Neplatný email alebo heslo"
+        "invalidCredentials": "Neplatné prihlasovacie údaje"
     },
     "changePassword": {
         "title": "Zmeniť heslo",

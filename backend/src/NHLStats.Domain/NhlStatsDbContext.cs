@@ -45,6 +45,11 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
                 .WithMany()
                 .HasForeignKey(u => u.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            b.Property(u => u.Alias).HasMaxLength(64);
+            b.HasIndex(u => u.Alias)
+                .IsUnique()
+                .HasFilter("\"Alias\" IS NOT NULL");
         });
 
         modelBuilder.Entity<User>(b =>

@@ -57,7 +57,10 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDto dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
+        var identifier = !string.IsNullOrWhiteSpace(dto.Identifier) ? dto.Identifier : dto.Email;
+        if (string.IsNullOrWhiteSpace(identifier)) return Unauthorized();
+
+        var user = await ResolveLoginUser(identifier);
         if (user == null) return Unauthorized();
 
         var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
@@ -65,6 +68,17 @@ public class AuthController : ControllerBase
 
         var token = await GenerateJwtToken(user);
         return Ok(new { token });
+    }
+
+    private async Task<ApplicationUser?> ResolveLoginUser(string identifier)
+    {
+        if (identifier.Contains('@'))
+        {
+            var byEmail = await _userManager.FindByEmailAsync(identifier);
+            if (byEmail != null) return byEmail;
+        }
+
+        return await _userManager.Users.FirstOrDefaultAsync(u => u.Alias == identifier);
     }
 
     [HttpPost("refresh")]
@@ -90,7 +104,7 @@ public class AuthController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         var isAdmin = roles.Contains(RoleNames.Admin);
 
-        return Ok(new { id = user.Id, email = user.Email, userId = user.UserId, roles, isAdmin });
+        return Ok(new { id = user.Id, email = user.Email, alias = user.Alias, userId = user.UserId, roles, isAdmin });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -98,7 +112,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> GetAllUsers()
     {
         var users = await _userManager.Users
-            .OrderBy(u => u.Email)
+            .OrderBy(u => u.Email ?? u.Alias)
             .ToListAsync();
 
         var payload = new List<object>();
@@ -109,6 +123,7 @@ public class AuthController : ControllerBase
             {
                 user.Id,
                 user.Email,
+                user.Alias,
                 user.UserId,
                 roles,
                 isAdmin = roles.Contains(RoleNames.Admin)
@@ -124,8 +139,30 @@ public class AuthController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var existing = await _userManager.FindByEmailAsync(dto.Email);
-        if (existing != null) return Conflict(new { error = "Email already in use" });
+        var email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
+        var alias = string.IsNullOrWhiteSpace(dto.Alias) ? null : dto.Alias.Trim();
+
+        if (email == null && alias == null)
+        {
+            return BadRequest(new { error = "Email or alias is required" });
+        }
+
+        if (alias != null && alias.Contains('@'))
+        {
+            return BadRequest(new { error = "Alias cannot contain '@'" });
+        }
+
+        if (email != null)
+        {
+            var existingEmail = await _userManager.FindByEmailAsync(email);
+            if (existingEmail != null) return Conflict(new { error = "Email already in use" });
+        }
+
+        if (alias != null)
+        {
+            var existingAlias = await _userManager.Users.FirstOrDefaultAsync(u => u.Alias == alias);
+            if (existingAlias != null) return Conflict(new { error = "Alias already in use" });
+        }
 
         if (dto.UserId.HasValue)
         {
@@ -135,8 +172,9 @@ public class AuthController : ControllerBase
 
         var user = new ApplicationUser
         {
-            UserName = dto.Email,
-            Email = dto.Email,
+            UserName = email ?? alias!,
+            Email = email,
+            Alias = alias,
             UserId = dto.UserId
         };
         var result = await _userManager.CreateAsync(user, dto.Password);
@@ -149,7 +187,7 @@ public class AuthController : ControllerBase
         await _userManager.AddToRoleAsync(user, RoleNames.Participient);
 
         var roles = await _userManager.GetRolesAsync(user);
-        return StatusCode(201, new { id = user.Id, email = user.Email, userId = user.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return StatusCode(201, new { id = user.Id, email = user.Email, alias = user.Alias, userId = user.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -172,7 +210,7 @@ public class AuthController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(login);
-        return Ok(new { id = login.Id, email = login.Email, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -220,7 +258,7 @@ public class AuthController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(login);
-        return Ok(new { id = login.Id, email = login.Email, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -361,13 +399,15 @@ public class RegisterDto
 
 public class LoginDto
 {
-    public string Email { get; set; } = null!;
+    public string? Email { get; set; }
+    public string? Identifier { get; set; }
     public string Password { get; set; } = null!;
 }
 
 public class CreateLoginDto
 {
-    public string Email { get; set; } = null!;
+    public string? Email { get; set; }
+    public string? Alias { get; set; }
     public string Password { get; set; } = null!;
     public int? UserId { get; set; }
 }

@@ -103,12 +103,16 @@
         "title": "NHL Stats",
         "subtitle": "Sign in to your account",
         "email": "Email",
+        "identifier": "Email or Alias",
+        "alias": "Alias",
         "password": "Password",
         "emailPlaceholder": "you@example.com",
+        "identifierPlaceholder": "you@example.com or alias",
+        "aliasPlaceholder": "alias",
         "passwordPlaceholder": "••••••••",
         "signingIn": "Signing in…",
         "signIn": "Sign In",
-        "invalidCredentials": "Invalid email or password"
+        "invalidCredentials": "Invalid credentials"
     },
     "changePassword": {
         "title": "Change Password",

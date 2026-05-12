@@ -268,8 +268,9 @@ const mockExpenses = [
 export const handlers = [
     // Auth
     rest.post(`${BASE}/api/auth/login`, async (req, res, ctx) => {
-        const body = await req.json() as { email: string; password: string }
-        if (body.email === 'admin@test.com' && body.password === 'Admin123!') {
+        const body = await req.json() as { identifier?: string; email?: string; password: string }
+        const id = body.identifier ?? body.email
+        if (id === 'admin@test.com' && body.password === 'Admin123!') {
             return res(ctx.json({ token: 'fake-jwt-token' }))
         }
         return res(ctx.status(401))
