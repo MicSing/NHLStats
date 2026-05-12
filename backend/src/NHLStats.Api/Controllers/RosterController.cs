@@ -13,10 +13,12 @@ public class RosterController : ControllerBase
 
     public RosterController(IRosterPlayerService service) => _service = service;
 
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IActionResult> GetBySeason(int seasonId) =>
         Ok(await _service.GetBySeasonAsync(seasonId));
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int seasonId, int id)
     {
@@ -25,7 +27,7 @@ public class RosterController : ControllerBase
         return Ok(player);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(int seasonId, CreateRosterPlayerDto dto)
     {
@@ -34,7 +36,7 @@ public class RosterController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { seasonId, id = created.Id }, created);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int seasonId, int id, UpdateRosterPlayerDto dto)
     {
@@ -44,7 +46,7 @@ public class RosterController : ControllerBase
         return Ok(updated);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int seasonId, int id)
     {
@@ -58,7 +60,7 @@ public class RosterController : ControllerBase
     /// Import roster players from CSV content.
     /// Format: FirstName,Surname,Position,TeamShortName (one row per player, optional header)
     /// </summary>
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("import")]
     public async Task<IActionResult> ImportCsv(int seasonId, [FromBody] CsvImportRequestDto request)
     {
@@ -72,7 +74,7 @@ public class RosterController : ControllerBase
     /// <summary>
     /// Copy all roster players from sourceSeasonId into this season.
     /// </summary>
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("copy/{sourceSeasonId:int}")]
     public async Task<IActionResult> CopyFromSeason(int seasonId, int sourceSeasonId)
     {

@@ -26,6 +26,7 @@ public class MatchesController : ControllerBase
     public async Task<IActionResult> GetBySeason(int seasonId) =>
         Ok(await _service.GetBySeasonAsync(seasonId));
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int seasonId, int id)
     {
@@ -34,7 +35,7 @@ public class MatchesController : ControllerBase
         return Ok(match);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(int seasonId, CreateMatchDto dto)
     {
@@ -43,7 +44,7 @@ public class MatchesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { seasonId, id = created.Id }, created);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("batch")]
     public async Task<IActionResult> BatchCreate(int seasonId, BatchCreateMatchDto[] dtos)
     {
@@ -59,7 +60,7 @@ public class MatchesController : ControllerBase
         }
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int seasonId, int id, UpdateMatchDto dto)
     {
@@ -69,7 +70,7 @@ public class MatchesController : ControllerBase
         return Ok(updated);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int seasonId, int id)
     {

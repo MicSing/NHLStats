@@ -17,7 +17,7 @@ public class UserMatchPointsController : ControllerBase
     public async Task<IActionResult> GetAll(int userMatchId) =>
         Ok(await _service.GetPointsAsync(userMatchId));
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Add(int userMatchId, CreateUserMatchPointDto dto)
     {
@@ -26,7 +26,7 @@ public class UserMatchPointsController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { userMatchId }, result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{pointId:int}")]
     public async Task<IActionResult> Update(int userMatchId, int pointId, UpdateUserMatchPointDto dto)
     {
@@ -36,7 +36,7 @@ public class UserMatchPointsController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{pointId:int}")]
     public async Task<IActionResult> Delete(int userMatchId, int pointId)
     {

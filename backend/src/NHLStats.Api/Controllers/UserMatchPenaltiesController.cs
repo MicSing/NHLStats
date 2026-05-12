@@ -17,7 +17,7 @@ public class UserMatchPenaltiesController : ControllerBase
     public async Task<IActionResult> GetAll(int userMatchId) =>
         Ok(await _service.GetPenaltiesAsync(userMatchId));
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Add(int userMatchId, CreateUserMatchPenaltyDto dto)
     {
@@ -26,7 +26,7 @@ public class UserMatchPenaltiesController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { userMatchId }, result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{penaltyId:int}")]
     public async Task<IActionResult> Update(int userMatchId, int penaltyId, UpdateUserMatchPenaltyDto dto)
     {
@@ -36,7 +36,7 @@ public class UserMatchPenaltiesController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{penaltyId:int}")]
     public async Task<IActionResult> Delete(int userMatchId, int penaltyId)
     {

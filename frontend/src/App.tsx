@@ -47,7 +47,7 @@ function App() {
                   <Route path="/betting-matches" element={<ProtectedRoute><BettingPage /></ProtectedRoute>} />
                   <Route path="/seasons" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId" element={<SeasonPage />} />
-                  <Route path="/seasons/:seasonId/matches/:matchId" element={<MatchPage />} />
+                  <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />
                   <Route path="/user-stats" element={<UserStatsPage />} />
                   <Route path="/rules" element={<RulesPage />} />
                 </Route>

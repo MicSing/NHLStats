@@ -24,7 +24,7 @@ public class PointReasonsController : ControllerBase
         return reason == null ? NotFound() : Ok(reason);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(CreatePointReasonDto dto)
     {
@@ -33,7 +33,7 @@ public class PointReasonsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, UpdatePointReasonDto dto)
     {
@@ -42,7 +42,7 @@ public class PointReasonsController : ControllerBase
         return updated == null ? NotFound() : Ok(updated);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

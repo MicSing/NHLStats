@@ -6,6 +6,11 @@ interface ProtectedRouteProps {
     children: ReactNode
 }
 
+interface AdminProtectedRouteProps {
+    children: ReactNode
+    redirectTo?: string
+}
+
 function ProtectedRoute({ children }: ProtectedRouteProps) {
     const { isAuthenticated } = useAuth()
     if (!isAuthenticated) {
@@ -14,13 +19,13 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <>{children}</>
 }
 
-export function AdminProtectedRoute({ children }: ProtectedRouteProps) {
+export function AdminProtectedRoute({ children, redirectTo = '/' }: AdminProtectedRouteProps) {
     const { isAuthenticated, user } = useAuth()
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />
     }
     if (!user?.roles?.includes('Admin')) {
-        return <Navigate to="/" replace />
+        return <Navigate to={redirectTo} replace />
     }
     return <>{children}</>
 }

@@ -32,14 +32,14 @@ public class UserMatchesController : ControllerBase
 
     // ── POST api/seasons/{seasonId}/usermatches — Deprecated ─────────────────
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("api/seasons/{seasonId:int}/usermatches")]
     public IActionResult CreateAggregatedDeprecated(int seasonId) =>
         BadRequest(new { error = "This endpoint is no longer supported. Use POST /api/seasons/{seasonId}/matches/{matchId}/usermatches instead." });
 
     // ── POST api/seasons/{seasonId}/matches/{matchId}/usermatches ────────────
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("api/seasons/{seasonId:int}/matches/{matchId:int}/usermatches")]
     public async Task<IActionResult> CreateForMatch(
         int seasonId, int matchId, CreateUserMatchDto dto)
@@ -51,7 +51,7 @@ public class UserMatchesController : ControllerBase
 
     // ── POST api/seasons/{seasonId}/matches/{matchId}/usermatches/initialize ─
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPost("api/seasons/{seasonId:int}/matches/{matchId:int}/usermatches/initialize")]
     public async Task<IActionResult> InitializeUsers(int seasonId, int matchId)
     {
@@ -63,7 +63,7 @@ public class UserMatchesController : ControllerBase
     // ── Aggregated Season Data ────────────────────────────────────────────────
 
     [HttpPost("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateAggregatedData(int userId, int seasonId, CreateAggregatedSeasonDataDto dto)
     {
         var (result, error) = await _service.CreateAggregatedDataAsync(userId, seasonId, dto);
@@ -86,7 +86,7 @@ public class UserMatchesController : ControllerBase
     }
 
     [HttpPut("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateAggregatedData(int userId, int seasonId, UpdateAggregatedSeasonDataDto dto)
     {
         var (result, error) = await _service.UpdateAggregatedDataAsync(userId, seasonId, dto);
@@ -95,7 +95,7 @@ public class UserMatchesController : ControllerBase
     }
 
     [HttpDelete("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteAggregatedData(int userId, int seasonId)
     {
         var deleted = await _service.DeleteAggregatedDataAsync(userId, seasonId);
@@ -115,7 +115,7 @@ public class UserMatchesController : ControllerBase
 
     // ── DELETE api/usermatches/{id} ──────────────────────────────────────────
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("api/usermatches/{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
