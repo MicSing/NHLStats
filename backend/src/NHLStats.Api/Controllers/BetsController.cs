@@ -40,57 +40,45 @@ public class BetsController : ControllerBase
         return odds == null ? NotFound() : Ok(odds);
     }
 
-    // GET /api/betting/history
-    [HttpGet("api/betting/history")]
+    // GET /api/betting/bets/active
+    [HttpGet("api/betting/bets/active")]
+    public async Task<IActionResult> GetActive()
+    {
+        var loginId = GetLoginId();
+        if (loginId == null) return Unauthorized();
+        var bets = await _betService.GetActiveAsync(loginId);
+        return Ok(bets);
+    }
+
+    // GET /api/betting/bets/history
+    [HttpGet("api/betting/bets/history")]
     public async Task<IActionResult> GetHistory([FromQuery] int? seasonId)
     {
         var loginId = GetLoginId();
         if (loginId == null) return Unauthorized();
-        var history = await _betService.GetHistoryAsync(loginId, seasonId);
-        return Ok(history);
+        var bets = await _betService.GetHistoryAsync(loginId, seasonId);
+        return Ok(bets);
     }
 
-    // GET /api/betting/matches/{matchId}/bet
-    [HttpGet("api/betting/matches/{matchId:int}/bet")]
-    public async Task<IActionResult> GetForMatch(int matchId)
+    // POST /api/betting/bets
+    [HttpPost("api/betting/bets")]
+    public async Task<IActionResult> PlaceBet([FromBody] CreateBetDto dto)
     {
         var loginId = GetLoginId();
         if (loginId == null) return Unauthorized();
-        var bet = await _betService.GetForMatchAsync(matchId, loginId);
-        return bet == null ? NotFound() : Ok(bet);
-    }
-
-    // POST /api/betting/matches/{matchId}/bet
-    [HttpPost("api/betting/matches/{matchId:int}/bet")]
-    public async Task<IActionResult> PlaceBet(int matchId, [FromBody] CreateBetDto dto)
-    {
-        var loginId = GetLoginId();
-        if (loginId == null) return Unauthorized();
-        var (bet, error) = await _betService.PlaceBetAsync(matchId, loginId, dto);
+        var (bet, error) = await _betService.PlaceBetAsync(loginId, dto);
         if (error != null) return BadRequest(new { error });
-        return CreatedAtAction(nameof(GetForMatch), new { matchId }, bet);
+        return CreatedAtAction(nameof(GetActive), null, bet);
     }
 
-    // PUT /api/betting/matches/{matchId}/bet
-    [HttpPut("api/betting/matches/{matchId:int}/bet")]
-    public async Task<IActionResult> UpdateBet(int matchId, [FromBody] UpdateBetDto dto)
+    // DELETE /api/betting/bets/{betId}
+    [HttpDelete("api/betting/bets/{betId:guid}")]
+    public async Task<IActionResult> CancelBet(Guid betId)
     {
         var loginId = GetLoginId();
         if (loginId == null) return Unauthorized();
-        var (bet, error) = await _betService.UpdateBetAsync(matchId, loginId, dto);
-        if (error == "Bet not found for this match.") return NotFound(new { error });
-        if (error != null) return BadRequest(new { error });
-        return Ok(bet);
-    }
-
-    // DELETE /api/betting/matches/{matchId}/bet
-    [HttpDelete("api/betting/matches/{matchId:int}/bet")]
-    public async Task<IActionResult> CancelBet(int matchId)
-    {
-        var loginId = GetLoginId();
-        if (loginId == null) return Unauthorized();
-        var (success, error) = await _betService.CancelBetAsync(matchId, loginId);
-        if (!success && error == "Bet not found for this match.") return NotFound(new { error });
+        var (success, error) = await _betService.CancelBetAsync(betId, loginId);
+        if (!success && error == "Bet not found.") return NotFound(new { error });
         if (!success) return BadRequest(new { error });
         return NoContent();
     }

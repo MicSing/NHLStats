@@ -1,185 +1,204 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../components/LoadingSpinner'
 import PageLayout from '../components/PageLayout'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { bettingService } from '../services/bettingService'
-import type { BettingBalanceDto, MatchOddsDto } from '../types/bet'
+import type {
+    ApiBetType,
+    BetDto,
+    BettingBalanceDto,
+    CreateBetLegDto,
+    MatchOddsDto,
+} from '../types/bet'
 import type { FutureMatch } from '../types/match'
-import apiClient from '../services/apiClient'
 
-type BetType = 'teamWin' | 'userGoal' | 'userPenalty'
-type BetSelection = 'home' | 'away'
+type Tab = 'betting' | 'archive'
 
-interface BetChoice {
-    type: BetType
-    teamSelection?: BetSelection
-    userId?: number
-    amount: number
+interface DraftLeg {
+    key: string
+    matchId: number
+    matchNumber: number
+    betType: ApiBetType
+    userId: number | null
+    teamId: number | null
+    label: string
+    odds: number
 }
 
-interface BetDrafts {
-    [matchId: number]: BetChoice | null
+function legKey(matchId: number, betType: ApiBetType, target: number | null): string {
+    return `${matchId}:${betType}:${target ?? '-'}`
 }
 
-interface ExistingBetState {
-    [matchId: number]: boolean
+function describeLeg(leg: DraftLeg, t: (k: string, opts?: Record<string, unknown>) => string): string {
+    const matchTag = t('betting.matchNumber', { number: leg.matchNumber })
+    return `${matchTag} · ${leg.label}`
 }
 
-interface ExpandedState {
-    [matchId: number]: boolean
-}
-
-interface MatchOddsState {
-    [matchId: number]: MatchOddsDto | null
-}
-
-function mapBetType(type: BetType): string {
-    switch (type) {
-        case 'teamWin': return 'TeamWin'
-        case 'userGoal': return 'UserGoal'
-        default: return 'UserPenalty'
-    }
+function describeApiLeg(
+    leg: BetDto['legs'][number],
+    t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
+    const tag = t('betting.matchNumber', { number: leg.matchNumber })
+    const kind =
+        leg.betType === 'TeamWin'
+            ? leg.targetName ?? t('betting.unknownTeam')
+            : leg.betType === 'UserGoal'
+                ? `${t('betting.goals')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                : `${t('betting.penalties')}: ${leg.targetName ?? t('betting.unknownUser')}`
+    return `${tag} · ${kind} @${leg.odds.toFixed(2)}`
 }
 
 export default function BettingPage() {
     const { t } = useTranslation()
     const { user } = useAuth()
     const { success, error } = useToast()
-    const [loading, setLoading] = useState(true)
-    const [matches, setMatches] = useState<FutureMatch[]>([])
-    const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
-    const [expanded, setExpanded] = useState<ExpandedState>({})
-    const [drafts, setDrafts] = useState<BetDrafts>({})
-    const [hasExistingBet, setHasExistingBet] = useState<ExistingBetState>({})
-    const [matchOdds, setMatchOdds] = useState<MatchOddsState>({})
 
     const userId = user?.userId ?? null
 
-    const loadData = useCallback(async () => {
-        if (!userId) return
+    const [loading, setLoading] = useState(true)
+    const [tab, setTab] = useState<Tab>('betting')
+    const [matches, setMatches] = useState<FutureMatch[]>([])
+    const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null)
+    const [oddsByMatch, setOddsByMatch] = useState<Record<number, MatchOddsDto | null>>({})
+    const [draftLegs, setDraftLegs] = useState<DraftLeg[]>([])
+    const [stakeInput, setStakeInput] = useState<string>('')
+    const [activeBets, setActiveBets] = useState<BetDto[]>([])
+    const [historyBets, setHistoryBets] = useState<BetDto[] | null>(null)
+    const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
 
+    const ensureOdds = useCallback(async (matchId: number) => {
+        setOddsByMatch((prev) => {
+            if (matchId in prev) return prev
+            // mark loading by setting null until result arrives
+            return { ...prev, [matchId]: null }
+        })
+        const odds = await bettingService.getMatchOdds(matchId)
+        setOddsByMatch((prev) => ({ ...prev, [matchId]: odds }))
+    }, [])
+
+    const loadAll = useCallback(async () => {
+        if (!userId) return
         try {
-            const [futureMatches, bal] = await Promise.all([
-                apiClient.get<FutureMatch[]>('/api/matches/future'),
+            const [upcoming, active, bal] = await Promise.all([
+                bettingService.getUpcoming(7),
+                bettingService.listActive(),
                 bettingService.getBalance(),
             ])
-
-            setMatches(futureMatches)
+            setMatches(upcoming)
+            setActiveBets(active)
             setBalance(bal)
-
-            const initialDrafts: BetDrafts = {}
-            const existingBets: ExistingBetState = {}
-
-            for (const match of futureMatches) {
-                if (match.bet) {
-                    existingBets[match.id] = true
-                    const amount = match.bet.amount ?? 1
-                    if (match.bet.betType === 'TeamWin') {
-                        initialDrafts[match.id] = {
-                            type: 'teamWin',
-                            teamSelection: match.bet.teamId === match.homeTeamId ? 'home' : 'away',
-                            amount,
-                        }
-                    } else if (match.bet.betType === 'UserGoal') {
-                        initialDrafts[match.id] = { type: 'userGoal', userId: match.bet.userId ?? undefined, amount }
-                    } else {
-                        initialDrafts[match.id] = { type: 'userPenalty', userId: match.bet.userId ?? undefined, amount }
-                    }
-                } else {
-                    existingBets[match.id] = false
-                    initialDrafts[match.id] = null
-                }
+            if (upcoming.length > 0) {
+                setSelectedMatchId((prev) => prev ?? upcoming[0].id)
+                void ensureOdds(upcoming[0].id)
             }
-
-            setHasExistingBet(existingBets)
-            setDrafts(initialDrafts)
         } catch {
             error(t('betting.loadError'))
         } finally {
             setLoading(false)
         }
-    }, [userId, error, t])
+    }, [userId, ensureOdds, error, t])
 
     useEffect(() => {
         if (!userId) {
             setLoading(false)
             return
         }
-        void loadData()
-    }, [userId, loadData])
+        void loadAll()
+    }, [userId, loadAll])
 
-    const toggleExpanded = (matchId: number) => {
-        setExpanded((prev) => {
-            const next = !prev[matchId]
-            if (next && !(matchId in matchOdds)) {
-                bettingService.getMatchOdds(matchId).then((odds) => {
-                    setMatchOdds((o) => ({ ...o, [matchId]: odds }))
-                })
-            }
-            return { ...prev, [matchId]: next }
-        })
+    const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
+    const selectedOdds = selectedMatchId != null ? oddsByMatch[selectedMatchId] ?? null : null
+
+    const totalOdds = useMemo(
+        () => draftLegs.reduce((p, l) => p * l.odds, 1),
+        [draftLegs],
+    )
+
+    const stake = parseFloat(stakeInput)
+    const stakeValid = Number.isFinite(stake) && stake > 0
+    const potentialWin = stakeValid ? stake * totalOdds : 0
+    const canCreate =
+        draftLegs.length > 0 &&
+        stakeValid &&
+        (balance == null || stake <= balance.availableBalance) &&
+        (balance == null || balance.maxWinCap <= 0 || potentialWin <= balance.maxWinCap)
+
+    const selectMatch = (id: number) => {
+        setSelectedMatchId(id)
+        void ensureOdds(id)
     }
 
-    const selectBet = (matchId: number, choice: Omit<BetChoice, 'amount'>) => {
-        setDrafts((prev) => ({
-            ...prev,
-            [matchId]: { ...choice, amount: prev[matchId]?.amount ?? 1 },
-        }))
+    const addLeg = (leg: Omit<DraftLeg, 'key'>) => {
+        const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null)
+        setDraftLegs((prev) => (prev.some((l) => l.key === key) ? prev : [...prev, { ...leg, key }]))
     }
 
-    const setAmount = (matchId: number, amount: number) => {
-        setDrafts((prev) => {
-            const existing = prev[matchId]
-            if (!existing) return prev
-            return { ...prev, [matchId]: { ...existing, amount } }
-        })
+    const removeLeg = (key: string) => {
+        setDraftLegs((prev) => prev.filter((l) => l.key !== key))
     }
 
-    const placeBet = async (match: FutureMatch) => {
-        if (!userId) return
+    const clearDraft = () => {
+        setDraftLegs([])
+        setStakeInput('')
+    }
 
-        const draft = drafts[match.id]
-        if (!draft) {
-            error(t('betting.noBetSelected'))
-            return
-        }
-
+    const placeBet = async () => {
+        if (!canCreate) return
         const payload = {
-            betType: mapBetType(draft.type),
-            userId: draft.type === 'teamWin' ? null : (draft.userId ?? null),
-            teamId: draft.type === 'teamWin'
-                ? (draft.teamSelection === 'home' ? match.homeTeamId : match.awayTeamId)
-                : null,
-            amount: draft.amount,
+            stake,
+            legs: draftLegs.map<CreateBetLegDto>((l) => ({
+                matchId: l.matchId,
+                betType: l.betType,
+                userId: l.userId ?? undefined,
+                teamId: l.teamId ?? undefined,
+            })),
         }
-
         try {
-            if (hasExistingBet[match.id]) {
-                await bettingService.updateBet(match.id, payload)
-            } else {
-                await bettingService.placeBet(match.id, payload)
-            }
-            setHasExistingBet((prev) => ({ ...prev, [match.id]: true }))
+            await bettingService.placeBet(payload)
             success(t('betting.betPlaced'))
-            await loadData()
+            clearDraft()
+            const [active, bal] = await Promise.all([
+                bettingService.listActive(),
+                bettingService.getBalance(),
+            ])
+            setActiveBets(active)
+            setBalance(bal)
         } catch {
             error(t('betting.betError'))
         }
     }
 
-    const cancelBet = async (matchId: number) => {
+    const cancelActive = async (id: string) => {
         try {
-            await bettingService.cancelBet(matchId)
-            setHasExistingBet((prev) => ({ ...prev, [matchId]: false }))
-            setDrafts((prev) => ({ ...prev, [matchId]: null }))
+            await bettingService.cancelBet(id)
             success(t('betting.betCancelled'))
-            await loadData()
+            const [active, bal] = await Promise.all([
+                bettingService.listActive(),
+                bettingService.getBalance(),
+            ])
+            setActiveBets(active)
+            setBalance(bal)
         } catch {
             error(t('betting.betError'))
         }
     }
+
+    const loadHistory = useCallback(async () => {
+        try {
+            const items = await bettingService.listHistory()
+            setHistoryBets(items)
+        } catch {
+            error(t('betting.loadError'))
+        }
+    }, [error, t])
+
+    useEffect(() => {
+        if (tab === 'archive' && historyBets == null) {
+            void loadHistory()
+        }
+    }, [tab, historyBets, loadHistory])
 
     if (loading) {
         return (
@@ -200,10 +219,28 @@ export default function BettingPage() {
     return (
         <PageLayout>
             <div className="space-y-6">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <h1 className="text-3xl font-bold">{t('betting.title')}</h1>
+                {/* Header: tabs + balance cards */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
+                    <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
+                        <button
+                            onClick={() => setTab('betting')}
+                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                tab === 'betting' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                            }`}
+                        >
+                            {t('betting.tabBetting')}
+                        </button>
+                        <button
+                            onClick={() => setTab('archive')}
+                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                tab === 'archive' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                            }`}
+                        >
+                            {t('betting.tabArchive')}
+                        </button>
+                    </div>
                     {balance && (
-                        <div className="flex gap-4 text-sm">
+                        <div className="flex gap-3 text-sm">
                             <div className="card px-4 py-2 text-center">
                                 <p className="text-text-muted text-xs mb-0.5">{t('betting.availableBalance')}</p>
                                 <p className="font-bold text-success text-lg">{balance.availableBalance.toFixed(2)} €</p>
@@ -218,230 +255,522 @@ export default function BettingPage() {
                     )}
                 </div>
 
-                {matches.length === 0 ? (
-                    <p className="text-text-muted">{t('betting.noMatches')}</p>
+                {tab === 'betting' ? (
+                    <>
+                        {/* Live tickets */}
+                        <LiveTicketsSection
+                            tickets={activeBets}
+                            onCancel={cancelActive}
+                            t={t}
+                        />
+
+                        {/* Upcoming matches */}
+                        <UpcomingMatchesSection
+                            matches={matches}
+                            selectedMatchId={selectedMatchId}
+                            onSelect={selectMatch}
+                            t={t}
+                        />
+
+                        {/* Markets for selected match */}
+                        <MarketsSection
+                            match={selectedMatch}
+                            odds={selectedOdds}
+                            currentUserId={userId}
+                            onAddLeg={addLeg}
+                            t={t}
+                        />
+
+                        {/* Ticket draft */}
+                        <TicketDraftSection
+                            legs={draftLegs}
+                            totalOdds={totalOdds}
+                            stakeInput={stakeInput}
+                            onStakeChange={setStakeInput}
+                            onRemove={removeLeg}
+                            onClear={clearDraft}
+                            onCreate={placeBet}
+                            canCreate={canCreate}
+                            potentialWin={potentialWin}
+                            t={t}
+                        />
+                    </>
                 ) : (
-                    <div className="space-y-4">
-                        {matches.map((match) => {
-                            const isExpanded = expanded[match.id] ?? false
-                            const draft = drafts[match.id]
-                            const odds = matchOdds[match.id] ?? null
-                            const users = (match.userMatches ?? []).filter(u => u.userId !== userId)
-const isHostingHome = match.hostedTeamId === match.homeTeamId
-                            const isHostingAway = match.hostedTeamId === match.awayTeamId
-                            const hasBet = hasExistingBet[match.id]
-
-                            // Resolve current odds for the selected draft option
-                            const currentOdds = (() => {
-                                if (!draft || !odds) return null
-                                if (draft.type === 'teamWin') {
-                                    return draft.teamSelection === 'home'
-                                        ? odds.teamWin?.homeOdds ?? null
-                                        : odds.teamWin?.awayOdds ?? null
-                                }
-                                const list = draft.type === 'userGoal' ? odds.userGoal : odds.userPenalty
-                                return list.find(o => o.userId === draft.userId)?.odds ?? null
-                            })()
-
-                            return (
-                                <div
-                                    key={match.id}
-                                    className="bg-bg-secondary border border-accent rounded-lg overflow-hidden"
-                                >
-                                    <button
-                                        onClick={() => toggleExpanded(match.id)}
-                                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-bg-hover transition-colors"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-sm text-text-muted">
-                                                {match.seasonName} - {t('betting.matchNumber', { number: match.matchNumber })}
-                                            </span>
-                                            <span className="font-semibold text-lg">
-                                                {match.homeTeamName ?? t('betting.unknownTeam')} vs{' '}
-                                                {match.awayTeamName ?? t('betting.unknownTeam')}
-                                            </span>
-                                            {hasBet && (
-                                                <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-medium">
-                                                    {t('betting.betPlacedBadge')}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className="text-xl">{isExpanded ? '▲' : '▼'}</span>
-                                    </button>
-
-                                    {isExpanded && (
-                                        <div className="px-6 py-4 border-t border-accent space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {/* Column 1: Home Team */}
-                                                <div className="space-y-4">
-                                                    <h3 className="text-xl font-semibold text-primary">
-                                                        {t('betting.homeTeam')}: {match.homeTeamName ?? t('betting.unknownTeam')}
-                                                    </h3>
-
-                                                    {isHostingHome && (
-                                                        <div className="bg-bg p-4 rounded-lg">
-                                                            <label className="flex items-center justify-between gap-2 cursor-pointer">
-                                                                <div className="flex items-center gap-2">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name={`match-${match.id}`}
-                                                                        checked={draft?.type === 'teamWin' && draft?.teamSelection === 'home'}
-                                                                        onChange={() => selectBet(match.id, { type: 'teamWin', teamSelection: 'home' })}
-                                                                        className="w-4 h-4"
-                                                                    />
-                                                                    <span className="font-semibold">{t('betting.betOnHomeWin')}</span>
-                                                                </div>
-                                                                {odds?.teamWin && (
-                                                                    <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded">
-                                                                        ×{odds.teamWin.homeOdds.toFixed(2)}
-                                                                    </span>
-                                                                )}
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="bg-bg p-4 rounded-lg space-y-2">
-                                                        <h4 className="font-semibold mb-2">{t('betting.whoWillScore')}</h4>
-                                                        {users.length === 0 ? (
-                                                            <p className="text-sm text-text-muted">{t('betting.noUsers')}</p>
-                                                        ) : (
-                                                            users.map((u) => {
-                                                                const userGoalOdds = odds?.userGoal.find(o => o.userId === u.userId)
-                                                                return (
-                                                                    <label key={`goal-${u.userId}`} className="flex items-center justify-between gap-2 cursor-pointer">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <input
-                                                                                type="radio"
-                                                                                name={`match-${match.id}`}
-                                                                                checked={draft?.type === 'userGoal' && draft?.userId === u.userId}
-                                                                                onChange={() => selectBet(match.id, { type: 'userGoal', userId: u.userId })}
-                                                                                className="w-4 h-4"
-                                                                            />
-                                                                            <span>{u.userName ?? t('betting.unknownUser')}</span>
-                                                                        </div>
-                                                                        {userGoalOdds && (
-                                                                            <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded">
-                                                                                ×{userGoalOdds.odds.toFixed(2)}
-                                                                            </span>
-                                                                        )}
-                                                                    </label>
-                                                                )
-                                                            })
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Column 2: Away Team */}
-                                                <div className="space-y-4">
-                                                    <h3 className="text-xl font-semibold text-secondary">
-                                                        {t('betting.awayTeam')}: {match.awayTeamName ?? t('betting.unknownTeam')}
-                                                    </h3>
-
-                                                    {isHostingAway && (
-                                                        <div className="bg-bg p-4 rounded-lg">
-                                                            <label className="flex items-center justify-between gap-2 cursor-pointer">
-                                                                <div className="flex items-center gap-2">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name={`match-${match.id}`}
-                                                                        checked={draft?.type === 'teamWin' && draft?.teamSelection === 'away'}
-                                                                        onChange={() => selectBet(match.id, { type: 'teamWin', teamSelection: 'away' })}
-                                                                        className="w-4 h-4"
-                                                                    />
-                                                                    <span className="font-semibold">{t('betting.betOnAwayWin')}</span>
-                                                                </div>
-                                                                {odds?.teamWin && (
-                                                                    <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded">
-                                                                        ×{odds.teamWin.awayOdds.toFixed(2)}
-                                                                    </span>
-                                                                )}
-                                                            </label>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="bg-bg p-4 rounded-lg space-y-2">
-                                                        <h4 className="font-semibold mb-2">{t('betting.whoWillBePenalized')}</h4>
-                                                        {users.length === 0 ? (
-                                                            <p className="text-sm text-text-muted">{t('betting.noUsers')}</p>
-                                                        ) : (
-                                                            users.map((u) => {
-                                                                const userPenaltyOdds = odds?.userPenalty.find(o => o.userId === u.userId)
-                                                                return (
-                                                                    <label key={`penalty-${u.userId}`} className="flex items-center justify-between gap-2 cursor-pointer">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <input
-                                                                                type="radio"
-                                                                                name={`match-${match.id}`}
-                                                                                checked={draft?.type === 'userPenalty' && draft?.userId === u.userId}
-                                                                                onChange={() => selectBet(match.id, { type: 'userPenalty', userId: u.userId })}
-                                                                                className="w-4 h-4"
-                                                                            />
-                                                                            <span>{u.userName ?? t('betting.unknownUser')}</span>
-                                                                        </div>
-                                                                        {userPenaltyOdds && (
-                                                                            <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded">
-                                                                                ×{userPenaltyOdds.odds.toFixed(2)}
-                                                                            </span>
-                                                                        )}
-                                                                    </label>
-                                                                )
-                                                            })
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Amount + Actions */}
-                                            {draft && (
-                                                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-accent">
-                                                    <div className="flex items-center gap-3">
-                                                        <label className="text-sm font-medium">{t('betting.stakeLabel')}</label>
-                                                        <input
-                                                            type="number"
-                                                            min={0.01}
-                                                            step={0.5}
-                                                            max={balance?.availableBalance ?? undefined}
-                                                            value={draft.amount}
-                                                            onChange={(e) => setAmount(match.id, parseFloat(e.target.value) || 0)}
-                                                            className="w-28 px-3 py-1.5 rounded border border-accent bg-bg text-sm"
-                                                        />
-                                                        {balance && (
-                                                            <span className="text-xs text-text-muted">
-                                                                {t('betting.availableBalance')}: {balance.availableBalance.toFixed(2)} €
-                                                            </span>
-                                                        )}
-                                                        {currentOdds && draft && draft.amount > 0 && (
-                                                            <span className="text-xs text-success font-medium">
-                                                                → {(draft.amount * currentOdds).toFixed(2)} € {t('betting.potentialWin')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex gap-3">
-                                                        {hasBet && (
-                                                            <button
-                                                                onClick={() => cancelBet(match.id)}
-                                                                className="px-5 py-2 bg-danger/20 text-danger border border-danger/40 rounded-lg hover:bg-danger/30 transition-colors font-semibold text-sm"
-                                                            >
-                                                                {t('betting.cancelBet')}
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => placeBet(match)}
-                                                            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-semibold text-sm"
-                                                        >
-                                                            {hasBet ? t('betting.updateBet') : t('betting.placeBet')}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
+                    <ArchiveTable bets={historyBets} t={t} />
                 )}
             </div>
         </PageLayout>
+    )
+}
+
+interface LiveTicketsProps {
+    tickets: BetDto[]
+    onCancel: (id: string) => void
+    t: (k: string, opts?: Record<string, unknown>) => string
+}
+
+function LiveTicketsSection({ tickets, onCancel, t }: LiveTicketsProps) {
+    return (
+        <section className="card p-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3">
+                {t('betting.liveTickets')}
+            </h2>
+            {tickets.length === 0 ? (
+                <p className="text-xs text-text-muted italic">{t('betting.noLiveTickets')}</p>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {tickets.map((b) => {
+                        const potential = b.stake * b.totalOdds
+                        return (
+                            <div
+                                key={b.id}
+                                className="border border-border rounded-lg p-3 bg-bg relative"
+                            >
+                                <button
+                                    onClick={() => onCancel(b.id)}
+                                    className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-danger/20 text-danger border border-danger/40 hover:bg-danger/30 font-semibold"
+                                >
+                                    {t('betting.cancelBet')}
+                                </button>
+                                <p className="text-xs font-mono font-bold text-primary mb-2">{b.shortId}</p>
+                                <ul className="space-y-0.5 text-xs text-text-muted mb-2">
+                                    {b.legs.map((l) => (
+                                        <li key={l.id}>{describeApiLeg(l, t)}</li>
+                                    ))}
+                                </ul>
+                                <div className="border-t border-border pt-2 flex justify-between items-center text-xs">
+                                    <span>
+                                        <span className="text-text-muted">{t('betting.stake')}:</span>{' '}
+                                        <strong>{b.stake.toFixed(2)} €</strong>
+                                    </span>
+                                    <span>
+                                        <span className="text-text-muted">{t('betting.rate')}:</span>{' '}
+                                        <strong>×{b.totalOdds.toFixed(2)}</strong>
+                                    </span>
+                                    <span className="text-success font-bold">
+                                        → {potential.toFixed(2)} €
+                                    </span>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </section>
+    )
+}
+
+interface UpcomingProps {
+    matches: FutureMatch[]
+    selectedMatchId: number | null
+    onSelect: (id: number) => void
+    t: (k: string, opts?: Record<string, unknown>) => string
+}
+
+function UpcomingMatchesSection({ matches, selectedMatchId, onSelect, t }: UpcomingProps) {
+    return (
+        <section className="card p-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3">
+                {t('betting.upcomingMatches')}
+            </h2>
+            {matches.length === 0 ? (
+                <p className="text-text-muted text-sm">{t('betting.noMatches')}</p>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2">
+                    {matches.map((m) => {
+                        const active = m.id === selectedMatchId
+                        return (
+                            <button
+                                key={m.id}
+                                onClick={() => onSelect(m.id)}
+                                className={`text-left px-3 py-2 rounded border transition-colors ${
+                                    active
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border bg-bg hover:bg-surface'
+                                }`}
+                            >
+                                <p className="text-[10px] font-mono text-text-muted uppercase">
+                                    {t('betting.matchNumber', { number: m.matchNumber })}
+                                </p>
+                                <p className="text-xs font-semibold leading-tight mt-0.5">
+                                    {m.homeTeamName ?? t('betting.unknownTeam')}
+                                </p>
+                                <p className="text-xs font-semibold leading-tight">
+                                    {m.awayTeamName ?? t('betting.unknownTeam')}
+                                </p>
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
+        </section>
+    )
+}
+
+interface MarketsProps {
+    match: FutureMatch | null
+    odds: MatchOddsDto | null
+    currentUserId: number | null
+    onAddLeg: (leg: Omit<DraftLeg, 'key'>) => void
+    t: (k: string, opts?: Record<string, unknown>) => string
+}
+
+function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProps) {
+    if (!match) {
+        return (
+            <section className="card p-4">
+                <p className="text-text-muted text-sm">{t('betting.selectMatchHint')}</p>
+            </section>
+        )
+    }
+
+    const isHostingHome = match.hostedTeamId === match.homeTeamId
+    const isHostingAway = match.hostedTeamId === match.awayTeamId
+    const homeOdds = odds?.teamWin?.homeOdds ?? null
+    const awayOdds = odds?.teamWin?.awayOdds ?? null
+    const matchTitle = `${match.homeTeamName ?? '?'} vs ${match.awayTeamName ?? '?'}`
+    const users = (match.userMatches ?? []).filter((u) => u.userId !== currentUserId)
+
+    const homeLabel = `${t('betting.homeWin')} (${match.homeTeamName ?? '?'})`
+    const awayLabel = `${t('betting.awayWin')} (${match.awayTeamName ?? '?'})`
+
+    return (
+        <section className="card p-4 space-y-4">
+            <div className="flex items-baseline justify-between">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+                    {t('betting.marketsFor', { match: matchTitle })}
+                </h2>
+                <span className="text-xs font-mono text-text-muted">
+                    {t('betting.matchNumber', { number: match.matchNumber })}
+                </span>
+            </div>
+
+            {/* 1 X 2 */}
+            <div className="grid grid-cols-3 gap-2">
+                <OddsButton
+                    label={t('betting.betOnHomeShort')}
+                    subLabel={homeLabel}
+                    odds={homeOdds}
+                    disabled={!isHostingHome || homeOdds == null}
+                    onClick={() =>
+                        homeOdds != null &&
+                        onAddLeg({
+                            matchId: match.id,
+                            matchNumber: match.matchNumber,
+                            betType: 'TeamWin',
+                            userId: null,
+                            teamId: match.homeTeamId,
+                            label: homeLabel,
+                            odds: homeOdds,
+                        })
+                    }
+                />
+                <OddsButton
+                    label={t('betting.betOnDrawShort')}
+                    subLabel={t('betting.drawNotSupported')}
+                    odds={null}
+                    disabled
+                    onClick={() => undefined}
+                />
+                <OddsButton
+                    label={t('betting.betOnAwayShort')}
+                    subLabel={awayLabel}
+                    odds={awayOdds}
+                    disabled={!isHostingAway || awayOdds == null}
+                    onClick={() =>
+                        awayOdds != null &&
+                        onAddLeg({
+                            matchId: match.id,
+                            matchNumber: match.matchNumber,
+                            betType: 'TeamWin',
+                            userId: null,
+                            teamId: match.awayTeamId,
+                            label: awayLabel,
+                            odds: awayOdds,
+                        })
+                    }
+                />
+            </div>
+
+            {/* User markets */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                        {t('betting.goals')}
+                    </h3>
+                    {users.length === 0 ? (
+                        <p className="text-xs text-text-muted">{t('betting.noUsers')}</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {users.map((u) => {
+                                const o = odds?.userGoal.find((x) => x.userId === u.userId)?.odds ?? null
+                                return (
+                                    <PlayerMarketRow
+                                        key={`goal-${u.userId}`}
+                                        name={u.userName ?? t('betting.unknownUser')}
+                                        odds={o}
+                                        onAdd={() =>
+                                            o != null &&
+                                            onAddLeg({
+                                                matchId: match.id,
+                                                matchNumber: match.matchNumber,
+                                                betType: 'UserGoal',
+                                                userId: u.userId,
+                                                teamId: null,
+                                                label: `${t('betting.goals')}: ${u.userName ?? '?'}`,
+                                                odds: o,
+                                            })
+                                        }
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                        {t('betting.penalties')}
+                    </h3>
+                    {users.length === 0 ? (
+                        <p className="text-xs text-text-muted">{t('betting.noUsers')}</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {users.map((u) => {
+                                const o = odds?.userPenalty.find((x) => x.userId === u.userId)?.odds ?? null
+                                return (
+                                    <PlayerMarketRow
+                                        key={`pen-${u.userId}`}
+                                        name={u.userName ?? t('betting.unknownUser')}
+                                        odds={o}
+                                        onAdd={() =>
+                                            o != null &&
+                                            onAddLeg({
+                                                matchId: match.id,
+                                                matchNumber: match.matchNumber,
+                                                betType: 'UserPenalty',
+                                                userId: u.userId,
+                                                teamId: null,
+                                                label: `${t('betting.penalties')}: ${u.userName ?? '?'}`,
+                                                odds: o,
+                                            })
+                                        }
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
+    )
+}
+
+interface OddsButtonProps {
+    label: string
+    subLabel: string
+    odds: number | null
+    disabled?: boolean
+    onClick: () => void
+}
+
+function OddsButton({ label, subLabel, odds, disabled, onClick }: OddsButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            className="border border-border bg-bg rounded-lg p-3 text-center hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
+        >
+            <p className="text-[10px] font-bold uppercase text-text-muted">{label}</p>
+            <p className="text-xs text-text-muted truncate">{subLabel}</p>
+            <p className="text-lg font-bold mt-1">{odds != null ? `×${odds.toFixed(2)}` : '—'}</p>
+        </button>
+    )
+}
+
+interface PlayerMarketRowProps {
+    name: string
+    odds: number | null
+    onAdd: () => void
+}
+
+function PlayerMarketRow({ name, odds, onAdd }: PlayerMarketRowProps) {
+    return (
+        <button
+            onClick={onAdd}
+            disabled={odds == null}
+            className="w-full flex justify-between items-center px-3 py-2 border border-border rounded bg-bg hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
+        >
+            <span className="text-sm">{name}</span>
+            <span className="font-bold text-warning">{odds != null ? `×${odds.toFixed(2)}` : '—'}</span>
+        </button>
+    )
+}
+
+interface TicketDraftProps {
+    legs: DraftLeg[]
+    totalOdds: number
+    stakeInput: string
+    onStakeChange: (v: string) => void
+    onRemove: (key: string) => void
+    onClear: () => void
+    onCreate: () => void
+    canCreate: boolean
+    potentialWin: number
+    t: (k: string, opts?: Record<string, unknown>) => string
+}
+
+function TicketDraftSection(props: TicketDraftProps) {
+    const { legs, totalOdds, stakeInput, onStakeChange, onRemove, onClear, onCreate, canCreate, potentialWin, t } = props
+    return (
+        <section className="card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+                    {t('betting.ticketDraft')}
+                </h2>
+                {legs.length > 0 && (
+                    <button onClick={onClear} className="text-xs text-text-muted hover:text-danger">
+                        ✕
+                    </button>
+                )}
+            </div>
+
+            {legs.length === 0 ? (
+                <p className="text-sm text-text-muted italic">{t('betting.draftEmpty')}</p>
+            ) : (
+                <ul className="space-y-1">
+                    {legs.map((leg) => (
+                        <li
+                            key={leg.key}
+                            className="flex items-center justify-between px-3 py-2 border border-border rounded bg-bg"
+                        >
+                            <span className="text-sm">{describeLeg(leg, t)}</span>
+                            <span className="flex items-center gap-3">
+                                <span className="font-bold text-warning">×{leg.odds.toFixed(2)}</span>
+                                <button
+                                    onClick={() => onRemove(leg.key)}
+                                    className="text-text-muted hover:text-danger text-sm"
+                                    aria-label={t('betting.removeLeg')}
+                                >
+                                    ✕
+                                </button>
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-3">
+                <div className="flex items-center gap-3 text-sm">
+                    <span className="text-text-muted">{t('betting.totalOdds')}:</span>
+                    <strong className="text-lg">×{totalOdds.toFixed(2)}</strong>
+                </div>
+                <div className="flex items-center gap-3">
+                    <label className="text-sm text-text-muted">{t('betting.stakeLabel')}</label>
+                    <input
+                        type="number"
+                        min={0.01}
+                        step={0.5}
+                        value={stakeInput}
+                        onChange={(e) => onStakeChange(e.target.value)}
+                        className="w-28 px-3 py-1.5 rounded border border-border bg-bg text-sm"
+                    />
+                    <span className="text-xs text-success">
+                        → {potentialWin.toFixed(2)} € {t('betting.potentialWin')}
+                    </span>
+                </div>
+                <button
+                    onClick={onCreate}
+                    disabled={!canCreate}
+                    className="px-5 py-2 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                    {t('betting.createBet')}
+                </button>
+            </div>
+        </section>
+    )
+}
+
+interface ArchiveProps {
+    bets: BetDto[] | null
+    t: (k: string, opts?: Record<string, unknown>) => string
+}
+
+function ArchiveTable({ bets, t }: ArchiveProps) {
+    if (bets == null) {
+        return (
+            <section className="card p-6">
+                <LoadingSpinner />
+            </section>
+        )
+    }
+
+    if (bets.length === 0) {
+        return (
+            <section className="card p-6 text-center">
+                <p className="text-text-muted">{t('betting.noBetHistory')}</p>
+            </section>
+        )
+    }
+
+    return (
+        <section className="card overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead className="bg-surface text-text-muted uppercase text-xs tracking-wider">
+                    <tr>
+                        <th className="text-left px-4 py-3">{t('betting.id')}</th>
+                        <th className="text-left px-4 py-3">{t('betting.date')}</th>
+                        <th className="text-left px-4 py-3">{t('betting.ticketDescription')}</th>
+                        <th className="text-right px-4 py-3">{t('betting.rate')}</th>
+                        <th className="text-right px-4 py-3">{t('betting.profit')}</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                    {bets.map((b) => {
+                        const profit =
+                            b.status === 'Won'
+                                ? b.stake * b.totalOdds - b.stake
+                                : b.status === 'Lost'
+                                    ? -b.stake
+                                    : null
+                        return (
+                            <tr key={b.id} className="bg-bg">
+                                <td className="px-4 py-3 font-mono font-bold text-primary">{b.shortId}</td>
+                                <td className="px-4 py-3 text-text-muted text-xs">
+                                    {new Date(b.createdOn).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <p className="text-xs leading-relaxed">
+                                        {b.legs.map((l, i) => (
+                                            <span key={l.id}>
+                                                {i > 0 && <span className="text-text-muted">, </span>}
+                                                {describeApiLeg(l, t)}
+                                            </span>
+                                        ))}
+                                    </p>
+                                </td>
+                                <td className="px-4 py-3 text-right">×{b.totalOdds.toFixed(2)}</td>
+                                <td className="px-4 py-3 text-right">
+                                    {profit == null ? (
+                                        <span className="text-text-muted">
+                                            {b.status === 'Cancelled'
+                                                ? t('betting.outcomeCancelled')
+                                                : t('betting.outcomePending')}
+                                        </span>
+                                    ) : profit >= 0 ? (
+                                        <span className="text-success font-semibold">
+                                            +{profit.toFixed(2)} €
+                                        </span>
+                                    ) : (
+                                        <span className="text-danger font-semibold">
+                                            {profit.toFixed(2)} €
+                                        </span>
+                                    )}
+                                </td>
+                            </tr>
+                        )
+                    })}
+                </tbody>
+            </table>
+        </section>
     )
 }

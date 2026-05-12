@@ -1,4 +1,5 @@
 export type BetStatus = 'Pending' | 'Won' | 'Lost' | 'Cancelled'
+export type LegStatus = BetStatus
 export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty'
 
 export interface TeamWinOddsDto {
@@ -30,20 +31,42 @@ export interface BettingBalanceDto {
     totalLostStake: number
 }
 
-export interface BetHistoryItem {
-    id: string
+export interface BetLegDto {
+    id: number
     matchId: number
     matchNumber: number
     homeTeamName: string | null
     awayTeamName: string | null
     betType: ApiBetType
     userId: number | null
-    betTargetName: string | null
     teamId: number | null
-    amount: number
+    targetName: string | null
     odds: number
+    status: LegStatus
+}
+
+export interface BetDto {
+    id: string
+    shortId: string
+    createdBy: string
+    stake: number
+    totalOdds: number
     status: BetStatus
     wonAmount: number | null
     createdOn: string
+    updatedOn: string | null
     evaluatedOn: string | null
+    legs: BetLegDto[]
+}
+
+export interface CreateBetLegDto {
+    matchId: number
+    betType: ApiBetType
+    userId?: number | null
+    teamId?: number | null
+}
+
+export interface CreateBetDto {
+    stake: number
+    legs: CreateBetLegDto[]
 }

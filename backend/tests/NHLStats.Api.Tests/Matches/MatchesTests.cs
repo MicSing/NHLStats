@@ -114,10 +114,10 @@ public class MatchesTests : ApiTestBase
     }
 
     [Fact]
-    public async Task GetFuture_includes_only_logged_in_user_bet_for_match()
+    public async Task GetFuture_lists_logged_in_user_bet_via_active_endpoint()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var seasonId = await CreateSeasonAsync(client, "Future Bet Payload Season");
+        var seasonId = await CreateSeasonAsync(client, "Future Bet Active Season");
 
         var created = await CreateMatchAsync(client, seasonId, 1, 2);
         var matchId = created.GetProperty("id").GetInt32();
@@ -134,27 +134,26 @@ public class MatchesTests : ApiTestBase
         });
         updateResp.EnsureSuccessStatusCode();
 
-        // Seed positive points so user has betting balance
         await SeedBettingBalanceAsync(client, seasonId);
 
-        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "TeamWin",
-            teamId = 1,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "TeamWin", teamId = 1 }
+            }
         });
         betResp.EnsureSuccessStatusCode();
 
-        var resp = await client.GetAsync("/api/matches/future?count=10");
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.ValueKind.Should().Be(JsonValueKind.Array);
-
-        var target = body.EnumerateArray().First(m => m.GetProperty("id").GetInt32() == matchId);
-        target.GetProperty("bet").ValueKind.Should().Be(JsonValueKind.Object);
-        target.GetProperty("bet").GetProperty("betType").GetString().Should().Be("TeamWin");
-        target.GetProperty("bet").GetProperty("teamId").GetInt32().Should().Be(1);
+        var activeResp = await client.GetAsync("/api/betting/bets/active");
+        activeResp.EnsureSuccessStatusCode();
+        var active = await activeResp.Content.ReadFromJsonAsync<JsonElement>();
+        var ticket = active.EnumerateArray()
+            .First(b => b.GetProperty("legs").EnumerateArray()
+                .Any(l => l.GetProperty("matchId").GetInt32() == matchId));
+        ticket.GetProperty("legs")[0].GetProperty("betType").GetString().Should().Be("TeamWin");
+        ticket.GetProperty("legs")[0].GetProperty("teamId").GetInt32().Should().Be(1);
     }
 
     // ── POST /api/seasons/{seasonId}/matches ────────────────────────────────

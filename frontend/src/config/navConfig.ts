@@ -13,8 +13,7 @@ export const publicNavItems: NavItem[] = [
     { to: '/dashboard', labelKey: 'nav.dashboard' },
     { to: '/seasons', labelKey: 'nav.seasons' },
     { to: '/user-stats', labelKey: 'nav.playerStats' },
-    { to: '/betting-matches', labelKey: 'nav.bettingMatches', requiresAuth: true },
-    { to: '/betting-history', labelKey: 'nav.bettingHistory', requiresAuth: true },
+    { to: '/betting', labelKey: 'nav.betting', requiresAuth: true },
     { to: '/earnings', labelKey: 'nav.finances' },
     { to: '/rules', labelKey: 'nav.rules' },
 ]

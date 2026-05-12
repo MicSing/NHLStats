@@ -628,12 +628,14 @@ public class StatsTests : ApiTestBase
         var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
         await AddPointAsync(client, userMatchId, 9, 1); // target has a point but no goal → bet loses
 
-        // Place a UserGoal bet on the target user while the match is open
-        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        // Place a UserGoal ticket on the target user while the match is open (single-leg combo)
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "UserGoal",
-            userId = targetUserId,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "UserGoal", userId = targetUserId }
+            }
         });
         betResp.EnsureSuccessStatusCode();
 
@@ -674,11 +676,13 @@ public class StatsTests : ApiTestBase
         var rosterPlayerId = await CreateRosterPlayerAsync(client, seasonId, "Won", "BetPlayer");
         await AddGoalAsync(client, userMatchId, rosterPlayerId, 1); // goal → UserGoal bet wins
 
-        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "UserGoal",
-            userId = targetUserId,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "UserGoal", userId = targetUserId }
+            }
         });
         betResp.EnsureSuccessStatusCode();
 
@@ -1471,12 +1475,14 @@ public class StatsTests : ApiTestBase
         // Create a match with NO UserMatch entries — this is the key for the bug
         var betMatchId = await CreateOpenMatchAsync(client, seasonId);
 
-        // Place a UserGoal bet on targetUserId — target has no goals so it will be Lost
-        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{betMatchId}/bet", new
+        // Place a UserGoal ticket on targetUserId — target has no goals so it will be Lost
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "UserGoal",
-            userId = targetUserId,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId = betMatchId, betType = "UserGoal", userId = targetUserId }
+            }
         });
         betResp.EnsureSuccessStatusCode();
 

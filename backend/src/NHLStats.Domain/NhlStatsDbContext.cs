@@ -29,6 +29,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<UserPayout> UserPayouts => Set<UserPayout>();
     public DbSet<Bet> Bets => Set<Bet>();
+    public DbSet<BetLeg> BetLegs => Set<BetLeg>();
     public DbSet<MatchOdds> MatchOdds => Set<MatchOdds>();
     public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
 
@@ -163,10 +164,20 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.CreatedBy).IsRequired();
             b.Property(x => x.Status).HasConversion<int>();
-            b.HasIndex(x => new { x.MatchId, x.CreatedBy }).IsUnique();
-            b.HasOne(x => x.Match).WithMany(m => m.Bets).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.User).WithMany(u => u.Bets).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
-            b.HasOne(x => x.Team).WithMany(t => t.Bets).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => x.CreatedBy);
+        });
+
+        modelBuilder.Entity<BetLeg>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BetType).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
+            b.HasOne(x => x.Bet).WithMany(p => p.Legs).HasForeignKey(x => x.BetId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Match).WithMany(m => m.BetLegs).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.User).WithMany(u => u.BetLegs).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(x => x.Team).WithMany(t => t.BetLegs).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => x.BetId);
+            b.HasIndex(x => new { x.MatchId, x.BetType });
         });
 
         modelBuilder.Entity<MatchOdds>(b =>

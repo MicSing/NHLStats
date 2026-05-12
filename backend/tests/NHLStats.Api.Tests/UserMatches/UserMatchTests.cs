@@ -580,12 +580,14 @@ public class UserMatchTests : ApiTestBase
         umResp.EnsureSuccessStatusCode();
         var umId = (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
 
-        // Place a UserGoal bet on the player
-        var betResp = await client.PostAsJsonAsync($"/api/betting/matches/{futureMatchId}/bet", new
+        // Place a UserGoal ticket on the player (single-leg combo)
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "UserGoal",
-            userId = playerUserId,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId = futureMatchId, betType = "UserGoal", userId = playerUserId }
+            }
         });
         betResp.EnsureSuccessStatusCode();
 
@@ -593,13 +595,14 @@ public class UserMatchTests : ApiTestBase
         var delResp = await client.DeleteAsync($"/api/usermatches/{umId}");
         delResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Bet should now appear in history with Cancelled status
-        var historyResp = await client.GetAsync($"/api/betting/history?seasonId={seasonId}");
+        // Ticket should now appear in history with Cancelled status (rolled up from the cancelled leg)
+        var historyResp = await client.GetAsync($"/api/betting/bets/history?seasonId={seasonId}");
         historyResp.EnsureSuccessStatusCode();
         var history = await historyResp.Content.ReadFromJsonAsync<JsonElement>();
         var cancelledBet = history.EnumerateArray()
-            .FirstOrDefault(b => b.GetProperty("matchId").GetInt32() == futureMatchId);
-        cancelledBet.ValueKind.Should().NotBe(JsonValueKind.Undefined, "bet should still appear in history");
+            .FirstOrDefault(b => b.GetProperty("legs").EnumerateArray()
+                .Any(l => l.GetProperty("matchId").GetInt32() == futureMatchId));
+        cancelledBet.ValueKind.Should().NotBe(JsonValueKind.Undefined, "ticket should still appear in history");
         cancelledBet.GetProperty("status").GetString().Should().Be("Cancelled");
     }
 

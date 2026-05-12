@@ -16,5 +16,5 @@ public class Match
     public Team? HomeTeam { get; set; }
     public Team? AwayTeam { get; set; }
     public ICollection<UserMatch>? UserMatches { get; set; }
-    public ICollection<Bet>? Bets { get; set; }
+    public ICollection<BetLeg>? BetLegs { get; set; }
 }

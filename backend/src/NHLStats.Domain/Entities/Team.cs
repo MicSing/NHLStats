@@ -12,5 +12,5 @@ public class Team
     public ICollection<RosterPlayer>? RosterPlayers { get; set; }
     public ICollection<Match>? HomeMatches { get; set; }
     public ICollection<Match>? AwayMatches { get; set; }
-    public ICollection<Bet>? Bets { get; set; }
+    public ICollection<BetLeg>? BetLegs { get; set; }
 }

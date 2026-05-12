@@ -52,7 +52,7 @@ public class BettingCalculator : IBettingCalculator
 
         var bets = await _db.Bets
             .Where(b => b.CreatedBy == loginId)
-            .Select(b => new { b.Amount, b.Odds, b.Status })
+            .Select(b => new { b.Stake, b.TotalOdds, b.Status })
             .ToListAsync();
 
         var payouts = await _db.UserPayouts
@@ -67,9 +67,9 @@ public class BettingCalculator : IBettingCalculator
             negativePoints,
             aggregatedData.Sum(a => a.TotalPlus),
             aggregatedData.Sum(a => a.TotalMinus),
-            bets.Where(b => b.Status == BetStatus.Won).Select(b => (b.Amount, b.Odds)).ToList(),
-            bets.Where(b => b.Status == BetStatus.Pending).Select(b => b.Amount).ToList(),
-            bets.Where(b => b.Status == BetStatus.Lost).Select(b => b.Amount).ToList(),
+            bets.Where(b => b.Status == BetStatus.Won).Select(b => (b.Stake, b.TotalOdds)).ToList(),
+            bets.Where(b => b.Status == BetStatus.Pending).Select(b => b.Stake).ToList(),
+            bets.Where(b => b.Status == BetStatus.Lost).Select(b => b.Stake).ToList(),
             payouts.Sum());
     }
 
@@ -88,11 +88,13 @@ public class BettingCalculator : IBettingCalculator
             .Select(p => new { p.UserMatch!.UserId, p.Amount, IsNegative = p.PointReason!.PointType == PointType.Negative })
             .ToListAsync();
 
+        // Bet ticket aggregation. With multi-leg combos, a ticket may span multiple matches —
+        // when scoped by matchIds, include any ticket that has at least one leg in those matches.
         var betQuery = allTimeBets
-            ? _db.Bets.AsNoTracking().Select(b => new { b.CreatedBy, b.Amount, b.Odds, b.Status })
+            ? _db.Bets.AsNoTracking().Select(b => new { b.CreatedBy, b.Stake, b.TotalOdds, b.Status })
             : _db.Bets.AsNoTracking()
-                .Where(b => matchIdList.Contains(b.MatchId))
-                .Select(b => new { b.CreatedBy, b.Amount, b.Odds, b.Status });
+                .Where(b => b.Legs.Any(l => matchIdList.Contains(l.MatchId)))
+                .Select(b => new { b.CreatedBy, b.Stake, b.TotalOdds, b.Status });
         var betRows = await betQuery.ToListAsync();
 
         var creatorIds = betRows.Select(b => b.CreatedBy).Distinct().ToList();
@@ -138,9 +140,9 @@ public class BettingCalculator : IBettingCalculator
                     negAmounts,
                     aggPlus,
                     aggMinus,
-                    userBets.Where(b => b.Status == BetStatus.Won).Select(b => (b.Amount, b.Odds)).ToList(),
-                    userBets.Where(b => b.Status == BetStatus.Pending).Select(b => b.Amount).ToList(),
-                    userBets.Where(b => b.Status == BetStatus.Lost).Select(b => b.Amount).ToList(),
+                    userBets.Where(b => b.Status == BetStatus.Won).Select(b => (b.Stake, b.TotalOdds)).ToList(),
+                    userBets.Where(b => b.Status == BetStatus.Pending).Select(b => b.Stake).ToList(),
+                    userBets.Where(b => b.Status == BetStatus.Lost).Select(b => b.Stake).ToList(),
                     0m);
             });
     }

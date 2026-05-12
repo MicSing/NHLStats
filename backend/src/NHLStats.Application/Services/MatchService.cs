@@ -28,7 +28,7 @@ public class MatchService : IMatchService
         m.AwayTeamId, m.AwayTeam?.Name,
         m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
 
-    private static FutureMatchDto ToFutureDto(Match m, BetDto? bet) => new(
+    private static FutureMatchDto ToFutureDto(Match m) => new(
         m.Id,
         m.SeasonId,
         m.Season?.Name ?? string.Empty,
@@ -38,8 +38,7 @@ public class MatchService : IMatchService
         m.AwayTeamId,
         m.AwayTeam?.Name,
         m.Season?.HostedTeamId,
-        m.UserMatches?.Select(um => new UserMatchInfoDto(um.UserId, um.User?.Name)) ?? Enumerable.Empty<UserMatchInfoDto>(),
-        bet);
+        m.UserMatches?.Select(um => new UserMatchInfoDto(um.UserId, um.User?.Name)) ?? Enumerable.Empty<UserMatchInfoDto>());
 
     public async Task<IEnumerable<FutureMatchDto>> GetFutureMatchesAsync(int count = 10, string? loginId = null)
     {
@@ -61,34 +60,7 @@ public class MatchService : IMatchService
             .Take(normalizedCount)
             .ToListAsync();
 
-        Dictionary<int, BetDto>? betsByMatchId = null;
-        if (!string.IsNullOrWhiteSpace(loginId) && matches.Count > 0)
-        {
-            var matchIds = matches.Select(m => m.Id).ToList();
-            betsByMatchId = await _db.Bets
-                .Where(b => b.CreatedBy == loginId && matchIds.Contains(b.MatchId) && b.Status != BetStatus.Cancelled)
-                .ToDictionaryAsync(
-                    b => b.MatchId,
-                    b => new BetDto(
-                        b.Id,
-                        b.MatchId,
-                        b.BetType,
-                        b.UserId,
-                        b.TeamId,
-                        b.Amount,
-                        b.Odds,
-                        b.Status,
-                        b.CreatedBy,
-                        b.CreatedOn,
-                        b.UpdatedOn,
-                        b.EvaluatedOn));
-        }
-
-        return matches.Select(m =>
-        {
-            var bet = betsByMatchId != null && betsByMatchId.TryGetValue(m.Id, out var current) ? current : null;
-            return ToFutureDto(m, bet);
-        });
+        return matches.Select(ToFutureDto);
     }
 
     public async Task<IEnumerable<MatchDto>> GetBySeasonAsync(int seasonId) =>

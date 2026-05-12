@@ -19,164 +19,164 @@ public class BetService : IBetService
         _oddsService = oddsService;
     }
 
-    private static BetDto ToDto(Bet bet) => new(
-        bet.Id,
-        bet.MatchId,
-        bet.BetType,
-        bet.UserId,
-        bet.TeamId,
-        bet.Amount,
-        bet.Odds,
-        bet.Status,
-        bet.CreatedBy,
-        bet.CreatedOn,
-        bet.UpdatedOn,
-        bet.EvaluatedOn);
+    private static string MakeShortId(Guid id) => "B-" + id.ToString("N").Substring(0, 6).ToUpperInvariant();
 
-    public async Task<BetDto?> GetForMatchAsync(int matchId, string loginId)
+    private static BetDto ToDto(Bet bet, IEnumerable<BetLeg> legs)
     {
-        var bet = await _db.Bets
+        var legDtos = legs
+            .OrderBy(l => l.Id)
+            .Select(l => new BetLegDto(
+                l.Id,
+                l.MatchId,
+                l.Match?.MatchNumber ?? 0,
+                l.Match?.HomeTeam?.Name,
+                l.Match?.AwayTeam?.Name,
+                l.BetType,
+                l.UserId,
+                l.TeamId,
+                l.BetType == BetType.TeamWin ? l.Team?.Name : l.User?.Name,
+                l.Odds,
+                l.Status))
+            .ToList();
+
+        return new BetDto(
+            bet.Id,
+            MakeShortId(bet.Id),
+            bet.CreatedBy,
+            bet.Stake,
+            bet.TotalOdds,
+            bet.Status,
+            bet.Status == BetStatus.Won ? BettingConstants.GrossPayout(bet.Stake, bet.TotalOdds) : null,
+            bet.CreatedOn,
+            bet.UpdatedOn,
+            bet.EvaluatedOn,
+            legDtos);
+    }
+
+    private IQueryable<Bet> BetsWithLegsQuery(string loginId) =>
+        _db.Bets
             .AsNoTracking()
-            .FirstOrDefaultAsync(b => b.MatchId == matchId && b.CreatedBy == loginId);
-        return bet == null ? null : ToDto(bet);
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+                    .ThenInclude(m => m!.HomeTeam)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+                    .ThenInclude(m => m!.AwayTeam)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.User)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Team)
+            .Where(b => b.CreatedBy == loginId);
+
+    public async Task<IReadOnlyList<BetDto>> GetActiveAsync(string loginId)
+    {
+        var bets = await BetsWithLegsQuery(loginId)
+            .Where(b => b.Status == BetStatus.Pending)
+            .OrderByDescending(b => b.CreatedOn)
+            .ToListAsync();
+        return bets.Select(b => ToDto(b, b.Legs)).ToList();
     }
 
-    public async Task<IEnumerable<BetHistoryDto>> GetHistoryAsync(string loginId, int? seasonId)
+    public async Task<IReadOnlyList<BetDto>> GetHistoryAsync(string loginId, int? seasonId)
     {
-        var query = _db.Bets
-            .Include(b => b.Match)
-                .ThenInclude(m => m!.HomeTeam)
-            .Include(b => b.Match)
-                .ThenInclude(m => m!.AwayTeam)
-            .Include(b => b.User)
-            .Include(b => b.Team)
-            .Where(b => b.CreatedBy == loginId)
-            .AsNoTracking();
-
+        var query = BetsWithLegsQuery(loginId)
+            .Where(b => b.Status != BetStatus.Pending);
         if (seasonId.HasValue)
-            query = query.Where(b => b.Match!.SeasonId == seasonId.Value);
-
+        {
+            query = query.Where(b => b.Legs.Any(l => l.Match!.SeasonId == seasonId.Value));
+        }
         var bets = await query.OrderByDescending(b => b.CreatedOn).ToListAsync();
-
-        return bets.Select(b => new BetHistoryDto(
-            b.Id,
-            b.MatchId,
-            b.Match?.MatchNumber ?? 0,
-            b.Match?.HomeTeam?.Name,
-            b.Match?.AwayTeam?.Name,
-            b.BetType,
-            b.UserId,
-            b.BetType == BetType.TeamWin ? b.Team?.Name : b.User?.Name,
-            b.TeamId,
-            b.Amount,
-            b.Odds,
-            b.Status,
-            b.Status == BetStatus.Won ? BettingConstants.GrossPayout(b.Amount, b.Odds) : null,
-            b.CreatedOn,
-            b.EvaluatedOn));
+        return bets.Select(b => ToDto(b, b.Legs)).ToList();
     }
 
-    public async Task<(BetDto? Bet, string? Error)> PlaceBetAsync(int matchId, string loginId, CreateBetDto dto)
+    public async Task<(BetDto? Bet, string? Error)> PlaceBetAsync(string loginId, CreateBetDto dto)
     {
-        var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);
-        if (match == null) return (null, "Match not found.");
-        if (match.CompletionType == CompletionType.InProgress)
-            return (null, "Match is in progress. Betting is locked.");
-        if (match.CompletionType != CompletionType.None)
-            return (null, "Match is already completed. Betting is closed.");
+        if (dto.Legs == null || dto.Legs.Count == 0)
+            return (null, "Ticket must contain at least one leg.");
+        if (dto.Stake <= 0)
+            return (null, "Bet stake must be greater than 0.");
 
-        var validationError = await ValidateBetPayloadAsync(match, dto.BetType, dto.UserId, dto.TeamId);
-        if (validationError != null) return (null, validationError);
+        var matchIds = dto.Legs.Select(l => l.MatchId).Distinct().ToList();
+        var matches = await _db.Matches.AsNoTracking()
+            .Where(m => matchIds.Contains(m.Id))
+            .ToDictionaryAsync(m => m.Id);
 
-        var existing = await _db.Bets.AnyAsync(b => b.MatchId == matchId && b.CreatedBy == loginId);
-        if (existing) return (null, "Bet already exists for this match. Use update instead.");
+        var legsToInsert = new List<BetLeg>();
+        decimal totalOdds = 1m;
 
-        // Get locked odds — auto-recalculate if not yet cached
-        var oddsRow = await GetOddsForBetAsync(matchId, dto.BetType, dto.UserId, dto.TeamId);
-        if (oddsRow == null)
+        foreach (var legDto in dto.Legs)
         {
-            await _oddsService.RecalculateForMatchAsync(matchId);
-            oddsRow = await GetOddsForBetAsync(matchId, dto.BetType, dto.UserId, dto.TeamId);
+            if (!matches.TryGetValue(legDto.MatchId, out var match))
+                return (null, $"Match {legDto.MatchId} not found.");
+            if (match.CompletionType == CompletionType.InProgress)
+                return (null, $"Match {legDto.MatchId} is in progress. Betting is locked.");
+            if (match.CompletionType != CompletionType.None)
+                return (null, $"Match {legDto.MatchId} is already completed. Betting is closed.");
+
+            var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId);
+            if (validationError != null) return (null, validationError);
+
+            var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
+            if (oddsRow == null)
+            {
+                await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
+                oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
+            }
+            var lockedOdds = oddsRow?.Odds ?? 1.0m;
+            totalOdds *= lockedOdds;
+
+            legsToInsert.Add(new BetLeg
+            {
+                MatchId = legDto.MatchId,
+                BetType = legDto.BetType,
+                UserId = legDto.BetType == BetType.TeamWin ? null : legDto.UserId,
+                TeamId = legDto.TeamId,
+                Odds = lockedOdds,
+                Status = BetLegStatus.Pending
+            });
         }
-        var lockedOdds = oddsRow?.Odds ?? 1.0m;
 
         var balance = await _balanceService.GetBalanceAsync(loginId);
-        if (dto.Amount <= 0) return (null, "Bet amount must be greater than 0.");
-        if (dto.Amount > balance.AvailableBalance) return (null, "Insufficient betting balance.");
-        if (balance.MaxWinCap > 0 && dto.Amount * lockedOdds > balance.MaxWinCap)
+        if (dto.Stake > balance.AvailableBalance)
+            return (null, "Insufficient betting balance.");
+        if (balance.MaxWinCap > 0 && dto.Stake * totalOdds > balance.MaxWinCap)
             return (null, $"Potential winnings exceed max win cap of {balance.MaxWinCap:F2}€.");
 
         var bet = new Bet
         {
             Id = Guid.NewGuid(),
-            MatchId = matchId,
-            BetType = dto.BetType,
-            UserId = dto.BetType == BetType.TeamWin ? null : dto.UserId,
-            TeamId = dto.TeamId,
-            Amount = dto.Amount,
-            Odds = lockedOdds,
-            Status = BetStatus.Pending,
             CreatedBy = loginId,
-            CreatedOn = DateTime.UtcNow
+            Stake = dto.Stake,
+            TotalOdds = totalOdds,
+            Status = BetStatus.Pending,
+            CreatedOn = DateTime.UtcNow,
+            Legs = legsToInsert
         };
 
         _db.Bets.Add(bet);
         await _db.SaveChangesAsync();
-        return (ToDto(bet), null);
+
+        var saved = await BetsWithLegsQuery(loginId).FirstAsync(b => b.Id == bet.Id);
+        return (ToDto(saved, saved.Legs), null);
     }
 
-    public async Task<(BetDto? Bet, string? Error)> UpdateBetAsync(int matchId, string loginId, UpdateBetDto dto)
+    public async Task<(bool Success, string? Error)> CancelBetAsync(Guid betId, string loginId)
     {
-        var bet = await _db.Bets.FirstOrDefaultAsync(b => b.MatchId == matchId && b.CreatedBy == loginId);
-        if (bet == null) return (null, "Bet not found for this match.");
+        var bet = await _db.Bets
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+            .FirstOrDefaultAsync(b => b.Id == betId && b.CreatedBy == loginId);
+        if (bet == null) return (false, "Bet not found.");
+        if (bet.Status != BetStatus.Pending) return (false, "Only pending bets can be cancelled.");
 
-        var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);
-        if (match == null) return (null, "Match not found.");
-        if (match.CompletionType == CompletionType.InProgress)
-            return (null, "Match is in progress. Betting is locked.");
-        if (match.CompletionType != CompletionType.None)
-            return (null, "Match is already completed. Betting is closed.");
-
-        var validationError = await ValidateBetPayloadAsync(match, dto.BetType, dto.UserId, dto.TeamId);
-        if (validationError != null) return (null, validationError);
-
-        var oddsRow = await GetOddsForBetAsync(matchId, dto.BetType, dto.UserId, dto.TeamId);
-        if (oddsRow == null)
+        foreach (var leg in bet.Legs)
         {
-            await _oddsService.RecalculateForMatchAsync(matchId);
-            oddsRow = await GetOddsForBetAsync(matchId, dto.BetType, dto.UserId, dto.TeamId);
+            if (leg.Match == null) continue;
+            if (leg.Match.CompletionType == CompletionType.InProgress)
+                return (false, "A match in this ticket is in progress. Cannot cancel bet.");
+            if (leg.Match.CompletionType != CompletionType.None)
+                return (false, "A match in this ticket is already completed. Cannot cancel bet.");
         }
-        var lockedOdds = oddsRow?.Odds ?? 1.0m;
-
-        var oldAmount = bet.Amount;
-        var balance = await _balanceService.GetBalanceAsync(loginId);
-        var availableWithRefund = balance.AvailableBalance + oldAmount;
-        if (dto.Amount > availableWithRefund) return (null, "Insufficient betting balance.");
-        if (balance.MaxWinCap > 0 && dto.Amount * lockedOdds > balance.MaxWinCap)
-            return (null, $"Potential winnings exceed max win cap of {balance.MaxWinCap:F2}€.");
-
-        bet.BetType = dto.BetType;
-        bet.UserId = dto.BetType == BetType.TeamWin ? null : dto.UserId;
-        bet.TeamId = dto.TeamId;
-        bet.Amount = dto.Amount;
-        bet.Odds = lockedOdds;
-        bet.UpdatedOn = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return (ToDto(bet), null);
-    }
-
-    public async Task<(bool Success, string? Error)> CancelBetAsync(int matchId, string loginId)
-    {
-        var bet = await _db.Bets.FirstOrDefaultAsync(b => b.MatchId == matchId && b.CreatedBy == loginId);
-        if (bet == null) return (false, "Bet not found for this match.");
-
-        var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);
-        if (match == null) return (false, "Match not found.");
-        if (match.CompletionType == CompletionType.InProgress)
-            return (false, "Match is in progress. Cannot cancel bet.");
-        if (match.CompletionType != CompletionType.None)
-            return (false, "Match is already completed. Cannot cancel bet.");
 
         _db.Bets.Remove(bet);
         await _db.SaveChangesAsync();
@@ -185,16 +185,25 @@ public class BetService : IBetService
 
     public async Task CancelBetsForPlayerInMatchAsync(int matchId, int userId)
     {
-        var bets = await _db.Bets
-            .Where(b => b.MatchId == matchId && b.UserId == userId && b.Status == BetStatus.Pending)
+        var legs = await _db.BetLegs
+            .Include(l => l.Bet)
+            .Where(l => l.MatchId == matchId && l.UserId == userId && l.Status == BetLegStatus.Pending)
             .ToListAsync();
-        foreach (var bet in bets)
+
+        if (legs.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        foreach (var leg in legs)
         {
-            bet.Status = BetStatus.Cancelled;
-            bet.UpdatedOn = DateTime.UtcNow;
+            leg.Status = BetLegStatus.Cancelled;
+            if (leg.Bet != null && leg.Bet.Status == BetStatus.Pending)
+            {
+                leg.Bet.Status = BetStatus.Cancelled;
+                leg.Bet.UpdatedOn = now;
+                leg.Bet.EvaluatedOn = now;
+            }
         }
-        if (bets.Count > 0)
-            await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
     }
 
     public async Task EvaluateMatchBetsAsync(int matchId)
@@ -202,11 +211,12 @@ public class BetService : IBetService
         var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);
         if (match == null) return;
 
-        var bets = await _db.Bets
-            .Where(b => b.MatchId == matchId && b.Status == BetStatus.Pending)
+        var legs = await _db.BetLegs
+            .Include(l => l.Bet)
+                .ThenInclude(b => b!.Legs)
+            .Where(l => l.MatchId == matchId && l.Status == BetLegStatus.Pending)
             .ToListAsync();
-
-        if (!bets.Any()) return;
+        if (legs.Count == 0) return;
 
         var winningTeamId = match.HomeScore > match.AwayScore ? match.HomeTeamId
             : match.AwayScore > match.HomeScore ? match.AwayTeamId
@@ -227,33 +237,56 @@ public class BetService : IBetService
             .ToListAsync();
 
         var now = DateTime.UtcNow;
-        foreach (var bet in bets)
+        var affectedBets = new HashSet<Bet>();
+
+        foreach (var leg in legs)
         {
-            bool? won = bet.BetType switch
+            bool? won = leg.BetType switch
             {
-                BetType.TeamWin => winningTeamId.HasValue && bet.TeamId.HasValue
-                    ? bet.TeamId.Value == winningTeamId.Value
+                BetType.TeamWin => winningTeamId.HasValue && leg.TeamId.HasValue
+                    ? leg.TeamId.Value == winningTeamId.Value
                     : (bool?)null,
-                BetType.UserGoal => bet.UserId.HasValue
-                    ? userMatchGoalIds.Contains(bet.UserId.Value)
+                BetType.UserGoal => leg.UserId.HasValue
+                    ? userMatchGoalIds.Contains(leg.UserId.Value)
                     : (bool?)null,
-                BetType.UserPenalty => bet.UserId.HasValue
-                    ? userMatchPenaltyIds.Contains(bet.UserId.Value)
+                BetType.UserPenalty => leg.UserId.HasValue
+                    ? userMatchPenaltyIds.Contains(leg.UserId.Value)
                     : (bool?)null,
                 _ => null
             };
 
             if (won.HasValue)
             {
-                bet.Status = won.Value ? BetStatus.Won : BetStatus.Lost;
+                leg.Status = won.Value ? BetLegStatus.Won : BetLegStatus.Lost;
+                if (leg.Bet != null) affectedBets.Add(leg.Bet);
+            }
+        }
+
+        foreach (var bet in affectedBets)
+        {
+            if (bet.Status != BetStatus.Pending) continue;
+            var newStatus = RollupStatus(bet.Legs);
+            if (newStatus != BetStatus.Pending)
+            {
+                bet.Status = newStatus;
                 bet.EvaluatedOn = now;
+                bet.UpdatedOn = now;
             }
         }
 
         await _db.SaveChangesAsync();
     }
 
-    private async Task<string?> ValidateBetPayloadAsync(Match match, BetType betType, int? userId, int? teamId)
+    private static BetStatus RollupStatus(IEnumerable<BetLeg> legs)
+    {
+        var list = legs.ToList();
+        if (list.Any(l => l.Status == BetLegStatus.Cancelled)) return BetStatus.Cancelled;
+        if (list.Any(l => l.Status == BetLegStatus.Lost)) return BetStatus.Lost;
+        if (list.All(l => l.Status == BetLegStatus.Won)) return BetStatus.Won;
+        return BetStatus.Pending;
+    }
+
+    private async Task<string?> ValidateLegPayloadAsync(Match match, BetType betType, int? userId, int? teamId)
     {
         if (betType == BetType.TeamWin)
         {
@@ -272,7 +305,7 @@ public class BetService : IBetService
         return null;
     }
 
-    private async Task<MatchOdds?> GetOddsForBetAsync(int matchId, BetType betType, int? userId, int? teamId)
+    private async Task<MatchOdds?> GetOddsForLegAsync(int matchId, BetType betType, int? userId, int? teamId)
     {
         var oddsBetType = betType switch
         {

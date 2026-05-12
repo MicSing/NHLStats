@@ -215,59 +215,68 @@ public class StatsService : IStatsService
             .Select(p => new { p.UserMatch!.MatchId, p.UserMatch.UserId, p.Count })
             .ToListAsync();
 
-        // Per-user per-match bets — grouped by the bettor (CreatedBy → ApplicationUser.UserId)
-        var betCreatorIds = await _db.Bets
+        // Per-user per-match bet legs — grouped by the bettor (parent Bet.CreatedBy → ApplicationUser.UserId)
+        var legRows = await _db.BetLegs
             .AsNoTracking()
-            .Where(b => matchIds.Contains(b.MatchId))
-            .Select(b => b.CreatedBy)
-            .Distinct()
+            .Include(l => l.Bet)
+            .Where(l => matchIds.Contains(l.MatchId))
+            .Select(l => new
+            {
+                l.MatchId,
+                CreatedBy = l.Bet!.CreatedBy,
+                Stake = l.Bet!.Stake,
+                TotalOdds = l.Bet!.TotalOdds,
+                BetStatus = l.Bet!.Status,
+                LegStatus = l.Status,
+                l.BetType,
+                l.UserId,
+                l.TeamId
+            })
             .ToListAsync();
 
+        var creatorIdsForBets = legRows.Select(r => r.CreatedBy).Distinct().ToList();
         var creatorToGameUserId = await _db.Set<NHLStats.Domain.Identity.ApplicationUser>()
             .AsNoTracking()
-            .Where(u => betCreatorIds.Contains(u.Id) && u.UserId.HasValue)
+            .Where(u => creatorIdsForBets.Contains(u.Id) && u.UserId.HasValue)
             .ToDictionaryAsync(u => u.Id, u => u.UserId!.Value);
 
-        var betRows = await _db.Bets
-            .AsNoTracking()
-            .Where(b => matchIds.Contains(b.MatchId))
-            .Select(b => new { b.MatchId, b.CreatedBy, b.Amount, b.Odds, b.Status, b.BetType, b.UserId, b.TeamId })
-            .ToListAsync();
-
-        // Load target names for bet display
-        var betTargetUserIds = betRows.Where(b => b.UserId.HasValue).Select(b => b.UserId!.Value).Distinct().ToList();
-        var betTargetTeamIds = betRows.Where(b => b.TeamId.HasValue).Select(b => b.TeamId!.Value).Distinct().ToList();
+        // Load target names for leg display
+        var legTargetUserIds = legRows.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().ToList();
+        var legTargetTeamIds = legRows.Where(r => r.TeamId.HasValue).Select(r => r.TeamId!.Value).Distinct().ToList();
         var betTargetUserNames = await _db.Users.AsNoTracking()
-            .Where(u => betTargetUserIds.Contains(u.Id))
+            .Where(u => legTargetUserIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Name ?? $"User {u.Id}");
         var betTargetTeamNames = await _db.Teams.AsNoTracking()
-            .Where(t => betTargetTeamIds.Contains(t.Id))
+            .Where(t => legTargetTeamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => t.ShortName ?? t.Name ?? $"Team {t.Id}");
 
-        var betsByMatchUser = betRows
-            .Where(b => creatorToGameUserId.ContainsKey(b.CreatedBy))
-            .GroupBy(b => (b.MatchId, UserId: creatorToGameUserId[b.CreatedBy]))
+        var betsByMatchUser = legRows
+            .Where(r => creatorToGameUserId.ContainsKey(r.CreatedBy))
+            .GroupBy(r => (r.MatchId, UserId: creatorToGameUserId[r.CreatedBy]))
             .ToDictionary(
                 g => g.Key,
                 g =>
                 {
-                    var primary = g.OrderByDescending(b =>
-                        b.Status == BetStatus.Won ? 3 :
-                        b.Status == BetStatus.Lost ? 2 :
-                        b.Status == BetStatus.Pending ? 1 : 0).First();
+                    var primary = g.OrderByDescending(r =>
+                        r.LegStatus == BetLegStatus.Won ? 3 :
+                        r.LegStatus == BetLegStatus.Lost ? 2 :
+                        r.LegStatus == BetLegStatus.Pending ? 1 : 0).First();
                     var targetName = primary.BetType == BetType.TeamWin && primary.TeamId.HasValue
                         ? betTargetTeamNames.GetValueOrDefault(primary.TeamId.Value)
                         : primary.UserId.HasValue
                             ? betTargetUserNames.GetValueOrDefault(primary.UserId.Value)
                             : null;
+                    var status =
+                        g.Any(r => r.LegStatus == BetLegStatus.Won) ? BetStatus.Won :
+                        g.Any(r => r.LegStatus == BetLegStatus.Lost) ? BetStatus.Lost :
+                        g.Any(r => r.LegStatus == BetLegStatus.Pending) ? BetStatus.Pending :
+                        BetStatus.Cancelled;
                     return new
                     {
-                        Status = g.Any(b => b.Status == BetStatus.Won) ? BetStatus.Won :
-                                 g.Any(b => b.Status == BetStatus.Lost) ? BetStatus.Lost :
-                                 g.Any(b => b.Status == BetStatus.Pending) ? BetStatus.Pending :
-                                 BetStatus.Cancelled,
-                        Amount = g.Sum(b => b.Amount),
-                        WonAmount = g.Where(b => b.Status == BetStatus.Won).Sum(b => BettingConstants.GrossPayout(b.Amount, b.Odds)),
+                        Status = status,
+                        Amount = g.Sum(r => r.Stake),
+                        WonAmount = g.Where(r => r.BetStatus == BetStatus.Won)
+                                     .Sum(r => BettingConstants.GrossPayout(r.Stake, r.TotalOdds)),
                         BetType = primary.BetType,
                         TargetName = targetName
                     };

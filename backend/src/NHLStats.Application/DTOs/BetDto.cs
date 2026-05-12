@@ -2,48 +2,41 @@ using NHLStats.Domain.Entities;
 
 namespace NHLStats.Application.DTOs;
 
-public record BetDto(
-    Guid Id,
-    int MatchId,
-    BetType BetType,
-    int? UserId,
-    int? TeamId,
-    decimal Amount,
-    decimal Odds,
-    BetStatus Status,
-    string CreatedBy,
-    DateTime CreatedOn,
-    DateTime? UpdatedOn,
-    DateTime? EvaluatedOn);
-
-public record BetHistoryDto(
-    Guid Id,
+public record BetLegDto(
+    int Id,
     int MatchId,
     int MatchNumber,
     string? HomeTeamName,
     string? AwayTeamName,
     BetType BetType,
     int? UserId,
-    string? BetTargetName,
     int? TeamId,
-    decimal Amount,
+    string? TargetName,
     decimal Odds,
+    BetLegStatus Status);
+
+public record BetDto(
+    Guid Id,
+    string ShortId,
+    string CreatedBy,
+    decimal Stake,
+    decimal TotalOdds,
     BetStatus Status,
     decimal? WonAmount,
     DateTime CreatedOn,
-    DateTime? EvaluatedOn);
+    DateTime? UpdatedOn,
+    DateTime? EvaluatedOn,
+    IReadOnlyList<BetLegDto> Legs);
+
+public record CreateBetLegDto(
+    int MatchId,
+    BetType BetType,
+    int? UserId,
+    int? TeamId);
 
 public record CreateBetDto(
-    BetType BetType,
-    int? UserId,
-    int? TeamId,
-    decimal Amount);
-
-public record UpdateBetDto(
-    BetType BetType,
-    int? UserId,
-    int? TeamId,
-    decimal Amount);
+    decimal Stake,
+    IReadOnlyList<CreateBetLegDto> Legs);
 
 public record BettingBalanceDto(
     decimal AvailableBalance,

@@ -33,20 +33,6 @@ export interface FutureMatch {
     awayTeamName: string | null
     hostedTeamId: number | null
     userMatches: UserMatchInfo[] | null
-    bet: MatchBetDto | null
-}
-
-export interface MatchBetDto {
-    id: string
-    betType: 'TeamWin' | 'UserGoal' | 'UserPenalty'
-    userId: number | null
-    teamId: number | null
-    amount: number
-    odds: number
-    status: 'Pending' | 'Won' | 'Lost' | 'Cancelled'
-    createdOn: string
-    updatedOn: string | null
-    evaluatedOn: string | null
 }
 
 export interface UserMatchInfo {

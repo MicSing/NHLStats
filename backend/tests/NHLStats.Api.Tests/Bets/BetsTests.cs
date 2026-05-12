@@ -54,7 +54,6 @@ public class BetsTests : ApiTestBase
     /// </summary>
     private async Task<int> EnsureUserLinkedAndSeedPointsAsync(HttpClient client, int seasonId)
     {
-        // Get current admin app user info
         var meResp = await client.GetAsync("/api/auth/me");
         meResp.EnsureSuccessStatusCode();
         var me = await meResp.Content.ReadFromJsonAsync<JsonElement>();
@@ -67,24 +66,19 @@ public class BetsTests : ApiTestBase
         }
         else
         {
-            // Create a User entity and attach it to the admin
             var createUserResp = await client.PostAsJsonAsync("/api/users", new { name = "Test Admin User" });
             createUserResp.EnsureSuccessStatusCode();
             var createdUser = await createUserResp.Content.ReadFromJsonAsync<JsonElement>();
             userId = createdUser.GetProperty("id").GetInt32();
 
-            // Attach the User to the admin ApplicationUser
             var attachResp = await client.PutAsJsonAsync($"/api/auth/users/{loginId}/attach-user", new { userId });
             attachResp.EnsureSuccessStatusCode();
         }
 
-        // Add user to season
         var addUserResp = await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null);
-        // Ignore conflict (already added) - 409 or 200 both fine
-        if (!addUserResp.IsSuccessStatusCode && addUserResp.StatusCode != System.Net.HttpStatusCode.Conflict)
+        if (!addUserResp.IsSuccessStatusCode && addUserResp.StatusCode != HttpStatusCode.Conflict)
             addUserResp.EnsureSuccessStatusCode();
 
-        // Create a completed match so we can add points
         var completedMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
         completedMatchResp.EnsureSuccessStatusCode();
         var completedMatch = await completedMatchResp.Content.ReadFromJsonAsync<JsonElement>();
@@ -100,10 +94,8 @@ public class BetsTests : ApiTestBase
             completionType = 1
         });
 
-        // Initialize users for the completed match
         await client.PostAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}/usermatches/initialize", null);
 
-        // Get the UserMatch id for this user
         var umResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}/usermatches");
         if (!umResp.IsSuccessStatusCode) return userId;
         var ums = await umResp.Content.ReadFromJsonAsync<JsonElement>();
@@ -111,83 +103,119 @@ public class BetsTests : ApiTestBase
 
         var userMatchId = ums[0].GetProperty("id").GetInt32();
 
-        // Add a positive point (PointReason 9 = Positive Penalty) - enough for a 1€ bet
-        var pointResp = await client.PostAsJsonAsync($"/api/usermatches/{userMatchId}/points", new { pointReasonId = 9, count = 4 });
+        var pointResp = await client.PostAsJsonAsync($"/api/usermatches/{userMatchId}/points", new { pointReasonId = 9, count = 8 });
         pointResp.EnsureSuccessStatusCode();
 
         return userId;
     }
 
     [Fact]
-    public async Task Create_bet_returns_201_and_payload()
+    public async Task Place_single_leg_ticket_returns_201_with_short_id_and_one_leg()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Bet Create Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
-        var resp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "TeamWin",
-            teamId = 1,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "TeamWin", teamId = 1 }
+            }
         });
 
         resp.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("matchId").GetInt32().Should().Be(matchId);
-        body.GetProperty("betType").GetString().Should().Be("TeamWin");
-        body.GetProperty("teamId").GetInt32().Should().Be(1);
+        body.GetProperty("stake").GetDecimal().Should().Be(1.0m);
         body.GetProperty("status").GetString().Should().Be("Pending");
+        body.GetProperty("shortId").GetString().Should().StartWith("B-");
+        body.GetProperty("legs").GetArrayLength().Should().Be(1);
+        body.GetProperty("legs")[0].GetProperty("matchId").GetInt32().Should().Be(matchId);
     }
 
     [Fact]
-    public async Task Update_bet_returns_200_and_updated_payload()
+    public async Task Place_two_leg_combo_multiplies_odds()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var seasonId = await CreateSeasonAsync(client, "Bet Update Season");
-        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var seasonId = await CreateSeasonAsync(client, "Combo Season");
+        // Both matches host team 1 (the season's hosted team) so TeamWin legs on team 1 validate.
+        var match1 = await CreateFutureMatchAsync(client, seasonId);
+        var match2 = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: 7);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
-        var createResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "TeamWin",
-            teamId = 1,
-            amount = 1.0
-        });
-        createResp.EnsureSuccessStatusCode();
-
-        var updateResp = await client.PutAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
-        {
-            betType = "TeamWin",
-            teamId = 1,
-            amount = 2.0
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId = match1, betType = "TeamWin", teamId = 1 },
+                new { matchId = match2, betType = "TeamWin", teamId = 1 }
+            }
         });
 
-        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
-        updated.GetProperty("amount").GetDecimal().Should().Be(2.0m);
-        updated.GetProperty("updatedOn").ValueKind.Should().NotBe(JsonValueKind.Null);
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs").GetArrayLength().Should().Be(2);
+        var totalOdds = body.GetProperty("totalOdds").GetDecimal();
+        var leg0Odds = body.GetProperty("legs")[0].GetProperty("odds").GetDecimal();
+        var leg1Odds = body.GetProperty("legs")[1].GetProperty("odds").GetDecimal();
+        totalOdds.Should().BeApproximately(leg0Odds * leg1Odds, 0.0001m);
     }
 
     [Fact]
-    public async Task Cancel_match_bet_returns_204()
+    public async Task Cancel_bet_returns_204_and_removes_ticket()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Bet Cancel Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
-        var createResp = await client.PostAsJsonAsync($"/api/betting/matches/{matchId}/bet", new
+        var createResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
-            betType = "TeamWin",
-            teamId = 1,
-            amount = 1.0
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1 } }
         });
         createResp.EnsureSuccessStatusCode();
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var betId = created.GetProperty("id").GetString();
 
-        var cancelResp = await client.DeleteAsync($"/api/betting/matches/{matchId}/bet");
+        var cancelResp = await client.DeleteAsync($"/api/betting/bets/{betId}");
         cancelResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var activeResp = await client.GetAsync("/api/betting/bets/active");
+        activeResp.EnsureSuccessStatusCode();
+        var active = await activeResp.Content.ReadFromJsonAsync<JsonElement>();
+        active.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Active_endpoint_lists_only_pending_tickets()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Active List Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var beforeResp = await client.GetAsync("/api/betting/bets/active");
+        beforeResp.EnsureSuccessStatusCode();
+        var beforeCount = (await beforeResp.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength();
+
+        await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1 } }
+        });
+
+        var resp = await client.GetAsync("/api/betting/bets/active");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(beforeCount + 1);
+        foreach (var ticket in body.EnumerateArray())
+        {
+            ticket.GetProperty("status").GetString().Should().Be("Pending");
+        }
     }
 
     [Fact]
@@ -204,7 +232,7 @@ public class BetsTests : ApiTestBase
     public async Task Get_betting_history_returns_200()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.GetAsync("/api/betting/history");
+        var resp = await client.GetAsync("/api/betting/bets/history");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -213,7 +241,6 @@ public class BetsTests : ApiTestBase
     {
         var client = await CreateAuthenticatedClientAsync();
 
-        // Resolve userId from /api/auth/me
         var meResp = await client.GetAsync("/api/auth/me");
         meResp.EnsureSuccessStatusCode();
         var me = await meResp.Content.ReadFromJsonAsync<JsonElement>();
@@ -235,14 +262,12 @@ public class BetsTests : ApiTestBase
             attachResp.EnsureSuccessStatusCode();
         }
 
-        // Get balance before seeding aggregated data
         var before = await client.GetAsync("/api/betting/balance");
         before.EnsureSuccessStatusCode();
         var beforeBody = await before.Content.ReadFromJsonAsync<JsonElement>();
         var balanceBefore = beforeBody.GetProperty("availableBalance").GetDecimal();
         var positiveCashBefore = beforeBody.GetProperty("totalPositiveCash").GetDecimal();
 
-        // Create a season and seed aggregated data: TotalPlus = 4 → 4 * 0.25 = 1.00€
         var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
         {
             name = "Agg Balance Season",
@@ -259,7 +284,6 @@ public class BetsTests : ApiTestBase
             new { totalPlus = 4, totalMinus = 0, matchesPlayed = 0 });
         aggResp.EnsureSuccessStatusCode();
 
-        // Get balance after seeding
         var after = await client.GetAsync("/api/betting/balance");
         after.EnsureSuccessStatusCode();
         var afterBody = await after.Content.ReadFromJsonAsync<JsonElement>();
