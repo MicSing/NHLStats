@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
-import { publicNavItems, adminNavItems } from '../config/navConfig'
+import { publicNavItems, adminNavGroups } from '../config/navConfig'
 
 export default function AdminLayout() {
     const { user, logout, isAuthenticated } = useAuth()
@@ -38,40 +38,49 @@ export default function AdminLayout() {
                 <ThemeToggle />
                 <LanguageSwitcher />
             </div>
-            <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-                <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.menu')}</p>
-                {publicNavItems.filter((item) => !item.requiresAuth || isAuthenticated).map((item) => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={closeSidebar}
-                        className={({ isActive }) =>
-                            `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                ? 'bg-primary text-white'
-                                : 'text-text-muted hover:bg-border hover:text-text'
-                            }`
-                        }
-                    >
-                        {t(item.labelKey)}
-                    </NavLink>
-                ))}
+            <nav className="flex-1 px-3 py-3 overflow-y-auto">
+                <div className="space-y-0.5 mb-3">
+                    {publicNavItems.filter((item) => !item.requiresAuth || isAuthenticated).map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            onClick={closeSidebar}
+                            className={({ isActive }) =>
+                                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                    ? 'bg-primary text-white'
+                                    : 'text-text-muted hover:bg-border hover:text-text'
+                                }`
+                            }
+                        >
+                            {t(item.labelKey)}
+                        </NavLink>
+                    ))}
+                </div>
                 {isAdmin && (
                     <>
-                        <p className="px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
-                        {adminNavItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                onClick={closeSidebar}
-                                className={({ isActive }) =>
-                                    `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                        ? 'bg-primary text-white'
-                                        : 'text-text-muted hover:bg-border hover:text-text'
-                                    }`
-                                }
-                            >
-                                {t(item.labelKey)}
-                            </NavLink>
+                        <div className="my-2 border-t border-border" />
+                        <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{t('nav.admin')}</p>
+                        {adminNavGroups.map((group) => (
+                            <div key={group.labelKey} className="mb-3">
+                                <p className="px-3 pt-1 pb-1 text-xs font-semibold uppercase tracking-widest text-text-muted opacity-60">{t(group.labelKey)}</p>
+                                <div className="space-y-0.5">
+                                    {group.items.map((item) => (
+                                        <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            onClick={closeSidebar}
+                                            className={({ isActive }) =>
+                                                `flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                                    ? 'bg-primary text-white'
+                                                    : 'text-text-muted hover:bg-border hover:text-text'
+                                                }`
+                                            }
+                                        >
+                                            {t(item.labelKey)}
+                                        </NavLink>
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </>
                 )}
