@@ -73,12 +73,10 @@ export default function PublicLayout() {
                         ))}
                     </>
                 )}
-            </nav>
-            <div className="px-4 py-4 border-t border-border">
-                <div>
+                <div className="mt-3 pt-3 border-t border-border px-1">
                     {isAuthenticated ? (
                         <>
-                            <p className="text-xs text-text-muted mb-2 truncate">{user?.email}</p>
+                            <p className="text-xs text-text-muted mb-2 truncate px-2">{user?.email}</p>
                             <button
                                 onClick={() => { logout(); closeSidebar() }}
                                 className="btn-ghost w-full text-sm mb-2"
@@ -103,7 +101,7 @@ export default function PublicLayout() {
                         </NavLink>
                     )}
                 </div>
-            </div>
+            </nav>
         </>
     )
 

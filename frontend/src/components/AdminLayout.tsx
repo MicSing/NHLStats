@@ -75,16 +75,16 @@ export default function AdminLayout() {
                         ))}
                     </>
                 )}
+                <div className="mt-3 pt-3 border-t border-border px-1 space-y-2">
+                    <p className="text-xs text-text-muted truncate px-2">{user?.email}</p>
+                    <button
+                        onClick={() => { logout(); closeSidebar() }}
+                        className="btn-ghost w-full text-sm"
+                    >
+                        {t('layout.logout')}
+                    </button>
+                </div>
             </nav>
-            <div className="px-4 py-4 border-t border-border space-y-2">
-                <p className="text-xs text-text-muted truncate px-3">{user?.email}</p>
-                <button
-                    onClick={() => { logout(); closeSidebar() }}
-                    className="btn-ghost w-full text-sm"
-                >
-                    {t('layout.logout')}
-                </button>
-            </div>
         </>
     )
 
