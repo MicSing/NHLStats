@@ -518,6 +518,47 @@ export default function SeasonPage() {
         else navigate(`/seasons/${id}`)
     }
 
+    const currentSeason = seasons.find((s) => s.id === seasonId) ?? null
+
+    const hostedTeamShortName = (() => {
+        if (!currentSeason?.hostedTeamId) return null
+        for (const group of weekGroups) {
+            for (const m of group.matches) {
+                if (m.homeTeamId === currentSeason.hostedTeamId) return m.homeTeamShortName
+                if (m.awayTeamId === currentSeason.hostedTeamId) return m.awayTeamShortName
+            }
+        }
+        return null
+    })()
+
+    const hostedStats = (() => {
+        const htId = currentSeason?.hostedTeamId
+        if (!htId) return null
+        let W = 0, L = 0, OTL = 0, OT = 0
+        let winsHome = 0, winsAway = 0, lossesHome = 0, lossesAway = 0
+        for (const m of allMatches) {
+            const ct = normalizeCompletionType(m.completionType)
+            const done =
+                ct === CompletionType.RegularTime ||
+                ct === CompletionType.Overtime ||
+                ct === CompletionType.Shootout
+            if (!done) continue
+            const isHome = m.homeTeamId === htId
+            const isAway = m.awayTeamId === htId
+            if (!isHome && !isAway) continue
+            const hs = isHome ? m.homeScore : m.awayScore
+            const os = isHome ? m.awayScore : m.homeScore
+            const isOTGame = ct === CompletionType.Overtime || ct === CompletionType.Shootout
+            if (isOTGame) OT++
+            if (hs > os) { W++; if (isHome) winsHome++; else winsAway++ }
+            else if (hs < os) {
+                if (isOTGame) OTL++; else L++
+                if (isHome) lossesHome++; else lossesAway++
+            }
+        }
+        return { W, L, OTL, OT, winsHome, winsAway, lossesHome, lossesAway }
+    })()
+
     return (
         <PageLayout>
             <div className="max-w-6xl mx-auto">
@@ -568,9 +609,6 @@ export default function SeasonPage() {
                         {/* User Stats Table */}
                         {stats.length > 0 && (
                             <section className="mb-8" aria-label="User stats">
-                                <h2 className="text-lg font-semibold mb-3 text-primary/80">
-                                    {t('season.playerStats')}
-                                </h2>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
@@ -580,8 +618,6 @@ export default function SeasonPage() {
                                                 <th className="pb-2">−</th>
                                                 <th className="pb-2">{t('season.goals')}</th>
                                                 <th className="pb-2">{t('season.penalties')}</th>
-                                                <th className="pb-2">{t('season.earnings')}</th>
-                                                <th className="pb-2">{t('season.betBalance')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -594,13 +630,66 @@ export default function SeasonPage() {
                                                         <td className="py-2 text-danger">{s.totalMinus}</td>
                                                         <td className="py-2 text-primary">{totals?.totalGoals ?? 0}</td>
                                                         <td className="py-2 text-warning">{totals?.totalPenalties ?? 0}</td>
-                                                        <td className="py-2">{s.earnings.toFixed(2)} €</td>
-                                                        <td className="py-2 text-primary">{s.bettingBalance.toFixed(2)} €</td>
                                                     </tr>
                                                 )
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Hosted Team Record */}
+                        {currentSeason?.hostedTeamId && hostedStats && (
+                            <section className="mb-8" aria-label="Hosted team record">
+                                <div className="card p-4">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        {hostedTeamShortName && (
+                                            <img
+                                                src={teamLogoUrl(hostedTeamShortName)}
+                                                alt={currentSeason.hostedTeamName ?? ''}
+                                                className="w-10 h-10 object-contain"
+                                                onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                            />
+                                        )}
+                                        <span className="font-semibold text-base">{currentSeason.hostedTeamName}</span>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-3 text-center text-sm">
+                                        <div>
+                                            <p className="text-text-muted text-xs">W</p>
+                                            <p className="font-bold text-success">{hostedStats.W}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">L</p>
+                                            <p className="font-bold text-danger">{hostedStats.L}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">OTL</p>
+                                            <p className="font-bold text-warning">{hostedStats.OTL}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">OT/SO</p>
+                                            <p className="font-bold text-primary">{hostedStats.OT}</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-3 text-center text-sm mt-3 border-t border-border pt-3">
+                                        <div>
+                                            <p className="text-text-muted text-xs">{t('season.winsHome')}</p>
+                                            <p className="font-bold text-success">{hostedStats.winsHome}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">{t('season.winsAway')}</p>
+                                            <p className="font-bold text-success">{hostedStats.winsAway}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">{t('season.lossesHome')}</p>
+                                            <p className="font-bold text-danger">{hostedStats.lossesHome}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-text-muted text-xs">{t('season.lossesAway')}</p>
+                                            <p className="font-bold text-danger">{hostedStats.lossesAway}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
                         )}
