@@ -9,7 +9,7 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
-import type { SeasonalUserEarnings } from '../../types/stats'
+import type { AllTimeEarnings, SeasonalUserEarnings } from '../../types/stats'
 import type { User } from '../../types/user'
 import type { Season } from '../../types/season'
 import { useChartTheme } from './useChartTheme'
@@ -29,14 +29,11 @@ const SEASON_COLORS = [
 ]
 
 interface Props {
-    /** All per-season earnings data (from /api/stats/earnings-by-season) */
     data: SeasonalUserEarnings[]
-    /** Currently selected season id, or null for "all seasons" */
     selectedSeasonId: number | null
-    /** Users for name lookups */
     users: User[]
-    /** Seasons for name lookups */
     seasons: Season[]
+    allTimeEarnings?: AllTimeEarnings
 }
 
 interface ChartRow {
@@ -44,15 +41,13 @@ interface ChartRow {
     [seasonName: string]: string | number
 }
 
-export default function EarningsChart({ data, selectedSeasonId, users, seasons }: Props) {
+export default function EarningsChart({ data, selectedSeasonId, users, seasons, allTimeEarnings }: Props) {
     const ct = useChartTheme()
     const [hoveredSeason, setHoveredSeason] = useState<string | null>(null)
 
-    // Create lookup maps
     const userNameById = new Map(users.map((u) => [u.id, u.name]))
     const seasonNameById = new Map(seasons.map((s) => [s.id, s.name]))
 
-    // Filter seasons based on selection
     const filteredSeasons = selectedSeasonId
         ? data.filter((s) => s.seasonId === selectedSeasonId)
         : data
@@ -65,13 +60,17 @@ export default function EarningsChart({ data, selectedSeasonId, users, seasons }
         )
     }
 
-    // Collect all unique users across the selected seasons
+    // Seed userMap from allTimeEarnings so every user appears even if absent from a season
     const userMap = new Map<number, string>()
+    if (!selectedSeasonId && allTimeEarnings) {
+        for (const ue of allTimeEarnings.userEarnings) {
+            userMap.set(ue.userId, userNameById.get(ue.userId) ?? `User ${ue.userId}`)
+        }
+    }
     for (const season of filteredSeasons) {
         for (const u of season.userEarnings) {
             if (!userMap.has(u.userId)) {
-                const userName = userNameById.get(u.userId) ?? `User ${u.userId}`
-                userMap.set(u.userId, userName)
+                userMap.set(u.userId, userNameById.get(u.userId) ?? `User ${u.userId}`)
             }
         }
     }

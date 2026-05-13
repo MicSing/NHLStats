@@ -172,6 +172,7 @@ export default function DashboardPage() {
                             selectedSeasonId={selectedSeasonId}
                             users={users}
                             seasons={seasons}
+                            allTimeEarnings={safeDashboardData.allTimeEarnings}
                         />
                         {!selectedSeasonId && safeDashboardData.allTimeEarnings && (
                             <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">

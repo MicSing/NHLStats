@@ -932,16 +932,24 @@ public class StatsService : IStatsService
 
     public async Task<IEnumerable<SeasonalUserEarningsDto>> GetEarningsBySeasonAsync()
     {
-        // Group matches by season so we can scope ComputeEarningsAsync per season
         var matchesBySeason = await _db.Matches
             .AsNoTracking()
             .Select(m => new { m.Id, m.SeasonId })
             .ToListAsync();
 
-        if (matchesBySeason.Count == 0)
+        var aggregatedBySeason = await _db.UserSeasonAggregatedData
+            .AsNoTracking()
+            .GroupBy(a => a.SeasonId)
+            .ToDictionaryAsync(g => g.Key, g => g.ToList());
+
+        var seasonIds = matchesBySeason.Select(m => m.SeasonId)
+            .Union(aggregatedBySeason.Keys)
+            .Distinct()
+            .ToList();
+
+        if (seasonIds.Count == 0)
             return Enumerable.Empty<SeasonalUserEarningsDto>();
 
-        var seasonIds = matchesBySeason.Select(m => m.SeasonId).Distinct().ToList();
         var result = new List<SeasonalUserEarningsDto>();
 
         foreach (var seasonId in seasonIds)
@@ -951,7 +959,15 @@ public class StatsService : IStatsService
                 .Select(m => m.Id)
                 .ToList();
 
-            var earningsByUser = await ComputeEarningsAsync(matchIds);
+            IReadOnlyDictionary<int, int>? aggPlus = null;
+            IReadOnlyDictionary<int, int>? aggMinus = null;
+            if (aggregatedBySeason.TryGetValue(seasonId, out var aggEntries))
+            {
+                aggPlus = aggEntries.ToDictionary(a => a.UserId, a => a.TotalPlus);
+                aggMinus = aggEntries.ToDictionary(a => a.UserId, a => a.TotalMinus);
+            }
+
+            var earningsByUser = await ComputeEarningsAsync(matchIds, aggPlus, aggMinus);
             result.Add(new SeasonalUserEarningsDto(
                 seasonId,
                 earningsByUser
