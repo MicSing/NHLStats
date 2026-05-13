@@ -42,11 +42,17 @@ function describeApiLeg(
 ): string {
     const tag = t('betting.matchNumber', { number: leg.matchNumber })
     const kind =
-        leg.betType === 'TeamWin'
-            ? leg.targetName ?? t('betting.unknownTeam')
-            : leg.betType === 'UserGoal'
-                ? `${t('betting.goals')}: ${leg.targetName ?? t('betting.unknownUser')}`
-                : `${t('betting.penalties')}: ${leg.targetName ?? t('betting.unknownUser')}`
+        leg.betType === 'TeamDraw'
+            ? t('betting.drawLabel')
+            : leg.betType === 'TeamWin' || leg.betType === 'TeamWinOrDraw'
+                ? leg.targetName ?? t('betting.unknownTeam')
+                : leg.betType === 'UserGoal'
+                    ? `${t('betting.goals')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                    : leg.betType === 'UserPenalty'
+                        ? `${t('betting.penalties')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                        : leg.betType === 'UserPlusPoint'
+                            ? `${t('betting.plusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                            : `${t('betting.minusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}`
     return `${tag} · ${kind} @${leg.odds.toFixed(2)}`
 }
 
@@ -130,7 +136,7 @@ export default function BettingPage() {
         void ensureOdds(id)
     }
 
-    const teamOutcomeTypes: ApiBetType[] = ['TeamWin', 'TeamWinOrDraw']
+    const teamOutcomeTypes: ApiBetType[] = ['TeamWin', 'TeamWinOrDraw', 'TeamDraw']
 
     const addLeg = (leg: Omit<DraftLeg, 'key'>) => {
         const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null)
@@ -435,6 +441,8 @@ interface MarketsProps {
 }
 
 function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAddLeg, t }: MarketsProps) {
+    const [showUnavailable, setShowUnavailable] = useState(false)
+
     if (!match) {
         return (
             <section className="card p-4">
@@ -451,6 +459,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
     const home1XOdds = odds?.teamWin?.home1XOdds ?? null
     const away1XOdds = odds?.teamWin?.away1XOdds ?? null
     const matchTitle = `${match.homeTeamName ?? '?'} vs ${match.awayTeamName ?? '?'}`
+    const isUserInMatch = (match.userMatches ?? []).some((u) => u.userId === currentUserId)
     const users = (match.userMatches ?? []).filter((u) => u.userId !== currentUserId)
 
     const homeLabel = `${t('betting.homeWin')} (${match.homeTeamName ?? '?'})`
@@ -458,106 +467,153 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
     const home1XLabel = `${t('betting.home1X')} (${match.homeTeamName ?? '?'})`
     const away1XLabel = `${t('betting.away1X')} (${match.awayTeamName ?? '?'})`
 
+    const homeDisabled = (isUserInMatch && !isHostingHome) || homeOdds == null || matchHasTeamOutcome || (homeOdds != null && homeOdds < 1)
+    const drawDisabled = isUserInMatch || drawOdds == null || drawOdds < 1
+    const awayDisabled = (isUserInMatch && !isHostingAway) || awayOdds == null || matchHasTeamOutcome || (awayOdds != null && awayOdds < 1)
+    const home1XDisabled = isUserInMatch || home1XOdds == null || matchHasTeamOutcome || (home1XOdds != null && home1XOdds < 1)
+    const away1XDisabled = isUserInMatch || away1XOdds == null || matchHasTeamOutcome || (away1XOdds != null && away1XOdds < 1)
+    const show1X2Section = showUnavailable || !homeDisabled || !drawDisabled || !awayDisabled
+    const show1XSection = showUnavailable || !home1XDisabled || !away1XDisabled
+
     return (
         <section className="card p-4 space-y-4">
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
                     {t('betting.marketsFor', { match: matchTitle })}
                 </h2>
-                <span className="text-xs font-mono text-text-muted">
-                    {t('betting.matchNumber', { number: match.matchNumber })}
-                </span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">{t('betting.showUnavailable')}</span>
+                        <button
+                            onClick={() => setShowUnavailable((v) => !v)}
+                            aria-label={t('betting.showUnavailable')}
+                            className={`w-8 h-4 rounded-full relative transition-colors ${showUnavailable ? 'bg-primary' : 'bg-surface border border-border'}`}
+                        >
+                            <span
+                                className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full transition-all ${showUnavailable ? 'bg-white translate-x-4' : 'bg-text-muted translate-x-0'}`}
+                            />
+                        </button>
+                    </div>
+                    <span className="text-xs font-mono text-text-muted">
+                        {t('betting.matchNumber', { number: match.matchNumber })}
+                    </span>
+                </div>
             </div>
 
             {/* 1 X 2 */}
-            <div className="grid grid-cols-3 gap-2">
-                <OddsButton
-                    label={t('betting.betOnHomeShort')}
-                    subLabel={homeLabel}
-                    odds={homeOdds}
-                    disabled={!isHostingHome || homeOdds == null || matchHasTeamOutcome}
-                    onClick={() =>
-                        homeOdds != null &&
-                        onAddLeg({
-                            matchId: match.id,
-                            matchNumber: match.matchNumber,
-                            betType: 'TeamWin',
-                            userId: null,
-                            teamId: match.homeTeamId,
-                            label: homeLabel,
-                            odds: homeOdds,
-                        })
-                    }
-                />
-                <OddsButton
-                    label={t('betting.betOnDrawShort')}
-                    subLabel={t('betting.drawNotSupported')}
-                    odds={drawOdds}
-                    disabled
-                    onClick={() => undefined}
-                />
-                <OddsButton
-                    label={t('betting.betOnAwayShort')}
-                    subLabel={awayLabel}
-                    odds={awayOdds}
-                    disabled={!isHostingAway || awayOdds == null || matchHasTeamOutcome}
-                    onClick={() =>
-                        awayOdds != null &&
-                        onAddLeg({
-                            matchId: match.id,
-                            matchNumber: match.matchNumber,
-                            betType: 'TeamWin',
-                            userId: null,
-                            teamId: match.awayTeamId,
-                            label: awayLabel,
-                            odds: awayOdds,
-                        })
-                    }
-                />
+            {show1X2Section && (
+            <div className="flex gap-2">
+                {(showUnavailable || !homeDisabled) && (
+                    <OddsButton
+                        label={t('betting.betOnHomeShort')}
+                        subLabel={homeLabel}
+                        odds={homeOdds}
+                        disabled={homeDisabled}
+                        onClick={() =>
+                            homeOdds != null &&
+                            onAddLeg({
+                                matchId: match.id,
+                                matchNumber: match.matchNumber,
+                                betType: 'TeamWin',
+                                userId: null,
+                                teamId: match.homeTeamId,
+                                label: homeLabel,
+                                odds: homeOdds,
+                            })
+                        }
+                    />
+                )}
+                {(showUnavailable || !drawDisabled) && (
+                    <OddsButton
+                        label={t('betting.betOnDrawShort')}
+                        subLabel={t('betting.drawLabel')}
+                        odds={drawOdds}
+                        disabled={drawDisabled}
+                        onClick={() =>
+                            drawOdds != null &&
+                            onAddLeg({
+                                matchId: match.id,
+                                matchNumber: match.matchNumber,
+                                betType: 'TeamDraw',
+                                userId: null,
+                                teamId: null,
+                                label: t('betting.drawLabel'),
+                                odds: drawOdds,
+                            })
+                        }
+                    />
+                )}
+                {(showUnavailable || !awayDisabled) && (
+                    <OddsButton
+                        label={t('betting.betOnAwayShort')}
+                        subLabel={awayLabel}
+                        odds={awayOdds}
+                        disabled={awayDisabled}
+                        onClick={() =>
+                            awayOdds != null &&
+                            onAddLeg({
+                                matchId: match.id,
+                                matchNumber: match.matchNumber,
+                                betType: 'TeamWin',
+                                userId: null,
+                                teamId: match.awayTeamId,
+                                label: awayLabel,
+                                odds: awayOdds,
+                            })
+                        }
+                    />
+                )}
             </div>
+            )}
 
             {/* 1X / 2X (double chance) */}
-            <div className="grid grid-cols-2 gap-2">
-                <OddsButton
-                    label={t('betting.betOnHome1XShort')}
-                    subLabel={home1XLabel}
-                    odds={home1XOdds}
-                    disabled={!isHostingHome || home1XOdds == null || matchHasTeamOutcome}
-                    onClick={() =>
-                        home1XOdds != null &&
-                        onAddLeg({
-                            matchId: match.id,
-                            matchNumber: match.matchNumber,
-                            betType: 'TeamWinOrDraw',
-                            userId: null,
-                            teamId: match.homeTeamId,
-                            label: home1XLabel,
-                            odds: home1XOdds,
-                        })
-                    }
-                />
-                <OddsButton
-                    label={t('betting.betOnAway1XShort')}
-                    subLabel={away1XLabel}
-                    odds={away1XOdds}
-                    disabled={!isHostingAway || away1XOdds == null || matchHasTeamOutcome}
-                    onClick={() =>
-                        away1XOdds != null &&
-                        onAddLeg({
-                            matchId: match.id,
-                            matchNumber: match.matchNumber,
-                            betType: 'TeamWinOrDraw',
-                            userId: null,
-                            teamId: match.awayTeamId,
-                            label: away1XLabel,
-                            odds: away1XOdds,
-                        })
-                    }
-                />
+            {show1XSection && (
+            <div className="flex gap-2">
+                {(showUnavailable || !home1XDisabled) && (
+                    <OddsButton
+                        label={t('betting.betOnHome1XShort')}
+                        subLabel={home1XLabel}
+                        odds={home1XOdds}
+                        disabled={home1XDisabled}
+                        onClick={() =>
+                            home1XOdds != null &&
+                            onAddLeg({
+                                matchId: match.id,
+                                matchNumber: match.matchNumber,
+                                betType: 'TeamWinOrDraw',
+                                userId: null,
+                                teamId: match.homeTeamId,
+                                label: home1XLabel,
+                                odds: home1XOdds,
+                            })
+                        }
+                    />
+                )}
+                {(showUnavailable || !away1XDisabled) && (
+                    <OddsButton
+                        label={t('betting.betOnAway1XShort')}
+                        subLabel={away1XLabel}
+                        odds={away1XOdds}
+                        disabled={away1XDisabled}
+                        onClick={() =>
+                            away1XOdds != null &&
+                            onAddLeg({
+                                matchId: match.id,
+                                matchNumber: match.matchNumber,
+                                betType: 'TeamWinOrDraw',
+                                userId: null,
+                                teamId: match.awayTeamId,
+                                label: away1XLabel,
+                                odds: away1XOdds,
+                            })
+                        }
+                    />
+                )}
             </div>
+            )}
 
             {/* User markets */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${isUserInMatch && !showUnavailable ? 'md:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-4'}`}>
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
                         {t('betting.goals')}
@@ -568,6 +624,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         <div className="space-y-1">
                             {users.map((u) => {
                                 const o = odds?.userGoal.find((x) => x.userId === u.userId)?.odds ?? null
+                                if (!showUnavailable && (o == null || o < 1)) return null
                                 return (
                                     <PlayerMarketRow
                                         key={`goal-${u.userId}`}
@@ -601,6 +658,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         <div className="space-y-1">
                             {users.map((u) => {
                                 const o = odds?.userPenalty.find((x) => x.userId === u.userId)?.odds ?? null
+                                if (!showUnavailable && (o == null || o < 1)) return null
                                 return (
                                     <PlayerMarketRow
                                         key={`pen-${u.userId}`}
@@ -624,6 +682,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         </div>
                     )}
                 </div>
+                {(!isUserInMatch || showUnavailable) && (
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
                         {t('betting.plusPoints')}
@@ -634,11 +693,13 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         <div className="space-y-1">
                             {users.map((u) => {
                                 const o = odds?.userPlusPoint.find((x) => x.userId === u.userId)?.odds ?? null
+                                if (!showUnavailable && (o == null || o < 1)) return null
                                 return (
                                     <PlayerMarketRow
                                         key={`plus-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={o}
+                                        forceDisabled={isUserInMatch}
                                         onAdd={() =>
                                             o != null &&
                                             onAddLeg({
@@ -657,6 +718,8 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         </div>
                     )}
                 </div>
+                )}
+                {(!isUserInMatch || showUnavailable) && (
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
                         {t('betting.minusPoints')}
@@ -667,11 +730,13 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         <div className="space-y-1">
                             {users.map((u) => {
                                 const o = odds?.userMinusPoint.find((x) => x.userId === u.userId)?.odds ?? null
+                                if (!showUnavailable && (o == null || o < 1)) return null
                                 return (
                                     <PlayerMarketRow
                                         key={`minus-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={o}
+                                        forceDisabled={isUserInMatch}
                                         onAdd={() =>
                                             o != null &&
                                             onAddLeg({
@@ -690,6 +755,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                         </div>
                     )}
                 </div>
+                )}
             </div>
         </section>
     )
@@ -708,7 +774,7 @@ function OddsButton({ label, subLabel, odds, disabled, onClick }: OddsButtonProp
         <button
             onClick={onClick}
             disabled={disabled}
-            className="border border-border bg-bg rounded-lg p-3 text-center hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
+            className="flex-1 border border-border bg-bg rounded-lg p-3 text-center hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
         >
             <p className="text-[10px] font-bold uppercase text-text-muted">{label}</p>
             <p className="text-xs text-text-muted truncate">{subLabel}</p>
@@ -720,14 +786,15 @@ function OddsButton({ label, subLabel, odds, disabled, onClick }: OddsButtonProp
 interface PlayerMarketRowProps {
     name: string
     odds: number | null
+    forceDisabled?: boolean
     onAdd: () => void
 }
 
-function PlayerMarketRow({ name, odds, onAdd }: PlayerMarketRowProps) {
+function PlayerMarketRow({ name, odds, forceDisabled, onAdd }: PlayerMarketRowProps) {
     return (
         <button
             onClick={onAdd}
-            disabled={odds == null}
+            disabled={forceDisabled || odds == null || odds < 1}
             className="w-full flex justify-between items-center px-3 py-2 border border-border rounded bg-bg hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
         >
             <span className="text-sm">{name}</span>

@@ -7,5 +7,6 @@ public enum BetType
     UserPenalty = 3,
     TeamWinOrDraw = 4,
     UserPlusPoint = 5,
-    UserMinusPoint = 6
+    UserMinusPoint = 6,
+    TeamDraw = 7
 }

@@ -394,7 +394,9 @@
         "home1X": "Home or Draw",
         "away1X": "Away or Draw",
         "leg": "leg",
-        "legs": "legs"
+        "legs": "legs",
+        "showUnavailable": "Show unavailable",
+        "drawLabel": "Draw"
     },
     "points": {
         "title": "Points Management",

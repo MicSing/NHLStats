@@ -394,7 +394,9 @@
         "home1X": "Domáci alebo remíza",
         "away1X": "Hostia alebo remíza",
         "leg": "leg",
-        "legs": "legov"
+        "legs": "legov",
+        "showUnavailable": "Zobraziť nedostupné",
+        "drawLabel": "Remíza"
     },
     "points": {
         "title": "Správa bodov",

@@ -3,6 +3,7 @@ using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
 using NHLStats.Domain;
 using NHLStats.Domain.Entities;
+using NHLStats.Domain.Identity;
 
 namespace NHLStats.Application.Services;
 
@@ -34,7 +35,8 @@ public class BetService : IBetService
                 l.BetType,
                 l.UserId,
                 l.TeamId,
-                (l.BetType == BetType.TeamWin || l.BetType == BetType.TeamWinOrDraw) ? l.Team?.Name : l.User?.Name,
+                l.BetType == BetType.TeamDraw ? "Draw"
+                    : (l.BetType == BetType.TeamWin || l.BetType == BetType.TeamWinOrDraw) ? l.Team?.Name : l.User?.Name,
                 l.Odds,
                 l.Status))
             .ToList();
@@ -101,6 +103,18 @@ public class BetService : IBetService
             .Where(m => matchIds.Contains(m.Id))
             .ToDictionaryAsync(m => m.Id);
 
+        var appUser = await _db.Set<ApplicationUser>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == loginId);
+        var currentUserId = appUser?.UserId;
+
+        var userMatchIds = currentUserId.HasValue
+            ? (await _db.UserMatches.AsNoTracking()
+                .Where(um => matchIds.Contains(um.MatchId) && um.UserId == currentUserId.Value)
+                .Select(um => um.MatchId)
+                .ToListAsync()).ToHashSet()
+            : new HashSet<int>();
+
         var legsToInsert = new List<BetLeg>();
         decimal totalOdds = 1m;
         var matchesWithTeamOutcomeLeg = new HashSet<int>();
@@ -114,13 +128,26 @@ public class BetService : IBetService
             if (match.CompletionType != CompletionType.None)
                 return (null, $"Match {legDto.MatchId} is already completed. Betting is closed.");
 
-            var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId);
+            var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId, userMatchIds.Contains(legDto.MatchId));
             if (validationError != null) return (null, validationError);
 
-            if (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw)
+            if (userMatchIds.Contains(legDto.MatchId))
+            {
+                if (legDto.BetType == BetType.TeamWinOrDraw ||
+                    legDto.BetType == BetType.TeamDraw ||
+                    legDto.BetType == BetType.UserPlusPoint ||
+                    legDto.BetType == BetType.UserMinusPoint)
+                    return (null, "Match participants can only bet on team win, player goals, and penalties.");
+
+                if ((legDto.BetType == BetType.UserGoal || legDto.BetType == BetType.UserPenalty)
+                    && currentUserId.HasValue && legDto.UserId == currentUserId.Value)
+                    return (null, "You cannot bet on yourself.");
+            }
+
+            if (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw || legDto.BetType == BetType.TeamDraw)
             {
                 if (!matchesWithTeamOutcomeLeg.Add(legDto.MatchId))
-                    return (null, $"Only one match-result bet (1, 1X) is allowed per match in a single ticket.");
+                    return (null, $"Only one match-result bet (1, X, 1X) is allowed per match in a single ticket.");
             }
 
             var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
@@ -130,14 +157,16 @@ public class BetService : IBetService
                 oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
             }
             var lockedOdds = oddsRow?.Odds ?? 1.0m;
+            if (lockedOdds < 1.0m)
+                return (null, "Odds for this bet are below 1.0 and cannot be placed.");
             totalOdds *= lockedOdds;
 
             legsToInsert.Add(new BetLeg
             {
                 MatchId = legDto.MatchId,
                 BetType = legDto.BetType,
-                UserId = (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw) ? null : legDto.UserId,
-                TeamId = legDto.TeamId,
+                UserId = (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw || legDto.BetType == BetType.TeamDraw) ? null : legDto.UserId,
+                TeamId = legDto.BetType == BetType.TeamDraw ? null : legDto.TeamId,
                 Odds = lockedOdds,
                 Status = BetLegStatus.Pending
             });
@@ -282,6 +311,7 @@ public class BetService : IBetService
                 BetType.TeamWinOrDraw => !matchCompleted || !leg.TeamId.HasValue
                     ? (bool?)null
                     : (anyWinnerId.HasValue && anyWinnerId.Value == leg.TeamId.Value) || isDraw,
+                BetType.TeamDraw => !matchCompleted ? (bool?)null : isDraw,
                 BetType.UserGoal => leg.UserId.HasValue
                     ? userMatchGoalIds.Contains(leg.UserId.Value)
                     : (bool?)null,
@@ -328,16 +358,22 @@ public class BetService : IBetService
         return BetStatus.Pending;
     }
 
-    private async Task<string?> ValidateLegPayloadAsync(Match match, BetType betType, int? userId, int? teamId)
+    private async Task<string?> ValidateLegPayloadAsync(Match match, BetType betType, int? userId, int? teamId, bool isUserInMatch)
     {
+        if (betType == BetType.TeamDraw)
+            return null;
+
         if (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw)
         {
             if (!teamId.HasValue) return "TeamId is required for team-based bet type.";
             if (teamId.Value != match.HomeTeamId && teamId.Value != match.AwayTeamId)
                 return "TeamId must be one of the match teams.";
-            var season = await _db.Seasons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == match.SeasonId);
-            if (season?.HostedTeamId == null || teamId.Value != season.HostedTeamId)
-                return "You can only bet on the season's hosted team.";
+            if (isUserInMatch)
+            {
+                var season = await _db.Seasons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == match.SeasonId);
+                if (season?.HostedTeamId == null || teamId.Value != season.HostedTeamId)
+                    return "You can only bet on the season's hosted team.";
+            }
             return null;
         }
 
@@ -353,13 +389,16 @@ public class BetService : IBetService
         {
             BetType.TeamWin        => OddsBetType.TeamWin,
             BetType.TeamWinOrDraw  => OddsBetType.TeamWinOrDraw,
+            BetType.TeamDraw       => OddsBetType.Draw,
             BetType.UserGoal       => OddsBetType.UserGoal,
             BetType.UserPenalty    => OddsBetType.UserPenalty,
             BetType.UserPlusPoint  => OddsBetType.UserPlusPoint,
             BetType.UserMinusPoint => OddsBetType.UserMinusPoint,
             _ => OddsBetType.TeamWin
         };
-        var targetId = (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw) ? teamId : userId;
+        var targetId = (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw) ? teamId
+            : betType == BetType.TeamDraw ? (int?)null
+            : userId;
 
         return await _db.MatchOdds
             .FirstOrDefaultAsync(o => o.MatchId == matchId && o.BetType == oddsBetType && o.TargetId == targetId);
