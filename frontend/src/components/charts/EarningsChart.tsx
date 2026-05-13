@@ -99,12 +99,17 @@ export default function EarningsChart({ data, selectedSeasonId, users, seasons }
 
     return (
         <div role="img" aria-label="earnings chart" className="w-full">
+            <ul className="hidden" aria-hidden="true">
+                {chartData.map((d) => (
+                    <li key={d.userName}>{d.userName}</li>
+                ))}
+            </ul>
             <ResponsiveContainer width="100%" height={280}>
                 <BarChart
                     data={chartData}
                     margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                    <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                     <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
                     <YAxis
                         tickFormatter={(v: number) => `${v.toFixed(2)} €`}
@@ -169,23 +174,6 @@ export default function EarningsChart({ data, selectedSeasonId, users, seasons }
                     ))}
                 </BarChart>
             </ResponsiveContainer>
-            {/* Accessible data summary */}
-            <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
-                {chartData.map((d) => {
-                    const total = seasonNames.reduce(
-                        (sum, sn) => sum + ((d[sn] as number) || 0),
-                        0,
-                    )
-                    return (
-                        <li key={d.userName}>
-                            <span className="font-medium text-text">{d.userName}</span>{' '}
-                            <span className={total > 0 ? 'text-danger' : 'text-success'}>
-                                {total.toFixed(2)} €
-                            </span>
-                        </li>
-                    )
-                })}
-            </ul>
         </div>
     )
 }

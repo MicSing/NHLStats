@@ -12,7 +12,7 @@ import {
 import type { RosterPenalizedByUser } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
 
-const USER_COLORS = ['#ef4444', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#ec4899', '#22c55e', '#64748b']
+const USER_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#10B981', '#64748B', '#F97316']
 const TOP_N = 5
 
 interface Props {
@@ -87,7 +87,7 @@ export default function PenaltyLeadersChart({ data, hideLegend = false }: Props)
                             layout="vertical"
                             margin={{ top: 10, right: 30, left: 80, bottom: 5 }}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                            <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                             <XAxis type="number" allowDecimals={false} tick={{ fill: ct.tick, fontSize: 12 }} />
                             <YAxis
                                 dataKey="displayName"
@@ -125,15 +125,6 @@ export default function PenaltyLeadersChart({ data, hideLegend = false }: Props)
                             ))}
                         </BarChart>
                     </ResponsiveContainer>
-                    {/* Accessible data summary */}
-                    <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
-                        {visibleData.map((d) => (
-                            <li key={d.rosterPlayerId as number}>
-                                <span className="font-medium text-text">{d.displayName as string}</span>{' '}
-                                <span className="text-danger">{d.totalCount as number} pen</span>
-                            </li>
-                        ))}
-                    </ul>
                     {hasMore && (
                         <button
                             onClick={() => setShowAll((v) => !v)}

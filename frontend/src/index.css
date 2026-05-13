@@ -9,13 +9,13 @@
   --color-secondary-hover: #711e3b;
 
   /* Layout */
-  --color-bg: #0A0D11;
-  --color-surface: #141820;
-  --color-border: #2A3441;
+  --color-bg: #0F172A;
+  --color-surface: #1E293B;
+  --color-border: #334155;
 
   /* Text */
-  --color-text: #F3F4F6;
-  --color-text-muted: #A2AAAD;
+  --color-text: #F8FAFC;
+  --color-text-muted: #94A3B8;
 
   /* Status */
   --color-success: #2E935A;

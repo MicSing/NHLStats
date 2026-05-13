@@ -13,16 +13,16 @@ import { useChartTheme } from './useChartTheme'
 import { useTranslation } from 'react-i18next'
 
 const USER_COLORS = [
-    '#06b6d4', // cyan
-    '#f97316', // orange
-    '#a855f7', // purple
-    '#22c55e', // green
-    '#eab308', // yellow
-    '#ec4899', // pink
-    '#14b8a6', // teal
-    '#64748b', // slate
-    '#ef4444', // red
-    '#3b82f6', // blue
+    '#3B82F6', // blue
+    '#8B5CF6', // violet
+    '#F59E0B', // amber
+    '#EC4899', // pink
+    '#06B6D4', // cyan
+    '#10B981', // emerald
+    '#64748B', // slate
+    '#F97316', // orange
+    '#EF4444', // red
+    '#22C55E', // green
 ]
 
 type Mode = 'plus' | 'minus'
@@ -210,7 +210,7 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                     data={chartDataWithPrediction}
                     margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                    <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                     <XAxis
                         dataKey="label"
                         tick={{ fill: ct.tick, fontSize: 11 }}
@@ -259,17 +259,10 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                                         />
                                     )
                                 }
-                                return (
-                                    <circle
-                                        cx={cx}
-                                        cy={cy}
-                                        r={4}
-                                        fill={USER_COLORS[i % USER_COLORS.length]}
-                                        stroke="none"
-                                    />
-                                )
+                                // Regular dots hidden; only prediction dot shown
+                                return <g key={`dot-${cx}-${cy}`} />
                             }}
-                            activeDot={false}
+                            activeDot={{ r: 6 }}
                             connectNulls
                         />
                     ))}
@@ -280,29 +273,6 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
             <p className="text-text-muted text-xs text-center mt-1 italic">
                 {t('trendChart.predictionNote')}
             </p>
-
-            {/* Accessible data summary */}
-            <ul className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-text-muted">
-                {allUsers.map((user, i) => {
-                    const latestPeriod = data[data.length - 1]
-                    const latestMatch = latestPeriod?.users.find((u) => u.userId === user.userId)
-                    const latestValue = latestMatch ? getValue(latestMatch) : 0
-                    const predicted = predictionEntry[user.userName] as number
-                    return (
-                        <li key={user.userId}>
-                            <span
-                                className="inline-block w-2 h-2 rounded-full mr-1"
-                                style={{ backgroundColor: USER_COLORS[i % USER_COLORS.length] }}
-                            />
-                            <span className="font-medium text-text">{user.userName}</span>{' '}
-                            <span className={mode === 'plus' ? 'text-primary' : 'text-danger'}>
-                                {latestValue}
-                            </span>
-                            <span className="text-text-muted"> → {predicted}</span>
-                        </li>
-                    )
-                })}
-            </ul>
         </div>
     )
 }

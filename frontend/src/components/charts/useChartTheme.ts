@@ -6,12 +6,12 @@ export function useChartTheme() {
     const isDark = theme === 'dark'
 
     return {
-        grid: isDark ? '#374151' : '#D1D5DB',
-        tick: isDark ? '#9ca3af' : '#4B5563',
-        tooltipBg: isDark ? '#1f2937' : '#FFFFFF',
-        tooltipBorder: isDark ? '#374151' : '#E5E7EB',
-        tooltipText: isDark ? '#fff' : '#1A202C',
-        legendText: isDark ? '#9ca3af' : '#4B5563',
-        pieLabelText: isDark ? '#fff' : '#1A202C',
+        grid: isDark ? 'rgba(51, 65, 85, 0.4)' : '#E5E7EB',
+        tick: isDark ? '#94A3B8' : '#4B5563',
+        tooltipBg: isDark ? '#0F172A' : '#FFFFFF',
+        tooltipBorder: isDark ? '#334155' : '#E5E7EB',
+        tooltipText: isDark ? '#F8FAFC' : '#1A202C',
+        legendText: isDark ? '#94A3B8' : '#4B5563',
+        pieLabelText: isDark ? '#F8FAFC' : '#1A202C',
     }
 }
