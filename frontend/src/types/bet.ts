@@ -1,12 +1,15 @@
 export type BetStatus = 'Pending' | 'Won' | 'Lost' | 'Cancelled'
 export type LegStatus = BetStatus
-export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty'
+export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty' | 'TeamWinOrDraw'
 
 export interface TeamWinOddsDto {
     homeTeamId: number
     homeOdds: number
     awayTeamId: number
     awayOdds: number
+    drawOdds: number | null
+    home1XOdds: number | null
+    away1XOdds: number | null
 }
 
 export interface UserOddsDto {

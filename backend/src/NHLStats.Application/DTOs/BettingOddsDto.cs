@@ -4,7 +4,10 @@ public record TeamWinOddsDto(
     int HomeTeamId,
     decimal HomeOdds,
     int AwayTeamId,
-    decimal AwayOdds);
+    decimal AwayOdds,
+    decimal? DrawOdds,
+    decimal? Home1XOdds,
+    decimal? Away1XOdds);
 
 public record UserOddsDto(
     int UserId,

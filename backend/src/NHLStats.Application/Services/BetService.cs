@@ -34,7 +34,7 @@ public class BetService : IBetService
                 l.BetType,
                 l.UserId,
                 l.TeamId,
-                l.BetType == BetType.TeamWin ? l.Team?.Name : l.User?.Name,
+                (l.BetType == BetType.TeamWin || l.BetType == BetType.TeamWinOrDraw) ? l.Team?.Name : l.User?.Name,
                 l.Odds,
                 l.Status))
             .ToList();
@@ -103,6 +103,7 @@ public class BetService : IBetService
 
         var legsToInsert = new List<BetLeg>();
         decimal totalOdds = 1m;
+        var matchesWithTeamOutcomeLeg = new HashSet<int>();
 
         foreach (var legDto in dto.Legs)
         {
@@ -115,6 +116,12 @@ public class BetService : IBetService
 
             var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId);
             if (validationError != null) return (null, validationError);
+
+            if (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw)
+            {
+                if (!matchesWithTeamOutcomeLeg.Add(legDto.MatchId))
+                    return (null, $"Only one match-result bet (1, 1X) is allowed per match in a single ticket.");
+            }
 
             var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
             if (oddsRow == null)
@@ -129,7 +136,7 @@ public class BetService : IBetService
             {
                 MatchId = legDto.MatchId,
                 BetType = legDto.BetType,
-                UserId = legDto.BetType == BetType.TeamWin ? null : legDto.UserId,
+                UserId = (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw) ? null : legDto.UserId,
                 TeamId = legDto.TeamId,
                 Odds = lockedOdds,
                 Status = BetLegStatus.Pending
@@ -218,9 +225,19 @@ public class BetService : IBetService
             .ToListAsync();
         if (legs.Count == 0) return;
 
-        var winningTeamId = match.HomeScore > match.AwayScore ? match.HomeTeamId
+        bool matchCompleted = match.CompletionType != CompletionType.None
+                              && match.CompletionType != CompletionType.InProgress;
+
+        int? anyWinnerId = !matchCompleted ? null
+            : match.HomeScore > match.AwayScore ? match.HomeTeamId
             : match.AwayScore > match.HomeScore ? match.AwayTeamId
             : (int?)null;
+
+        int? regulationWinnerId = matchCompleted && match.CompletionType == CompletionType.RegularTime
+            ? anyWinnerId
+            : null;
+
+        bool isDraw = matchCompleted && match.HomeScore == match.AwayScore;
 
         var userMatchGoalIds = await _db.UserMatchGoals
             .Include(g => g.UserMatch)
@@ -243,9 +260,12 @@ public class BetService : IBetService
         {
             bool? won = leg.BetType switch
             {
-                BetType.TeamWin => winningTeamId.HasValue && leg.TeamId.HasValue
-                    ? leg.TeamId.Value == winningTeamId.Value
-                    : (bool?)null,
+                BetType.TeamWin => !matchCompleted || !leg.TeamId.HasValue
+                    ? (bool?)null
+                    : regulationWinnerId.HasValue && regulationWinnerId.Value == leg.TeamId.Value,
+                BetType.TeamWinOrDraw => !matchCompleted || !leg.TeamId.HasValue
+                    ? (bool?)null
+                    : (anyWinnerId.HasValue && anyWinnerId.Value == leg.TeamId.Value) || isDraw,
                 BetType.UserGoal => leg.UserId.HasValue
                     ? userMatchGoalIds.Contains(leg.UserId.Value)
                     : (bool?)null,
@@ -288,9 +308,9 @@ public class BetService : IBetService
 
     private async Task<string?> ValidateLegPayloadAsync(Match match, BetType betType, int? userId, int? teamId)
     {
-        if (betType == BetType.TeamWin)
+        if (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw)
         {
-            if (!teamId.HasValue) return "TeamId is required for TeamWin bet type.";
+            if (!teamId.HasValue) return "TeamId is required for team-based bet type.";
             if (teamId.Value != match.HomeTeamId && teamId.Value != match.AwayTeamId)
                 return "TeamId must be one of the match teams.";
             var season = await _db.Seasons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == match.SeasonId);
@@ -310,11 +330,12 @@ public class BetService : IBetService
         var oddsBetType = betType switch
         {
             BetType.TeamWin => OddsBetType.TeamWin,
+            BetType.TeamWinOrDraw => OddsBetType.TeamWinOrDraw,
             BetType.UserGoal => OddsBetType.UserGoal,
             BetType.UserPenalty => OddsBetType.UserPenalty,
             _ => OddsBetType.TeamWin
         };
-        var targetId = betType == BetType.TeamWin ? teamId : userId;
+        var targetId = (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw) ? teamId : userId;
 
         return await _db.MatchOdds
             .FirstOrDefaultAsync(o => o.MatchId == matchId && o.BetType == oddsBetType && o.TargetId == targetId);

@@ -130,9 +130,19 @@ export default function BettingPage() {
         void ensureOdds(id)
     }
 
+    const teamOutcomeTypes: ApiBetType[] = ['TeamWin', 'TeamWinOrDraw']
+
     const addLeg = (leg: Omit<DraftLeg, 'key'>) => {
         const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null)
-        setDraftLegs((prev) => (prev.some((l) => l.key === key) ? prev : [...prev, { ...leg, key }]))
+        if (draftLegs.some((l) => l.key === key)) return
+        if (
+            teamOutcomeTypes.includes(leg.betType) &&
+            draftLegs.some((l) => l.matchId === leg.matchId && teamOutcomeTypes.includes(l.betType))
+        ) {
+            error(t('betting.oneMatchResultPerMatch'))
+            return
+        }
+        setDraftLegs((prev) => [...prev, { ...leg, key }])
     }
 
     const removeLeg = (key: string) => {
@@ -277,6 +287,14 @@ export default function BettingPage() {
                             match={selectedMatch}
                             odds={selectedOdds}
                             currentUserId={userId}
+                            matchHasTeamOutcome={
+                                selectedMatchId != null &&
+                                draftLegs.some(
+                                    (l) =>
+                                        l.matchId === selectedMatchId &&
+                                        teamOutcomeTypes.includes(l.betType),
+                                )
+                            }
                             onAddLeg={addLeg}
                             t={t}
                         />
@@ -411,11 +429,12 @@ interface MarketsProps {
     match: FutureMatch | null
     odds: MatchOddsDto | null
     currentUserId: number | null
+    matchHasTeamOutcome: boolean
     onAddLeg: (leg: Omit<DraftLeg, 'key'>) => void
     t: (k: string, opts?: Record<string, unknown>) => string
 }
 
-function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProps) {
+function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAddLeg, t }: MarketsProps) {
     if (!match) {
         return (
             <section className="card p-4">
@@ -428,11 +447,16 @@ function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProp
     const isHostingAway = match.hostedTeamId === match.awayTeamId
     const homeOdds = odds?.teamWin?.homeOdds ?? null
     const awayOdds = odds?.teamWin?.awayOdds ?? null
+    const drawOdds = odds?.teamWin?.drawOdds ?? null
+    const home1XOdds = odds?.teamWin?.home1XOdds ?? null
+    const away1XOdds = odds?.teamWin?.away1XOdds ?? null
     const matchTitle = `${match.homeTeamName ?? '?'} vs ${match.awayTeamName ?? '?'}`
     const users = (match.userMatches ?? []).filter((u) => u.userId !== currentUserId)
 
     const homeLabel = `${t('betting.homeWin')} (${match.homeTeamName ?? '?'})`
     const awayLabel = `${t('betting.awayWin')} (${match.awayTeamName ?? '?'})`
+    const home1XLabel = `${t('betting.home1X')} (${match.homeTeamName ?? '?'})`
+    const away1XLabel = `${t('betting.away1X')} (${match.awayTeamName ?? '?'})`
 
     return (
         <section className="card p-4 space-y-4">
@@ -451,7 +475,7 @@ function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProp
                     label={t('betting.betOnHomeShort')}
                     subLabel={homeLabel}
                     odds={homeOdds}
-                    disabled={!isHostingHome || homeOdds == null}
+                    disabled={!isHostingHome || homeOdds == null || matchHasTeamOutcome}
                     onClick={() =>
                         homeOdds != null &&
                         onAddLeg({
@@ -468,7 +492,7 @@ function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProp
                 <OddsButton
                     label={t('betting.betOnDrawShort')}
                     subLabel={t('betting.drawNotSupported')}
-                    odds={null}
+                    odds={drawOdds}
                     disabled
                     onClick={() => undefined}
                 />
@@ -476,7 +500,7 @@ function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProp
                     label={t('betting.betOnAwayShort')}
                     subLabel={awayLabel}
                     odds={awayOdds}
-                    disabled={!isHostingAway || awayOdds == null}
+                    disabled={!isHostingAway || awayOdds == null || matchHasTeamOutcome}
                     onClick={() =>
                         awayOdds != null &&
                         onAddLeg({
@@ -487,6 +511,46 @@ function MarketsSection({ match, odds, currentUserId, onAddLeg, t }: MarketsProp
                             teamId: match.awayTeamId,
                             label: awayLabel,
                             odds: awayOdds,
+                        })
+                    }
+                />
+            </div>
+
+            {/* 1X / 2X (double chance) */}
+            <div className="grid grid-cols-2 gap-2">
+                <OddsButton
+                    label={t('betting.betOnHome1XShort')}
+                    subLabel={home1XLabel}
+                    odds={home1XOdds}
+                    disabled={!isHostingHome || home1XOdds == null || matchHasTeamOutcome}
+                    onClick={() =>
+                        home1XOdds != null &&
+                        onAddLeg({
+                            matchId: match.id,
+                            matchNumber: match.matchNumber,
+                            betType: 'TeamWinOrDraw',
+                            userId: null,
+                            teamId: match.homeTeamId,
+                            label: home1XLabel,
+                            odds: home1XOdds,
+                        })
+                    }
+                />
+                <OddsButton
+                    label={t('betting.betOnAway1XShort')}
+                    subLabel={away1XLabel}
+                    odds={away1XOdds}
+                    disabled={!isHostingAway || away1XOdds == null || matchHasTeamOutcome}
+                    onClick={() =>
+                        away1XOdds != null &&
+                        onAddLeg({
+                            matchId: match.id,
+                            matchNumber: match.matchNumber,
+                            betType: 'TeamWinOrDraw',
+                            userId: null,
+                            teamId: match.awayTeamId,
+                            label: away1XLabel,
+                            odds: away1XOdds,
                         })
                     }
                 />

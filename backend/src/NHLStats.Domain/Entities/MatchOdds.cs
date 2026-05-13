@@ -4,7 +4,9 @@ public enum OddsBetType
 {
     TeamWin = 0,
     UserGoal = 1,
-    UserPenalty = 2
+    UserPenalty = 2,
+    Draw = 3,
+    TeamWinOrDraw = 4
 }
 
 public class MatchOdds

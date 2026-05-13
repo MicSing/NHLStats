@@ -31,11 +31,22 @@ public class BettingOddsService : IBettingOddsService
         var oddsToUpsert = new List<MatchOdds>();
 
         // ── Team Win Odds ───────────────────────────────────────────────────────
-        var homeP = await ComputeTeamWinProbabilityAsync(match.HomeTeamId, match.SeasonId);
-        var awayP = await ComputeTeamWinProbabilityAsync(match.AwayTeamId, match.SeasonId);
+        var teamWinProbs = await ComputeTeamWinJointAsync(match);
+        if (teamWinProbs is { } probs)
+        {
+            // 1 / 2 narrowed to regulation-time wins; 1X / 2X cover any-time wins + draw.
+            var regulationShare = await ComputeSeasonRegulationShareAsync(match.SeasonId);
+            decimal p1  = probs.PHosted   * regulationShare;
+            decimal p2  = probs.POpponent * regulationShare;
+            decimal p1X = probs.PHosted + probs.PDraw;
+            decimal p2X = probs.POpponent + probs.PDraw;
 
-        oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = match.HomeTeamId, Probability = homeP, Odds = ComputeOdds(homeP), ComputedOn = now });
-        oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = match.AwayTeamId, Probability = awayP, Odds = ComputeOdds(awayP), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.HostedTeamId, Probability = p1, Odds = ComputeOdds(p1), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.OpponentTeamId, Probability = p2, Odds = ComputeOdds(p2), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.Draw, TargetId = null, Probability = probs.PDraw, Odds = ComputeOdds(probs.PDraw), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.HostedTeamId, Probability = p1X, Odds = ComputeOdds(p1X), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.OpponentTeamId, Probability = p2X, Odds = ComputeOdds(p2X), ComputedOn = now });
+        }
 
         // ── User Goal/Penalty Odds ──────────────────────────────────────────────
         var activeUserIds = await _db.SeasonUsers
@@ -90,8 +101,16 @@ public class BettingOddsService : IBettingOddsService
         {
             var homeRow = teamWinRows.FirstOrDefault(r => r.TargetId == match.HomeTeamId);
             var awayRow = teamWinRows.FirstOrDefault(r => r.TargetId == match.AwayTeamId);
+            var drawRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.Draw);
+            var home1XRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == match.HomeTeamId);
+            var away1XRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == match.AwayTeamId);
             if (homeRow != null && awayRow != null)
-                teamWin = new TeamWinOddsDto(match.HomeTeamId, homeRow.Odds, match.AwayTeamId, awayRow.Odds);
+                teamWin = new TeamWinOddsDto(
+                    match.HomeTeamId, homeRow.Odds,
+                    match.AwayTeamId, awayRow.Odds,
+                    drawRow?.Odds,
+                    home1XRow?.Odds,
+                    away1XRow?.Odds);
         }
 
         var userIds = matchOddsRows.Select(o => o.TargetId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
@@ -113,63 +132,195 @@ public class BettingOddsService : IBettingOddsService
 
     // ── Probability helpers ─────────────────────────────────────────────────────
 
-    // With prev season data:    P = 0.10*Pprev + 0.65*Pcurr + 0.25*Plast10
-    // Without prev season data: P = 0.75*Pcurr  + 0.25*Plast10
-    // Zero samples → 0 (no inflation), clamp final to [0.01, 0.99]
+    // Composite TeamWin model (hosted vs opponent, current-season scope):
+    //   p_home_raw = 0.30*Pseason + 0.25*Pl10 + 0.25*Ph2h + 0.20*PgoalFactor
+    //   p_away_raw = 0.30*Pseason + 0.25*Pl10 + 0.25*Ph2h + 0.20*PgoalFactor
+    //   p_draw_raw = season_draws / season_games        (computed but not persisted)
+    // Then normalize the three so they sum to 1; odds = AppMargin / p_final.
 
-    private static decimal BlendProbability(decimal pprev, bool hasPrev, decimal pcurr, decimal plast10)
+    // User goal/penalty model retains the legacy windowed blend:
+    //   With prev season data:    P = 0.10*Pprev + 0.65*Pcurr + 0.25*Plast10
+    //   Without prev season data: P = 0.75*Pcurr  + 0.25*Plast10
+
+    private static decimal BlendUserEventProbability(decimal pprev, bool hasPrev, decimal pcurr, decimal plast10)
         => hasPrev
             ? 0.10m * pprev + 0.65m * pcurr + 0.25m * plast10
             : 0.75m * pcurr + 0.25m * plast10;
 
-    private async Task<decimal> ComputeTeamWinProbabilityAsync(int teamId, int currentSeasonId)
+    private async Task<decimal> ComputeSeasonRegulationShareAsync(int seasonId)
     {
-        // Plast10: last 10 completed matches across any season
-        var last10 = await _db.Matches
-            .Where(m => (m.HomeTeamId == teamId || m.AwayTeamId == teamId)
-                        && m.CompletionType != CompletionType.None)
-            .OrderByDescending(m => m.MatchDate)
-            .Take(10)
-            .ToListAsync();
+        var share = await RegulationShareForSeasonAsync(seasonId);
+        if (share is not null) return share.Value;
 
-        decimal plast10 = last10.Count == 0 ? 0m
-            : (decimal)last10.Count(m => IsWinner(m, teamId)) / last10.Count;
-
-        // Pcurr: current season win rate
-        var currMatches = await _db.Matches
-            .Where(m => m.SeasonId == currentSeasonId
-                        && (m.HomeTeamId == teamId || m.AwayTeamId == teamId)
-                        && m.CompletionType != CompletionType.None)
-            .ToListAsync();
-
-        decimal pcurr = currMatches.Count == 0 ? 0m
-            : (decimal)currMatches.Count(m => IsWinner(m, teamId)) / currMatches.Count;
-
-        // Pprev: previous season win rate (highest seasonId < currentSeasonId)
         var prevSeasonId = await _db.Matches
-            .Where(m => m.SeasonId < currentSeasonId
-                        && (m.HomeTeamId == teamId || m.AwayTeamId == teamId))
+            .Where(m => m.SeasonId < seasonId
+                        && (m.CompletionType == CompletionType.RegularTime
+                            || m.CompletionType == CompletionType.Overtime
+                            || m.CompletionType == CompletionType.Shootout))
             .OrderByDescending(m => m.SeasonId)
             .Select(m => (int?)m.SeasonId)
             .FirstOrDefaultAsync();
 
-        decimal pprev = 0m;
-        bool hasPrev = false;
-        if (prevSeasonId.HasValue)
+        if (prevSeasonId is null) return 0.75m;
+        var prevShare = await RegulationShareForSeasonAsync(prevSeasonId.Value);
+        return prevShare ?? 0.75m;
+    }
+
+    private async Task<decimal?> RegulationShareForSeasonAsync(int seasonId)
+    {
+        var completionTypes = await _db.Matches
+            .Where(m => m.SeasonId == seasonId)
+            .Select(m => m.CompletionType)
+            .ToListAsync();
+
+        int regular = completionTypes.Count(c => c == CompletionType.RegularTime);
+        int otherCompleted = completionTypes.Count(c => c == CompletionType.Overtime || c == CompletionType.Shootout);
+        int total = regular + otherCompleted;
+        if (total == 0) return null;
+        return (decimal)regular / total;
+    }
+
+    private static decimal GetGoalFactor(decimal agd)
+    {
+        if (agd >= 3m) return 0.90m;
+        if (agd >= 1m) return 0.70m;
+        if (agd > -1m) return 0.50m;
+        if (agd <= -3m) return 0.10m;
+        return 0.30m;
+    }
+
+    private record HostedSeasonStats(
+        int Games, int Wins, int Losses, int Draws,
+        int L10Games, int L10Wins, int L10Losses,
+        int H2hGames, int H2hWins, int H2hDraws, int H2hGoalsFor, int H2hGoalsAgainst);
+
+    private static readonly HostedSeasonStats EmptyStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    public readonly record struct TeamWinProbabilities(int HostedTeamId, int OpponentTeamId, decimal PHosted, decimal POpponent, decimal PDraw);
+
+    private async Task<TeamWinProbabilities?> ComputeTeamWinJointAsync(Match match)
+    {
+        var season = await _db.Seasons.AsNoTracking().FirstOrDefaultAsync(s => s.Id == match.SeasonId);
+        if (season?.HostedTeamId is not int hostedId) return null;
+        if (hostedId != match.HomeTeamId && hostedId != match.AwayTeamId) return null;
+        var opponentId = hostedId == match.HomeTeamId ? match.AwayTeamId : match.HomeTeamId;
+
+        var stats = await LoadHostedSeasonStatsAsync(hostedId, opponentId, match.SeasonId);
+        if (stats.Games == 0)
         {
-            var prevMatches = await _db.Matches
-                .Where(m => m.SeasonId == prevSeasonId.Value
-                            && (m.HomeTeamId == teamId || m.AwayTeamId == teamId)
-                            && m.CompletionType != CompletionType.None)
-                .ToListAsync();
-            if (prevMatches.Count > 0)
+            var prevSeasonId = await _db.Matches
+                .Where(m => m.SeasonId < match.SeasonId
+                            && (m.HomeTeamId == hostedId || m.AwayTeamId == hostedId)
+                            && m.CompletionType != CompletionType.None
+                            && m.CompletionType != CompletionType.InProgress)
+                .OrderByDescending(m => m.SeasonId)
+                .Select(m => (int?)m.SeasonId)
+                .FirstOrDefaultAsync();
+            if (prevSeasonId is null) return null;
+            stats = await LoadHostedSeasonStatsAsync(hostedId, opponentId, prevSeasonId.Value);
+            if (stats.Games == 0) return null;
+        }
+
+        decimal games = stats.Games;
+        decimal pDrawRaw = stats.Draws / games;
+        decimal pHomeSeason = stats.Wins / games;
+        decimal pAwaySeason = stats.Losses / games;
+
+        decimal pHomeL10, pAwayL10;
+        if (stats.L10Games == 0)
+        {
+            pHomeL10 = pHomeSeason;
+            pAwayL10 = pAwaySeason;
+        }
+        else
+        {
+            decimal l10 = stats.L10Games;
+            pHomeL10 = stats.L10Wins / l10;
+            pAwayL10 = stats.L10Losses / l10;
+        }
+
+        decimal pHomeH2h, pAwayH2h, pHomeGoals, pAwayGoals;
+        if (stats.H2hGames == 0)
+        {
+            pHomeH2h = pHomeSeason;
+            pAwayH2h = pAwaySeason;
+            pHomeGoals = 0.50m;
+            pAwayGoals = 0.50m;
+        }
+        else
+        {
+            decimal h2h = stats.H2hGames;
+            pHomeH2h = stats.H2hWins / h2h;
+            pAwayH2h = (stats.H2hGames - stats.H2hWins - stats.H2hDraws) / h2h;
+            decimal agd = (stats.H2hGoalsFor - stats.H2hGoalsAgainst) / h2h;
+            pHomeGoals = GetGoalFactor(agd);
+            pAwayGoals = GetGoalFactor(-agd);
+        }
+
+        decimal pHomeRaw = 0.55m * pHomeSeason + 0.15m * pHomeL10 + 0.15m * pHomeH2h + 0.15m * pHomeGoals;
+        decimal pAwayRaw = 0.55m * pAwaySeason + 0.15m * pAwayL10 + 0.15m * pAwayH2h + 0.15m * pAwayGoals;
+
+        decimal total = pHomeRaw + pDrawRaw + pAwayRaw;
+        if (total <= 0m) return null;
+
+        return new TeamWinProbabilities(
+            HostedTeamId: hostedId,
+            OpponentTeamId: opponentId,
+            PHosted: pHomeRaw / total,
+            POpponent: pAwayRaw / total,
+            PDraw: pDrawRaw / total);
+    }
+
+    private async Task<HostedSeasonStats> LoadHostedSeasonStatsAsync(int hostedId, int opponentId, int seasonId)
+    {
+        var matches = await _db.Matches
+            .Where(m => m.SeasonId == seasonId
+                        && (m.HomeTeamId == hostedId || m.AwayTeamId == hostedId)
+                        && m.CompletionType != CompletionType.None
+                        && m.CompletionType != CompletionType.InProgress)
+            .OrderByDescending(m => m.MatchDate)
+            .ToListAsync();
+
+        if (matches.Count == 0) return EmptyStats;
+
+        int games = 0, wins = 0, losses = 0, draws = 0;
+        int h2hGames = 0, h2hWins = 0, h2hDraws = 0, h2hGoalsFor = 0, h2hGoalsAgainst = 0;
+
+        foreach (var m in matches)
+        {
+            games++;
+            bool isDraw = m.CompletionType != CompletionType.RegularTime || m.HomeScore == m.AwayScore;
+            int hostedScore = m.HomeTeamId == hostedId ? m.HomeScore : m.AwayScore;
+            int otherScore = m.HomeTeamId == hostedId ? m.AwayScore : m.HomeScore;
+            int otherTeamId = m.HomeTeamId == hostedId ? m.AwayTeamId : m.HomeTeamId;
+
+            if (isDraw) draws++;
+            else if (IsWinner(m, hostedId)) wins++;
+            else losses++;
+
+            if (otherTeamId == opponentId)
             {
-                pprev = (decimal)prevMatches.Count(m => IsWinner(m, teamId)) / prevMatches.Count;
-                hasPrev = true;
+                h2hGames++;
+                if (isDraw) h2hDraws++;
+                else if (IsWinner(m, hostedId)) h2hWins++;
+                h2hGoalsFor += hostedScore;
+                h2hGoalsAgainst += otherScore;
             }
         }
 
-        return BlendProbability(pprev, hasPrev, pcurr, plast10);
+        int l10Games = 0, l10Wins = 0, l10Losses = 0;
+        foreach (var m in matches.Take(10))
+        {
+            l10Games++;
+            if (m.HomeScore == m.AwayScore) continue;
+            if (IsWinner(m, hostedId)) l10Wins++;
+            else l10Losses++;
+        }
+
+        return new HostedSeasonStats(
+            games, wins, losses, draws,
+            l10Games, l10Wins, l10Losses,
+            h2hGames, h2hWins, h2hDraws, h2hGoalsFor, h2hGoalsAgainst);
     }
 
     private async Task<decimal> ComputeUserEventProbabilityAsync(int userId, int matchId, bool isGoal)
@@ -242,7 +393,7 @@ public class BettingOddsService : IBettingOddsService
             }
         }
 
-        return BlendProbability(pprev, hasPrev, pcurr, plast10);
+        return BlendUserEventProbability(pprev, hasPrev, pcurr, plast10);
     }
 
     private async Task<int> CountUserMatchesWithGoalAsync(List<int> userMatchIds)
