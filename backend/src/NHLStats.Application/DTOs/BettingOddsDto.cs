@@ -18,4 +18,6 @@ public record MatchOddsDto(
     TeamWinOddsDto? TeamWin,
     IReadOnlyList<UserOddsDto> UserGoal,
     IReadOnlyList<UserOddsDto> UserPenalty,
+    IReadOnlyList<UserOddsDto> UserPlusPoint,
+    IReadOnlyList<UserOddsDto> UserMinusPoint,
     DateTime ComputedOn);

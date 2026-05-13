@@ -557,7 +557,7 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
             </div>
 
             {/* User markets */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
                         {t('betting.goals')}
@@ -615,6 +615,72 @@ function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAdd
                                                 userId: u.userId,
                                                 teamId: null,
                                                 label: `${t('betting.penalties')}: ${u.userName ?? '?'}`,
+                                                odds: o,
+                                            })
+                                        }
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                        {t('betting.plusPoints')}
+                    </h3>
+                    {users.length === 0 ? (
+                        <p className="text-xs text-text-muted">{t('betting.noUsers')}</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {users.map((u) => {
+                                const o = odds?.userPlusPoint.find((x) => x.userId === u.userId)?.odds ?? null
+                                return (
+                                    <PlayerMarketRow
+                                        key={`plus-${u.userId}`}
+                                        name={u.userName ?? t('betting.unknownUser')}
+                                        odds={o}
+                                        onAdd={() =>
+                                            o != null &&
+                                            onAddLeg({
+                                                matchId: match.id,
+                                                matchNumber: match.matchNumber,
+                                                betType: 'UserPlusPoint',
+                                                userId: u.userId,
+                                                teamId: null,
+                                                label: `${t('betting.plusPoints')}: ${u.userName ?? '?'}`,
+                                                odds: o,
+                                            })
+                                        }
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                        {t('betting.minusPoints')}
+                    </h3>
+                    {users.length === 0 ? (
+                        <p className="text-xs text-text-muted">{t('betting.noUsers')}</p>
+                    ) : (
+                        <div className="space-y-1">
+                            {users.map((u) => {
+                                const o = odds?.userMinusPoint.find((x) => x.userId === u.userId)?.odds ?? null
+                                return (
+                                    <PlayerMarketRow
+                                        key={`minus-${u.userId}`}
+                                        name={u.userName ?? t('betting.unknownUser')}
+                                        odds={o}
+                                        onAdd={() =>
+                                            o != null &&
+                                            onAddLeg({
+                                                matchId: match.id,
+                                                matchNumber: match.matchNumber,
+                                                betType: 'UserMinusPoint',
+                                                userId: u.userId,
+                                                teamId: null,
+                                                label: `${t('betting.minusPoints')}: ${u.userName ?? '?'}`,
                                                 odds: o,
                                             })
                                         }

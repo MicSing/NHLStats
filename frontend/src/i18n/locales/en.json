@@ -371,6 +371,8 @@
         "selectMatchHint": "Select a match to see markets.",
         "goals": "Goals",
         "penalties": "Penalties",
+        "plusPoints": "Plus Points",
+        "minusPoints": "Minus Points",
         "ticketDraft": "Ticket Draft",
         "draftEmpty": "Click a market to add it to your ticket.",
         "totalOdds": "Total Odds",

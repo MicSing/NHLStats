@@ -371,6 +371,8 @@
         "selectMatchHint": "Vyber zápas pre zobrazenie trhov.",
         "goals": "Góly",
         "penalties": "Tresty",
+        "plusPoints": "+ Body",
+        "minusPoints": "− Body",
         "ticketDraft": "Návrh Tiketu",
         "draftEmpty": "Klikni na trh, aby si ho pridal do tiketu.",
         "totalOdds": "Celkový Kurz",

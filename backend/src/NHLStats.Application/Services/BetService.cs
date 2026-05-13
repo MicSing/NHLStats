@@ -253,6 +253,22 @@ public class BetService : IBetService
             .Distinct()
             .ToListAsync();
 
+        var userMatchPlusPointIds = await _db.UserMatchPoints
+            .Include(p => p.UserMatch)
+            .Include(p => p.PointReason)
+            .Where(p => p.UserMatch!.MatchId == matchId && p.PointReason!.PointType == PointType.Positive)
+            .Select(p => p.UserMatch!.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        var userMatchMinusPointIds = await _db.UserMatchPoints
+            .Include(p => p.UserMatch)
+            .Include(p => p.PointReason)
+            .Where(p => p.UserMatch!.MatchId == matchId && p.PointReason!.PointType == PointType.Negative)
+            .Select(p => p.UserMatch!.UserId)
+            .Distinct()
+            .ToListAsync();
+
         var now = DateTime.UtcNow;
         var affectedBets = new HashSet<Bet>();
 
@@ -271,6 +287,12 @@ public class BetService : IBetService
                     : (bool?)null,
                 BetType.UserPenalty => leg.UserId.HasValue
                     ? userMatchPenaltyIds.Contains(leg.UserId.Value)
+                    : (bool?)null,
+                BetType.UserPlusPoint => leg.UserId.HasValue
+                    ? userMatchPlusPointIds.Contains(leg.UserId.Value)
+                    : (bool?)null,
+                BetType.UserMinusPoint => leg.UserId.HasValue
+                    ? userMatchMinusPointIds.Contains(leg.UserId.Value)
                     : (bool?)null,
                 _ => null
             };
@@ -329,10 +351,12 @@ public class BetService : IBetService
     {
         var oddsBetType = betType switch
         {
-            BetType.TeamWin => OddsBetType.TeamWin,
-            BetType.TeamWinOrDraw => OddsBetType.TeamWinOrDraw,
-            BetType.UserGoal => OddsBetType.UserGoal,
-            BetType.UserPenalty => OddsBetType.UserPenalty,
+            BetType.TeamWin        => OddsBetType.TeamWin,
+            BetType.TeamWinOrDraw  => OddsBetType.TeamWinOrDraw,
+            BetType.UserGoal       => OddsBetType.UserGoal,
+            BetType.UserPenalty    => OddsBetType.UserPenalty,
+            BetType.UserPlusPoint  => OddsBetType.UserPlusPoint,
+            BetType.UserMinusPoint => OddsBetType.UserMinusPoint,
             _ => OddsBetType.TeamWin
         };
         var targetId = (betType == BetType.TeamWin || betType == BetType.TeamWinOrDraw) ? teamId : userId;

@@ -1,6 +1,6 @@
 export type BetStatus = 'Pending' | 'Won' | 'Lost' | 'Cancelled'
 export type LegStatus = BetStatus
-export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty' | 'TeamWinOrDraw'
+export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty' | 'TeamWinOrDraw' | 'UserPlusPoint' | 'UserMinusPoint'
 
 export interface TeamWinOddsDto {
     homeTeamId: number
@@ -22,6 +22,8 @@ export interface MatchOddsDto {
     teamWin: TeamWinOddsDto | null
     userGoal: UserOddsDto[]
     userPenalty: UserOddsDto[]
+    userPlusPoint: UserOddsDto[]
+    userMinusPoint: UserOddsDto[]
     computedOn: string
 }
 
