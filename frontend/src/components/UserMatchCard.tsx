@@ -35,6 +35,8 @@ interface Props {
     allUserMatches: UserMatch[]
     isAuth: boolean
     onChanged: () => void
+    onGoalAdded?: () => Promise<void>
+    onNegativePointAdded?: (pointReasonId: number) => Promise<void>
 }
 
 export default function UserMatchCard({
@@ -47,6 +49,8 @@ export default function UserMatchCard({
     allUserMatches,
     isAuth,
     onChanged,
+    onGoalAdded,
+    onNegativePointAdded,
 }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
@@ -89,6 +93,10 @@ export default function UserMatchCard({
             pointReasonId: reasonId,
             count,
         } as CreateUserMatchPointDto)
+        const reason = pointReasons.find((r) => r.id === reasonId)
+        if (reason?.pointType === 'Negative') {
+            await onNegativePointAdded?.(reasonId as number)
+        }
         onChanged()
     }
 
@@ -106,6 +114,7 @@ export default function UserMatchCard({
             count: goalForm.count,
             goalType,
         } as CreateUserMatchGoalDto)
+        await onGoalAdded?.()
         onChanged()
     }
 
@@ -135,6 +144,7 @@ export default function UserMatchCard({
                 count: 1,
                 goalType: goalModal.goalType,
             } as CreateUserMatchGoalDto)
+            await onGoalAdded?.()
             setGoalModal(null)
             onChanged()
         } catch {

@@ -1,14 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Match, UpdateMatchDto } from '../types/match'
 import { CompletionType } from '../types/match'
 import apiClient from '../services/apiClient'
 import { useTranslation } from 'react-i18next'
+
+function isFinishedType(t: CompletionType): boolean {
+    return t === CompletionType.RegularTime || t === CompletionType.Overtime || t === CompletionType.Shootout
+}
 
 interface Props {
     seasonId: string
     match: Match
     isAuth: boolean
     onSaved: (updated: Match) => void
+    onMatchFinished?: (homeScore: number, awayScore: number) => void
 }
 
 function CompletionBadge({ type }: { type: CompletionType }) {
@@ -52,7 +57,7 @@ function normalizeCompletionType(value: CompletionType | string | null | undefin
     }
 }
 
-export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: Props) {
+export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, onMatchFinished }: Props) {
     const { t } = useTranslation()
     const [homeScore, setHomeScore] = useState(match.homeScore)
     const [awayScore, setAwayScore] = useState(match.awayScore)
@@ -63,28 +68,53 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
         match.matchDate ? match.matchDate.split('T')[0] : '',
     )
     const [saving, setSaving] = useState(false)
+    const lastSavedCompletionTypeRef = useRef(normalizeCompletionType(match.completionType))
+    const isFirstRender = useRef(true)
 
-    const handleSave = async () => {
+    const handleSave = async (scores: { home: number; away: number }, ct: CompletionType, date: string) => {
         setSaving(true)
         try {
-            const normalizedMatchDate =
-                completionType === CompletionType.None ? null : matchDate || null
-
+            const normalizedMatchDate = ct === CompletionType.None ? null : date || null
             const dto: UpdateMatchDto = {
                 homeTeamId: match.homeTeamId,
                 awayTeamId: match.awayTeamId,
-                homeScore,
-                awayScore,
-                completionType,
+                homeScore: scores.home,
+                awayScore: scores.away,
+                completionType: ct,
                 matchDate: normalizedMatchDate,
             }
             const updated = await apiClient.put<Match>(
                 `/api/seasons/${seasonId}/matches/${match.id}`,
                 dto,
             )
+            const wasFinished = isFinishedType(lastSavedCompletionTypeRef.current)
+            const nowFinished = isFinishedType(ct)
+            lastSavedCompletionTypeRef.current = ct
             onSaved(updated)
+            if (!wasFinished && nowFinished) {
+                onMatchFinished?.(scores.home, scores.away)
+            }
         } finally {
             setSaving(false)
+        }
+    }
+
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
+        if (!isAuth) return
+        const timer = setTimeout(() => {
+            void handleSave({ home: homeScore, away: awayScore }, completionType, matchDate)
+        }, 600)
+        return () => clearTimeout(timer)
+    }, [homeScore, awayScore, completionType, matchDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleCompletionTypeChange = (newType: CompletionType) => {
+        setCompletionType(newType)
+        if (newType === CompletionType.InProgress) {
+            setMatchDate(new Date().toISOString().split('T')[0])
         }
     }
 
@@ -121,7 +151,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                 <select
                                     aria-label="completion type"
                                     value={completionType}
-                                    onChange={(e) => setCompletionType(Number(e.target.value) as CompletionType)}
+                                    onChange={(e) => handleCompletionTypeChange(Number(e.target.value) as CompletionType)}
                                     className="input text-sm py-1"
                                 >
                                     <option value={CompletionType.None}>{t('match.notPlayed')}</option>
@@ -138,13 +168,11 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                     className="input text-sm py-1"
                                 />
                             </div>
-                            <button
-                                onClick={() => void handleSave()}
-                                disabled={saving}
-                                className="btn-primary disabled:opacity-50 px-4 py-1 text-sm"
-                            >
-                                {saving ? t('common.saving') : t('common.save')}
-                            </button>
+                            {saving && (
+                                <span className="text-xs text-text-muted animate-pulse">
+                                    {t('common.saving')}
+                                </span>
+                            )}
                         </div>
                     ) : (
                         <>
