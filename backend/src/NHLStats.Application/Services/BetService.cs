@@ -117,10 +117,10 @@ public class BetService : IBetService
 
     private static BetLegDto AnonymizeLeg(BetLegDto leg) => new BetLegDto(
         leg.Id,
-        MatchId: 0,
-        MatchNumber: 0,
-        HomeTeamName: null,
-        AwayTeamName: null,
+        MatchId: leg.MatchId,
+        MatchNumber: leg.MatchNumber,
+        HomeTeamName: leg.HomeTeamName,
+        AwayTeamName: leg.AwayTeamName,
         BetType: default,
         UserId: null,
         TeamId: null,
@@ -152,7 +152,7 @@ public class BetService : IBetService
             var dto = ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy));
             if (b.CreatedBy == currentLoginId) return dto;
             var anonymizedLegs = dto.Legs
-                .Select(l => l.EvaluatedOn == null ? AnonymizeLeg(l) : l)
+                .Select(l => l.EvaluatedOn == null && b.Status == BetStatus.Pending ? AnonymizeLeg(l) : l)
                 .ToList();
             return dto with { Legs = anonymizedLegs };
         }).ToList();

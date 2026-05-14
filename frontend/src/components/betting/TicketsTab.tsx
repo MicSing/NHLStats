@@ -7,7 +7,7 @@ import { bettingService } from '../../services/bettingService'
 import { cacheService } from '../../services/cacheService'
 import Pagination from '../Pagination'
 import LoadingSpinner from '../LoadingSpinner'
-import type { BetDto, BetLegDto, BetStatus, ApiBetType } from '../../types/bet'
+import type { BetDto, BetLegDto, BetStatus, LegStatus, ApiBetType } from '../../types/bet'
 import type { Season } from '../../types/season'
 import type { User } from '../../types/user'
 
@@ -33,6 +33,13 @@ const STATUS_BORDER: Record<BetStatus, string> = {
     Won: 'border-l-green-500',
     Lost: 'border-l-red-500',
     Cancelled: 'border-l-gray-600',
+}
+
+const LEG_STATUS_DOT: Record<LegStatus, string> = {
+    Pending:   'bg-blue-400',
+    Won:       'bg-green-500',
+    Lost:      'bg-red-500',
+    Cancelled: 'bg-gray-500',
 }
 
 function getLegDisplay(leg: BetLegDto): { market: string; marketColor: string; selection: string } {
@@ -145,7 +152,6 @@ export default function TicketsTab() {
     const filtered = useMemo(() => {
         if (!bets) return []
         return bets.filter(b => {
-            if (b.status === 'Pending' && b.createdBy !== currentLoginId) return false
             if (filterId && !b.shortId.toLowerCase().includes(filterId.toLowerCase())) return false
             if (filterUserId) {
                 const user = users.find(u => String(u.id) === filterUserId)
@@ -482,6 +488,7 @@ export default function TicketsTab() {
                         const avatarText = bet.createdByName.slice(0, 2).toUpperCase()
                         const winAmount = bet.status === 'Won' && bet.wonAmount != null ? bet.wonAmount : win
                         const winClass = bet.status === 'Won' ? 'text-green-400' : bet.status === 'Lost' ? 'text-text-muted line-through' : 'text-text'
+                        const isAnon = bet.legs.some(l => l.isAnonymized)
                         return (
                             <div key={bet.id} className={`card border-l-2 ${STATUS_BORDER[bet.status]} hover:shadow-card-hover transition-shadow`}>
                                 {/* Header row */}
@@ -506,7 +513,11 @@ export default function TicketsTab() {
                                     <div className="text-right hidden sm:block">
                                         <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">Stake / Odds</div>
                                         <div className="font-black text-text text-sm whitespace-nowrap">
-                                            {bet.stake.toFixed(2)}€ <span className="text-text-muted font-normal text-xs">×</span> {bet.totalOdds.toFixed(2)}
+                                            {bet.stake.toFixed(2)}€ <span className="text-text-muted font-normal text-xs">×</span>{' '}
+                                            {isAnon
+                                                ? <span className="blur-sm select-none">?.??</span>
+                                                : bet.totalOdds.toFixed(2)
+                                            }
                                         </div>
                                     </div>
 
@@ -514,7 +525,12 @@ export default function TicketsTab() {
                                         <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">
                                             {bet.status === 'Won' ? 'Won' : 'Win'}
                                         </div>
-                                        <div className={`font-black text-sm ${winClass}`}>{winAmount.toFixed(2)}€</div>
+                                        <div className={`font-black text-sm ${winClass}`}>
+                                            {isAnon
+                                                ? <span className="blur-sm select-none">?.??€</span>
+                                                : `${winAmount.toFixed(2)}€`
+                                            }
+                                        </div>
                                     </div>
 
                                     <div className="ml-5 shrink-0">
@@ -530,13 +546,15 @@ export default function TicketsTab() {
                                         if (leg.isAnonymized) {
                                             return (
                                                 <div key={leg.id} className="bg-bg border border-border/50 rounded-lg px-3 py-2.5 relative overflow-hidden">
-                                                    <div className="blur-sm select-none text-transparent text-[9px] uppercase font-bold tracking-wider mb-1.5">
-                                                        Hidden match name
+                                                    <div className="text-[9px] text-text-muted uppercase font-bold tracking-wider mb-1.5">
+                                                        {leg.homeTeamName && leg.awayTeamName
+                                                            ? `${leg.homeTeamName} vs ${leg.awayTeamName}`
+                                                            : `Match #${leg.matchNumber}`}
                                                     </div>
                                                     <div className="blur-sm select-none text-transparent text-xs">
                                                         Hidden bet details here
                                                     </div>
-                                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-text-muted font-semibold">
+                                                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center text-[10px] text-text-muted font-semibold pb-1.5">
                                                         🔒 Revealed on evaluation
                                                     </div>
                                                 </div>
@@ -548,8 +566,14 @@ export default function TicketsTab() {
                                         const { market, marketColor, selection } = getLegDisplay(leg)
                                         return (
                                             <div key={leg.id} className="bg-bg border border-border rounded-lg px-3 py-2.5">
-                                                <div className="text-[9px] text-text-muted uppercase font-bold tracking-wider mb-1.5 truncate">
-                                                    {matchName}
+                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                    <div className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">
+                                                        {matchName}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <span className="text-[10px] text-text-muted font-mono">{leg.odds.toFixed(2)}</span>
+                                                        <span className={`w-2 h-2 rounded-full ${LEG_STATUS_DOT[leg.status]}`} />
+                                                    </div>
                                                 </div>
                                                 <div className="text-xs">
                                                     <span className={`font-bold ${marketColor}`}>{market}:</span>{' '}
