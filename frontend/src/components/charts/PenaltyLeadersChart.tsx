@@ -85,7 +85,7 @@ export default function PenaltyLeadersChart({ data, hideLegend = false }: Props)
                         <BarChart
                             data={visibleData}
                             layout="vertical"
-                            margin={{ top: 10, right: 30, left: 80, bottom: 5 }}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                         >
                             <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                             <XAxis type="number" allowDecimals={false} tick={{ fill: ct.tick, fontSize: 12 }} />

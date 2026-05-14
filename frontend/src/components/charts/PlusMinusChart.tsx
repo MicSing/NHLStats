@@ -39,7 +39,7 @@ export default function PlusMinusChart({ data }: Props) {
                         <BarChart
                             data={chartData}
                             stackOffset="sign"
-                            margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                         >
                             <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                             <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
@@ -57,7 +57,7 @@ export default function PlusMinusChart({ data }: Props) {
                             />
                             <Legend wrapperStyle={{ color: ct.legendText }} />
                             <Bar dataKey="plus" name="+" stackId="a" fill="#10B981" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="minus" name="−" stackId="a" fill="#EF4444" radius={[0, 0, 4, 4]} />
+                            <Bar dataKey="minus" name="−" stackId="a" fill="#EF4444" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </>

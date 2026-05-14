@@ -106,7 +106,7 @@ export default function EarningsChart({ data, selectedSeasonId, users, seasons, 
             <ResponsiveContainer width="100%" height={280}>
                 <BarChart
                     data={chartData}
-                    margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
                 >
                     <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                     <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
