@@ -65,15 +65,3 @@ export function PenaltiesTooltip({ penalties }: { penalties: UserMatchPenalty[] 
         </div>
     )
 }
-
-export function BetCellTooltip({ betType, targetName }: { betType: string | null; targetName: string | null }) {
-    if (!betType) return null
-    const typeLabel = betType === 'TeamWin' ? 'Team Win' : betType === 'UserGoal' ? 'Goal' : 'Penalty'
-    return (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs max-w-[200px] whitespace-normal">
-                <div>{typeLabel}{targetName ? `: ${targetName}` : ''}</div>
-            </div>
-        </div>
-    )
-}

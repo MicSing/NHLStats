@@ -195,7 +195,8 @@
         "reEvaluateBets": "Re-evaluate Bets",
         "reEvaluateSuccess": "Bets re-evaluated successfully",
         "reEvaluateError": "Failed to re-evaluate bets",
-        "bet": "Bet"
+        "bet": "Bet",
+        "viewTickets": "View Tickets"
     },
     "match": {
         "matchNotFound": "Match not found",

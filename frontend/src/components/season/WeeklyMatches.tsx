@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CaretDown, ArrowsClockwise, PencilSimple } from '@phosphor-icons/react'
+import { CaretDown, ArrowsClockwise, PencilSimple, Ticket } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { WeekGroup } from '../../types/stats'
 import type { Match } from '../../types/match'
@@ -214,28 +214,37 @@ export default function WeeklyMatches({
                                                     users={m.users ?? []}
                                                     detail={detail}
                                                 />
-                                                {isAdmin && (
-                                                    <div className="flex items-center justify-end gap-3 p-3 border-t border-border/50 bg-bg/30">
-                                                        {isCompleted && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => onReEvaluateBets(m.matchId)}
-                                                                disabled={reEvaluatingMatchId === m.matchId}
-                                                                className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
+                                                <div className="flex items-center justify-between gap-3 p-3 border-t border-border/50 bg-bg/30">
+                                                    <Link
+                                                        to={`/betting?tab=tickets&seasonId=${seasonId}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
+                                                    >
+                                                        <Ticket size={12} />
+                                                        <span>{t('season.viewTickets')}</span>
+                                                    </Link>
+                                                    {isAdmin && (
+                                                        <div className="flex items-center gap-3">
+                                                            {isCompleted && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => onReEvaluateBets(m.matchId)}
+                                                                    disabled={reEvaluatingMatchId === m.matchId}
+                                                                    className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
+                                                                >
+                                                                    <ArrowsClockwise size={12} />
+                                                                    <span>{reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}</span>
+                                                                </button>
+                                                            )}
+                                                            <Link
+                                                                to={`/seasons/${seasonId}/matches/${m.matchId}`}
+                                                                className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                             >
-                                                                <ArrowsClockwise size={12} />
-                                                                <span>{reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}</span>
-                                                            </button>
-                                                        )}
-                                                        <Link
-                                                            to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                            className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
-                                                        >
-                                                            <PencilSimple size={12} />
-                                                            <span>{t('season.editMatch')}</span>
-                                                        </Link>
-                                                    </div>
-                                                )}
+                                                                <PencilSimple size={12} />
+                                                                <span>{t('season.editMatch')}</span>
+                                                            </Link>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

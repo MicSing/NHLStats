@@ -195,7 +195,8 @@
         "reEvaluateBets": "Prehodnotiť stávky",
         "reEvaluateSuccess": "Stávky boli úspešne prehodnotené",
         "reEvaluateError": "Nepodarilo sa prehodnotiť stávky",
-        "bet": "Stávka"
+        "bet": "Stávka",
+        "viewTickets": "Zobraziť tikety"
     },
     "match": {
         "matchNotFound": "Zápas nebol nájdený",
