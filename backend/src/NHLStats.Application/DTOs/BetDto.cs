@@ -13,12 +13,14 @@ public record BetLegDto(
     int? TeamId,
     string? TargetName,
     decimal Odds,
-    BetLegStatus Status);
+    BetLegStatus Status,
+    DateTime? EvaluatedOn);
 
 public record BetDto(
     Guid Id,
     string ShortId,
     string CreatedBy,
+    string CreatedByName,
     decimal Stake,
     decimal TotalOdds,
     BetStatus Status,

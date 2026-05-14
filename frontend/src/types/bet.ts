@@ -48,12 +48,14 @@ export interface BetLegDto {
     targetName: string | null
     odds: number
     status: LegStatus
+    evaluatedOn: string | null
 }
 
 export interface BetDto {
     id: string
     shortId: string
     createdBy: string
+    createdByName: string
     stake: number
     totalOdds: number
     status: BetStatus

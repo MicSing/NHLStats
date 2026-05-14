@@ -22,7 +22,27 @@ public class BetService : IBetService
 
     private static string MakeShortId(Guid id) => "B-" + id.ToString("N").Substring(0, 6).ToUpperInvariant();
 
-    private static BetDto ToDto(Bet bet, IEnumerable<BetLeg> legs)
+    private async Task<string> ResolveNameAsync(string loginId)
+    {
+        var user = await _db.Set<ApplicationUser>()
+            .AsNoTracking()
+            .Include(u => u.User)
+            .FirstOrDefaultAsync(u => u.Id == loginId);
+        return user?.User?.Name ?? user?.UserName ?? loginId;
+    }
+
+    private async Task<Dictionary<string, string>> ResolveNamesAsync(IEnumerable<string> loginIds)
+    {
+        var ids = loginIds.Distinct().ToList();
+        var users = await _db.Set<ApplicationUser>()
+            .AsNoTracking()
+            .Include(u => u.User)
+            .Where(u => ids.Contains(u.Id))
+            .ToListAsync();
+        return users.ToDictionary(u => u.Id, u => u.User?.Name ?? u.UserName ?? u.Id);
+    }
+
+    private static BetDto ToDto(Bet bet, IEnumerable<BetLeg> legs, string createdByName)
     {
         var legDtos = legs
             .OrderBy(l => l.Id)
@@ -38,13 +58,15 @@ public class BetService : IBetService
                 l.BetType == BetType.TeamDraw ? "Draw"
                     : (l.BetType == BetType.TeamWin || l.BetType == BetType.TeamWinOrDraw) ? l.Team?.Name : l.User?.Name,
                 l.Odds,
-                l.Status))
+                l.Status,
+                l.EvaluatedOn))
             .ToList();
 
         return new BetDto(
             bet.Id,
             MakeShortId(bet.Id),
             bet.CreatedBy,
+            createdByName,
             bet.Stake,
             bet.TotalOdds,
             bet.Status,
@@ -76,7 +98,8 @@ public class BetService : IBetService
             .Where(b => b.Status == BetStatus.Pending)
             .OrderByDescending(b => b.CreatedOn)
             .ToListAsync();
-        return bets.Select(b => ToDto(b, b.Legs)).ToList();
+        var name = await ResolveNameAsync(loginId);
+        return bets.Select(b => ToDto(b, b.Legs, name)).ToList();
     }
 
     public async Task<IReadOnlyList<BetDto>> GetHistoryAsync(string loginId, int? seasonId)
@@ -88,7 +111,28 @@ public class BetService : IBetService
             query = query.Where(b => b.Legs.Any(l => l.Match!.SeasonId == seasonId.Value));
         }
         var bets = await query.OrderByDescending(b => b.CreatedOn).ToListAsync();
-        return bets.Select(b => ToDto(b, b.Legs)).ToList();
+        var name = await ResolveNameAsync(loginId);
+        return bets.Select(b => ToDto(b, b.Legs, name)).ToList();
+    }
+
+    public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync()
+    {
+        var bets = await _db.Bets
+            .AsNoTracking()
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+                    .ThenInclude(m => m!.HomeTeam)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+                    .ThenInclude(m => m!.AwayTeam)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.User)
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Team)
+            .OrderByDescending(b => b.CreatedOn)
+            .ToListAsync();
+        var names = await ResolveNamesAsync(bets.Select(b => b.CreatedBy));
+        return bets.Select(b => ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy))).ToList();
     }
 
     public async Task<(BetDto? Bet, string? Error)> PlaceBetAsync(string loginId, CreateBetDto dto)
@@ -193,7 +237,8 @@ public class BetService : IBetService
         await _db.SaveChangesAsync();
 
         var saved = await BetsWithLegsQuery(loginId).FirstAsync(b => b.Id == bet.Id);
-        return (ToDto(saved, saved.Legs), null);
+        var name = await ResolveNameAsync(loginId);
+        return (ToDto(saved, saved.Legs, name), null);
     }
 
     public async Task<(bool Success, string? Error)> CancelBetAsync(Guid betId, string loginId)
@@ -232,6 +277,7 @@ public class BetService : IBetService
         foreach (var leg in legs)
         {
             leg.Status = BetLegStatus.Cancelled;
+            leg.EvaluatedOn = now;
             if (leg.Bet != null && leg.Bet.Status == BetStatus.Pending)
             {
                 leg.Bet.Status = BetStatus.Cancelled;
@@ -330,6 +376,7 @@ public class BetService : IBetService
             if (won.HasValue)
             {
                 leg.Status = won.Value ? BetLegStatus.Won : BetLegStatus.Lost;
+                leg.EvaluatedOn = now;
                 if (leg.Bet != null) affectedBets.Add(leg.Bet);
             }
         }

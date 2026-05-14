@@ -10,6 +10,7 @@ public class BetLeg
     public int? TeamId { get; set; }
     public decimal Odds { get; set; }
     public BetLegStatus Status { get; set; } = BetLegStatus.Pending;
+    public DateTime? EvaluatedOn { get; set; }
 
     public Bet? Bet { get; set; }
     public Match? Match { get; set; }

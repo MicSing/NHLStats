@@ -1,21 +1,40 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PageLayout from '../components/PageLayout'
 import ArchiveTab from '../components/betting/ArchiveTab'
 import BettingTab from '../components/betting/BettingTab'
+import TicketsTab from '../components/betting/TicketsTab'
 import { useAuth } from '../context/AuthContext'
 import type { BettingBalanceDto } from '../types/bet'
 
-type Tab = 'betting' | 'archive'
+type Tab = 'betting' | 'archive' | 'tickets'
 
 export default function BettingPage() {
     const { t } = useTranslation()
     const { user } = useAuth()
+    const [searchParams, setSearchParams] = useSearchParams()
 
     const userId = user?.userId ?? null
 
-    const [tab, setTab] = useState<Tab>('betting')
+    const rawTab = searchParams.get('tab')
+    const tab: Tab = rawTab === 'archive' || rawTab === 'tickets' ? rawTab : 'betting'
+
     const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
+
+    const setTab = (next: Tab) => {
+        setSearchParams(prev => {
+            const p = new URLSearchParams(prev)
+            p.set('tab', next)
+            // clear ticket filter params when leaving tickets tab
+            if (next !== 'tickets') {
+                ['id','userId','matchNumber','seasonId','status','structure','betType',
+                 'stakeMin','stakeMax','oddsMin','oddsMax','winMin','winMax',
+                 'sortBy','sortDir','page'].forEach(k => p.delete(k))
+            }
+            return p
+        })
+    }
 
     if (!userId) {
         return (
@@ -28,7 +47,6 @@ export default function BettingPage() {
     return (
         <PageLayout>
             <div className="space-y-6">
-                {/* Header: tabs + balance cards */}
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
                     <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
                         <button
@@ -46,6 +64,14 @@ export default function BettingPage() {
                             }`}
                         >
                             {t('betting.tabArchive')}
+                        </button>
+                        <button
+                            onClick={() => setTab('tickets')}
+                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                tab === 'tickets' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                            }`}
+                        >
+                            {t('betting.tabTickets', 'Tickets')}
                         </button>
                     </div>
                     {balance && (
@@ -66,8 +92,10 @@ export default function BettingPage() {
 
                 {tab === 'betting' ? (
                     <BettingTab userId={userId} onBalanceChanged={setBalance} />
-                ) : (
+                ) : tab === 'archive' ? (
                     <ArchiveTab />
+                ) : (
+                    <TicketsTab />
                 )}
             </div>
         </PageLayout>

@@ -26,6 +26,10 @@ export const bettingService = {
         await apiClient.delete(`/api/betting/bets/${betId}`)
     },
 
+    async listAll(): Promise<BetDto[]> {
+        return apiClient.get<BetDto[]>('/api/betting/bets/all')
+    },
+
     async getMatchOdds(matchId: number): Promise<MatchOddsDto | null> {
         try {
             return await apiClient.get<MatchOddsDto>(`/api/betting/matches/${matchId}/odds`)

@@ -60,6 +60,14 @@ public class BetsController : ControllerBase
         return Ok(bets);
     }
 
+    // GET /api/betting/bets/all
+    [HttpGet("api/betting/bets/all")]
+    public async Task<IActionResult> GetAll()
+    {
+        var bets = await _betService.GetAllBetsAsync();
+        return Ok(bets);
+    }
+
     // POST /api/betting/bets
     [HttpPost("api/betting/bets")]
     public async Task<IActionResult> PlaceBet([FromBody] CreateBetDto dto)
