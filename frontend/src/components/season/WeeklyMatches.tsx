@@ -20,7 +20,7 @@ function StatsTooltip({
     const { t } = useTranslation()
     if (!users || users.length === 0) return null
     return (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 w-60">
+        <div className="absolute bottom-full right-0 mb-2 z-50 pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 w-60">
             <div className="bg-surface border border-border rounded-lg shadow-card px-3 py-3">
                 <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold border-b border-border pb-1 mb-2 text-center">
                     {t('season.week', { number: weekNumber })} Summary

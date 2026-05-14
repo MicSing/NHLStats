@@ -4,7 +4,7 @@ export function PointsTooltip({ points }: { points: UserMatchPoint[] }) {
     if (points.length === 0) return null
     return (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs whitespace-nowrap">
+            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs max-w-[200px] whitespace-normal">
                 {points.map((p) => (
                     <div key={p.id} className="flex gap-2 justify-between">
                         <span>{p.pointReasonName}</span>
@@ -32,7 +32,7 @@ export function GoalsTooltip({ goals }: { goals: UserMatchGoal[] }) {
     )
     return (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs whitespace-nowrap">
+            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs max-w-[200px] whitespace-normal">
                 {aggregated.map((g) => (
                     <div key={g.name}>{g.name} ×{g.count}</div>
                 ))}
@@ -57,7 +57,7 @@ export function PenaltiesTooltip({ penalties }: { penalties: UserMatchPenalty[] 
     )
     return (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs whitespace-nowrap">
+            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs max-w-[200px] whitespace-normal">
                 {aggregated.map((p) => (
                     <div key={p.name}>{p.name} ×{p.count}</div>
                 ))}
@@ -71,7 +71,7 @@ export function BetCellTooltip({ betType, targetName }: { betType: string | null
     const typeLabel = betType === 'TeamWin' ? 'Team Win' : betType === 'UserGoal' ? 'Goal' : 'Penalty'
     return (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs whitespace-nowrap">
+            <div className="bg-surface border border-border rounded shadow-card px-3 py-2 text-xs max-w-[200px] whitespace-normal">
                 <div>{typeLabel}{targetName ? `: ${targetName}` : ''}</div>
             </div>
         </div>

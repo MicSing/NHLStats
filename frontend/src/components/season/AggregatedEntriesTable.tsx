@@ -24,7 +24,8 @@ export default function AggregatedEntriesTable({ entries }: Props) {
                 {t('season.aggregatedEntries')}
             </h2>
             <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-card">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[320px] text-sm">
                     <thead className="bg-bg border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
                         <tr>
                             <th className="py-3 px-5 font-semibold text-left">{t('season.player')}</th>
@@ -44,6 +45,7 @@ export default function AggregatedEntriesTable({ entries }: Props) {
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
         </section>
     )
