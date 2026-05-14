@@ -37,6 +37,22 @@ export default function MatchPage() {
     const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
 
+    const loadUserMatchData = async (userMatchId: number) => {
+        if (!seasonId || !matchId) return
+        const [points, goals, penalties, updatedMatch] = await Promise.all([
+            apiClient.get<UserMatchPoint[]>(`/api/usermatches/${userMatchId}/points`),
+            apiClient.get<UserMatchGoal[]>(`/api/usermatches/${userMatchId}/goals`),
+            apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${userMatchId}/penalties`),
+            apiClient.get<Match>(`/api/seasons/${seasonId}/matches/${matchId}`),
+        ])
+        setMatch(updatedMatch)
+        setUserMatchData((prev) =>
+            prev.map((d) =>
+                d.userMatch.id === userMatchId ? { ...d, points, goals, penalties } : d,
+            ),
+        )
+    }
+
     const loadAll = async () => {
         if (!seasonId || !matchId) return
         try {
@@ -205,7 +221,7 @@ export default function MatchPage() {
                             pointReasons={pointReasons}
                             allUserMatches={userMatchData.map((d) => d.userMatch)}
                             isAuth={!!token}
-                            onChanged={() => void loadAll()}
+                            onChanged={() => void loadUserMatchData(userMatch.id)}
                             onGoalAdded={handleGoalAdded}
                             onNegativePointAdded={handleNegativePointAdded}
                         />

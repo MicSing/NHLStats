@@ -70,6 +70,13 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
     const [saving, setSaving] = useState(false)
     const lastSavedCompletionTypeRef = useRef(normalizeCompletionType(match.completionType))
     const isFirstRender = useRef(true)
+    const skipNextSave = useRef(false)
+
+    useEffect(() => {
+        skipNextSave.current = true
+        setHomeScore(match.homeScore)
+        setAwayScore(match.awayScore)
+    }, [match.homeScore, match.awayScore])
 
     const handleSave = async (scores: { home: number; away: number }, ct: CompletionType, date: string) => {
         setSaving(true)
@@ -102,6 +109,11 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false
+            skipNextSave.current = false
+            return
+        }
+        if (skipNextSave.current) {
+            skipNextSave.current = false
             return
         }
         if (!isAuth) return
