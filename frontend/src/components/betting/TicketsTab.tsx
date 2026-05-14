@@ -149,7 +149,7 @@ export default function TicketsTab() {
             if (filterId && !b.shortId.toLowerCase().includes(filterId.toLowerCase())) return false
             if (filterUserId) {
                 const user = users.find(u => String(u.id) === filterUserId)
-                if (!user || !b.createdBy.toLowerCase().includes(user.name.toLowerCase())) return false
+                if (!user || !b.createdByName.toLowerCase().includes(user.name.toLowerCase())) return false
             }
             if (filterMatchNumber) {
                 const mn = parseInt(filterMatchNumber, 10)
