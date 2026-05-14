@@ -11,7 +11,10 @@ interface TicketDraftSectionProps {
     onCreate: () => Promise<void>
     canCreate: boolean
     potentialWin: number
+    maxStake?: number
 }
+
+const QUICK_STAKES = [0.05, 0.1, 0.5, 1] as const
 
 export default function TicketDraftSection({
     legs,
@@ -23,8 +26,18 @@ export default function TicketDraftSection({
     onCreate,
     canCreate,
     potentialWin,
+    maxStake,
 }: TicketDraftSectionProps) {
     const { t } = useTranslation()
+
+    const handleQuickStake = (val: (typeof QUICK_STAKES)[number] | 'max') => {
+        if (val === 'max') {
+            if (maxStake != null) onStakeChange(maxStake.toFixed(2))
+        } else {
+            const current = parseFloat(stakeInput) || 0
+            onStakeChange((current + val).toFixed(2))
+        }
+    }
     return (
         <section className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -68,19 +81,41 @@ export default function TicketDraftSection({
                     <span className="text-text-muted">{t('betting.totalOdds')}:</span>
                     <strong className="text-lg">×{totalOdds.toFixed(2)}</strong>
                 </div>
-                <div className="flex items-center gap-3">
-                    <label className="text-sm text-text-muted">{t('betting.stakeLabel')}</label>
-                    <input
-                        type="number"
-                        min={0.01}
-                        step={0.5}
-                        value={stakeInput}
-                        onChange={(e) => onStakeChange(e.target.value)}
-                        className="w-28 px-3 py-1.5 rounded border border-border bg-bg text-sm"
-                    />
-                    <span className="text-xs text-success">
-                        → {potentialWin.toFixed(2)} € {t('betting.potentialWin')}
-                    </span>
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm text-text-muted">{t('betting.stakeLabel')}</label>
+                        <input
+                            type="number"
+                            min={0}
+                            step={0.05}
+                            value={stakeInput}
+                            onChange={(e) => onStakeChange(e.target.value)}
+                            className="w-28 px-3 py-1.5 rounded border border-border bg-bg text-sm"
+                        />
+                        <span className="text-xs text-success">
+                            → {potentialWin.toFixed(2)} € {t('betting.potentialWin')}
+                        </span>
+                    </div>
+                    <div className="flex gap-1.5">
+                        {QUICK_STAKES.map((v) => (
+                            <button
+                                key={v}
+                                type="button"
+                                onClick={() => handleQuickStake(v)}
+                                className="flex-1 px-2 py-1 text-[10px] font-bold rounded border border-border bg-bg-secondary text-text-muted hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors"
+                            >
+                                {v}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={() => handleQuickStake('max')}
+                            disabled={maxStake == null}
+                            className="flex-1 px-2 py-1 text-[10px] font-bold rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            MAX
+                        </button>
+                    </div>
                 </div>
                 <button
                     onClick={onCreate}

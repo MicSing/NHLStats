@@ -115,7 +115,22 @@ public class BetService : IBetService
         return bets.Select(b => ToDto(b, b.Legs, name)).ToList();
     }
 
-    public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync()
+    private static BetLegDto AnonymizeLeg(BetLegDto leg) => new BetLegDto(
+        leg.Id,
+        MatchId: 0,
+        MatchNumber: 0,
+        HomeTeamName: null,
+        AwayTeamName: null,
+        BetType: default,
+        UserId: null,
+        TeamId: null,
+        TargetName: null,
+        Odds: 0,
+        leg.Status,
+        leg.EvaluatedOn,
+        IsAnonymized: true);
+
+    public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync(string currentLoginId)
     {
         var bets = await _db.Bets
             .AsNoTracking()
@@ -132,7 +147,15 @@ public class BetService : IBetService
             .OrderByDescending(b => b.CreatedOn)
             .ToListAsync();
         var names = await ResolveNamesAsync(bets.Select(b => b.CreatedBy));
-        return bets.Select(b => ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy))).ToList();
+        return bets.Select(b =>
+        {
+            var dto = ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy));
+            if (b.CreatedBy == currentLoginId) return dto;
+            var anonymizedLegs = dto.Legs
+                .Select(l => l.EvaluatedOn == null ? AnonymizeLeg(l) : l)
+                .ToList();
+            return dto with { Legs = anonymizedLegs };
+        }).ToList();
     }
 
     public async Task<(BetDto? Bet, string? Error)> PlaceBetAsync(string loginId, CreateBetDto dto)

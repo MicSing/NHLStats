@@ -23,7 +23,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
     const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null)
     const [oddsByMatch, setOddsByMatch] = useState<Record<number, MatchOddsDto | null>>({})
     const [draftLegs, setDraftLegs] = useState<DraftLeg[]>([])
-    const [stakeInput, setStakeInput] = useState<string>('')
+    const [stakeInput, setStakeInput] = useState<string>('0')
     const [activeBets, setActiveBets] = useState<BetDto[]>([])
     const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
 
@@ -95,7 +95,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
 
     const clearDraft = () => {
         setDraftLegs([])
-        setStakeInput('')
+        setStakeInput('0')
     }
 
     const refreshAfterMutation = async () => {
@@ -180,6 +180,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
                 onCreate={placeBet}
                 canCreate={canCreate}
                 potentialWin={potentialWin}
+                maxStake={balance?.availableBalance}
             />
         </div>
     )

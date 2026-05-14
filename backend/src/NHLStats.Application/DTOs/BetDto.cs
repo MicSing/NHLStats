@@ -14,7 +14,8 @@ public record BetLegDto(
     string? TargetName,
     decimal Odds,
     BetLegStatus Status,
-    DateTime? EvaluatedOn);
+    DateTime? EvaluatedOn,
+    bool IsAnonymized = false);
 
 public record BetDto(
     Guid Id,

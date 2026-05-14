@@ -34,7 +34,9 @@ export default function LiveTicketsSection({ tickets, onCancel }: LiveTicketsSec
                                 <p className="text-xs font-mono font-bold text-primary mb-2">{b.shortId}</p>
                                 <ul className="space-y-0.5 text-xs text-text-muted mb-2">
                                     {b.legs.map((l) => (
-                                        <li key={l.id}>{describeApiLeg(l, t)}</li>
+                                        <li key={l.id}>
+                                            {l.isAnonymized ? '🔒 hidden' : describeApiLeg(l, t)}
+                                        </li>
                                     ))}
                                 </ul>
                                 <div className="border-t border-border pt-2 flex justify-between items-center text-xs">

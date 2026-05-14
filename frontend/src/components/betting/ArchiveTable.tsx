@@ -57,7 +57,7 @@ export default function ArchiveTable({ bets }: ArchiveTableProps) {
                                         {b.legs.map((l, i) => (
                                             <span key={l.id}>
                                                 {i > 0 && <span className="text-text-muted">, </span>}
-                                                {describeApiLeg(l, t)}
+                                                {l.isAnonymized ? '[hidden]' : describeApiLeg(l, t)}
                                             </span>
                                         ))}
                                     </p>

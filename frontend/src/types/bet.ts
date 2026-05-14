@@ -49,6 +49,7 @@ export interface BetLegDto {
     odds: number
     status: LegStatus
     evaluatedOn: string | null
+    isAnonymized?: boolean
 }
 
 export interface BetDto {

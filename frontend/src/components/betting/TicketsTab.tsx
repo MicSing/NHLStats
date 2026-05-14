@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../context/ToastContext'
+import { useAuth } from '../../context/AuthContext'
 import { bettingService } from '../../services/bettingService'
 import { cacheService } from '../../services/cacheService'
 import Pagination from '../Pagination'
@@ -61,6 +62,8 @@ function potentialWin(bet: BetDto): number {
 export default function TicketsTab() {
     const { t } = useTranslation()
     const { error } = useToast()
+    const { user } = useAuth()
+    const currentLoginId = user?.id ?? null
     const [searchParams, setSearchParams] = useSearchParams()
 
     const [bets, setBets] = useState<BetDto[] | null>(null)
@@ -142,6 +145,7 @@ export default function TicketsTab() {
     const filtered = useMemo(() => {
         if (!bets) return []
         return bets.filter(b => {
+            if (b.status === 'Pending' && b.createdBy !== currentLoginId) return false
             if (filterId && !b.shortId.toLowerCase().includes(filterId.toLowerCase())) return false
             if (filterUserId) {
                 const user = users.find(u => String(u.id) === filterUserId)
@@ -170,7 +174,7 @@ export default function TicketsTab() {
         })
     }, [bets, filterId, filterUserId, filterMatchNumber, filterSeasonId, filterStatus,
         filterStructure, filterBetType, filterStakeMin, filterStakeMax,
-        filterOddsMin, filterOddsMax, filterWinMin, filterWinMax, users])
+        filterOddsMin, filterOddsMax, filterWinMin, filterWinMax, users, currentLoginId])
 
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
@@ -523,6 +527,21 @@ export default function TicketsTab() {
                                 {/* Leg cards grid */}
                                 <div className={`grid gap-2 px-4 pb-4 ${bet.legs.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
                                     {bet.legs.map(leg => {
+                                        if (leg.isAnonymized) {
+                                            return (
+                                                <div key={leg.id} className="bg-bg border border-border/50 rounded-lg px-3 py-2.5 relative overflow-hidden">
+                                                    <div className="blur-sm select-none text-transparent text-[9px] uppercase font-bold tracking-wider mb-1.5">
+                                                        Hidden match name
+                                                    </div>
+                                                    <div className="blur-sm select-none text-transparent text-xs">
+                                                        Hidden bet details here
+                                                    </div>
+                                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-text-muted font-semibold">
+                                                        🔒 Revealed on evaluation
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
                                         const matchName = leg.homeTeamName && leg.awayTeamName
                                             ? `${leg.homeTeamName} vs ${leg.awayTeamName}`
                                             : `Match #${leg.matchNumber}`
