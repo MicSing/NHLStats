@@ -63,13 +63,14 @@
         "deleteUser": "Ste si istí, že chcete odstrániť tohto používateľa?"
     },
     "nav": {
-        "dashboard": "📊 Prehľad",
-        "seasons": "🏒 Sezóny",
-        "betting": "🎯 Tipovanie",
-        "finances": "💰 Financie",
-        "playerStats": "📈 Štatistiky hráčov",
-        "rules": "📋 Pravidlá",
+        "dashboard": "Prehľad",
+        "seasons": "Sezóny",
+        "betting": "Tipovanie",
+        "finances": "Financie",
+        "playerStats": "Štatistiky hráčov",
+        "rules": "Pravidlá",
         "menu": "Menu",
+        "client": "Klient",
         "admin": "Admin",
         "groupOverview": "Prehľad",
         "groupBetting": "Tipovanie",
@@ -79,7 +80,7 @@
         "groupGameData": "Herné dáta",
         "groupPoints": "Body",
         "groupFinancial": "Financie",
-        "loginManagement": "🔐 Prihlásenia",
+        "loginManagement": "Prihlásenia",
         "users": "Používatelia",
         "adminSeasons": "Sezóny",
         "teams": "Tímy",
@@ -93,7 +94,7 @@
         "pointsManagement": "Body"
     },
     "layout": {
-        "appName": "🏒 NHL Stats",
+        "appName": "NHL Stats",
         "seasonTracker": "Sledovanie sezóny",
         "adminPanel": "Admin panel",
         "signIn": "Prihlásiť sa",

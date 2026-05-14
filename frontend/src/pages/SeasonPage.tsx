@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BellRinging, Layout } from '@phosphor-icons/react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { BellRinging } from '@phosphor-icons/react'
 import type { Season } from '../types/season'
 import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch, SeasonTotals } from '../types/stats'
 import { CompletionType } from '../types/match'
@@ -308,13 +308,6 @@ export default function SeasonPage() {
                             />
                         )}
                     </div>
-                    <Link
-                        to="/dashboard"
-                        className="flex items-center gap-2 text-sm font-semibold text-text-muted hover:text-primary transition-colors"
-                    >
-                        <Layout size={16} />
-                        <span>{t('season.dashboardLink')}</span>
-                    </Link>
                 </header>
 
                 {/* Notification banners */}
