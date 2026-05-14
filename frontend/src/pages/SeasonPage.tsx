@@ -21,6 +21,7 @@ import CompletionBadge from '../components/CompletionBadge'
 import { useIsAdmin } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useSeasonEventNotifications } from '../hooks/useSeasonEventNotifications'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 
 interface MatchUserDetail {
     userMatchId: number
@@ -324,6 +325,7 @@ export default function SeasonPage() {
     const [h2hExpanded, setH2hExpanded] = useState(false)
     const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
         useSeasonEventNotifications(seasonId)
+    const isDesktop = useIsDesktop()
 
     useEffect(() => {
         apiClient
@@ -584,7 +586,7 @@ export default function SeasonPage() {
                 </header>
 
                 {/* Notification banners */}
-                {seasonId && notificationPermission === 'default' && (
+                {isDesktop && seasonId && notificationPermission === 'default' && (
                     <div className="mb-4 bg-surface border-l-4 border-l-primary border border-border rounded-lg p-3 px-5 flex items-center justify-between shadow-card">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -601,7 +603,7 @@ export default function SeasonPage() {
                         </button>
                     </div>
                 )}
-                {seasonId && notificationPermission === 'denied' && (
+                {isDesktop && seasonId && notificationPermission === 'denied' && (
                     <div className="mb-4 rounded border border-border bg-surface p-3 text-xs text-text-muted">
                         {t('notifications.blocked')}
                     </div>
