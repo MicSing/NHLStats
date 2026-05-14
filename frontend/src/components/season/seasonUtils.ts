@@ -37,13 +37,14 @@ export function normalizeCompletionType(value: CompletionType | string | number 
 }
 
 export function aggregateWeekUsers(group: WeekGroup) {
-    const map = new Map<number, { userId: number; userName: string; totalPlus: number; totalMinus: number; totalGoals: number; totalPenalties: number }>()
+    const map = new Map<number, { userId: number; userName: string; totalPlus: number; totalMinus: number; totalNeutral: number; totalGoals: number; totalPenalties: number }>()
     for (const match of group.matches) {
         for (const u of match.users ?? []) {
             const existing = map.get(u.userId)
             if (existing) {
                 existing.totalPlus += u.totalPlus
                 existing.totalMinus += u.totalMinus
+                existing.totalNeutral += u.totalNeutral
                 existing.totalGoals += u.totalGoals
                 existing.totalPenalties += u.totalPenalties
             } else {

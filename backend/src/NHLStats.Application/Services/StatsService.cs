@@ -197,7 +197,7 @@ public class StatsService : IStatsService
                 MatchId = p.UserMatch!.MatchId,
                 UserId = p.UserMatch.UserId,
                 p.Count,
-                IsPositive = p.PointReason != null && p.PointReason.PointType == PointType.Positive
+                PointType = p.PointReason != null ? p.PointReason.PointType : PointType.Negative
             })
             .ToListAsync();
 
@@ -300,8 +300,9 @@ public class StatsService : IStatsService
             .GroupBy(r => new { r.MatchId, r.UserId })
             .ToDictionary(
                 g => (g.Key.MatchId, g.Key.UserId),
-                g => (Plus: g.Where(x => x.IsPositive).Sum(x => x.Count),
-                       Minus: g.Where(x => !x.IsPositive).Sum(x => x.Count)));
+                g => (Plus:    g.Where(x => x.PointType == PointType.Positive).Sum(x => x.Count),
+                      Minus:   g.Where(x => x.PointType == PointType.Negative).Sum(x => x.Count),
+                      Neutral: g.Where(x => x.PointType == PointType.Neutral).Sum(x => x.Count)));
 
         var userGoalsByMatch = goalRows
             .GroupBy(r => (r.MatchId, r.UserId))
@@ -318,7 +319,7 @@ public class StatsService : IStatsService
             .Distinct()
             .ToList();
 
-        var totalsByWeek = new Dictionary<int, (int plus, int minus)>();
+        var totalsByWeek = new Dictionary<int, (int plus, int minus, int neutral)>();
 
         foreach (var row in pointRows)
         {
@@ -329,16 +330,20 @@ public class StatsService : IStatsService
 
             if (!totalsByWeek.TryGetValue(week, out var totals))
             {
-                totals = (0, 0);
+                totals = (0, 0, 0);
             }
 
-            if (row.IsPositive)
+            if (row.PointType == PointType.Positive)
             {
                 totals.plus += row.Count;
             }
-            else
+            else if (row.PointType == PointType.Negative)
             {
                 totals.minus += row.Count;
+            }
+            else
+            {
+                totals.neutral += row.Count;
             }
 
             totalsByWeek[week] = totals;
@@ -350,7 +355,7 @@ public class StatsService : IStatsService
                 .Where(p => p.MatchId == m.Id)
                 .Select(p =>
                 {
-                    var pts = userPointsByMatch.TryGetValue((m.Id, p.UserId), out var v) ? v : (Plus: 0, Minus: 0);
+                    var pts = userPointsByMatch.TryGetValue((m.Id, p.UserId), out var v) ? v : (Plus: 0, Minus: 0, Neutral: 0);
                     var goals = userGoalsByMatch.TryGetValue((m.Id, p.UserId), out var g) ? g : 0;
                     var pens = userPenaltiesByMatch.TryGetValue((m.Id, p.UserId), out var pen) ? pen : 0;
                     betsByMatchUser.TryGetValue((m.Id, p.UserId), out var bet);
@@ -359,6 +364,7 @@ public class StatsService : IStatsService
                         userNames.TryGetValue(p.UserId, out var name) ? name : $"User {p.UserId}",
                         pts.Plus,
                         pts.Minus,
+                        pts.Neutral,
                         goals,
                         pens,
                         bet != null ? bet.Status : (BetStatus?)null,
@@ -393,11 +399,11 @@ public class StatsService : IStatsService
             {
                 var totals = totalsByWeek.TryGetValue(g.Key, out var value)
                     ? value
-                    : (plus: 0, minus: 0);
+                    : (plus: 0, minus: 0, neutral: 0);
                 var orderedMatches = g
                     .OrderByDescending(m => m.MatchDate)
                     .ToList();
-                return new WeekGroupDto(g.Key, totals.plus, totals.minus, orderedMatches);
+                return new WeekGroupDto(g.Key, totals.plus, totals.minus, totals.neutral, orderedMatches);
             })
             .ToList();
     }

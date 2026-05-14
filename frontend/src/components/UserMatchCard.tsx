@@ -86,6 +86,9 @@ export default function UserMatchCard({
     const totalMinus = points
         .filter((p) => p.pointType === 'Negative')
         .reduce((sum, p) => sum + p.count, 0)
+    const totalNeutral = points
+        .filter((p) => p.pointType === 'Neutral')
+        .reduce((sum, p) => sum + p.count, 0)
 
     const handleAddPoint = async (reasonId: number | '', count: number) => {
         if (reasonId === '') return
@@ -201,6 +204,9 @@ export default function UserMatchCard({
                     <div className="flex gap-4 text-sm">
                         <span className="text-success">+{totalPlus}</span>
                         <span className="text-danger">−{totalMinus}</span>
+                        {totalNeutral > 0 && (
+                            <span className="text-text-muted">○{totalNeutral}</span>
+                        )}
                     </div>
                     {isAuth && (
                         <button

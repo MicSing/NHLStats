@@ -52,6 +52,7 @@ export interface WeeklyMatchUser {
     userName: string
     totalPlus: number
     totalMinus: number
+    totalNeutral: number
     totalGoals: number
     totalPenalties: number
     betResult: 'Pending' | 'Won' | 'Lost' | 'Cancelled' | null
@@ -81,6 +82,7 @@ export interface WeekGroup {
     weekNumber: number
     totalPlus: number
     totalMinus: number
+    totalNeutral: number
     matches: WeeklyMatch[]
 }
 

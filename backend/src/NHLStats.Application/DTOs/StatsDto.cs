@@ -80,6 +80,7 @@ public record WeeklyMatchUserDto(
     string UserName,
     int TotalPlus,
     int TotalMinus,
+    int TotalNeutral,
     int TotalGoals,
     int TotalPenalties,
     BetStatus? BetResult,
@@ -107,6 +108,7 @@ public record WeekGroupDto(
     int WeekNumber,
     int TotalPlus,
     int TotalMinus,
+    int TotalNeutral,
     IEnumerable<WeeklyMatchDto> Matches);
 
 // ─── All-time earnings ────────────────────────────────────────────────────────

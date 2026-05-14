@@ -14,7 +14,7 @@ function StatsTooltip({
     users,
     weekNumber,
 }: {
-    users: { userId: number; userName: string; totalPlus: number; totalMinus: number; totalGoals: number; totalPenalties: number }[]
+    users: { userId: number; userName: string; totalPlus: number; totalMinus: number; totalNeutral: number; totalGoals: number; totalPenalties: number }[]
     weekNumber: number
 }) {
     const { t } = useTranslation()
@@ -31,6 +31,7 @@ function StatsTooltip({
                             <th className="pb-1 text-left font-semibold">{t('season.player')}</th>
                             <th className="pb-1 text-center font-semibold">+</th>
                             <th className="pb-1 text-center font-semibold">&minus;</th>
+                            <th className="pb-1 text-center font-semibold">○</th>
                             <th className="pb-1 text-center font-semibold">{t('season.goals')}</th>
                             <th className="pb-1 text-center font-semibold">{t('season.penalties')}</th>
                         </tr>
@@ -44,6 +45,9 @@ function StatsTooltip({
                                 </td>
                                 <td className="py-1 text-center text-danger tabular-nums">
                                     {u.totalMinus > 0 ? u.totalMinus : '0'}
+                                </td>
+                                <td className="py-1 text-center text-text-muted tabular-nums">
+                                    {u.totalNeutral > 0 ? u.totalNeutral : '0'}
                                 </td>
                                 <td className="py-1 text-center tabular-nums">{u.totalGoals}</td>
                                 <td className="py-1 text-center tabular-nums">{u.totalPenalties}</td>
@@ -106,6 +110,12 @@ export default function WeeklyMatches({
                                 <span className="text-sm font-bold text-success">+{group.totalPlus}</span>
                                 <span className="text-border">|</span>
                                 <span className="text-sm font-bold text-danger">−{group.totalMinus}</span>
+                                {group.totalNeutral > 0 && (
+                                    <>
+                                        <span className="text-border">|</span>
+                                        <span className="text-sm font-bold text-text-muted">○{group.totalNeutral}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

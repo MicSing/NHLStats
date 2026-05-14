@@ -31,6 +31,7 @@ export default function ExpandedMatchSection({ users, detail }: Props) {
                         <th className="py-2.5 px-4 font-bold text-left">{t('season.player')}</th>
                         <th className="py-2.5 px-3 font-bold text-center w-12">+</th>
                         <th className="py-2.5 px-3 font-bold text-center w-12">−</th>
+                        <th className="py-2.5 px-3 font-bold text-center w-12">○</th>
                         <th className="py-2.5 px-4 font-bold text-center w-16">{t('season.goals')}</th>
                         <th className="py-2.5 px-4 font-bold text-center w-20">{t('season.penalties')}</th>
                         <th className="py-2.5 px-4 font-bold text-center w-20">{t('season.bet')}</th>
@@ -41,6 +42,7 @@ export default function ExpandedMatchSection({ users, detail }: Props) {
                         const ud = detail?.users.find((d) => d.userId === u.userId)
                         const posPoints = ud?.points.filter((p) => p.pointType === 'Positive') ?? []
                         const negPoints = ud?.points.filter((p) => p.pointType === 'Negative') ?? []
+                        const neutralPoints = ud?.points.filter((p) => p.pointType === 'Neutral') ?? []
                         return (
                             <tr key={u.userId} className="border-b border-border/50 last:border-b-0 hover:bg-surface/80 transition-colors">
                                 <td className="py-2.5 px-4 font-semibold">{u.userName}</td>
@@ -54,6 +56,12 @@ export default function ExpandedMatchSection({ users, detail }: Props) {
                                     <div className="relative group inline-block cursor-default">
                                         <span className="text-danger font-bold tabular-nums">{u.totalMinus > 0 ? u.totalMinus : '0'}</span>
                                         <PointsTooltip points={negPoints} />
+                                    </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                    <div className="relative group inline-block cursor-default">
+                                        <span className="text-text-muted font-bold tabular-nums">{u.totalNeutral > 0 ? u.totalNeutral : '0'}</span>
+                                        <PointsTooltip points={neutralPoints} />
                                     </div>
                                 </td>
                                 <td className="py-2.5 px-4 text-center">
