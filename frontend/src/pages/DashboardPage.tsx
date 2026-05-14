@@ -151,9 +151,9 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Season-specific charts (2-column grid) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
                     {/* Plus / Minus */}
-                    <section className="card p-6">
+                    <section className="card p-3 sm:p-6">
                         <h2 className="text-base font-medium text-text mb-4">{t('dashboard.plusMinusByPlayer')}</h2>
                         {loadingDashboard ? (
                             <LoadingSpinner size="sm" inline />
@@ -163,7 +163,7 @@ export default function DashboardPage() {
                     </section>
 
                     {/* Earnings */}
-                    <section className="card p-6" data-testid="earnings-section">
+                    <section className="card p-3 sm:p-6" data-testid="earnings-section">
                         <h2 className="text-base font-medium text-text mb-4">
                             {selectedSeasonId ? t('dashboard.seasonEarnings') : t('dashboard.allTimeEarnings')}
                         </h2>
@@ -201,7 +201,7 @@ export default function DashboardPage() {
 
                     {/* Top Scorers */}
                     {(loadingDashboard || rosterScorersData.length > 0) && (
-                        <section className="card p-6">
+                        <section className="card p-3 sm:p-6">
                             <h2 className="text-base font-medium text-text mb-4">{t('dashboard.topScorers')}</h2>
                             {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
@@ -213,7 +213,7 @@ export default function DashboardPage() {
 
                     {/* Penalty Leaders */}
                     {(loadingDashboard || rosterPenalizedData.length > 0) && (
-                        <section className="card p-6">
+                        <section className="card p-3 sm:p-6">
                             <h2 className="text-base font-medium text-text mb-4">{t('dashboard.penaltyLeaders')}</h2>
                             {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
@@ -226,8 +226,8 @@ export default function DashboardPage() {
 
                 {/* Plus / Minus Trend (split into two charts) - only show for all-time or last season */}
                 {showTrendCharts && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <section className="card p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
+                        <section className="card p-3 sm:p-6">
                             <h2 className="text-base font-medium text-text mb-4">
                                 {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                             </h2>
@@ -237,7 +237,7 @@ export default function DashboardPage() {
                                 <TrendChart data={trendData} mode="plus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
                             )}
                         </section>
-                        <section className="card p-6">
+                        <section className="card p-3 sm:p-6">
                             <h2 className="text-base font-medium text-text mb-4">
                                 {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
                             </h2>

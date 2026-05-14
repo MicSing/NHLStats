@@ -205,69 +205,72 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
 
     return (
         <div role="img" aria-label={ariaLabel} className="w-full">
-            <ResponsiveContainer width="100%" height={280}>
-                <LineChart
-                    data={chartDataWithPrediction}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                >
-                    <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
-                    <XAxis
-                        dataKey="label"
-                        tick={{ fill: ct.tick, fontSize: 11 }}
-                        angle={-20}
-                        textAnchor="end"
-                        height={60}
-                    />
-                    <YAxis
-                        tick={{ fill: ct.tick, fontSize: 12 }}
-                        domain={[0, 'auto']}
-                        allowDecimals={false}
-                    />
-                    <Tooltip
-                        contentStyle={{
-                            backgroundColor: ct.tooltipBg,
-                            border: `1px solid ${ct.tooltipBorder}`,
-                            color: ct.tooltipText,
-                        }}
-                    />
-                    <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
-
-                    {allUsers.map((user, i) => (
-                        <Line
-                            key={user.userId}
-                            type="monotone"
-                            dataKey={user.userName}
-                            stroke={USER_COLORS[i % USER_COLORS.length]}
-                            strokeWidth={2}
-                            dot={(props: Record<string, unknown>) => {
-                                const { cx, cy, index } = props as {
-                                    cx: number
-                                    cy: number
-                                    index: number
-                                }
-                                if (index === chartDataWithPrediction.length - 1) {
-                                    // Prediction dot — hollow dashed circle
-                                    return (
-                                        <circle
-                                            cx={cx}
-                                            cy={cy}
-                                            r={4}
-                                            fill="none"
-                                            stroke={USER_COLORS[i % USER_COLORS.length]}
-                                            strokeWidth={2}
-                                            strokeDasharray="3 2"
-                                        />
-                                    )
-                                }
-                                // Regular dots hidden; only prediction dot shown
-                                return <g key={`dot-${cx}-${cy}`} />
-                            }}
-                            activeDot={{ r: 6 }}
-                            connectNulls
+            <div className="h-[200px] sm:h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                        data={chartDataWithPrediction}
+                        margin={ct.margin}
+                    >
+                        <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
+                        <XAxis
+                            dataKey="label"
+                            tick={{ fill: ct.tick, fontSize: 11 }}
+                            angle={-20}
+                            textAnchor="end"
+                            height={60}
                         />
-                    ))}
-                </LineChart>
-            </ResponsiveContainer>
+                        <YAxis
+                            tick={{ fill: ct.tick, fontSize: 12 }}
+                            domain={[0, 'auto']}
+                            allowDecimals={false}
+                            width={ct.yAxisWidthNarrow}
+                        />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: ct.tooltipBg,
+                                border: `1px solid ${ct.tooltipBorder}`,
+                                color: ct.tooltipText,
+                            }}
+                        />
+                        <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
+
+                        {allUsers.map((user, i) => (
+                            <Line
+                                key={user.userId}
+                                type="monotone"
+                                dataKey={user.userName}
+                                stroke={USER_COLORS[i % USER_COLORS.length]}
+                                strokeWidth={2}
+                                dot={(props: Record<string, unknown>) => {
+                                    const { cx, cy, index } = props as {
+                                        cx: number
+                                        cy: number
+                                        index: number
+                                    }
+                                    if (index === chartDataWithPrediction.length - 1) {
+                                        // Prediction dot — hollow dashed circle
+                                        return (
+                                            <circle
+                                                cx={cx}
+                                                cy={cy}
+                                                r={4}
+                                                fill="none"
+                                                stroke={USER_COLORS[i % USER_COLORS.length]}
+                                                strokeWidth={2}
+                                                strokeDasharray="3 2"
+                                            />
+                                        )
+                                    }
+                                    // Regular dots hidden; only prediction dot shown
+                                    return <g key={`dot-${cx}-${cy}`} />
+                                }}
+                                activeDot={{ r: 6 }}
+                                connectNulls
+                            />
+                        ))}
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
 
             {/* Prediction note */}
             <p className="text-text-muted text-xs text-center mt-1 italic">

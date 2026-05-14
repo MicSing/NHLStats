@@ -35,31 +35,34 @@ export default function PlusMinusChart({ data }: Props) {
                             <li key={d.userId}>{d.userName}</li>
                         ))}
                     </ul>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <BarChart
-                            data={chartData}
-                            stackOffset="sign"
-                            margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
-                            <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
-                            <YAxis
-                                tick={{ fill: ct.tick, fontSize: 12 }}
-                                tickFormatter={(v: number) => String(Math.abs(v))}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: ct.tooltipBg,
-                                    border: `1px solid ${ct.tooltipBorder}`,
-                                    color: ct.tooltipText,
-                                }}
-                                formatter={(value: number | undefined, name: string | undefined) => [Math.abs(value ?? 0), name ?? '']}
-                            />
-                            <Legend wrapperStyle={{ color: ct.legendText }} />
-                            <Bar dataKey="plus" name="+" stackId="a" fill="#10B981" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="minus" name="−" stackId="a" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <div className="h-[200px] sm:h-[260px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={chartData}
+                                stackOffset="sign"
+                                margin={ct.margin}
+                            >
+                                <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
+                                <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
+                                <YAxis
+                                    tick={{ fill: ct.tick, fontSize: 12 }}
+                                    tickFormatter={(v: number) => String(Math.abs(v))}
+                                    width={ct.yAxisWidthNarrow}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: ct.tooltipBg,
+                                        border: `1px solid ${ct.tooltipBorder}`,
+                                        color: ct.tooltipText,
+                                    }}
+                                    formatter={(value: number | undefined, name: string | undefined) => [Math.abs(value ?? 0), name ?? '']}
+                                />
+                                <Legend wrapperStyle={{ color: ct.legendText }} />
+                                <Bar dataKey="plus" name="+" stackId="a" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="minus" name="−" stackId="a" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </>
             )}
         </div>

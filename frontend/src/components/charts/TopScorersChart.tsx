@@ -81,11 +81,11 @@ export default function TopScorersChart({ data, hideLegend = false }: Props) {
                 <p className="text-text-muted text-sm text-center py-8">No data available</p>
             ) : (
                 <>
-                    <ResponsiveContainer width="100%" height={Math.max(280, visibleData.length * 50)}>
+                    <ResponsiveContainer width="100%" height={Math.max(220, visibleData.length * 44)}>
                         <BarChart
                             data={visibleData}
                             layout="vertical"
-                            margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
+                            margin={ct.margin}
                         >
                             <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
                             <XAxis type="number" allowDecimals={false} tick={{ fill: ct.tick, fontSize: 12 }} />
@@ -93,7 +93,7 @@ export default function TopScorersChart({ data, hideLegend = false }: Props) {
                                 dataKey="displayName"
                                 type="category"
                                 tick={{ fill: ct.tick, fontSize: 11 }}
-                                width={80}
+                                width={70}
                             />
                             <Tooltip
                                 contentStyle={{ backgroundColor: ct.tooltipBg, border: `1px solid ${ct.tooltipBorder}`, color: ct.tooltipText }}

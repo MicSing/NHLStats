@@ -103,76 +103,78 @@ export default function EarningsChart({ data, selectedSeasonId, users, seasons, 
                     <li key={d.userName}>{d.userName}</li>
                 ))}
             </ul>
-            <ResponsiveContainer width="100%" height={280}>
-                <BarChart
-                    data={chartData}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
-                >
-                    <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
-                    <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
-                    <YAxis
-                        tickFormatter={(v: number) => `${v.toFixed(2)} €`}
-                        tick={{ fill: ct.tick, fontSize: 12 }}
-                    />
-                    <Tooltip
-                        formatter={(v: number | undefined, name?: string) => [
-                            `${(v ?? 0).toFixed(2)} €`,
-                            name ?? '',
-                        ]}
-                        contentStyle={{
-                            backgroundColor: ct.tooltipBg,
-                            border: `1px solid ${ct.tooltipBorder}`,
-                            color: ct.tooltipText,
-                        }}
-                        wrapperStyle={{ zIndex: 10 }}
-                    />
-                    {seasonNames.length > 1 && (
-                        <Legend
-                            wrapperStyle={{ color: ct.legendText, fontSize: 12 }}
-                            content={({ payload }) => {
-                                // Reverse so latest season appears first in legend
-                                const items = payload ? [...payload].reverse() : []
-                                return (
-                                    <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1">
-                                        {items.map((entry) => (
-                                            <li
-                                                key={String(entry.dataKey ?? entry.value)}
-                                                className="flex items-center gap-1 cursor-pointer select-none"
-                                                onMouseEnter={() => {
-                                                    const key = typeof entry.dataKey === 'string' ? entry.dataKey : null
-                                                    setHoveredSeason(key ?? String(entry.value ?? ''))
-                                                }}
-                                                onMouseLeave={() => setHoveredSeason(null)}
-                                            >
-                                                <span
-                                                    className="inline-block w-3 h-3 rounded-sm"
-                                                    style={{ backgroundColor: entry.color }}
-                                                />
-                                                <span style={{ color: ct.legendText, fontSize: 12 }}>
-                                                    {entry.value}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )
+            <div className="h-[200px] sm:h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                        data={chartData}
+                        margin={ct.margin}
+                    >
+                        <CartesianGrid strokeDasharray="4 4" stroke={ct.grid} />
+                        <XAxis dataKey="userName" tick={{ fill: ct.tick, fontSize: 12 }} />
+                        <YAxis
+                            tickFormatter={(v: number) => `${v.toFixed(2)} €`}
+                            tick={{ fill: ct.tick, fontSize: 12 }}
+                        />
+                        <Tooltip
+                            formatter={(v: number | undefined, name?: string) => [
+                                `${(v ?? 0).toFixed(2)} €`,
+                                name ?? '',
+                            ]}
+                            contentStyle={{
+                                backgroundColor: ct.tooltipBg,
+                                border: `1px solid ${ct.tooltipBorder}`,
+                                color: ct.tooltipText,
                             }}
+                            wrapperStyle={{ zIndex: 10 }}
                         />
-                    )}
-                    {/* Bars rendered in order: first season first (bottom of stack) */}
-                    {seasonNames.map((sn, i) => (
-                        <Bar
-                            key={sn}
-                            dataKey={sn}
-                            name={sn}
-                            stackId="earnings"
-                            fill={SEASON_COLORS[i % SEASON_COLORS.length]}
-                            fillOpacity={
-                                hoveredSeason === null || hoveredSeason === sn ? 1 : 0.15
-                            }
-                        />
-                    ))}
-                </BarChart>
-            </ResponsiveContainer>
+                        {seasonNames.length > 1 && (
+                            <Legend
+                                wrapperStyle={{ color: ct.legendText, fontSize: 12 }}
+                                content={({ payload }) => {
+                                    // Reverse so latest season appears first in legend
+                                    const items = payload ? [...payload].reverse() : []
+                                    return (
+                                        <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1">
+                                            {items.map((entry) => (
+                                                <li
+                                                    key={String(entry.dataKey ?? entry.value)}
+                                                    className="flex items-center gap-1 cursor-pointer select-none"
+                                                    onMouseEnter={() => {
+                                                        const key = typeof entry.dataKey === 'string' ? entry.dataKey : null
+                                                        setHoveredSeason(key ?? String(entry.value ?? ''))
+                                                    }}
+                                                    onMouseLeave={() => setHoveredSeason(null)}
+                                                >
+                                                    <span
+                                                        className="inline-block w-3 h-3 rounded-sm"
+                                                        style={{ backgroundColor: entry.color }}
+                                                    />
+                                                    <span style={{ color: ct.legendText, fontSize: 12 }}>
+                                                        {entry.value}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )
+                                }}
+                            />
+                        )}
+                        {/* Bars rendered in order: first season first (bottom of stack) */}
+                        {seasonNames.map((sn, i) => (
+                            <Bar
+                                key={sn}
+                                dataKey={sn}
+                                name={sn}
+                                stackId="earnings"
+                                fill={SEASON_COLORS[i % SEASON_COLORS.length]}
+                                fillOpacity={
+                                    hoveredSeason === null || hoveredSeason === sn ? 1 : 0.15
+                                }
+                            />
+                        ))}
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     )
 }
