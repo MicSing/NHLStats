@@ -231,7 +231,7 @@ export default function PublicLayout() {
     )
 
     return (
-        <div className="min-h-screen bg-bg text-text flex">
+        <div className="h-screen bg-bg text-text flex overflow-hidden">
             {/* Mobile top bar */}
             <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
                 <button

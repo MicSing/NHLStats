@@ -201,7 +201,7 @@
         "matchNotFound": "Zápas nebol nájdený",
         "backToSeason": "← Späť na sezónu",
         "matchNumber": "Zápas #{{number}}",
-        "initializeUsers": "Inicializovať hráčov",
+        "initializeUsers": "Pridať všetkých hráčov",
         "noUserEntries": "Pre tento zápas zatiaľ nie sú žiadne záznamy hráčov.",
         "notPlayedYet": "Zatiaľ neodohraný",
         "notPlayed": "Neodohraný",

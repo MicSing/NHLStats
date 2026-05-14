@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { UserPlus } from '@phosphor-icons/react'
 import type { Match } from '../types/match'
 import type {
     UserMatch,
@@ -37,6 +38,7 @@ export default function MatchPage() {
     const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
 
+
     const loadUserMatchData = async (userMatchId: number) => {
         if (!seasonId || !matchId) return
         const [points, goals, penalties, updatedMatch] = await Promise.all([
@@ -71,7 +73,6 @@ export default function MatchPage() {
             setRoster(rosterData)
             setPointReasons(reasons)
 
-            // Load points/goals/penalties for each userMatch in parallel
             const enriched = await Promise.all(
                 userMatches.map(async (um) => {
                     const [points, goals, penalties] = await Promise.all([
@@ -109,10 +110,10 @@ export default function MatchPage() {
         const opponentScore = hostedIsHome ? awayScore : homeScore
 
         const toAdd: number[] = []
-        if (hostedScore === 0) toAdd.push(3)    // Negative: Not Scoring A Goal
-        if (opponentScore === 0) toAdd.push(11) // Positive: Not Scoring A Goal
-        if (hostedScore === 10) toAdd.push(12)  // Positive: Scoring 10 Goals
-        if (opponentScore === 10) toAdd.push(4) // Negative: Scoring 10 Goals
+        if (hostedScore === 0) toAdd.push(3)
+        if (opponentScore === 0) toAdd.push(11)
+        if (hostedScore === 10) toAdd.push(12)
+        if (opponentScore === 10) toAdd.push(4)
 
         for (const { userMatch, points } of userMatchData) {
             for (const pointReasonId of toAdd) {
@@ -163,6 +164,13 @@ export default function MatchPage() {
         }
     }
 
+    const handleJumpToUser = (userId: number) => {
+        const el = document.getElementById(`user-${userId}`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+
+
     if (loading)
         return (
             <PageLayout>
@@ -178,11 +186,11 @@ export default function MatchPage() {
 
     return (
         <PageLayout>
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto pb-12">
                 {/* Back link */}
                 <Link
                     to={`/seasons/${seasonId}`}
-                    className="text-sm text-primary hover:underline mb-4 inline-block"
+                    className="text-sm text-text-muted hover:text-text flex items-center gap-1.5 mb-5 transition-colors"
                 >
                     {t('match.backToSeason')}
                 </Link>
@@ -196,19 +204,38 @@ export default function MatchPage() {
                     onMatchFinished={(hs, awayS) => void handleMatchFinished(hs, awayS)}
                 />
 
-                {/* Initialize users button (auth only) */}
+                {/* Action bar */}
                 {token && (
-                    <div className="mb-4">
+                    <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
                         <button
                             onClick={() => void handleInitializeUsers()}
-                            className="btn-primary text-sm"
+                            className="flex items-center gap-2 border border-primary text-primary hover:bg-primary/10 font-semibold rounded-lg px-4 py-2 text-sm transition-colors"
                         >
+                            <UserPlus size={16} />
                             {t('match.initializeUsers')}
                         </button>
+
                     </div>
                 )}
 
-                {/* User Match Cards */}
+                {/* Sticky quick-jump bar */}
+                {userMatchData.length > 1 && (
+                    <div className="card bg-surface/90 backdrop-blur-sm p-3 mb-5 sticky top-[68px] lg:top-4 z-40 shadow-lg">
+                        <div className="flex flex-wrap gap-2 max-h-[112px] overflow-y-auto">
+                            {userMatchData.map(({ userMatch: um }) => (
+                                <button
+                                    key={`jump-${um.id}`}
+                                    onClick={() => handleJumpToUser(um.id)}
+                                    className="bg-bg hover:bg-primary/10 text-text-muted hover:text-primary border border-border hover:border-primary/40 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                                >
+                                    {um.userName}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* User match cards */}
                 <div className="space-y-4">
                     {userMatchData.map(({ userMatch, points, goals, penalties }) => (
                         <UserMatchCard
@@ -226,11 +253,11 @@ export default function MatchPage() {
                             onNegativePointAdded={handleNegativePointAdded}
                         />
                     ))}
-                </div>
 
-                {userMatchData.length === 0 && (
-                    <p className="text-text-muted mt-4">{t('match.noUserEntries')}</p>
-                )}
+                    {userMatchData.length === 0 && (
+                        <p className="text-text-muted mt-4">{t('match.noUserEntries')}</p>
+                    )}
+                </div>
             </div>
         </PageLayout>
     )

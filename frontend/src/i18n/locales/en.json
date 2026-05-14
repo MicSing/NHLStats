@@ -201,7 +201,7 @@
         "matchNotFound": "Match not found",
         "backToSeason": "← Back to Season",
         "matchNumber": "Match #{{number}}",
-        "initializeUsers": "Initialize Users",
+        "initializeUsers": "Add All Users",
         "noUserEntries": "No user entries for this match yet.",
         "notPlayedYet": "Not played yet",
         "notPlayed": "Not Played",

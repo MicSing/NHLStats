@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash, X, Plus } from '@phosphor-icons/react'
 import type {
     UserMatch,
     UserMatchPoint,
@@ -55,40 +56,39 @@ export default function UserMatchCard({
     const { t } = useTranslation()
     const toast = useToast()
     const [activeTab, setActiveTab] = useState<Tab>('goals')
-    const [posPointForm, setPosPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
-        pointReasonId: '',
-        count: 1,
-    })
-    const [negPointForm, setNegPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
-        pointReasonId: '',
-        count: 1,
-    })
-    const [neutralPointForm, setNeutralPointForm] = useState<{ pointReasonId: number | ''; count: number }>({
-        pointReasonId: '',
-        count: 1,
-    })
+
     const [goalForm, setGoalForm] = useState<{ rosterPlayerId: number | ''; count: number }>({
         rosterPlayerId: '',
         count: 1,
     })
-    const [penaltyForm, setPenaltyForm] = useState<{
-        rosterPlayerId: number | ''
-        count: number
-    }>({ rosterPlayerId: '', count: 1 })
+    const [penaltyForm, setPenaltyForm] = useState<{ rosterPlayerId: number | ''; count: number }>({
+        rosterPlayerId: '',
+        count: 1,
+    })
+    const [pointForm, setPointForm] = useState<{ pointType: PointType; pointReasonId: number | ''; count: number }>({
+        pointType: 'Positive',
+        pointReasonId: '',
+        count: 1,
+    })
     const [goalModal, setGoalModal] = useState<GoalModal | null>(null)
 
     const positiveReasons = pointReasons.filter((r) => r.pointType === 'Positive')
     const negativeReasons = pointReasons.filter((r) => r.pointType === 'Negative')
     const neutralReasons = pointReasons.filter((r) => r.pointType === 'Neutral')
-    const totalPlus = points
-        .filter((p) => p.pointType === 'Positive')
-        .reduce((sum, p) => sum + p.count, 0)
-    const totalMinus = points
-        .filter((p) => p.pointType === 'Negative')
-        .reduce((sum, p) => sum + p.count, 0)
-    const totalNeutral = points
-        .filter((p) => p.pointType === 'Neutral')
-        .reduce((sum, p) => sum + p.count, 0)
+
+    const totalPlus = points.filter((p) => p.pointType === 'Positive').reduce((sum, p) => sum + p.count, 0)
+    const totalMinus = points.filter((p) => p.pointType === 'Negative').reduce((sum, p) => sum + p.count, 0)
+    const totalNeutral = points.filter((p) => p.pointType === 'Neutral').reduce((sum, p) => sum + p.count, 0)
+
+    const reasonsForType: Record<PointType, PointReason[]> = {
+        Positive: positiveReasons,
+        Negative: negativeReasons,
+        Neutral: neutralReasons,
+    }
+
+    const handlePointTypeChange = (type: PointType) => {
+        setPointForm({ pointType: type, pointReasonId: '', count: 1 })
+    }
 
     const handleAddPoint = async (reasonId: number | '', count: number) => {
         if (reasonId === '') return
@@ -124,14 +124,13 @@ export default function UserMatchCard({
     const handleOpenGoalModal = (goalType: GoalType) => {
         const activePositiveReasons = positiveReasons.filter((r) => r.isActive)
         const activeNeutralReasons = neutralReasons.filter((r) => r.isActive)
-        const preselectedReason = goalType === 'PowerPlay'
-            ? (activePositiveReasons.find((r) => r.name === 'Penalty')?.id ?? (activePositiveReasons.length === 1 ? activePositiveReasons[0].id : ''))
-            : (activeNeutralReasons.find((r) => r.name === 'Shorthanded Goal')?.id ?? (activeNeutralReasons.length === 1 ? activeNeutralReasons[0].id : ''))
-        setGoalModal({
-            goalType,
-            pointRecipientUserMatchId: '',
-            pointReasonId: preselectedReason,
-        })
+        const preselectedReason =
+            goalType === 'PowerPlay'
+                ? (activePositiveReasons.find((r) => r.name === 'Penalty')?.id ??
+                    (activePositiveReasons.length === 1 ? activePositiveReasons[0].id : ''))
+                : (activeNeutralReasons.find((r) => r.name === 'Shorthanded Goal')?.id ??
+                    (activeNeutralReasons.length === 1 ? activeNeutralReasons[0].id : ''))
+        setGoalModal({ goalType, pointRecipientUserMatchId: '', pointReasonId: preselectedReason })
     }
 
     const handleGoalModalConfirm = async () => {
@@ -190,420 +189,439 @@ export default function UserMatchCard({
     }
 
     const tabClass = (tab: Tab) =>
-        `px-3 py-1 text-sm rounded-t font-medium transition-colors ${activeTab === tab
-            ? 'bg-surface text-text border-b-2 border-primary'
-            : 'text-text-muted hover:text-text'
+        `px-4 py-3 text-sm font-medium transition-colors border-b-2 capitalize ${
+            activeTab === tab
+                ? 'border-primary text-text'
+                : 'border-transparent text-text-muted hover:text-text'
         }`
 
+    // Aggregate goals by player+type
+    type GoalGroup = {
+        rosterPlayerId: number
+        firstName: string | null
+        surname: string | null
+        totalCount: number
+        ids: number[]
+        goalType: GoalType
+    }
+    const goalGroups = Object.values(
+        goals.reduce<Record<string, GoalGroup>>((acc, g) => {
+            const key = `${g.rosterPlayerId}-${g.goalType}`
+            if (acc[key]) {
+                acc[key].totalCount += g.count
+                acc[key].ids.push(g.id)
+            } else {
+                acc[key] = {
+                    rosterPlayerId: g.rosterPlayerId,
+                    firstName: g.playerFirstName,
+                    surname: g.playerSurname,
+                    totalCount: g.count,
+                    ids: [g.id],
+                    goalType: g.goalType,
+                }
+            }
+            return acc
+        }, {}),
+    )
+
+    // Aggregate penalties by player
+    type PenaltyGroup = {
+        rosterPlayerId: number
+        firstName: string | null
+        surname: string | null
+        totalCount: number
+        ids: number[]
+    }
+    const penaltyGroups = Object.values(
+        penalties.reduce<Record<number, PenaltyGroup>>((acc, p) => {
+            if (acc[p.rosterPlayerId]) {
+                acc[p.rosterPlayerId].totalCount += p.count
+                acc[p.rosterPlayerId].ids.push(p.id)
+            } else {
+                acc[p.rosterPlayerId] = {
+                    rosterPlayerId: p.rosterPlayerId,
+                    firstName: p.playerFirstName,
+                    surname: p.playerSurname,
+                    totalCount: p.count,
+                    ids: [p.id],
+                }
+            }
+            return acc
+        }, {}),
+    )
+
+    // Aggregate points by reason
+    type PointGroup = {
+        pointReasonId: number
+        pointReasonName: string | null
+        pointType: PointType
+        totalCount: number
+        ids: number[]
+    }
+    const pointGroups = Object.values(
+        points.reduce<Record<number, PointGroup>>((acc, p) => {
+            if (acc[p.pointReasonId]) {
+                acc[p.pointReasonId].totalCount += p.count
+                acc[p.pointReasonId].ids.push(p.id)
+            } else {
+                acc[p.pointReasonId] = {
+                    pointReasonId: p.pointReasonId,
+                    pointReasonName: p.pointReasonName,
+                    pointType: p.pointType,
+                    totalCount: p.count,
+                    ids: [p.id],
+                }
+            }
+            return acc
+        }, {}),
+    )
+
+    const totalGoals = goals.reduce((s, g) => s + g.count, 0)
+    const totalPenalties = penalties.reduce((s, p) => s + p.count, 0)
+    const totalPoints = points.reduce((s, p) => s + p.count, 0)
+
+    const pointTypeButtonClass = (type: PointType) => {
+        const isActive = pointForm.pointType === type
+        if (type === 'Positive') {
+            return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
+                isActive
+                    ? 'bg-success/20 text-success border-success/50'
+                    : 'border-transparent text-text-muted hover:bg-border'
+            }`
+        }
+        if (type === 'Negative') {
+            return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
+                isActive
+                    ? 'bg-danger/20 text-danger border-danger/50'
+                    : 'border-transparent text-text-muted hover:bg-border'
+            }`
+        }
+        return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
+            isActive
+                ? 'bg-border text-text border-border'
+                : 'border-transparent text-text-muted hover:bg-border'
+        }`
+    }
+
+    const addPointButtonClass = () => {
+        if (pointForm.pointType === 'Positive') return 'btn-primary bg-success hover:bg-success/80 text-sm px-4 py-2'
+        if (pointForm.pointType === 'Negative') return 'btn-danger text-sm px-4 py-2'
+        return 'btn-ghost border border-border text-sm px-4 py-2'
+    }
+
     return (
-        <div className="card p-5">
-            {/* Card header */}
-            <div className="flex items-center justify-between mb-3">
+        <div id={`user-${um.id}`} className="card overflow-hidden scroll-mt-40">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                 <h2 className="text-lg font-semibold">{um.userName}</h2>
                 <div className="flex items-center gap-4">
-                    <div className="flex gap-4 text-sm">
-                        <span className="text-success">+{totalPlus}</span>
-                        <span className="text-danger">−{totalMinus}</span>
+                    <div className="flex items-center gap-2 text-sm bg-bg px-3 py-1 rounded-full border border-border">
+                        <span className="text-success font-semibold">+{totalPlus}</span>
+                        <span className="text-border">|</span>
+                        <span className="text-danger font-semibold">−{totalMinus}</span>
                         {totalNeutral > 0 && (
-                            <span className="text-text-muted">○{totalNeutral}</span>
+                            <>
+                                <span className="text-border">|</span>
+                                <span className="text-text-muted font-semibold">○{totalNeutral}</span>
+                            </>
                         )}
                     </div>
                     {isAuth && (
                         <button
                             onClick={() => void handleDeleteUserMatch()}
-                            className="text-danger hover:opacity-70 text-sm px-2 py-1 border border-danger rounded"
                             aria-label={t('userMatchCard.deleteUserMatch')}
+                            className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
                         >
-                            {t('userMatchCard.deleteUserMatch')}
+                            <Trash size={18} />
                         </button>
                     )}
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 border-b border-border mb-3">
+            <div className="flex px-1 border-b border-border bg-surface/30">
                 <button className={tabClass('goals')} onClick={() => setActiveTab('goals')}>
-                    {t('userMatchCard.goals')} ({goals.reduce((s, g) => s + g.count, 0)})
+                    {t('userMatchCard.goals')} ({totalGoals})
                 </button>
                 <button className={tabClass('penalties')} onClick={() => setActiveTab('penalties')}>
-                    {t('userMatchCard.penalties')} ({penalties.reduce((s, p) => s + p.count, 0)})
+                    {t('userMatchCard.penalties')} ({totalPenalties})
                 </button>
                 <button className={tabClass('points')} onClick={() => setActiveTab('points')}>
-                    {t('userMatchCard.points')} ({points.reduce((s, p) => s + p.count, 0)})
+                    {t('userMatchCard.points')} ({totalPoints})
                 </button>
             </div>
 
-            {/* Goals tab */}
-            {activeTab === 'goals' && (
-                <div>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        {Object.values(
-                            goals.reduce<
-                                Record<string, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[]; goalType: GoalType }>
-                            >((acc, g) => {
-                                const key = `${g.rosterPlayerId}-${g.goalType}`
-                                if (acc[key]) {
-                                    acc[key].totalCount += g.count
-                                    acc[key].ids.push(g.id)
-                                } else {
-                                    acc[key] = {
-                                        rosterPlayerId: g.rosterPlayerId,
-                                        firstName: g.playerFirstName,
-                                        surname: g.playerSurname,
-                                        totalCount: g.count,
-                                        ids: [g.id],
-                                        goalType: g.goalType,
-                                    }
-                                }
-                                return acc
-                            }, {}),
-                        ).map((g) => (
-                            <span
-                                key={`${g.rosterPlayerId}-${g.goalType}`}
-                                className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
-                            >
-                                {g.firstName} {g.surname}
-                                {g.goalType !== 'Regular' && (
-                                    <span className="text-xs font-semibold text-primary ml-0.5">
-                                        {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
+            {/* Tab content */}
+            <div className="p-5">
+                {/* Goals tab */}
+                {activeTab === 'goals' && (
+                    <div>
+                        {goalGroups.length === 0 ? (
+                            <p className="text-text-muted text-sm italic mb-4">
+                                No {t('userMatchCard.goals').toLowerCase()} recorded yet.
+                            </p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {goalGroups.map((g) => (
+                                    <span
+                                        key={`${g.rosterPlayerId}-${g.goalType}`}
+                                        className="flex items-center gap-1.5 bg-border rounded-full px-3 py-1.5 text-sm"
+                                    >
+                                        {g.firstName} {g.surname}
+                                        {g.goalType !== 'Regular' && (
+                                            <span className="text-xs font-bold text-primary ml-0.5">
+                                                {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
+                                            </span>
+                                        )}
+                                        <span className="text-text-muted mx-0.5">·</span>
+                                        <span>{g.totalCount}</span>
+                                        {isAuth && (
+                                            <button
+                                                aria-label={`delete goal for player ${g.rosterPlayerId}`}
+                                                onClick={() => void handleDeleteGoal(g.ids)}
+                                                className="ml-0.5 text-text-muted hover:text-danger transition-colors"
+                                            >
+                                                <X size={13} />
+                                            </button>
+                                        )}
                                     </span>
-                                )}
-                                {' '}× {g.totalCount}
-                                {isAuth && (
+                                ))}
+                            </div>
+                        )}
+                        {isAuth && (
+                            <div className="flex flex-wrap items-center gap-3 bg-bg/50 p-4 rounded-lg border border-border">
+                                <SearchableSelect
+                                    options={roster.map((r) => ({
+                                        value: r.id,
+                                        label: `${r.firstName} ${r.surname}`,
+                                    }))}
+                                    value={goalForm.rosterPlayerId}
+                                    onChange={(v) =>
+                                        setGoalForm((prev) => ({
+                                            ...prev,
+                                            rosterPlayerId: v === '' ? '' : Number(v),
+                                        }))
+                                    }
+                                    placeholder={t('userMatchCard.selectPlayer')}
+                                />
+                                <input
+                                    type="number"
+                                    aria-label={t('userMatchCard.goalCount')}
+                                    min={1}
+                                    value={goalForm.count}
+                                    onChange={(e) =>
+                                        setGoalForm((prev) => ({ ...prev, count: Number(e.target.value) }))
+                                    }
+                                    className="input w-16 text-center text-sm py-1"
+                                />
+                                <div className="flex gap-2">
                                     <button
-                                        aria-label={`delete goal for player ${g.rosterPlayerId}`}
-                                        onClick={() => void handleDeleteGoal(g.ids)}
-                                        className="text-danger hover:opacity-70 ml-1 leading-none"
+                                        type="button"
+                                        className="btn-primary flex items-center gap-1.5 text-sm px-3 py-1.5"
+                                        onClick={() => void handleAddGoal('Regular')}
                                     >
-                                        ✕
+                                        <Plus size={15} weight="bold" />
+                                        {t('userMatchCard.addGoal')}
                                     </button>
-                                )}
-                            </span>
-                        ))}
+                                    <button
+                                        type="button"
+                                        className="bg-border hover:bg-border/70 text-primary border border-border text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
+                                        onClick={() => handleOpenGoalModal('PowerPlay')}
+                                    >
+                                        {t('userMatchCard.addGoalPP')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="bg-border hover:bg-border/70 text-primary border border-border text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
+                                        onClick={() => handleOpenGoalModal('ShortHanded')}
+                                    >
+                                        {t('userMatchCard.addGoalSH')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {isAuth && (
-                        <form
-                            aria-label={`add goal for ${um.userName}`}
-                            onSubmit={(e) => {
-                                e.preventDefault()
-                                void handleAddGoal('Regular')
-                            }}
-                            className="flex gap-2 mt-2"
-                        >
-                            <SearchableSelect
-                                options={roster.map((r) => ({
-                                    value: r.id,
-                                    label: `${r.firstName} ${r.surname}`,
-                                }))}
-                                value={goalForm.rosterPlayerId}
-                                onChange={(v) =>
-                                    setGoalForm((prev) => ({
-                                        ...prev,
-                                        rosterPlayerId: v === '' ? '' : Number(v),
-                                    }))
-                                }
-                                placeholder={t('userMatchCard.selectPlayer')}
-                            />
-                            <input
-                                type="number"
-                                aria-label="goal count"
-                                min={1}
-                                value={goalForm.count}
-                                onChange={(e) =>
-                                    setGoalForm((prev) => ({ ...prev, count: Number(e.target.value) }))
-                                }
-                                className="input w-16 text-center text-sm py-1"
-                            />
-                            <div className="flex gap-1">
-                                <button
-                                    type="submit"
-                                    className="btn-primary text-sm px-3 py-1"
-                                >
-                                    {t('userMatchCard.addGoal')}
-                                </button>
+                )}
+
+                {/* Penalties tab */}
+                {activeTab === 'penalties' && (
+                    <div>
+                        {penaltyGroups.length === 0 ? (
+                            <p className="text-text-muted text-sm italic mb-4">
+                                No {t('userMatchCard.penalties').toLowerCase()} recorded yet.
+                            </p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {penaltyGroups.map((p) => (
+                                    <span
+                                        key={p.rosterPlayerId}
+                                        className="flex items-center gap-1.5 bg-border rounded-full px-3 py-1.5 text-sm"
+                                    >
+                                        {p.firstName} {p.surname}
+                                        <span className="text-text-muted mx-0.5">·</span>
+                                        <span>{p.totalCount}</span>
+                                        {isAuth && (
+                                            <button
+                                                aria-label={`delete penalty for player ${p.rosterPlayerId}`}
+                                                onClick={() => void handleDeletePenalty(p.ids)}
+                                                className="ml-0.5 text-text-muted hover:text-danger transition-colors"
+                                            >
+                                                <X size={13} />
+                                            </button>
+                                        )}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {isAuth && (
+                            <div className="flex flex-wrap items-center gap-3 bg-bg/50 p-4 rounded-lg border border-border">
+                                <SearchableSelect
+                                    options={roster.map((r) => ({
+                                        value: r.id,
+                                        label: `${r.firstName} ${r.surname}`,
+                                    }))}
+                                    value={penaltyForm.rosterPlayerId}
+                                    onChange={(v) =>
+                                        setPenaltyForm((prev) => ({
+                                            ...prev,
+                                            rosterPlayerId: v === '' ? '' : Number(v),
+                                        }))
+                                    }
+                                    placeholder={t('userMatchCard.selectPlayer')}
+                                />
+                                <input
+                                    type="number"
+                                    aria-label={t('userMatchCard.penaltyCount')}
+                                    min={1}
+                                    value={penaltyForm.count}
+                                    onChange={(e) =>
+                                        setPenaltyForm((prev) => ({
+                                            ...prev,
+                                            count: Number(e.target.value),
+                                        }))
+                                    }
+                                    className="input w-16 text-center text-sm py-1"
+                                />
                                 <button
                                     type="button"
-                                    className="btn-primary text-sm px-3 py-1"
-                                    onClick={() => handleOpenGoalModal('PowerPlay')}
+                                    className="btn-warning flex items-center gap-1.5 text-sm px-3 py-1.5"
+                                    onClick={() => void handleAddPenalty()}
                                 >
-                                    {t('userMatchCard.addGoalPP')}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-primary text-sm px-3 py-1"
-                                    onClick={() => handleOpenGoalModal('ShortHanded')}
-                                >
-                                    {t('userMatchCard.addGoalSH')}
+                                    <Plus size={15} weight="bold" />
+                                    {t('userMatchCard.addPenalty')}
                                 </button>
                             </div>
-                        </form>
-                    )}
-                </div>
-            )}
-
-            {/* Penalties tab */}
-            {activeTab === 'penalties' && (
-                <div>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        {Object.values(
-                            penalties.reduce<
-                                Record<number, { rosterPlayerId: number; firstName: string | null; surname: string | null; totalCount: number; ids: number[] }>
-                            >((acc, p) => {
-                                if (acc[p.rosterPlayerId]) {
-                                    acc[p.rosterPlayerId].totalCount += p.count
-                                    acc[p.rosterPlayerId].ids.push(p.id)
-                                } else {
-                                    acc[p.rosterPlayerId] = {
-                                        rosterPlayerId: p.rosterPlayerId,
-                                        firstName: p.playerFirstName,
-                                        surname: p.playerSurname,
-                                        totalCount: p.count,
-                                        ids: [p.id],
-                                    }
-                                }
-                                return acc
-                            }, {}),
-                        ).map((p) => (
-                            <span
-                                key={p.rosterPlayerId}
-                                className="flex items-center gap-1 bg-border rounded-full px-3 py-1 text-sm"
-                            >
-                                {p.firstName} {p.surname} × {p.totalCount}
-                                {isAuth && (
-                                    <button
-                                        aria-label={`delete penalty for player ${p.rosterPlayerId}`}
-                                        onClick={() => void handleDeletePenalty(p.ids)}
-                                        className="text-danger hover:opacity-70 ml-1 leading-none"
-                                    >
-                                        ✕
-                                    </button>
-                                )}
-                            </span>
-                        ))}
+                        )}
                     </div>
-                    {isAuth && (
-                        <form
-                            aria-label={`add penalty for ${um.userName}`}
-                            onSubmit={(e) => {
-                                e.preventDefault()
-                                void handleAddPenalty()
-                            }}
-                            className="flex gap-2 mt-2"
-                        >
-                            <SearchableSelect
-                                options={roster.map((r) => ({
-                                    value: r.id,
-                                    label: `${r.firstName} ${r.surname}`,
-                                }))}
-                                value={penaltyForm.rosterPlayerId}
-                                onChange={(v) =>
-                                    setPenaltyForm((prev) => ({
-                                        ...prev,
-                                        rosterPlayerId: v === '' ? '' : Number(v),
-                                    }))
-                                }
-                                placeholder={t('userMatchCard.selectPlayer')}
-                            />
-                            <input
-                                type="number"
-                                aria-label="penalty count"
-                                min={1}
-                                value={penaltyForm.count}
-                                onChange={(e) =>
-                                    setPenaltyForm((prev) => ({
-                                        ...prev,
-                                        count: Number(e.target.value),
-                                    }))
-                                }
-                                className="input w-16 text-center text-sm py-1"
-                            />
-                            <button
-                                type="submit"
-                                className="btn-warning text-sm px-3 py-1"
-                            >
-                                {t('userMatchCard.addPenalty')}
-                            </button>
-                        </form>
-                    )}
-                </div>
-            )}
+                )}
 
-            {/* Points tab */}
-            {activeTab === 'points' && (
-                <div>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        {Object.values(
-                            points.reduce<
-                                Record<
-                                    number,
-                                    {
-                                        pointReasonId: number
-                                        pointReasonName: string | null
-                                        pointType: PointType
-                                        totalCount: number
-                                        ids: number[]
-                                    }
-                                >
-                            >((acc, p) => {
-                                if (acc[p.pointReasonId]) {
-                                    acc[p.pointReasonId].totalCount += p.count
-                                    acc[p.pointReasonId].ids.push(p.id)
-                                } else {
-                                    acc[p.pointReasonId] = {
-                                        pointReasonId: p.pointReasonId,
-                                        pointReasonName: p.pointReasonName,
-                                        pointType: p.pointType,
-                                        totalCount: p.count,
-                                        ids: [p.id],
-                                    }
-                                }
-                                return acc
-                            }, {}),
-                        ).map((g) => (
-                            <span
-                                key={g.pointReasonId}
-                                className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm ${g.pointType === 'Positive'
-                                    ? 'bg-success/20 text-success'
-                                    : g.pointType === 'Negative'
-                                        ? 'bg-danger/20 text-danger'
-                                        : 'bg-border text-text-muted'
-                                    }`}
-                            >
-                                {g.pointReasonName} × {g.totalCount}
-                                {isAuth && (
-                                    <button
-                                        aria-label={`delete point reason ${g.pointReasonId}`}
-                                        onClick={() => void handleDeletePointsByReason(g.ids)}
-                                        className="hover:opacity-70 ml-1 leading-none"
+                {/* Points tab */}
+                {activeTab === 'points' && (
+                    <div>
+                        {pointGroups.length === 0 ? (
+                            <p className="text-text-muted text-sm italic mb-4">
+                                No {t('userMatchCard.points').toLowerCase()} recorded yet.
+                            </p>
+                        ) : (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {pointGroups.map((g) => (
+                                    <span
+                                        key={g.pointReasonId}
+                                        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border ${
+                                            g.pointType === 'Positive'
+                                                ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
+                                                : g.pointType === 'Negative'
+                                                    ? 'bg-red-950/30 border-red-900/50 text-red-300'
+                                                    : 'bg-border border-transparent text-text'
+                                        }`}
                                     >
-                                        ✕
+                                        {g.pointReasonName}
+                                        <span className="opacity-60 mx-0.5">·</span>
+                                        <span>{g.totalCount}</span>
+                                        {isAuth && (
+                                            <button
+                                                aria-label={`delete point reason ${g.pointReasonId}`}
+                                                onClick={() => void handleDeletePointsByReason(g.ids)}
+                                                className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                            >
+                                                <X size={13} />
+                                            </button>
+                                        )}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {isAuth && (
+                            <div className="flex flex-col gap-3 bg-bg/50 p-4 rounded-lg border border-border">
+                                {/* Segmented control */}
+                                <div className="flex gap-2">
+                                    {(['Positive', 'Neutral', 'Negative'] as PointType[]).map((type) => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => handlePointTypeChange(type)}
+                                            className={pointTypeButtonClass(type)}
+                                        >
+                                            {t(`common.${type.toLowerCase()}`)}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Reason + count + add */}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <select
+                                        value={pointForm.pointReasonId}
+                                        onChange={(e) =>
+                                            setPointForm((prev) => ({
+                                                ...prev,
+                                                pointReasonId: e.target.value === '' ? '' : Number(e.target.value),
+                                            }))
+                                        }
+                                        className="input flex-1 min-w-[180px] text-sm py-1.5"
+                                    >
+                                        <option value="">{t('common.select')}</option>
+                                        {reasonsForType[pointForm.pointType].map((r) => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="number"
+                                        aria-label={t('userMatchCard.pointCount')}
+                                        min={1}
+                                        value={pointForm.count}
+                                        onChange={(e) =>
+                                            setPointForm((prev) => ({ ...prev, count: Number(e.target.value) }))
+                                        }
+                                        className="input w-16 text-center text-sm py-1"
+                                    />
+                                    <button
+                                        type="button"
+                                        className={`flex items-center gap-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 ${addPointButtonClass()}`}
+                                        disabled={pointForm.pointReasonId === ''}
+                                        onClick={() =>
+                                            void handleAddPoint(pointForm.pointReasonId, pointForm.count)
+                                        }
+                                    >
+                                        <Plus size={15} weight="bold" />
+                                        {t(`common.${pointForm.pointType.toLowerCase()}`)}
                                     </button>
-                                )}
-                            </span>
-                        ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {isAuth && (
-                        <div className="space-y-2 mt-2">
-                            {/* Positive points */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addPositive')}</span>
-                                <SearchableSelect
-                                    options={positiveReasons.map((r) => ({
-                                        value: r.id,
-                                        label: r.name,
-                                    }))}
-                                    value={posPointForm.pointReasonId}
-                                    onChange={(v) =>
-                                        setPosPointForm((prev) => ({
-                                            ...prev,
-                                            pointReasonId: v === '' ? '' : Number(v),
-                                        }))
-                                    }
-                                    placeholder={t('common.positive')}
-                                />
-                                <input
-                                    type="number"
-                                    aria-label="point count"
-                                    min={1}
-                                    value={posPointForm.count}
-                                    onChange={(e) =>
-                                        setPosPointForm((prev) => ({
-                                            ...prev,
-                                            count: Number(e.target.value),
-                                        }))
-                                    }
-                                    className="input w-16 text-center text-sm py-1"
-                                />
-                                <button
-                                    onClick={() => void handleAddPoint(posPointForm.pointReasonId, posPointForm.count)}
-                                    className="btn-primary text-sm px-3 py-1"
-                                >
-                                    {t('userMatchCard.addPositive')}
-                                </button>
-                            </div>
-                            {/* Negative points */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addNegative')}</span>
-                                <SearchableSelect
-                                    options={negativeReasons.map((r) => ({
-                                        value: r.id,
-                                        label: r.name,
-                                    }))}
-                                    value={negPointForm.pointReasonId}
-                                    onChange={(v) =>
-                                        setNegPointForm((prev) => ({
-                                            ...prev,
-                                            pointReasonId: v === '' ? '' : Number(v),
-                                        }))
-                                    }
-                                    placeholder={t('common.negative')}
-                                />
-                                <input
-                                    type="number"
-                                    aria-label="point count"
-                                    min={1}
-                                    value={negPointForm.count}
-                                    onChange={(e) =>
-                                        setNegPointForm((prev) => ({
-                                            ...prev,
-                                            count: Number(e.target.value),
-                                        }))
-                                    }
-                                    className="input w-16 text-center text-sm py-1"
-                                />
-                                <button
-                                    onClick={() => void handleAddPoint(negPointForm.pointReasonId, negPointForm.count)}
-                                    className="btn-danger text-sm px-3 py-1"
-                                >
-                                    {t('userMatchCard.addNegative')}
-                                </button>
-                            </div>
-                            {/* Neutral points */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-text-muted w-12 shrink-0">{t('userMatchCard.addNeutral')}</span>
-                                <SearchableSelect
-                                    options={neutralReasons.map((r) => ({
-                                        value: r.id,
-                                        label: r.name,
-                                    }))}
-                                    value={neutralPointForm.pointReasonId}
-                                    onChange={(v) =>
-                                        setNeutralPointForm((prev) => ({
-                                            ...prev,
-                                            pointReasonId: v === '' ? '' : Number(v),
-                                        }))
-                                    }
-                                    placeholder={t('common.neutral')}
-                                />
-                                <input
-                                    type="number"
-                                    aria-label="point count"
-                                    min={1}
-                                    value={neutralPointForm.count}
-                                    onChange={(e) =>
-                                        setNeutralPointForm((prev) => ({
-                                            ...prev,
-                                            count: Number(e.target.value),
-                                        }))
-                                    }
-                                    className="input w-16 text-center text-sm py-1"
-                                />
-                                <button
-                                    onClick={() => void handleAddPoint(neutralPointForm.pointReasonId, neutralPointForm.count)}
-                                    className="btn-ghost text-sm px-3 py-1"
-                                >
-                                    {t('userMatchCard.addNeutral')}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
 
             {/* PP/SH goal modal */}
             {goalModal && (
                 <Modal
-                    title={goalModal.goalType === 'PowerPlay' ? t('userMatchCard.ppGoalTitle') : t('userMatchCard.shGoalTitle')}
+                    title={
+                        goalModal.goalType === 'PowerPlay'
+                            ? t('userMatchCard.ppGoalTitle')
+                            : t('userMatchCard.shGoalTitle')
+                    }
                     onClose={() => setGoalModal(null)}
                 >
                     <div className="space-y-4">
@@ -630,7 +648,9 @@ export default function UserMatchCard({
                                 value={goalModal.pointRecipientUserMatchId}
                                 onChange={(v) =>
                                     setGoalModal((prev) =>
-                                        prev ? { ...prev, pointRecipientUserMatchId: v === '' ? '' : Number(v) } : null,
+                                        prev
+                                            ? { ...prev, pointRecipientUserMatchId: v === '' ? '' : Number(v) }
+                                            : null,
                                     )
                                 }
                                 placeholder={t('userMatchCard.selectUser')}
@@ -648,7 +668,7 @@ export default function UserMatchCard({
                                     goalModal.pointReasonId === '' ||
                                     goalForm.rosterPlayerId === ''
                                 }
-                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded disabled:opacity-50"
+                                className="btn-primary text-sm disabled:opacity-50"
                             >
                                 {t('userMatchCard.confirm')}
                             </button>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CalendarBlank } from '@phosphor-icons/react'
 import type { Match, UpdateMatchDto } from '../types/match'
 import { CompletionType } from '../types/match'
 import apiClient from '../services/apiClient'
@@ -16,26 +17,11 @@ interface Props {
     onMatchFinished?: (homeScore: number, awayScore: number) => void
 }
 
-function CompletionBadge({ type }: { type: CompletionType }) {
-    const map: Record<CompletionType, { label: string; className: string }> = {
-        [CompletionType.None]: { label: 'N/A', className: 'bg-border text-text-muted' },
-        [CompletionType.RegularTime]: { label: 'REG', className: 'bg-success/20 text-success' },
-        [CompletionType.Overtime]: { label: 'OT', className: 'bg-warning/20 text-warning' },
-        [CompletionType.Shootout]: { label: 'SO', className: 'bg-secondary/20 text-secondary' },
-        [CompletionType.InProgress]: { label: 'LIVE', className: 'bg-danger/20 text-danger animate-pulse' },
-    }
-    const { label, className } = map[type] ?? map[CompletionType.None]
-    return (
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${className}`}>{label}</span>
-    )
-}
-
 function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
     if (value === null || value === undefined) return CompletionType.None
     if (typeof value === 'number') {
         return Object.values(CompletionType).includes(value) ? value : CompletionType.None
     }
-
     switch (value.toLowerCase()) {
         case 'reg':
         case 'regular':
@@ -54,6 +40,17 @@ function normalizeCompletionType(value: CompletionType | string | null | undefin
             return CompletionType.InProgress
         default:
             return CompletionType.None
+    }
+}
+
+function completionTypeLabel(ct: CompletionType, t: (key: string) => string): string {
+    switch (ct) {
+        case CompletionType.None: return t('match.notPlayed')
+        case CompletionType.RegularTime: return t('match.reg')
+        case CompletionType.Overtime: return t('match.ot')
+        case CompletionType.Shootout: return t('match.so')
+        case CompletionType.InProgress: return t('match.inProgress')
+        default: return t('match.notPlayed')
     }
 }
 
@@ -130,41 +127,53 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
         }
     }
 
+    const scoreInputClass =
+        'w-16 bg-transparent text-center text-4xl font-bold focus:outline-none ' +
+        'hover:bg-surface/50 focus:bg-surface rounded-lg p-1 transition-colors ' +
+        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+
     return (
-        <div className="card p-6 mb-6">
-            <div className="flex items-center justify-between">
-                <div className="text-center flex-1">
-                    <p className="text-xl font-bold">{match.homeTeamName}</p>
+        <div className="card p-6 md:p-8 mb-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                {/* Home team */}
+                <div className="flex-1 flex justify-end">
+                    <h1 className="text-xl md:text-2xl font-semibold text-right">{match.homeTeamName}</h1>
                 </div>
-                <div className="text-center px-6">
-                    <p className="text-xs text-text-muted mb-1">{t('match.matchNumber', { number: match.matchNumber })}</p>
+
+                {/* Central score / controls */}
+                <div className="flex flex-col items-center flex-shrink-0 min-w-[200px] gap-3">
+                    <span className="text-xs text-text-muted font-medium uppercase tracking-wider">
+                        {t('match.matchNumber', { number: match.matchNumber })}
+                    </span>
+
                     {isAuth ? (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 justify-center">
+                        <>
+                            <div className="flex items-center gap-4">
                                 <input
                                     type="number"
-                                    aria-label="home score"
+                                    aria-label={t('match.homeScore')}
                                     min={0}
                                     value={homeScore}
                                     onChange={(e) => setHomeScore(Number(e.target.value))}
-                                    className="input w-16 text-center text-2xl font-mono font-bold py-1"
+                                    className={scoreInputClass}
                                 />
-                                <span className="text-2xl font-mono text-text-muted">–</span>
+                                <span className="text-3xl text-text-muted font-light select-none">—</span>
                                 <input
                                     type="number"
-                                    aria-label="away score"
+                                    aria-label={t('match.awayScore')}
                                     min={0}
                                     value={awayScore}
                                     onChange={(e) => setAwayScore(Number(e.target.value))}
-                                    className="input w-16 text-center text-2xl font-mono font-bold py-1"
+                                    className={scoreInputClass}
                                 />
                             </div>
-                            <div className="flex items-center gap-2 justify-center">
+
+                            <div className="flex flex-col sm:flex-row items-center gap-2">
                                 <select
-                                    aria-label="completion type"
+                                    aria-label={t('match.completionType')}
                                     value={completionType}
                                     onChange={(e) => handleCompletionTypeChange(Number(e.target.value) as CompletionType)}
-                                    className="input text-sm py-1"
+                                    className="input !py-1 !px-2 !w-auto text-xs font-semibold uppercase bg-border border-transparent"
                                 >
                                     <option value={CompletionType.None}>{t('match.notPlayed')}</option>
                                     <option value={CompletionType.RegularTime}>{t('match.reg')}</option>
@@ -172,38 +181,50 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                                     <option value={CompletionType.Shootout}>{t('match.so')}</option>
                                     <option value={CompletionType.InProgress}>{t('match.inProgress')}</option>
                                 </select>
-                                <input
-                                    type="date"
-                                    aria-label="match date"
-                                    value={matchDate}
-                                    onChange={(e) => setMatchDate(e.target.value)}
-                                    className="input text-sm py-1"
-                                />
+
+                                <div className="relative flex items-center">
+                                    <CalendarBlank
+                                        size={16}
+                                        className="absolute left-3 text-text-muted pointer-events-none"
+                                    />
+                                    <input
+                                        type="date"
+                                        aria-label={t('match.matchDate')}
+                                        value={matchDate}
+                                        onChange={(e) => setMatchDate(e.target.value)}
+                                        className="input !py-1 !pl-9 !pr-3 text-xs !w-auto"
+                                    />
+                                </div>
                             </div>
+
                             {saving && (
                                 <span className="text-xs text-text-muted animate-pulse">
                                     {t('common.saving')}
                                 </span>
                             )}
-                        </div>
+                        </>
                     ) : (
                         <>
                             <p className="text-4xl font-mono font-bold">
-                                {match.homeScore} – {match.awayScore}
+                                {match.homeScore} — {match.awayScore}
                             </p>
-                            <p className="text-sm text-text-muted mt-1">
-                                {match.matchDate
-                                    ? new Date(match.matchDate).toLocaleDateString()
-                                    : t('match.notPlayedYet')}
-                            </p>
-                            <div className="mt-2">
-                                <CompletionBadge type={normalizeCompletionType(match.completionType)} />
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs px-2 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
+                                    {completionTypeLabel(normalizeCompletionType(match.completionType), t)}
+                                </span>
+                                {match.matchDate && (
+                                    <span className="text-xs text-text-muted">
+                                        {new Date(match.matchDate).toLocaleDateString()}
+                                    </span>
+                                )}
                             </div>
                         </>
                     )}
                 </div>
-                <div className="text-center flex-1">
-                    <p className="text-xl font-bold">{match.awayTeamName}</p>
+
+                {/* Away team */}
+                <div className="flex-1 flex justify-start">
+                    <h1 className="text-xl md:text-2xl font-semibold">{match.awayTeamName}</h1>
                 </div>
             </div>
         </div>
