@@ -52,11 +52,11 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
 
     return (
         <section className="card p-4 space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted truncate min-w-0">
                     {t('betting.marketsFor', { match: matchTitle })}
                 </h2>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-text-muted">{t('betting.showUnavailable')}</span>
                         <button
