@@ -243,7 +243,7 @@
         "remaining": "Remaining"
     },
     "userStats": {
-        "title": "📈 Player Stats",
+        "title": "Player Stats",
         "loadingSeasons": "Loading seasons…",
         "loadingPlayers": "Loading players…",
         "loadingStats": "Loading stats…",
@@ -252,10 +252,10 @@
         "penalties": "Penalties",
         "minusBreakdown": "Minus Points Breakdown",
         "weekTrend": "Week Trend",
-        "bestMatch": "🏆 Best Match",
-        "worstMatch": "💀 Worst Match",
-        "bestWeek": "🏆 Best Week",
-        "worstWeek": "💀 Worst Week",
+        "bestMatch": "Best Match",
+        "worstMatch": "Worst Match",
+        "bestWeek": "Best Week",
+        "worstWeek": "Worst Week",
         "weekOf": "Week of {{date}}",
         "seasonWeekLabel": "{{season}} Week {{week}}",
         "weekLabel": "Week {{week}}",
@@ -276,8 +276,15 @@
         "netPoints": "Net Points",
         "goals": "Goals",
         "matchesPlayed": "Matches",
-        "yourTopScorers": "Your Top Scorers",
-        "yourPenaltyLeaders": "Your Penalty Leaders"
+        "yourTopScorers": "Scoring Partners",
+        "yourPenaltyLeaders": "Penalty Partners",
+        "penaltiesDesc": "Relationship between roster penalties and their direct impact on minus points scored.",
+        "minusBreakdownDesc": "Categorisation of game situations that led to minus point losses.",
+        "weekTrendDesc": "Weekly average goals versus plus/minus trend over time.",
+        "scoringPartnersDesc": "Roster players you score goals with most often.",
+        "penaltyPartnersDesc": "Roster players most frequently on ice during your penalties.",
+        "records": "Season Records",
+        "recordsDesc": "Extreme values identified across played matches and weekly cycles."
     },
     "rules": {
         "title": "📋 Rules",

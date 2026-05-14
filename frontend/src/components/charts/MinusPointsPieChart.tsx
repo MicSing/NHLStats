@@ -81,8 +81,9 @@ export default function MinusPointsPieChart({ items }: Props) {
                     <Pie
                         data={chartData}
                         cx="50%"
-                        cy="50%"
-                        outerRadius={100}
+                        cy="45%"
+                        innerRadius={60}
+                        outerRadius={95}
                         dataKey="value"
                         labelLine={false}
                         label={makeRenderCustomLabel(ct.pieLabelText) as unknown as boolean}
@@ -103,7 +104,10 @@ export default function MinusPointsPieChart({ items }: Props) {
                         formatter={(value: number | undefined) => [value ?? 0, 'Count']}
                     />
                     <Legend
-                        wrapperStyle={{ color: ct.legendText, fontSize: 12 }}
+                        layout="vertical"
+                        align="center"
+                        verticalAlign="bottom"
+                        wrapperStyle={{ color: ct.legendText, fontSize: 11, paddingTop: 8 }}
                     />
                 </PieChart>
             </ResponsiveContainer>

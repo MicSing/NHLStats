@@ -243,7 +243,7 @@
         "remaining": "Zostáva"
     },
     "userStats": {
-        "title": "📈 Štatistiky hráčov",
+        "title": "Štatistiky hráčov",
         "loadingSeasons": "Načítavam sezóny…",
         "loadingPlayers": "Načítavam hráčov…",
         "loadingStats": "Načítavam štatistiky…",
@@ -252,10 +252,10 @@
         "penalties": "Tresty",
         "minusBreakdown": "Rozdelenie mínusových bodov",
         "weekTrend": "Trend podľa týždňov",
-        "bestMatch": "🏆 Najlepší zápas",
-        "worstMatch": "💀 Najhorší zápas",
-        "bestWeek": "🏆 Najlepší týždeň",
-        "worstWeek": "💀 Najhorší týždeň",
+        "bestMatch": "Najlepší zápas",
+        "worstMatch": "Najhorší zápas",
+        "bestWeek": "Najlepší týždeň",
+        "worstWeek": "Najhorší týždeň",
         "weekOf": "Týždeň od {{date}}",
         "seasonWeekLabel": "{{season}} Týždeň {{week}}",
         "weekLabel": "Týždeň {{week}}",
@@ -276,8 +276,15 @@
         "netPoints": "Čisté body",
         "goals": "Góly",
         "matchesPlayed": "Zápasy",
-        "yourTopScorers": "Tvoji najlepší strelci",
-        "yourPenaltyLeaders": "Tvoji najviac trestaní"
+        "yourTopScorers": "Streleckí partneri",
+        "yourPenaltyLeaders": "Trestoví partneri",
+        "penaltiesDesc": "Vzťah medzi trestami zo zostavy a ich priamym vplyvom na mínusové body.",
+        "minusBreakdownDesc": "Kategorizácia herných situácií, ktoré viedli k strate mínusových bodov.",
+        "weekTrendDesc": "Týždenný priemer gólov verzus trend plus/mínus v čase.",
+        "scoringPartnersDesc": "Hráči zo zostavy, s ktorými najčastejšie strelíš gól.",
+        "penaltyPartnersDesc": "Hráči zo zostavy najčastejšie prítomní na ľade počas tvojich trestov.",
+        "records": "Sezónne rekordy",
+        "recordsDesc": "Extrémne hodnoty identifikované v odohraných zápasoch a týždenných cykloch."
     },
     "rules": {
         "title": "📋 Pravidlá",
