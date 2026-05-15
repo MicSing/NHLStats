@@ -481,7 +481,11 @@
             "noUsersAssigned": "No users assigned",
             "selectUser": "Select user…",
             "startedOn": "Started On",
-            "selectTeam": "Select team…"
+            "selectTeam": "Select team…",
+            "leagueType": "League",
+            "leagueTypeNHL": "NHL",
+            "leagueTypeIIHF": "IIHF",
+            "leagueTypeOlympic": "Olympic"
         },
         "teams": {
             "title": "Teams",
@@ -491,7 +495,11 @@
             "shortName": "Short Name",
             "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
             "namePlaceholder": "e.g. Utah Mammoth",
-            "shortPlaceholder": "e.g. UTA"
+            "shortPlaceholder": "e.g. UTA",
+            "leagueType": "League",
+            "leagueTypeNHL": "NHL",
+            "leagueTypeIIHF": "IIHF",
+            "leagueTypeOlympic": "Olympic"
         },
         "roster": {
             "title": "Roster",

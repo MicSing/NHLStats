@@ -1,4 +1,5 @@
 import type { User } from './user'
+import type { LeagueTypeValue } from './team'
 
 export interface Season {
     id: number
@@ -8,6 +9,7 @@ export interface Season {
     startedOn: string
     status: string | null
     parentSeasonId: number | null
+    leagueType: LeagueTypeValue
 }
 
 export interface SeasonDetail extends Season {
@@ -20,6 +22,7 @@ export interface CreateSeasonDto {
     startedOn: string
     status?: string | null
     parentSeasonId?: number | null
+    leagueType: LeagueTypeValue
 }
 
 export type UpdateSeasonDto = CreateSeasonDto

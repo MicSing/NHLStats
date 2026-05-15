@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Team } from '../../types/team'
+import { LeagueType } from '../../types/team'
+import type { LeagueTypeValue, Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,7 @@ import { useToast } from '../../context/ToastContext'
 interface TeamForm {
     name: string
     shortName: string
+    leagueType: LeagueTypeValue
 }
 
 export default function TeamsPage() {
@@ -25,11 +27,11 @@ export default function TeamsPage() {
 
     // Add modal
     const [showAddModal, setShowAddModal] = useState(false)
-    const [addForm, setAddForm] = useState<TeamForm>({ name: '', shortName: '' })
+    const [addForm, setAddForm] = useState<TeamForm>({ name: '', shortName: '', leagueType: LeagueType.NHL })
 
     // Edit modal
     const [editTeam, setEditTeam] = useState<Team | null>(null)
-    const [editForm, setEditForm] = useState<TeamForm>({ name: '', shortName: '' })
+    const [editForm, setEditForm] = useState<TeamForm>({ name: '', shortName: '', leagueType: LeagueType.NHL })
 
     const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
         data: teams,
@@ -55,7 +57,7 @@ export default function TeamsPage() {
         e.preventDefault()
         try {
             await apiClient.post<Team>('/api/teams', addForm)
-            setAddForm({ name: '', shortName: '' })
+            setAddForm({ name: '', shortName: '', leagueType: LeagueType.NHL })
             setShowAddModal(false)
             toast.success(t('toast.createSuccess'))
             await loadTeams()
@@ -90,8 +92,13 @@ export default function TeamsPage() {
 
     const openEdit = (team: Team) => {
         setEditTeam(team)
-        setEditForm({ name: team.name, shortName: team.shortName })
+        setEditForm({ name: team.name, shortName: team.shortName, leagueType: team.leagueType })
     }
+
+    const leagueLabel = (v: LeagueTypeValue) =>
+        v === LeagueType.NHL ? t('admin.teams.leagueTypeNHL')
+        : v === LeagueType.IIHF ? t('admin.teams.leagueTypeIIHF')
+        : t('admin.teams.leagueTypeOlympic')
 
     if (loading) return <LoadingSpinner />
     if (error) return <ErrorMessage message={error} onRetry={() => void loadTeams()} />
@@ -110,6 +117,7 @@ export default function TeamsPage() {
                         <tr className="text-left border-b border-border text-text-muted">
                             <th className="pb-2 pr-4">{t('common.name')}</th>
                             <th className="pb-2 pr-4">{t('admin.teams.short')}</th>
+                            <th className="pb-2 pr-4">{t('admin.teams.leagueType')}</th>
                             <th className="pb-2">{t('common.actions')}</th>
                         </tr>
                     </thead>
@@ -122,6 +130,7 @@ export default function TeamsPage() {
                                         {team.shortName}
                                     </span>
                                 </td>
+                                <td className="py-3 pr-4 text-text-muted text-xs">{leagueLabel(team.leagueType)}</td>
                                 <td className="py-3 flex gap-2">
                                     <button
                                         onClick={() => openEdit(team)}
@@ -165,13 +174,24 @@ export default function TeamsPage() {
                         <label htmlFor="add-team-short" className="label">{t('admin.teams.shortName')}</label>
                         <input
                             id="add-team-short"
-                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white uppercase"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white uppercase"
                             value={addForm.shortName}
                             onChange={(e) => setAddForm({ ...addForm, shortName: e.target.value.toUpperCase() })}
                             placeholder={t('admin.teams.shortPlaceholder')}
                             maxLength={10}
                             required
                         />
+                        <label htmlFor="add-team-league" className="label">{t('admin.teams.leagueType')}</label>
+                        <select
+                            id="add-team-league"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                            value={addForm.leagueType}
+                            onChange={(e) => setAddForm({ ...addForm, leagueType: e.target.value as LeagueTypeValue })}
+                        >
+                            <option value={LeagueType.NHL}>{t('admin.teams.leagueTypeNHL')}</option>
+                            <option value={LeagueType.IIHF}>{t('admin.teams.leagueTypeIIHF')}</option>
+                            <option value={LeagueType.Olympic}>{t('admin.teams.leagueTypeOlympic')}</option>
+                        </select>
                         <div className="flex gap-2 justify-end">
                             <button
                                 type="button"
@@ -206,12 +226,23 @@ export default function TeamsPage() {
                         <label htmlFor="edit-team-short" className="label">{t('admin.teams.shortName')}</label>
                         <input
                             id="edit-team-short"
-                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white uppercase"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white uppercase"
                             value={editForm.shortName}
                             onChange={(e) => setEditForm({ ...editForm, shortName: e.target.value.toUpperCase() })}
                             maxLength={10}
                             required
                         />
+                        <label htmlFor="edit-team-league" className="label">{t('admin.teams.leagueType')}</label>
+                        <select
+                            id="edit-team-league"
+                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                            value={editForm.leagueType}
+                            onChange={(e) => setEditForm({ ...editForm, leagueType: e.target.value as LeagueTypeValue })}
+                        >
+                            <option value={LeagueType.NHL}>{t('admin.teams.leagueTypeNHL')}</option>
+                            <option value={LeagueType.IIHF}>{t('admin.teams.leagueTypeIIHF')}</option>
+                            <option value={LeagueType.Olympic}>{t('admin.teams.leagueTypeOlympic')}</option>
+                        </select>
                         <div className="flex gap-2 justify-end">
                             <button
                                 type="button"

@@ -10,6 +10,7 @@ public class Season
     public DateTime StartedOn { get; set; }
     public string? Status { get; set; }
     public int? ParentSeasonId { get; set; }
+    public LeagueType LeagueType { get; set; } = LeagueType.NHL;
 
     public Team? HostedTeam { get; set; }
     public Season? ParentSeason { get; set; }

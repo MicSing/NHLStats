@@ -64,12 +64,14 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.Name).IsRequired();
             b.Property(x => x.ShortName).IsRequired();
+            b.Property(x => x.LeagueType).HasConversion<int>();
         });
 
         modelBuilder.Entity<Season>(b =>
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.Name).IsRequired();
+            b.Property(x => x.LeagueType).HasConversion<int>();
             b.HasOne(x => x.HostedTeam).WithMany().HasForeignKey(x => x.HostedTeamId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.ParentSeason).WithMany().HasForeignKey(x => x.ParentSeasonId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -191,38 +193,38 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         // Seed data: 32 NHL teams
         var teams = new List<Team>
         {
-            new Team{ Id=1, Name="Anaheim Ducks", ShortName="ANA"},
-            new Team{ Id=2, Name="Arizona Coyotes", ShortName="ARI"},
-            new Team{ Id=3, Name="Boston Bruins", ShortName="BOS"},
-            new Team{ Id=4, Name="Buffalo Sabres", ShortName="BUF"},
-            new Team{ Id=5, Name="Calgary Flames", ShortName="CGY"},
-            new Team{ Id=6, Name="Carolina Hurricanes", ShortName="CAR"},
-            new Team{ Id=7, Name="Chicago Blackhawks", ShortName="CHI"},
-            new Team{ Id=8, Name="Colorado Avalanche", ShortName="COL"},
-            new Team{ Id=9, Name="Columbus Blue Jackets", ShortName="CBJ"},
-            new Team{ Id=10, Name="Dallas Stars", ShortName="DAL"},
-            new Team{ Id=11, Name="Detroit Red Wings", ShortName="DET"},
-            new Team{ Id=12, Name="Edmonton Oilers", ShortName="EDM"},
-            new Team{ Id=13, Name="Florida Panthers", ShortName="FLA"},
-            new Team{ Id=14, Name="Los Angeles Kings", ShortName="LAK"},
-            new Team{ Id=15, Name="Minnesota Wild", ShortName="MIN"},
-            new Team{ Id=16, Name="Montréal Canadiens", ShortName="MTL"},
-            new Team{ Id=17, Name="Nashville Predators", ShortName="NSH"},
-            new Team{ Id=18, Name="New Jersey Devils", ShortName="NJD"},
-            new Team{ Id=19, Name="New York Islanders", ShortName="NYI"},
-            new Team{ Id=20, Name="New York Rangers", ShortName="NYR"},
-            new Team{ Id=21, Name="Ottawa Senators", ShortName="OTT"},
-            new Team{ Id=22, Name="Philadelphia Flyers", ShortName="PHI"},
-            new Team{ Id=23, Name="Pittsburgh Penguins", ShortName="PIT"},
-            new Team{ Id=24, Name="San Jose Sharks", ShortName="SJS"},
-            new Team{ Id=25, Name="Seattle Kraken", ShortName="SEA"},
-            new Team{ Id=26, Name="St. Louis Blues", ShortName="STL"},
-            new Team{ Id=27, Name="Tampa Bay Lightning", ShortName="TBL"},
-            new Team{ Id=28, Name="Toronto Maple Leafs", ShortName="TOR"},
-            new Team{ Id=29, Name="Vancouver Canucks", ShortName="VAN"},
-            new Team{ Id=30, Name="Vegas Golden Knights", ShortName="VGK"},
-            new Team{ Id=31, Name="Washington Capitals", ShortName="WSH"},
-            new Team{ Id=32, Name="Winnipeg Jets", ShortName="WPG"},
+            new Team{ Id=1,  Name="Anaheim Ducks",          ShortName="ANA", LeagueType=LeagueType.NHL},
+            new Team{ Id=2,  Name="Arizona Coyotes",         ShortName="ARI", LeagueType=LeagueType.NHL},
+            new Team{ Id=3,  Name="Boston Bruins",           ShortName="BOS", LeagueType=LeagueType.NHL},
+            new Team{ Id=4,  Name="Buffalo Sabres",          ShortName="BUF", LeagueType=LeagueType.NHL},
+            new Team{ Id=5,  Name="Calgary Flames",          ShortName="CGY", LeagueType=LeagueType.NHL},
+            new Team{ Id=6,  Name="Carolina Hurricanes",     ShortName="CAR", LeagueType=LeagueType.NHL},
+            new Team{ Id=7,  Name="Chicago Blackhawks",      ShortName="CHI", LeagueType=LeagueType.NHL},
+            new Team{ Id=8,  Name="Colorado Avalanche",      ShortName="COL", LeagueType=LeagueType.NHL},
+            new Team{ Id=9,  Name="Columbus Blue Jackets",   ShortName="CBJ", LeagueType=LeagueType.NHL},
+            new Team{ Id=10, Name="Dallas Stars",            ShortName="DAL", LeagueType=LeagueType.NHL},
+            new Team{ Id=11, Name="Detroit Red Wings",       ShortName="DET", LeagueType=LeagueType.NHL},
+            new Team{ Id=12, Name="Edmonton Oilers",         ShortName="EDM", LeagueType=LeagueType.NHL},
+            new Team{ Id=13, Name="Florida Panthers",        ShortName="FLA", LeagueType=LeagueType.NHL},
+            new Team{ Id=14, Name="Los Angeles Kings",       ShortName="LAK", LeagueType=LeagueType.NHL},
+            new Team{ Id=15, Name="Minnesota Wild",          ShortName="MIN", LeagueType=LeagueType.NHL},
+            new Team{ Id=16, Name="Montréal Canadiens",      ShortName="MTL", LeagueType=LeagueType.NHL},
+            new Team{ Id=17, Name="Nashville Predators",     ShortName="NSH", LeagueType=LeagueType.NHL},
+            new Team{ Id=18, Name="New Jersey Devils",       ShortName="NJD", LeagueType=LeagueType.NHL},
+            new Team{ Id=19, Name="New York Islanders",      ShortName="NYI", LeagueType=LeagueType.NHL},
+            new Team{ Id=20, Name="New York Rangers",        ShortName="NYR", LeagueType=LeagueType.NHL},
+            new Team{ Id=21, Name="Ottawa Senators",         ShortName="OTT", LeagueType=LeagueType.NHL},
+            new Team{ Id=22, Name="Philadelphia Flyers",     ShortName="PHI", LeagueType=LeagueType.NHL},
+            new Team{ Id=23, Name="Pittsburgh Penguins",     ShortName="PIT", LeagueType=LeagueType.NHL},
+            new Team{ Id=24, Name="San Jose Sharks",         ShortName="SJS", LeagueType=LeagueType.NHL},
+            new Team{ Id=25, Name="Seattle Kraken",          ShortName="SEA", LeagueType=LeagueType.NHL},
+            new Team{ Id=26, Name="St. Louis Blues",         ShortName="STL", LeagueType=LeagueType.NHL},
+            new Team{ Id=27, Name="Tampa Bay Lightning",     ShortName="TBL", LeagueType=LeagueType.NHL},
+            new Team{ Id=28, Name="Toronto Maple Leafs",     ShortName="TOR", LeagueType=LeagueType.NHL},
+            new Team{ Id=29, Name="Vancouver Canucks",       ShortName="VAN", LeagueType=LeagueType.NHL},
+            new Team{ Id=30, Name="Vegas Golden Knights",    ShortName="VGK", LeagueType=LeagueType.NHL},
+            new Team{ Id=31, Name="Washington Capitals",     ShortName="WSH", LeagueType=LeagueType.NHL},
+            new Team{ Id=32, Name="Winnipeg Jets",           ShortName="WPG", LeagueType=LeagueType.NHL},
         };
 
         modelBuilder.Entity<Team>().HasData(teams);

@@ -100,6 +100,7 @@ const mockSeasons: Season[] = [
         startedOn: '2023-09-01',
         status: null,
         parentSeasonId: null,
+        leagueType: 'NHL',
     },
     {
         id: 2,
@@ -109,6 +110,7 @@ const mockSeasons: Season[] = [
         startedOn: '2024-09-01',
         status: null,
         parentSeasonId: null,
+        leagueType: 'NHL',
     },
 ]
 

@@ -8,6 +8,7 @@ public class Team
     public string Name { get; set; } = null!;
     [Required]
     public string ShortName { get; set; } = null!;
+    public LeagueType LeagueType { get; set; } = LeagueType.NHL;
 
     public ICollection<RosterPlayer>? RosterPlayers { get; set; }
     public ICollection<Match>? HomeMatches { get; set; }

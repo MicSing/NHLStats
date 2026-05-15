@@ -19,14 +19,14 @@ public class TeamsController : ControllerBase
     public async Task<IActionResult> GetAll() =>
         Ok(await _db.Teams
             .OrderBy(t => t.Name)
-            .Select(t => new TeamDto(t.Id, t.Name, t.ShortName))
+            .Select(t => new TeamDto(t.Id, t.Name, t.ShortName, t.LeagueType))
             .ToListAsync());
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var team = await _db.Teams.FindAsync(id);
-        return team == null ? NotFound() : Ok(new TeamDto(team.Id, team.Name, team.ShortName));
+        return team == null ? NotFound() : Ok(new TeamDto(team.Id, team.Name, team.ShortName, team.LeagueType));
     }
 
     [Authorize]
@@ -34,10 +34,10 @@ public class TeamsController : ControllerBase
     public async Task<IActionResult> Create(CreateTeamDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        var team = new Team { Name = dto.Name, ShortName = dto.ShortName };
+        var team = new Team { Name = dto.Name, ShortName = dto.ShortName, LeagueType = dto.LeagueType };
         _db.Teams.Add(team);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = team.Id }, new TeamDto(team.Id, team.Name, team.ShortName));
+        return CreatedAtAction(nameof(GetById), new { id = team.Id }, new TeamDto(team.Id, team.Name, team.ShortName, team.LeagueType));
     }
 
     [Authorize]
@@ -49,8 +49,9 @@ public class TeamsController : ControllerBase
         if (team == null) return NotFound();
         team.Name = dto.Name;
         team.ShortName = dto.ShortName;
+        team.LeagueType = dto.LeagueType;
         await _db.SaveChangesAsync();
-        return Ok(new TeamDto(team.Id, team.Name, team.ShortName));
+        return Ok(new TeamDto(team.Id, team.Name, team.ShortName, team.LeagueType));
     }
 
     [Authorize]

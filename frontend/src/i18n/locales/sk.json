@@ -481,7 +481,11 @@
             "noUsersAssigned": "Žiadni priradení používatelia",
             "selectUser": "Vybrať používateľa…",
             "startedOn": "Dátum začiatku",
-            "selectTeam": "Vybrať tím…"
+            "selectTeam": "Vybrať tím…",
+            "leagueType": "Liga",
+            "leagueTypeNHL": "NHL",
+            "leagueTypeIIHF": "IIHF",
+            "leagueTypeOlympic": "Olympiáda"
         },
         "teams": {
             "title": "Tímy",
@@ -491,7 +495,11 @@
             "shortName": "Skrátený názov",
             "deleteConfirm": "Zmazať \"{{name}}\"? Túto akciu nemožno vrátiť späť.",
             "namePlaceholder": "napr. Utah Mammoth",
-            "shortPlaceholder": "napr. UTA"
+            "shortPlaceholder": "napr. UTA",
+            "leagueType": "Liga",
+            "leagueTypeNHL": "NHL",
+            "leagueTypeIIHF": "IIHF",
+            "leagueTypeOlympic": "Olympiáda"
         },
         "roster": {
             "title": "Zostava",

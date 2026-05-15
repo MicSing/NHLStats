@@ -10,8 +10,8 @@ const mockUsers = [
 ]
 
 const mockTeams = [
-    { id: 1, name: 'Boston Bruins', shortName: 'BOS' },
-    { id: 2, name: 'Edmonton Oilers', shortName: 'EDM' },
+    { id: 1, name: 'Boston Bruins', shortName: 'BOS', leagueType: 'NHL' },
+    { id: 2, name: 'Edmonton Oilers', shortName: 'EDM', leagueType: 'NHL' },
 ]
 
 const mockSeasons = [
@@ -23,6 +23,7 @@ const mockSeasons = [
         startedOn: '2023-10-01T00:00:00',
         status: 'Active',
         parentSeasonId: null,
+        leagueType: 'NHL',
     },
     {
         id: 2,
@@ -32,6 +33,7 @@ const mockSeasons = [
         startedOn: '2024-10-01T00:00:00',
         status: 'Upcoming',
         parentSeasonId: null,
+        leagueType: 'NHL',
     },
 ]
 
@@ -310,17 +312,17 @@ export const handlers = [
     }),
 
     rest.post(`${BASE}/api/teams`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; shortName: string }
+        const body = await req.json() as { name: string; shortName: string; leagueType?: string }
         return res(
             ctx.status(201),
-            ctx.json({ id: 99, name: body.name, shortName: body.shortName }),
+            ctx.json({ id: 99, name: body.name, shortName: body.shortName, leagueType: body.leagueType ?? 'NHL' }),
         )
     }),
 
     rest.put(`${BASE}/api/teams/:id`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; shortName: string }
+        const body = await req.json() as { name: string; shortName: string; leagueType?: string }
         return res(
-            ctx.json({ id: Number(req.params.id), name: body.name, shortName: body.shortName }),
+            ctx.json({ id: Number(req.params.id), name: body.name, shortName: body.shortName, leagueType: body.leagueType ?? 'NHL' }),
         )
     }),
 
@@ -339,7 +341,7 @@ export const handlers = [
     }),
 
     rest.post(`${BASE}/api/seasons`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; startedOn: string }
+        const body = await req.json() as { name: string; startedOn: string; leagueType?: string }
         return res(
             ctx.status(201),
             ctx.json({
@@ -350,12 +352,13 @@ export const handlers = [
                 startedOn: body.startedOn,
                 status: null,
                 parentSeasonId: null,
+                leagueType: body.leagueType ?? 'NHL',
             }),
         )
     }),
 
     rest.put(`${BASE}/api/seasons/:id`, async (req, res, ctx) => {
-        const body = await req.json() as { name: string; startedOn: string }
+        const body = await req.json() as { name: string; startedOn: string; leagueType?: string }
         return res(
             ctx.json({
                 id: Number(req.params.id),
@@ -365,6 +368,7 @@ export const handlers = [
                 startedOn: body.startedOn,
                 status: null,
                 parentSeasonId: null,
+                leagueType: body.leagueType ?? 'NHL',
             }),
         )
     }),

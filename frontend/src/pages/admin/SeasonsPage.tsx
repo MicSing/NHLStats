@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Season, SeasonDetail, CreateSeasonDto, UpdateSeasonDto } from '../../types/season'
-import type { Team } from '../../types/team'
+import { LeagueType } from '../../types/team'
+import type { LeagueTypeValue, Team } from '../../types/team'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
@@ -31,6 +32,7 @@ export default function SeasonsPage() {
         startedOn: new Date().toISOString().split('T')[0],
         status: '',
         hostedTeamId: null,
+        leagueType: LeagueType.NHL,
     })
 
     // Assign users
@@ -69,6 +71,7 @@ export default function SeasonsPage() {
             startedOn: new Date().toISOString().split('T')[0],
             status: '',
             hostedTeamId: null,
+            leagueType: LeagueType.NHL,
         })
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -108,6 +111,7 @@ export default function SeasonsPage() {
             startedOn: season.startedOn.split('T')[0],
             status: season.status ?? '',
             hostedTeamId: season.hostedTeamId,
+            leagueType: season.leagueType,
         })
     }
 
@@ -146,6 +150,11 @@ export default function SeasonsPage() {
         setManageSeason(updated)
     }
 
+    const leagueLabel = (v: LeagueTypeValue) =>
+        v === LeagueType.NHL ? t('admin.seasons.leagueTypeNHL')
+        : v === LeagueType.IIHF ? t('admin.seasons.leagueTypeIIHF')
+        : t('admin.seasons.leagueTypeOlympic')
+
     if (loading) return <LoadingSpinner />
     if (error) return <ErrorMessage message={error} onRetry={() => void loadAll()} />
 
@@ -165,6 +174,7 @@ export default function SeasonsPage() {
                             <th className="pb-2 pr-4">{t('admin.seasons.started')}</th>
                             <th className="pb-2 pr-4">{t('common.status')}</th>
                             <th className="pb-2 pr-4">{t('admin.seasons.hostedBy')}</th>
+                            <th className="pb-2 pr-4">{t('admin.seasons.leagueType')}</th>
                             <th className="pb-2">{t('common.actions')}</th>
                         </tr>
                     </thead>
@@ -184,6 +194,9 @@ export default function SeasonsPage() {
                                 </td>
                                 <td className="py-3 pr-4 text-text">
                                     {season.hostedTeamName ?? '—'}
+                                </td>
+                                <td className="py-3 pr-4 text-text-muted text-xs">
+                                    {leagueLabel(season.leagueType)}
                                 </td>
                                 <td className="py-3 flex gap-2">
                                     <button
@@ -357,7 +370,7 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
             </label>
             <select
                 id="season-team"
-                className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                 value={form.hostedTeamId ?? ''}
                 onChange={(e) =>
                     set({ hostedTeamId: e.target.value ? Number(e.target.value) : null })
@@ -369,6 +382,20 @@ function SeasonForm({ form, teams, onChange, onSubmit, onCancel }: SeasonFormPro
                         {tm.name}
                     </option>
                 ))}
+            </select>
+
+            <label htmlFor="season-league" className="label">
+                {t('admin.seasons.leagueType')}
+            </label>
+            <select
+                id="season-league"
+                className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                value={form.leagueType}
+                onChange={(e) => set({ leagueType: e.target.value as LeagueTypeValue })}
+            >
+                <option value={LeagueType.NHL}>{t('admin.seasons.leagueTypeNHL')}</option>
+                <option value={LeagueType.IIHF}>{t('admin.seasons.leagueTypeIIHF')}</option>
+                <option value={LeagueType.Olympic}>{t('admin.seasons.leagueTypeOlympic')}</option>
             </select>
 
             <div className="flex gap-2 justify-end">
