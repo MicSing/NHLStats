@@ -6,7 +6,7 @@ const AVATAR_COLORS = [
     'bg-amber-500/20 text-amber-400',
 ]
 
-export const getAvatarColor = (name: string) => {
+const getAvatarColor = (name: string) => {
     let sum = 0
     for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i)
     return AVATAR_COLORS[sum % AVATAR_COLORS.length]

@@ -80,6 +80,7 @@
         "groupGameData": "Herné dáta",
         "groupPoints": "Body",
         "groupFinancial": "Financie",
+        "finance": "Financie",
         "loginManagement": "Prihlásenia",
         "users": "Používatelia",
         "adminSeasons": "Sezóny",
@@ -597,6 +598,14 @@
             "addTitle": "Pridať výplatu",
             "amountLabel": "Suma (€)",
             "deleteConfirm": "Zmazať túto výplatu?"
+        },
+        "finance": {
+            "tabRates": "Sadzby",
+            "tabExpenses": "Výdavky",
+            "tabCollecting": "Platby",
+            "addConfig": "Pridať konfiguráciu",
+            "addExpense": "Pridať výdavok",
+            "addCollection": "Pridať platbu"
         },
         "aggregated": {
             "title": "Súhrnné body",

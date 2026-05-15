@@ -80,6 +80,7 @@
         "groupGameData": "Game Data",
         "groupPoints": "Points",
         "groupFinancial": "Financial",
+        "finance": "Finance",
         "loginManagement": "Logins",
         "users": "Users",
         "adminSeasons": "Seasons",
@@ -597,6 +598,14 @@
             "addTitle": "Add Payout",
             "amountLabel": "Amount (€)",
             "deleteConfirm": "Delete this payout?"
+        },
+        "finance": {
+            "tabRates": "Rate Config",
+            "tabExpenses": "Expenses",
+            "tabCollecting": "Payments",
+            "addConfig": "Add Config",
+            "addExpense": "Add Expense",
+            "addCollection": "Add Payment"
         },
         "aggregated": {
             "title": "Aggregated Points",

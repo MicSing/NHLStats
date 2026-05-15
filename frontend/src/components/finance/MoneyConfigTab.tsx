@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { MoneyConfig, CreateMoneyConfigDto } from '../../types/moneyConfig'
 import apiClient from '../../services/apiClient'
-import Modal from '../../components/Modal'
+import Modal from '../Modal'
 import { useTranslation } from 'react-i18next'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import ErrorMessage from '../../components/ErrorMessage'
-import AdminPageHeader from '../../components/AdminPageHeader'
+import LoadingSpinner from '../LoadingSpinner'
+import ErrorMessage from '../ErrorMessage'
 import { useToast } from '../../context/ToastContext'
 
-export default function MoneyConfigPage() {
+interface Props {
+    addOpen?: boolean
+    onAddClose?: () => void
+}
+
+export default function MoneyConfigTab({ addOpen, onAddClose }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
     const [current, setCurrent] = useState<MoneyConfig | null>(null)
@@ -22,6 +26,13 @@ export default function MoneyConfigPage() {
         effectiveFrom: new Date().toISOString().split('T')[0],
     })
     const [addError, setAddError] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (addOpen) {
+            setShowAddModal(true)
+            onAddClose?.()
+        }
+    }, [addOpen])
 
     const loadData = async () => {
         try {
@@ -65,9 +76,6 @@ export default function MoneyConfigPage() {
 
     return (
         <div>
-            <AdminPageHeader title={t('admin.moneyConfig.title')} action={{ label: t('admin.moneyConfig.addConfig'), onClick: () => setShowAddModal(true) }} />
-
-            {/* Current config card */}
             {current && (
                 <div className="bg-surface rounded-lg p-4 mb-6 inline-flex gap-8">
                     <div>
@@ -91,27 +99,26 @@ export default function MoneyConfigPage() {
                 </div>
             )}
 
-            {/* History table */}
             <h2 className="text-lg font-semibold text-text mb-3">{t('admin.moneyConfig.rateHistory')}</h2>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
-                    <thead>
-                        <tr className="text-left border-b border-border text-text-muted">
-                            <th className="pb-2 pr-4">{t('admin.moneyConfig.effectiveFrom')}</th>
-                            <th className="pb-2 pr-4">{t('admin.moneyConfig.negative')}</th>
-                            <th className="pb-2">{t('admin.moneyConfig.positive')}</th>
+                    <thead className="bg-surface">
+                        <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                            <th className="px-4 py-3 font-medium">{t('admin.moneyConfig.effectiveFrom')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.moneyConfig.negative')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.moneyConfig.positive')}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                         {history.map((cfg) => (
-                            <tr key={cfg.id} className="border-b border-border/50">
-                                <td className="py-3 pr-4">
+                            <tr key={cfg.id} className="hover:bg-surface/50 transition-colors">
+                                <td className="px-4 py-3">
                                     {new Date(cfg.effectiveFrom).toLocaleDateString()}
                                 </td>
-                                <td className="py-3 pr-4 text-warning">
+                                <td className="px-4 py-3 text-warning">
                                     {cfg.negativePointValue.toFixed(2)} €
                                 </td>
-                                <td className="py-3 text-primary/80">
+                                <td className="px-4 py-3 text-primary/80">
                                     {cfg.positivePointValue.toFixed(2)} €
                                 </td>
                             </tr>
@@ -120,7 +127,6 @@ export default function MoneyConfigPage() {
                 </table>
             </div>
 
-            {/* Add modal */}
             {showAddModal && (
                 <Modal title={t('admin.moneyConfig.addTitle')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)}>
@@ -128,10 +134,7 @@ export default function MoneyConfigPage() {
                             <p className="text-warning text-sm mb-3">{addError}</p>
                         )}
 
-                        <label
-                            htmlFor="mc-negative"
-                            className="label"
-                        >
+                        <label htmlFor="mc-negative" className="label">
                             {t('admin.moneyConfig.negativeLabel')}
                         </label>
                         <input
@@ -150,10 +153,7 @@ export default function MoneyConfigPage() {
                             required
                         />
 
-                        <label
-                            htmlFor="mc-positive"
-                            className="label"
-                        >
+                        <label htmlFor="mc-positive" className="label">
                             {t('admin.moneyConfig.positiveLabel')}
                         </label>
                         <input
@@ -172,10 +172,7 @@ export default function MoneyConfigPage() {
                             required
                         />
 
-                        <label
-                            htmlFor="mc-effective-from"
-                            className="label"
-                        >
+                        <label htmlFor="mc-effective-from" className="label">
                             {t('admin.moneyConfig.effectiveFrom')}
                         </label>
                         <input

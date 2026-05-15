@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
 import type { Expense, CreateExpenseDto, UpdateExpenseDto } from '../../types/expense'
 import apiClient from '../../services/apiClient'
-import Modal from '../../components/Modal'
+import Modal from '../Modal'
 import { useTranslation } from 'react-i18next'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import ErrorMessage from '../../components/ErrorMessage'
-import AdminPageHeader from '../../components/AdminPageHeader'
-import SearchInput from '../../components/SearchInput'
-import Pagination from '../../components/Pagination'
+import LoadingSpinner from '../LoadingSpinner'
+import ErrorMessage from '../ErrorMessage'
+import SearchInput from '../SearchInput'
+import Pagination from '../Pagination'
 import useTable from '../../hooks/useTable'
 import { useToast } from '../../context/ToastContext'
+import { Pencil, Trash } from '@phosphor-icons/react'
 
-export default function ExpensesPage() {
+interface Props {
+    addOpen?: boolean
+    onAddClose?: () => void
+}
+
+export default function ExpensesTab({ addOpen, onAddClose }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Add modal
     const [showAddModal, setShowAddModal] = useState(false)
     const [addForm, setAddForm] = useState<CreateExpenseDto>({
         description: '',
@@ -26,7 +30,6 @@ export default function ExpensesPage() {
         date: new Date().toISOString().split('T')[0],
     })
 
-    // Edit modal
     const [editExpense, setEditExpense] = useState<Expense | null>(null)
     const [editForm, setEditForm] = useState<UpdateExpenseDto>({
         description: '',
@@ -38,6 +41,13 @@ export default function ExpensesPage() {
         data: expenses,
         searchFields: (e) => [e.description ?? ''],
     })
+
+    useEffect(() => {
+        if (addOpen) {
+            setShowAddModal(true)
+            onAddClose?.()
+        }
+    }, [addOpen])
 
     const loadExpenses = async () => {
         try {
@@ -111,52 +121,54 @@ export default function ExpensesPage() {
 
     return (
         <div>
-            <AdminPageHeader title={t('admin.expenses.title')} action={{ label: t('admin.expenses.addExpense'), onClick: () => setShowAddModal(true) }} />
-
             <div className="mb-4">
                 <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
-                    <thead>
-                        <tr className="text-left border-b border-border text-text-muted">
-                            <th className="pb-2 pr-4">{t('common.description')}</th>
-                            <th className="pb-2 pr-4">{t('common.amount')}</th>
-                            <th className="pb-2 pr-4">{t('common.date')}</th>
-                            <th className="pb-2">{t('common.actions')}</th>
+                    <thead className="bg-surface">
+                        <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                            <th className="px-4 py-3 font-medium w-1/2">{t('common.description')}</th>
+                            <th className="px-4 py-3 font-medium">{t('common.amount')}</th>
+                            <th className="px-4 py-3 font-medium">{t('common.date')}</th>
+                            <th className="px-4 py-3" />
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                         {pageItems.map((expense) => (
-                            <tr key={expense.id} className="border-b border-border/50">
-                                <td className="py-3 pr-4">{expense.description ?? '—'}</td>
-                                <td className="py-3 pr-4 text-primary/80">
+                            <tr key={expense.id} className="hover:bg-surface/50 transition-colors group">
+                                <td className="px-4 py-3">{expense.description ?? '—'}</td>
+                                <td className="px-4 py-3 text-primary/80 font-mono">
                                     {expense.amount.toFixed(2)} €
                                 </td>
-                                <td className="py-3 pr-4 text-text">
+                                <td className="px-4 py-3 text-text-muted">
                                     {new Date(expense.date).toLocaleDateString()}
                                 </td>
-                                <td className="py-3 flex gap-2">
-                                    <button
-                                        onClick={() => openEdit(expense)}
-                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                    >
-                                        {t('common.edit')}
-                                    </button>
-                                    <button
-                                        onClick={() => void handleDelete(expense.id)}
-                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                    >
-                                        {t('common.delete')}
-                                    </button>
+                                <td className="px-4 py-3">
+                                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => openEdit(expense)}
+                                            className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                                            title={t('common.edit')}
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => void handleDelete(expense.id)}
+                                            className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded transition-colors"
+                                            title={t('common.delete')}
+                                        >
+                                            <Trash size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
                         {expenses.length > 0 && (
-                            <tr className="border-t border-border font-semibold">
-                                <td className="pt-3 pr-4 text-text">{t('common.total')}</td>
-                                <td className="pt-3 pr-4 text-primary/80">{total.toFixed(2)} €</td>
+                            <tr className="bg-surface border-t-2 border-border font-semibold">
+                                <td className="px-4 py-3 text-text-muted uppercase text-xs tracking-wider">{t('common.total')}</td>
+                                <td className="px-4 py-3 text-primary/80 font-mono">{total.toFixed(2)} €</td>
                                 <td colSpan={2} />
                             </tr>
                         )}
@@ -175,7 +187,6 @@ export default function ExpensesPage() {
                 <p className="text-text-muted text-sm mt-4">{t('admin.expenses.noExpenses')}</p>
             )}
 
-            {/* Add modal */}
             {showAddModal && (
                 <Modal title={t('admin.expenses.addExpense')} onClose={() => setShowAddModal(false)}>
                     <ExpenseForm
@@ -187,7 +198,6 @@ export default function ExpensesPage() {
                 </Modal>
             )}
 
-            {/* Edit modal */}
             {editExpense && (
                 <Modal title={t('admin.expenses.editExpense')} onClose={() => setEditExpense(null)}>
                     <ExpenseForm
@@ -201,8 +211,6 @@ export default function ExpensesPage() {
         </div>
     )
 }
-
-// ---- Extracted form ----
 
 interface ExpenseFormProps {
     form: CreateExpenseDto

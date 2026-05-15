@@ -12,10 +12,8 @@ import UsersPage from './pages/admin/UsersPage'
 import SeasonsPage from './pages/admin/SeasonsPage'
 import RosterPage from './pages/admin/RosterPage'
 import PointReasonsPage from './pages/admin/PointReasonsPage'
-import MoneyConfigPage from './pages/admin/MoneyConfigPage'
-import ExpensesPage from './pages/admin/ExpensesPage'
+import FinancePage from './pages/admin/FinancePage'
 import AdminMatchesPage from './pages/admin/AdminMatchesPage'
-import PayoutsPage from './pages/admin/PayoutsPage'
 import AdminAggregatedPointsPage from './pages/admin/AdminAggregatedPointsPage'
 import TeamsPage from './pages/admin/TeamsPage'
 import PointsManagementPage from './pages/admin/PointsManagementPage'
@@ -60,10 +58,11 @@ function App() {
                   <Route path="seasons" element={<SeasonsPage />} />
                   <Route path="roster" element={<RosterPage />} />
                   <Route path="point-reasons" element={<PointReasonsPage />} />
-                  <Route path="money-config" element={<MoneyConfigPage />} />
-                  <Route path="expenses" element={<ExpensesPage />} />
+                  <Route path="finance" element={<FinancePage />} />
+                  <Route path="money-config" element={<Navigate to="/admin/finance" replace />} />
+                  <Route path="expenses" element={<Navigate to="/admin/finance" replace />} />
                   <Route path="matches" element={<AdminMatchesPage />} />
-                  <Route path="payouts" element={<PayoutsPage />} />
+                  <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
                   <Route path="aggregated-points" element={<AdminAggregatedPointsPage />} />
                   <Route path="teams" element={<TeamsPage />} />
                   <Route path="points" element={<PointsManagementPage />} />

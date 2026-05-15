@@ -4,28 +4,32 @@ import type { User } from '../../types/user'
 import type { UserPayout, CreateUserPayoutDto, UpdateUserPayoutDto } from '../../types/payout'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
-import Modal from '../../components/Modal'
+import Modal from '../Modal'
 import { useTranslation } from 'react-i18next'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import AdminPageHeader from '../../components/AdminPageHeader'
-import SearchInput from '../../components/SearchInput'
-import Pagination from '../../components/Pagination'
+import LoadingSpinner from '../LoadingSpinner'
+import SearchInput from '../SearchInput'
+import Pagination from '../Pagination'
 import useTable from '../../hooks/useTable'
 import { useToast } from '../../context/ToastContext'
+import { Pencil, Trash } from '@phosphor-icons/react'
 
-export default function PayoutsPage() {
+interface Props {
+    addOpen?: boolean
+    onAddClose?: () => void
+}
+
+export default function CollectingTab({ addOpen, onAddClose }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
     const [seasons, setSeasons] = useState<Season[]>([])
     const [users, setUsers] = useState<User[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
-    const [payouts, setPayouts] = useState<UserPayout[]>([])
+    const [collections, setCollections] = useState<UserPayout[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const today = new Date().toISOString().split('T')[0]
 
-    // Add modal
     const [showAddModal, setShowAddModal] = useState(false)
     const [addForm, setAddForm] = useState<CreateUserPayoutDto>({
         userId: 0,
@@ -33,17 +37,23 @@ export default function PayoutsPage() {
         paidOn: today,
     })
 
-    // Edit modal
-    const [editPayout, setEditPayout] = useState<UserPayout | null>(null)
+    const [editCollection, setEditCollection] = useState<UserPayout | null>(null)
     const [editForm, setEditForm] = useState<UpdateUserPayoutDto>({
         amount: 0,
         paidOn: today,
     })
 
-    const { pageItems: pagePayouts, totalFiltered: totalPayouts, search: payoutSearch, setSearch: setPayoutSearch, currentPage: payoutPage, setCurrentPage: setPayoutPage } = useTable({
-        data: payouts,
+    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
+        data: collections,
         searchFields: (p) => [p.userName],
     })
+
+    useEffect(() => {
+        if (addOpen) {
+            setShowAddModal(true)
+            onAddClose?.()
+        }
+    }, [addOpen])
 
     useEffect(() => {
         Promise.all([
@@ -61,11 +71,11 @@ export default function PayoutsPage() {
             .catch(() => setError(t('errors.failedToLoadSeasons')))
     }, [])
 
-    const loadPayouts = async (seasonId: number) => {
+    const loadCollections = async (seasonId: number) => {
         setLoading(true)
         try {
             const data = await apiClient.get<UserPayout[]>(`/api/seasons/${seasonId}/payouts`)
-            setPayouts(data)
+            setCollections(data)
         } catch {
             setError(t('errors.failedToLoadPayouts'))
         } finally {
@@ -74,8 +84,8 @@ export default function PayoutsPage() {
     }
 
     useEffect(() => {
-        if (selectedSeasonId) void loadPayouts(selectedSeasonId)
-        else setPayouts([])
+        if (selectedSeasonId) void loadCollections(selectedSeasonId)
+        else setCollections([])
     }, [selectedSeasonId])
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -86,31 +96,31 @@ export default function PayoutsPage() {
             setShowAddModal(false)
             setAddForm({ userId: 0, amount: 0, paidOn: today })
             toast.success(t('toast.createSuccess'))
-            await loadPayouts(selectedSeasonId)
+            await loadCollections(selectedSeasonId)
         } catch {
             toast.error(t('toast.operationFailed'))
         }
     }
 
-    const openEdit = (payout: UserPayout) => {
-        setEditPayout(payout)
+    const openEdit = (collection: UserPayout) => {
+        setEditCollection(collection)
         setEditForm({
-            amount: payout.amount,
-            paidOn: payout.paidOn.split('T')[0],
+            amount: collection.amount,
+            paidOn: collection.paidOn.split('T')[0],
         })
     }
 
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!editPayout || !selectedSeasonId) return
+        if (!editCollection || !selectedSeasonId) return
         try {
             await apiClient.put<UserPayout>(
-                `/api/seasons/${selectedSeasonId}/payouts/${editPayout.id}`,
+                `/api/seasons/${selectedSeasonId}/payouts/${editCollection.id}`,
                 editForm,
             )
-            setEditPayout(null)
+            setEditCollection(null)
             toast.success(t('toast.saveSuccess'))
-            await loadPayouts(selectedSeasonId)
+            await loadCollections(selectedSeasonId)
         } catch {
             toast.error(t('toast.operationFailed'))
         }
@@ -122,44 +132,34 @@ export default function PayoutsPage() {
         try {
             await apiClient.delete(`/api/seasons/${selectedSeasonId}/payouts/${id}`)
             toast.success(t('toast.deleteSuccess'))
-            await loadPayouts(selectedSeasonId)
+            await loadCollections(selectedSeasonId)
         } catch {
             toast.error(t('toast.operationFailed'))
         }
     }
 
-    const totalAmount = payouts.reduce((s, p) => s + p.amount, 0)
+    const totalAmount = collections.reduce((s, p) => s + p.amount, 0)
 
     return (
         <div>
-            <AdminPageHeader title={t('admin.payouts.title')}>
-                <div className="flex items-center gap-3">
-                    <select
-                        value={selectedSeasonId ?? ''}
-                        onChange={(e) =>
-                            setSelectedSeasonId(e.target.value ? Number(e.target.value) : null)
-                        }
-                        className="bg-border border border-border rounded px-3 py-1 text-sm"
-                    >
-                        <option value="">{t('admin.payouts.selectSeason')}</option>
-                        {seasons.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.name}
-                            </option>
-                        ))}
-                    </select>
-                    {selectedSeasonId && (
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="bg-primary hover:bg-primary-hover px-3 py-1 rounded text-sm"
-                        >
-                            {t('admin.payouts.addPayout')}
-                        </button>
-                    )}
-                </div>
-            </AdminPageHeader>
-
             {error && <p className="text-danger mb-4">{error}</p>}
+
+            <div className="mb-4">
+                <select
+                    value={selectedSeasonId ?? ''}
+                    onChange={(e) =>
+                        setSelectedSeasonId(e.target.value ? Number(e.target.value) : null)
+                    }
+                    className="bg-border border border-border rounded px-3 py-1 text-sm"
+                >
+                    <option value="">{t('admin.payouts.selectSeason')}</option>
+                    {seasons.map((s) => (
+                        <option key={s.id} value={s.id}>
+                            {s.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
             {!selectedSeasonId && (
                 <p className="text-text-muted">{t('admin.payouts.selectSeasonPrompt')}</p>
@@ -170,64 +170,62 @@ export default function PayoutsPage() {
             {selectedSeasonId && !loading && (
                 <>
                     <div className="mb-4">
-                        <SearchInput value={payoutSearch} onChange={setPayoutSearch} placeholder={t('common.search')} />
+                        <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
                     </div>
-                    <div className="overflow-x-auto rounded-lg border border-border">
+                    <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
                         <table className="w-full text-sm">
-                            <thead className="bg-surface text-text uppercase text-xs tracking-wider">
-                                <tr>
-                                    <th className="text-left px-4 py-3">{t('admin.payouts.player')}</th>
-                                    <th className="text-right px-4 py-3">{t('admin.payouts.amount')}</th>
-                                    <th className="text-left px-4 py-3">{t('admin.payouts.paidOn')}</th>
-                                    <th className="px-4 py-3"></th>
+                            <thead className="bg-surface">
+                                <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                                    <th className="px-4 py-3 font-medium w-1/3">{t('admin.payouts.player')}</th>
+                                    <th className="px-4 py-3 font-medium text-right">{t('admin.payouts.amount')}</th>
+                                    <th className="px-4 py-3 font-medium">{t('admin.payouts.paidOn')}</th>
+                                    <th className="px-4 py-3" />
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {payouts.length === 0 ? (
+                                {collections.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan={4}
-                                            className="text-center py-6 text-text-muted/70"
-                                        >
+                                        <td colSpan={4} className="text-center py-6 text-text-muted/70">
                                             {t('admin.payouts.noPayouts')}
                                         </td>
                                     </tr>
                                 ) : (
-                                    pagePayouts.map((p) => (
-                                        <tr
-                                            key={p.id}
-                                            className="bg-bg hover:bg-surface transition-colors"
-                                        >
+                                    pageItems.map((p) => (
+                                        <tr key={p.id} className="hover:bg-surface/50 transition-colors group">
                                             <td className="px-4 py-3 font-medium">{p.userName}</td>
-                                            <td className="px-4 py-3 text-right text-success">
+                                            <td className="px-4 py-3 text-right text-success font-mono">
                                                 {p.amount.toFixed(2)} €
                                             </td>
-                                            <td className="px-4 py-3 text-text">
+                                            <td className="px-4 py-3 text-text-muted">
                                                 {p.paidOn.split('T')[0]}
                                             </td>
-                                            <td className="px-4 py-3 text-right space-x-2">
-                                                <button
-                                                    onClick={() => openEdit(p)}
-                                                    className="text-primary hover:text-primary/80 text-xs"
-                                                >
-                                                    {t('common.edit')}
-                                                </button>
-                                                <button
-                                                    onClick={() => void handleDelete(p.id)}
-                                                    className="text-danger hover:text-danger/80 text-xs"
-                                                >
-                                                    {t('common.delete')}
-                                                </button>
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => openEdit(p)}
+                                                        className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                                                        title={t('common.edit')}
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => void handleDelete(p.id)}
+                                                        className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded transition-colors"
+                                                        title={t('common.delete')}
+                                                    >
+                                                        <Trash size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
                                 )}
                             </tbody>
-                            {payouts.length > 0 && (
+                            {collections.length > 0 && (
                                 <tfoot className="bg-surface border-t-2 border-border font-semibold text-sm">
                                     <tr>
-                                        <td className="px-4 py-3 text-text">{t('admin.payouts.total')}</td>
-                                        <td className="px-4 py-3 text-right text-success">
+                                        <td className="px-4 py-3 text-text-muted uppercase text-xs tracking-wider">{t('admin.payouts.total')}</td>
+                                        <td className="px-4 py-3 text-right text-success font-mono">
                                             {totalAmount.toFixed(2)} €
                                         </td>
                                         <td colSpan={2}></td>
@@ -237,15 +235,14 @@ export default function PayoutsPage() {
                         </table>
                     </div>
                     <Pagination
-                        currentPage={payoutPage}
-                        totalItems={totalPayouts}
+                        currentPage={currentPage}
+                        totalItems={totalFiltered}
                         pageSize={20}
-                        onPageChange={setPayoutPage}
+                        onPageChange={setCurrentPage}
                     />
                 </>
             )}
 
-            {/* Add modal */}
             {showAddModal && (
                 <Modal title={t('admin.payouts.addTitle')} onClose={() => setShowAddModal(false)}>
                     <form onSubmit={(e) => void handleAdd(e)} className="space-y-4">
@@ -311,11 +308,10 @@ export default function PayoutsPage() {
                 </Modal>
             )}
 
-            {/* Edit modal */}
-            {editPayout && (
+            {editCollection && (
                 <Modal
-                    title={t('admin.payouts.editPayout', { name: editPayout.userName })}
-                    onClose={() => setEditPayout(null)}
+                    title={t('admin.payouts.editPayout', { name: editCollection.userName })}
+                    onClose={() => setEditCollection(null)}
                 >
                     <form onSubmit={(e) => void handleEdit(e)} className="space-y-4">
                         <div>
@@ -346,7 +342,7 @@ export default function PayoutsPage() {
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 type="button"
-                                onClick={() => setEditPayout(null)}
+                                onClick={() => setEditCollection(null)}
                                 className="px-4 py-2 rounded bg-border hover:bg-border/80 text-sm"
                             >
                                 {t('common.cancel')}
