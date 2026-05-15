@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PencilSimple, Prohibit, Plus } from '@phosphor-icons/react'
+import { PencilSimple, Prohibit, Plus, CheckCircle } from '@phosphor-icons/react'
 import type { PointReason, PointType, CreatePointReasonDto, UpdatePointReasonDto } from '../../types/pointReason'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
@@ -94,6 +94,20 @@ export default function PointReasonsPage() {
         }
     }
 
+    const handleActivate = async (reason: PointReason) => {
+        try {
+            await apiClient.put<PointReason>(`/api/pointreasons/${reason.id}`, {
+                name: reason.name,
+                pointType: reason.pointType,
+                isActive: true,
+            } satisfies UpdatePointReasonDto)
+            toast.success(t('toast.saveSuccess'))
+            await loadReasons()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
     if (loading) return <LoadingSpinner />
     if (error) return <ErrorMessage message={error} onRetry={() => void loadReasons()} />
 
@@ -114,24 +128,24 @@ export default function PointReasonsPage() {
             </header>
 
             <div className="flex-1 p-8 overflow-y-auto">
-                <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-border bg-bg/50 text-[11px] text-text-muted uppercase tracking-wider font-semibold">
-                                <th className="p-4">{t('common.name')}</th>
-                                <th className="p-4">{t('common.type')}</th>
-                                <th className="p-4">{t('common.status')}</th>
-                                <th className="p-4 text-right">{t('common.actions')}</th>
+                <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead className="bg-surface">
+                            <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                                <th className="px-4 py-3 font-medium">{t('common.type')}</th>
+                                <th className="px-4 py-3 font-medium">{t('common.status')}</th>
+                                <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
-                        <tbody className="text-sm">
+                        <tbody className="divide-y divide-border">
                             {pageItems.map((reason) => (
                                 <tr
                                     key={reason.id}
-                                    className="border-b border-border last:border-0 hover:bg-border/30 transition-colors group"
+                                    className="hover:bg-surface/50 transition-colors group"
                                 >
-                                    <td className="p-4 font-medium">{reason.name}</td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-3 font-medium">{reason.name}</td>
+                                    <td className="px-4 py-3">
                                         <StatusBadge variant={reason.pointType === 'Positive' ? 'primary' : reason.pointType === 'Negative' ? 'warning' : 'muted'}>
                                             {reason.pointType === 'Positive'
                                                 ? t('common.positive')
@@ -140,12 +154,12 @@ export default function PointReasonsPage() {
                                                     : t('common.neutral')}
                                         </StatusBadge>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-3">
                                         <StatusBadge variant={reason.isActive ? 'success' : 'muted'}>
                                             {reason.isActive ? t('common.active') : t('common.inactive')}
                                         </StatusBadge>
                                     </td>
-                                    <td className="p-4 text-right w-24">
+                                    <td className="px-4 py-3 text-right w-24">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => openEdit(reason)}
@@ -154,13 +168,21 @@ export default function PointReasonsPage() {
                                             >
                                                 <PencilSimple size={16} />
                                             </button>
-                                            {reason.isActive && (
+                                            {reason.isActive ? (
                                                 <button
                                                     onClick={() => void handleDeactivate(reason)}
                                                     className="p-1.5 text-text-muted hover:text-warning hover:bg-warning/10 rounded transition-colors"
                                                     title={t('common.deactivate')}
                                                 >
                                                     <Prohibit size={16} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => void handleActivate(reason)}
+                                                    className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                                                    title={t('common.activate')}
+                                                >
+                                                    <CheckCircle size={16} />
                                                 </button>
                                             )}
                                         </div>

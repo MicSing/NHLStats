@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react'
 import { LeagueType } from '../../types/team'
 import type { LeagueTypeValue, Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
@@ -111,39 +112,43 @@ export default function TeamsPage() {
                 <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
-                    <thead>
-                        <tr className="text-left border-b border-border text-text-muted">
-                            <th className="pb-2 pr-4">{t('common.name')}</th>
-                            <th className="pb-2 pr-4">{t('admin.teams.short')}</th>
-                            <th className="pb-2 pr-4">{t('admin.teams.leagueType')}</th>
-                            <th className="pb-2">{t('common.actions')}</th>
+                    <thead className="bg-surface">
+                        <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                            <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.teams.short')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.teams.leagueType')}</th>
+                            <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                         {pageItems.map((team) => (
-                            <tr key={team.id} className="border-b border-border/50">
-                                <td className="py-3 pr-4">{team.name}</td>
-                                <td className="py-3 pr-4">
+                            <tr key={team.id} className="hover:bg-surface/50 transition-colors">
+                                <td className="px-4 py-3">{team.name}</td>
+                                <td className="px-4 py-3">
                                     <span className="font-mono text-xs bg-border px-2 py-0.5 rounded">
                                         {team.shortName}
                                     </span>
                                 </td>
-                                <td className="py-3 pr-4 text-text-muted text-xs">{leagueLabel(team.leagueType)}</td>
-                                <td className="py-3 flex gap-2">
-                                    <button
-                                        onClick={() => openEdit(team)}
-                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                    >
-                                        {t('common.edit')}
-                                    </button>
-                                    <button
-                                        onClick={() => void handleDelete(team)}
-                                        className="text-xs bg-red-900 hover:bg-red-800 px-3 py-1 rounded"
-                                    >
-                                        {t('common.delete')}
-                                    </button>
+                                <td className="px-4 py-3 text-text-muted">{leagueLabel(team.leagueType)}</td>
+                                <td className="px-4 py-3">
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => openEdit(team)}
+                                            className="p-1.5 text-text-muted hover:text-text hover:bg-border rounded transition-colors"
+                                            title={t('common.edit')}
+                                        >
+                                            <PencilSimpleIcon size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => void handleDelete(team)}
+                                            className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                            title={t('common.delete')}
+                                        >
+                                            <TrashIcon size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
