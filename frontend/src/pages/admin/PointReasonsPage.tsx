@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
+import { PencilSimple, Prohibit, Plus } from '@phosphor-icons/react'
 import type { PointReason, PointType, CreatePointReasonDto, UpdatePointReasonDto } from '../../types/pointReason'
 import apiClient from '../../services/apiClient'
 import Modal from '../../components/Modal'
 import { useTranslation } from 'react-i18next'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
-import AdminPageHeader from '../../components/AdminPageHeader'
 import StatusBadge from '../../components/StatusBadge'
 import SearchInput from '../../components/SearchInput'
 import Pagination from '../../components/Pagination'
@@ -19,11 +19,9 @@ export default function PointReasonsPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Add modal
     const [showAddModal, setShowAddModal] = useState(false)
     const [addForm, setAddForm] = useState<CreatePointReasonDto>({ name: '', pointType: 'Negative' })
 
-    // Edit modal
     const [editReason, setEditReason] = useState<PointReason | null>(null)
     const [editForm, setEditForm] = useState<UpdatePointReasonDto>({
         name: '',
@@ -100,71 +98,89 @@ export default function PointReasonsPage() {
     if (error) return <ErrorMessage message={error} onRetry={() => void loadReasons()} />
 
     return (
-        <div>
-            <AdminPageHeader title={t('admin.pointReasons.title')} action={{ label: t('admin.pointReasons.addReason'), onClick: () => setShowAddModal(true) }} />
+        <div className="flex flex-col h-full">
+            <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-8 shrink-0">
+                <h1 className="text-lg font-semibold">{t('admin.pointReasons.title')}</h1>
+                <div className="flex items-center gap-4">
+                    <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover rounded-md text-sm font-medium transition-colors shadow-sm"
+                    >
+                        <Plus size={16} />
+                        {t('admin.pointReasons.addReason')}
+                    </button>
+                </div>
+            </header>
 
-            <div className="mb-4">
-                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
-            </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="text-left border-b border-border text-text-muted">
-                            <th className="pb-2 pr-4">{t('common.name')}</th>
-                            <th className="pb-2 pr-4">{t('common.type')}</th>
-                            <th className="pb-2 pr-4">{t('common.status')}</th>
-                            <th className="pb-2">{t('common.actions')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pageItems.map((reason) => (
-                            <tr key={reason.id} className="border-b border-border/50">
-                                <td className="py-3 pr-4">{reason.name}</td>
-                                <td className="py-3 pr-4">
-                                    <StatusBadge variant={reason.pointType === 'Positive' ? 'primary' : reason.pointType === 'Negative' ? 'warning' : 'muted'}>
-                                        {reason.pointType === 'Positive'
-                                            ? t('common.positive')
-                                            : reason.pointType === 'Negative'
-                                                ? t('common.negative')
-                                                : t('common.neutral')}
-                                    </StatusBadge>
-                                </td>
-                                <td className="py-3 pr-4">
-                                    <StatusBadge variant={reason.isActive ? 'success' : 'muted'}>
-                                        {reason.isActive ? t('common.active') : t('common.inactive')}
-                                    </StatusBadge>
-                                </td>
-                                <td className="py-3 flex gap-2">
-                                    <button
-                                        onClick={() => openEdit(reason)}
-                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                    >
-                                        {t('common.edit')}
-                                    </button>
-                                    {reason.isActive && (
-                                        <button
-                                            onClick={() => void handleDeactivate(reason)}
-                                            className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
-                                        >
-                                            {t('common.deactivate')}
-                                        </button>
-                                    )}
-                                </td>
+            <div className="flex-1 p-8 overflow-y-auto">
+                <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-border bg-bg/50 text-[11px] text-text-muted uppercase tracking-wider font-semibold">
+                                <th className="p-4">{t('common.name')}</th>
+                                <th className="p-4">{t('common.type')}</th>
+                                <th className="p-4">{t('common.status')}</th>
+                                <th className="p-4 text-right">{t('common.actions')}</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="text-sm">
+                            {pageItems.map((reason) => (
+                                <tr
+                                    key={reason.id}
+                                    className="border-b border-border last:border-0 hover:bg-border/30 transition-colors group"
+                                >
+                                    <td className="p-4 font-medium">{reason.name}</td>
+                                    <td className="p-4">
+                                        <StatusBadge variant={reason.pointType === 'Positive' ? 'primary' : reason.pointType === 'Negative' ? 'warning' : 'muted'}>
+                                            {reason.pointType === 'Positive'
+                                                ? t('common.positive')
+                                                : reason.pointType === 'Negative'
+                                                    ? t('common.negative')
+                                                    : t('common.neutral')}
+                                        </StatusBadge>
+                                    </td>
+                                    <td className="p-4">
+                                        <StatusBadge variant={reason.isActive ? 'success' : 'muted'}>
+                                            {reason.isActive ? t('common.active') : t('common.inactive')}
+                                        </StatusBadge>
+                                    </td>
+                                    <td className="p-4 text-right w-24">
+                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => openEdit(reason)}
+                                                className="p-1.5 text-text-muted hover:text-text hover:bg-border rounded transition-colors"
+                                                title={t('common.edit')}
+                                            >
+                                                <PencilSimple size={16} />
+                                            </button>
+                                            {reason.isActive && (
+                                                <button
+                                                    onClick={() => void handleDeactivate(reason)}
+                                                    className="p-1.5 text-text-muted hover:text-warning hover:bg-warning/10 rounded transition-colors"
+                                                    title={t('common.deactivate')}
+                                                >
+                                                    <Prohibit size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="mt-4">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={totalFiltered}
+                        pageSize={20}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
             </div>
 
-            <Pagination
-                currentPage={currentPage}
-                totalItems={totalFiltered}
-                pageSize={20}
-                onPageChange={setCurrentPage}
-            />
-
-            {/* Add modal */}
             {showAddModal && (
                 <Modal title={t('admin.pointReasons.addTitle')} onClose={() => setShowAddModal(false)}>
                     <PointReasonForm
@@ -181,7 +197,6 @@ export default function PointReasonsPage() {
                 </Modal>
             )}
 
-            {/* Edit modal */}
             {editReason && (
                 <Modal title={t('admin.pointReasons.editReason')} onClose={() => setEditReason(null)}>
                     <PointReasonForm
@@ -200,8 +215,6 @@ export default function PointReasonsPage() {
         </div>
     )
 }
-
-// ---- Extracted form ----
 
 interface PointReasonFormProps {
     name: string
