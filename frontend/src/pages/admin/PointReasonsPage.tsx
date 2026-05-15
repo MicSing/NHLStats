@@ -146,18 +146,10 @@ export default function PointReasonsPage() {
                                 >
                                     <td className="px-4 py-3 font-medium">{reason.name}</td>
                                     <td className="px-4 py-3">
-                                        <StatusBadge variant={reason.pointType === 'Positive' ? 'primary' : reason.pointType === 'Negative' ? 'warning' : 'muted'}>
-                                            {reason.pointType === 'Positive'
-                                                ? t('common.positive')
-                                                : reason.pointType === 'Negative'
-                                                    ? t('common.negative')
-                                                    : t('common.neutral')}
-                                        </StatusBadge>
+                                        <StatusBadge status={reason.pointType} />
                                     </td>
                                     <td className="px-4 py-3">
-                                        <StatusBadge variant={reason.isActive ? 'success' : 'muted'}>
-                                            {reason.isActive ? t('common.active') : t('common.inactive')}
-                                        </StatusBadge>
+                                        <StatusBadge status={reason.isActive ? 'Active' : 'Inactive'} />
                                     </td>
                                     <td className="px-4 py-3 text-right w-24">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

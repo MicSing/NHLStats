@@ -42,23 +42,23 @@ const LEG_STATUS_DOT: Record<LegStatus, string> = {
     Cancelled: 'bg-gray-500',
 }
 
-function getLegDisplay(leg: BetLegDto): { market: string; marketColor: string; selection: string } {
+function getLegDisplay(leg: BetLegDto): { marketKey: string; marketColor: string; selection: string } {
     switch (leg.betType) {
         case 'TeamWin':
         case 'TeamWinOrDraw':
-            return { market: 'Match', marketColor: 'text-primary', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.match', marketColor: 'text-primary', selection: leg.targetName ?? '?' }
         case 'TeamDraw':
-            return { market: 'Draw', marketColor: 'text-text-muted', selection: 'X' }
+            return { marketKey: 'betting.drawLabel', marketColor: 'text-text-muted', selection: 'X' }
         case 'UserGoal':
-            return { market: 'Goals', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.goals', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
         case 'UserPenalty':
-            return { market: 'Penalties', marketColor: 'text-red-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.penalties', marketColor: 'text-red-400', selection: leg.targetName ?? '?' }
         case 'UserPlusPoint':
-            return { market: 'Plus', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.tickets.plus', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
         case 'UserMinusPoint':
-            return { market: 'Minus', marketColor: 'text-orange-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.tickets.minus', marketColor: 'text-orange-400', selection: leg.targetName ?? '?' }
         default:
-            return { market: 'Bet', marketColor: 'text-text-muted', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.tickets.bet', marketColor: 'text-text-muted', selection: leg.targetName ?? '?' }
     }
 }
 
@@ -205,27 +205,27 @@ export default function TicketsTab() {
     const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
     const activeFilters = [
-        filterId && { key: 'id', label: `ID: ${filterId}` },
-        filterUserId && { key: 'userId', label: `User: ${users.find(u => String(u.id) === filterUserId)?.name ?? filterUserId}` },
-        filterMatchNumber && { key: 'matchNumber', label: `Match #${filterMatchNumber}` },
-        filterSeasonId && { key: 'seasonId', label: `Season: ${seasons.find(s => String(s.id) === filterSeasonId)?.name ?? filterSeasonId}` },
-        filterStatus && { key: 'status', label: `Status: ${filterStatus}` },
-        filterStructure && { key: 'structure', label: filterStructure === 'single' ? 'Single' : 'Combo' },
-        filterBetType && { key: 'betType', label: `Type: ${filterBetType}` },
-        filterStakeMin && { key: 'stakeMin', label: `Stake ≥ ${filterStakeMin}€` },
-        filterStakeMax && { key: 'stakeMax', label: `Stake ≤ ${filterStakeMax}€` },
-        filterOddsMin && { key: 'oddsMin', label: `Odds ≥ ${filterOddsMin}` },
-        filterOddsMax && { key: 'oddsMax', label: `Odds ≤ ${filterOddsMax}` },
-        filterWinMin && { key: 'winMin', label: `Win ≥ ${filterWinMin}€` },
-        filterWinMax && { key: 'winMax', label: `Win ≤ ${filterWinMax}€` },
+        filterId && { key: 'id', label: t('betting.tickets.chipId', { value: filterId }) },
+        filterUserId && { key: 'userId', label: t('betting.tickets.chipUser', { value: users.find(u => String(u.id) === filterUserId)?.name ?? filterUserId }) },
+        filterMatchNumber && { key: 'matchNumber', label: t('betting.tickets.chipMatch', { value: filterMatchNumber }) },
+        filterSeasonId && { key: 'seasonId', label: t('betting.tickets.chipSeason', { value: seasons.find(s => String(s.id) === filterSeasonId)?.name ?? filterSeasonId }) },
+        filterStatus && { key: 'status', label: t('betting.tickets.chipStatus', { value: filterStatus }) },
+        filterStructure && { key: 'structure', label: filterStructure === 'single' ? t('betting.tickets.single') : t('betting.tickets.combo') },
+        filterBetType && { key: 'betType', label: t('betting.tickets.chipType', { value: filterBetType }) },
+        filterStakeMin && { key: 'stakeMin', label: t('betting.tickets.chipStakeMin', { value: filterStakeMin }) },
+        filterStakeMax && { key: 'stakeMax', label: t('betting.tickets.chipStakeMax', { value: filterStakeMax }) },
+        filterOddsMin && { key: 'oddsMin', label: t('betting.tickets.chipOddsMin', { value: filterOddsMin }) },
+        filterOddsMax && { key: 'oddsMax', label: t('betting.tickets.chipOddsMax', { value: filterOddsMax }) },
+        filterWinMin && { key: 'winMin', label: t('betting.tickets.chipWinMin', { value: filterWinMin }) },
+        filterWinMax && { key: 'winMax', label: t('betting.tickets.chipWinMax', { value: filterWinMax }) },
     ].filter(Boolean) as { key: string; label: string }[]
 
     const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-        { value: 'createdOn', label: 'Newest created' },
-        { value: 'evaluatedOn', label: 'Latest evaluated' },
-        { value: 'stake', label: 'Stake' },
-        { value: 'odds', label: 'Odds' },
-        { value: 'win', label: 'Win amount' },
+        { value: 'createdOn', label: t('betting.tickets.sortNewest') },
+        { value: 'evaluatedOn', label: t('betting.tickets.sortEvaluated') },
+        { value: 'stake', label: t('betting.stake') },
+        { value: 'odds', label: t('betting.oddsLabel') },
+        { value: 'win', label: t('betting.tickets.sortWin') },
     ]
 
     if (bets === null) {
@@ -241,7 +241,7 @@ export default function TicketsTab() {
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                    <label className="text-xs text-text-muted">Sort</label>
+                    <label className="text-xs text-text-muted">{t('betting.tickets.sort')}</label>
                     <select
                         value={sortBy}
                         onChange={e => setSort(e.target.value as SortBy)}
@@ -260,7 +260,7 @@ export default function TicketsTab() {
                     </button>
                 </div>
 
-                <span className="text-text-muted text-sm ml-auto">{totalItems} ticket{totalItems !== 1 ? 's' : ''}</span>
+                <span className="text-text-muted text-sm ml-auto">{t('betting.tickets.count', { count: totalItems })}</span>
 
                 <button
                     onClick={() => setFilterOpen(o => !o)}
@@ -269,7 +269,7 @@ export default function TicketsTab() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 8h12M10 12h4" />
                     </svg>
-                    Filters
+                    {t('betting.tickets.filters')}
                     {activeFilters.length > 0 && (
                         <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold">
                             {activeFilters.length}
@@ -307,7 +307,7 @@ export default function TicketsTab() {
                         }}
                         className="text-xs text-text-muted hover:text-danger"
                     >
-                        Clear all
+                        {t('betting.tickets.clearAll')}
                     </button>
                 </div>
             )}
@@ -316,12 +316,12 @@ export default function TicketsTab() {
             {filterOpen && (
                 <div className="card p-5 border border-border">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-sm">Filters</h3>
+                        <h3 className="font-semibold text-sm">{t('betting.tickets.filters')}</h3>
                         <button onClick={() => setFilterOpen(false)} className="text-text-muted hover:text-text text-xl leading-none">×</button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Ticket ID</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.ticketId')}</span>
                             <input
                                 type="text"
                                 value={filterId}
@@ -332,13 +332,13 @@ export default function TicketsTab() {
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">User</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.user')}</span>
                             <select
                                 value={filterUserId}
                                 onChange={e => setParam('userId', e.target.value)}
                                 className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
                             >
-                                <option value="">All users</option>
+                                <option value="">{t('betting.tickets.allUsers')}</option>
                                 {users.map(u => (
                                     <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
@@ -346,7 +346,7 @@ export default function TicketsTab() {
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Match #</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.matchNum')}</span>
                             <input
                                 type="number"
                                 value={filterMatchNumber}
@@ -357,13 +357,13 @@ export default function TicketsTab() {
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Season</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.season')}</span>
                             <select
                                 value={filterSeasonId}
                                 onChange={e => setParam('seasonId', e.target.value)}
                                 className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
                             >
-                                <option value="">All seasons</option>
+                                <option value="">{t('betting.tickets.allSeasons')}</option>
                                 {seasons.map(s => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
@@ -371,41 +371,41 @@ export default function TicketsTab() {
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Status</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.status')}</span>
                             <select
                                 value={filterStatus}
                                 onChange={e => setParam('status', e.target.value)}
                                 className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
                             >
-                                <option value="">All</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Won">Won</option>
-                                <option value="Lost">Lost</option>
-                                <option value="Cancelled">Cancelled</option>
+                                <option value="">{t('betting.tickets.all')}</option>
+                                <option value="Pending">{t('betting.outcomePending')}</option>
+                                <option value="Won">{t('betting.outcomeWon')}</option>
+                                <option value="Lost">{t('betting.outcomeLost')}</option>
+                                <option value="Cancelled">{t('betting.outcomeCancelled')}</option>
                             </select>
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Structure</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.structure')}</span>
                             <select
                                 value={filterStructure}
                                 onChange={e => setParam('structure', e.target.value)}
                                 className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
                             >
-                                <option value="">All</option>
-                                <option value="single">Single</option>
-                                <option value="combo">Combo</option>
+                                <option value="">{t('betting.tickets.all')}</option>
+                                <option value="single">{t('betting.tickets.single')}</option>
+                                <option value="combo">{t('betting.tickets.combo')}</option>
                             </select>
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Bet type</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.betType')}</span>
                             <select
                                 value={filterBetType}
                                 onChange={e => setParam('betType', e.target.value)}
                                 className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
                             >
-                                <option value="">All</option>
+                                <option value="">{t('betting.tickets.all')}</option>
                                 {ALL_BET_TYPES.map(bt => (
                                     <option key={bt} value={bt}>{bt}</option>
                                 ))}
@@ -413,60 +413,60 @@ export default function TicketsTab() {
                         </label>
 
                         <div className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Stake (€)</span>
+                            <span className="text-xs text-text-muted">{t('betting.stakeLabel')}</span>
                             <div className="flex gap-2">
                                 <input
                                     type="number"
                                     value={filterStakeMin}
                                     onChange={e => setParam('stakeMin', e.target.value)}
-                                    placeholder="Min"
+                                    placeholder={t('betting.tickets.min')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                                 <input
                                     type="number"
                                     value={filterStakeMax}
                                     onChange={e => setParam('stakeMax', e.target.value)}
-                                    placeholder="Max"
+                                    placeholder={t('betting.tickets.max')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Odds</span>
+                            <span className="text-xs text-text-muted">{t('betting.oddsLabel')}</span>
                             <div className="flex gap-2">
                                 <input
                                     type="number"
                                     value={filterOddsMin}
                                     onChange={e => setParam('oddsMin', e.target.value)}
-                                    placeholder="Min"
+                                    placeholder={t('betting.tickets.min')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                                 <input
                                     type="number"
                                     value={filterOddsMax}
                                     onChange={e => setParam('oddsMax', e.target.value)}
-                                    placeholder="Max"
+                                    placeholder={t('betting.tickets.max')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <span className="text-xs text-text-muted">Win amount (€)</span>
+                            <span className="text-xs text-text-muted">{t('betting.tickets.winAmountEur')}</span>
                             <div className="flex gap-2">
                                 <input
                                     type="number"
                                     value={filterWinMin}
                                     onChange={e => setParam('winMin', e.target.value)}
-                                    placeholder="Min"
+                                    placeholder={t('betting.tickets.min')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                                 <input
                                     type="number"
                                     value={filterWinMax}
                                     onChange={e => setParam('winMax', e.target.value)}
-                                    placeholder="Max"
+                                    placeholder={t('betting.tickets.max')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
                                 />
                             </div>
@@ -478,13 +478,13 @@ export default function TicketsTab() {
             {/* Ticket list */}
             {pageItems.length === 0 ? (
                 <section className="card p-6 text-center">
-                    <p className="text-text-muted text-sm">No tickets match the current filters.</p>
+                    <p className="text-text-muted text-sm">{t('betting.tickets.noMatch')}</p>
                 </section>
             ) : (
                 <div className="space-y-3">
                     {pageItems.map(bet => {
                         const win = potentialWin(bet)
-                        const structure = bet.legs.length === 1 ? 'Single' : 'Combo'
+                        const structure = bet.legs.length === 1 ? t('betting.tickets.single') : t('betting.tickets.combo')
                         const avatarText = bet.createdByName.slice(0, 2).toUpperCase()
                         const winAmount = bet.status === 'Won' && bet.wonAmount != null ? bet.wonAmount : win
                         const winClass = bet.status === 'Won' ? 'text-green-400' : bet.status === 'Lost' ? 'text-text-muted line-through' : 'text-text'
@@ -511,7 +511,7 @@ export default function TicketsTab() {
                                     <div className="flex-1" />
 
                                     <div className="text-right hidden sm:block">
-                                        <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">Stake / Odds</div>
+                                        <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">{t('betting.tickets.stakeOdds')}</div>
                                         <div className="font-black text-text text-sm whitespace-nowrap">
                                             {bet.stake.toFixed(2)}€ <span className="text-text-muted font-normal text-xs">×</span>{' '}
                                             {isAnon
@@ -523,7 +523,7 @@ export default function TicketsTab() {
 
                                     <div className="text-right hidden sm:block ml-5">
                                         <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">
-                                            {bet.status === 'Won' ? 'Won' : 'Win'}
+                                            {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}
                                         </div>
                                         <div className={`font-black text-sm ${winClass}`}>
                                             {isAnon
@@ -535,7 +535,7 @@ export default function TicketsTab() {
 
                                     <div className="ml-5 shrink-0">
                                         <span className={`text-[9px] px-2.5 py-1 rounded border font-black uppercase tracking-widest ${STATUS_BADGE[bet.status]}`}>
-                                            {bet.status}
+                                            {t(`betting.outcome${bet.status}`)}
                                         </span>
                                     </div>
                                 </div>
@@ -555,7 +555,7 @@ export default function TicketsTab() {
                                                         Hidden bet details here
                                                     </div>
                                                     <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center text-[10px] text-text-muted font-semibold pb-1.5">
-                                                        🔒 Revealed on evaluation
+                                                        {t('betting.tickets.revealedOnEval')}
                                                     </div>
                                                 </div>
                                             )
@@ -563,7 +563,7 @@ export default function TicketsTab() {
                                         const matchName = leg.homeTeamName && leg.awayTeamName
                                             ? `${leg.homeTeamName} vs ${leg.awayTeamName}`
                                             : `Match #${leg.matchNumber}`
-                                        const { market, marketColor, selection } = getLegDisplay(leg)
+                                        const { marketKey, marketColor, selection } = getLegDisplay(leg)
                                         return (
                                             <div key={leg.id} className="bg-bg border border-border rounded-lg px-3 py-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -576,7 +576,7 @@ export default function TicketsTab() {
                                                     </div>
                                                 </div>
                                                 <div className="text-xs">
-                                                    <span className={`font-bold ${marketColor}`}>{market}:</span>{' '}
+                                                    <span className={`font-bold ${marketColor}`}>{t(marketKey)}:</span>{' '}
                                                     <span className="text-text font-medium">{selection}</span>
                                                 </div>
                                             </div>
@@ -586,7 +586,7 @@ export default function TicketsTab() {
 
                                 {bet.evaluatedOn && (
                                     <div className="px-4 pb-2 text-[9px] text-text-muted text-right">
-                                        Evaluated: {new Date(bet.evaluatedOn).toLocaleDateString()}
+                                        {t('betting.tickets.evaluated', { date: new Date(bet.evaluatedOn).toLocaleDateString() })}
                                     </div>
                                 )}
                             </div>
