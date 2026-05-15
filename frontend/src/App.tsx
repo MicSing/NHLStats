@@ -16,7 +16,6 @@ import FinancePage from './pages/admin/FinancePage'
 import AdminMatchesPage from './pages/admin/AdminMatchesPage'
 import AdminAggregatedPointsPage from './pages/admin/AdminAggregatedPointsPage'
 import TeamsPage from './pages/admin/TeamsPage'
-import PointsManagementPage from './pages/admin/PointsManagementPage'
 import SeasonPage from './pages/SeasonPage'
 import MatchPage from './pages/MatchPage'
 import DashboardPage from './pages/DashboardPage'
@@ -65,7 +64,7 @@ function App() {
                   <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
                   <Route path="aggregated-points" element={<AdminAggregatedPointsPage />} />
                   <Route path="teams" element={<TeamsPage />} />
-                  <Route path="points" element={<PointsManagementPage />} />
+                  <Route path="points" element={<Navigate to="/admin/finance" replace />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/seasons" replace />} />

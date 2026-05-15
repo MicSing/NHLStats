@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Gear, Receipt, CurrencyDollar } from '@phosphor-icons/react'
+import { Gear, Receipt, CurrencyDollar, Hash } from '@phosphor-icons/react'
 import MoneyConfigTab from '../../components/finance/MoneyConfigTab'
 import ExpensesTab from '../../components/finance/ExpensesTab'
 import CollectingTab from '../../components/finance/CollectingTab'
+import PointsManagementTab from '../../components/finance/PointsManagementTab'
 import AdminPageHeader from '../../components/AdminPageHeader'
 
-type Tab = 'rates' | 'expenses' | 'collecting'
+type Tab = 'rates' | 'expenses' | 'collecting' | 'points'
 
 const tabs: { key: Tab; labelKey: string; Icon: React.ElementType }[] = [
     { key: 'rates', labelKey: 'admin.finance.tabRates', Icon: Gear },
     { key: 'expenses', labelKey: 'admin.finance.tabExpenses', Icon: Receipt },
     { key: 'collecting', labelKey: 'admin.finance.tabCollecting', Icon: CurrencyDollar },
+    { key: 'points', labelKey: 'admin.finance.tabPoints', Icon: Hash },
 ]
 
-const addLabelKeys: Record<Tab, string> = {
+const addLabelKeys: Partial<Record<Tab, string>> = {
     rates: 'admin.finance.addConfig',
     expenses: 'admin.finance.addExpense',
     collecting: 'admin.finance.addCollection',
@@ -25,11 +27,13 @@ export default function FinancePage() {
     const [activeTab, setActiveTab] = useState<Tab>('rates')
     const [addOpen, setAddOpen] = useState(false)
 
+    const addLabelKey = addLabelKeys[activeTab]
+
     return (
         <div>
             <AdminPageHeader
                 title={t('nav.finance')}
-                action={{ label: t(addLabelKeys[activeTab]), onClick: () => setAddOpen(true) }}
+                action={addLabelKey ? { label: t(addLabelKey), onClick: () => setAddOpen(true) } : undefined}
             />
 
             <div className="flex border-b border-border mb-6">
@@ -58,6 +62,7 @@ export default function FinancePage() {
             {activeTab === 'collecting' && (
                 <CollectingTab addOpen={addOpen} onAddClose={() => setAddOpen(false)} />
             )}
+            {activeTab === 'points' && <PointsManagementTab />}
         </div>
     )
 }

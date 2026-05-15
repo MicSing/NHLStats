@@ -603,6 +603,7 @@
             "tabRates": "Rate Config",
             "tabExpenses": "Expenses",
             "tabCollecting": "Payments",
+            "tabPoints": "Points",
             "addConfig": "Add Config",
             "addExpense": "Add Expense",
             "addCollection": "Add Payment"

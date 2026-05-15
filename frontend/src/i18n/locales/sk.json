@@ -603,6 +603,7 @@
             "tabRates": "Sadzby",
             "tabExpenses": "Výdavky",
             "tabCollecting": "Platby",
+            "tabPoints": "Body",
             "addConfig": "Pridať konfiguráciu",
             "addExpense": "Pridať výdavok",
             "addCollection": "Pridať platbu"
