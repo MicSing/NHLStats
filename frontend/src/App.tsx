@@ -9,12 +9,9 @@ import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import UsersPage from './pages/admin/UsersPage'
-import SeasonsPage from './pages/admin/SeasonsPage'
-import RosterPage from './pages/admin/RosterPage'
+import SeasonManagementPage from './pages/admin/SeasonManagementPage'
 import PointReasonsPage from './pages/admin/PointReasonsPage'
 import FinancePage from './pages/admin/FinancePage'
-import AdminMatchesPage from './pages/admin/AdminMatchesPage'
-import AdminAggregatedPointsPage from './pages/admin/AdminAggregatedPointsPage'
 import TeamsPage from './pages/admin/TeamsPage'
 import SeasonPage from './pages/SeasonPage'
 import MatchPage from './pages/MatchPage'
@@ -54,15 +51,15 @@ function App() {
                   <Route index element={<Navigate to="users" replace />} />
                   <Route path="logins" element={<Navigate to="/admin/users" replace />} />
                   <Route path="users" element={<UsersPage />} />
-                  <Route path="seasons" element={<SeasonsPage />} />
-                  <Route path="roster" element={<RosterPage />} />
+                  <Route path="seasons" element={<SeasonManagementPage />} />
+                  <Route path="roster" element={<Navigate to="/admin/seasons" replace />} />
                   <Route path="point-reasons" element={<PointReasonsPage />} />
                   <Route path="finance" element={<FinancePage />} />
                   <Route path="money-config" element={<Navigate to="/admin/finance" replace />} />
                   <Route path="expenses" element={<Navigate to="/admin/finance" replace />} />
-                  <Route path="matches" element={<AdminMatchesPage />} />
+                  <Route path="matches" element={<Navigate to="/admin/seasons" replace />} />
                   <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
-                  <Route path="aggregated-points" element={<AdminAggregatedPointsPage />} />
+                  <Route path="aggregated-points" element={<Navigate to="/admin/seasons" replace />} />
                   <Route path="teams" element={<TeamsPage />} />
                   <Route path="points" element={<Navigate to="/admin/finance" replace />} />
                 </Route>

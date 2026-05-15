@@ -475,6 +475,7 @@
             "title": "Seasons",
             "addSeason": "Add Season",
             "editSeason": "Edit Season",
+            "basicInformation": "Basic Information",
             "started": "Started",
             "hostedBy": "Hosted By",
             "deleteSeason": "Delete this season?",

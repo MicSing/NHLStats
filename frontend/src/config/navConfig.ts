@@ -1,7 +1,7 @@
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import {
     House, Trophy, ChartLine, Target, CurrencyDollar, BookOpen,
-    Users, Database, Shield, ListBullets, GameController,
+    Users, Database, Shield,
     ChartBar, Tag, Wallet,
 } from '@phosphor-icons/react'
 
@@ -39,15 +39,12 @@ export const adminNavGroups: NavGroup[] = [
         items: [
             { to: '/admin/seasons', labelKey: 'nav.adminSeasons', icon: Trophy },
             { to: '/admin/teams', labelKey: 'nav.teams', icon: Shield },
-            { to: '/admin/roster', labelKey: 'nav.roster', icon: ListBullets },
-            { to: '/admin/matches', labelKey: 'nav.matches', icon: GameController },
         ],
     },
     {
         labelKey: 'nav.groupPoints',
         icon: ChartBar,
         items: [
-            { to: '/admin/aggregated-points', labelKey: 'nav.aggregatedPoints', icon: ChartBar },
             { to: '/admin/point-reasons', labelKey: 'nav.pointReasons', icon: Tag },
         ],
     },
