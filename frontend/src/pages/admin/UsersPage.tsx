@@ -1,43 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { User, CreateUserDto, UpdateUserDto } from '../../types/user'
+import type { LoginUser, CreateLoginDto } from '../../types/loginManagement'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
-import Modal from '../../components/Modal'
-import { useTranslation } from 'react-i18next'
+import { useToast } from '../../context/ToastContext'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
-import AdminPageHeader from '../../components/AdminPageHeader'
-import StatusBadge from '../../components/StatusBadge'
-import SearchInput from '../../components/SearchInput'
-import Pagination from '../../components/Pagination'
-import useTable from '../../hooks/useTable'
-import { useToast } from '../../context/ToastContext'
+import type { MergedUser } from '../../components/users/userTypes'
+import UsersTable from '../../components/users/UsersTable'
+import UserDrawer from '../../components/users/UserDrawer'
+import AddUserModal from '../../components/users/AddUserModal'
 
 export default function UsersPage() {
     const { t } = useTranslation()
     const toast = useToast()
-    const [users, setUsers] = useState<User[]>([])
+
+    const [appUsers, setAppUsers] = useState<User[]>([])
+    const [loginUsers, setLoginUsers] = useState<LoginUser[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [search, setSearch] = useState('')
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+    const [showAddUserModal, setShowAddUserModal] = useState(false)
 
-    // Add modal
-    const [showAddModal, setShowAddModal] = useState(false)
-    const [newName, setNewName] = useState('')
-
-    // Edit modal
-    const [editUser, setEditUser] = useState<User | null>(null)
-    const [editName, setEditName] = useState('')
-    const [editIsActive, setEditIsActive] = useState(true)
-
-    const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
-        data: users,
-        searchFields: (u) => [u.name],
-    })
-
-    const loadUsers = async () => {
+    const load = async () => {
         try {
-            const data = await cacheService.getUsers(true)
-            setUsers(data)
+            setLoading(true)
+            const [usersData, loginData] = await Promise.all([
+                cacheService.getUsers(true),
+                apiClient.get<LoginUser[]>('/api/auth/users'),
+            ])
+            setAppUsers(usersData)
+            setLoginUsers(loginData)
+            setError(null)
         } catch {
             setError(t('errors.failedToLoadUsers'))
         } finally {
@@ -46,39 +42,36 @@ export default function UsersPage() {
     }
 
     useEffect(() => {
-        void loadUsers()
+        void load()
     }, [])
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault()
-        try {
-            await apiClient.post<User>('/api/users', { name: newName } satisfies CreateUserDto)
-            cacheService.invalidateUsers()
-            setNewName('')
-            setShowAddModal(false)
-            toast.success(t('toast.createSuccess'))
-            await loadUsers()
-        } catch {
-            toast.error(t('toast.operationFailed'))
-        }
+    const mergedUsers = useMemo<MergedUser[]>(
+        () => appUsers.map((u) => ({ ...u, logins: loginUsers.filter((l) => l.userId === u.id) })),
+        [appUsers, loginUsers],
+    )
+
+    const filteredUsers = useMemo(() => {
+        const q = search.toLowerCase()
+        if (!q) return mergedUsers
+        return mergedUsers.filter(
+            (u) =>
+                u.name.toLowerCase().includes(q) ||
+                u.logins.some(
+                    (l) => l.email?.toLowerCase().includes(q) || l.alias?.toLowerCase().includes(q),
+                ),
+        )
+    }, [mergedUsers, search])
+
+    const selectedUser = mergedUsers.find((u) => u.id === selectedUserId) ?? null
+
+    const handleAddUser = async (name: string) => {
+        await apiClient.post<User>('/api/users', { name } satisfies CreateUserDto)
+        cacheService.invalidateUsers()
+        toast.success(t('toast.createSuccess'))
+        await load()
     }
 
-    const handleEdit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!editUser) return
-        try {
-            const dto: UpdateUserDto = { name: editName, isActive: editIsActive }
-            await apiClient.put<User>(`/api/users/${editUser.id}`, dto)
-            cacheService.invalidateUsers()
-            setEditUser(null)
-            toast.success(t('toast.saveSuccess'))
-            await loadUsers()
-        } catch {
-            toast.error(t('toast.operationFailed'))
-        }
-    }
-
-    const handleDeactivate = async (user: User) => {
+    const handleDeactivate = async (user: MergedUser) => {
         try {
             await apiClient.put<User>(`/api/users/${user.id}`, {
                 name: user.name,
@@ -86,155 +79,77 @@ export default function UsersPage() {
             } satisfies UpdateUserDto)
             cacheService.invalidateUsers()
             toast.success(t('toast.saveSuccess'))
-            await loadUsers()
+            await load()
         } catch {
             toast.error(t('toast.operationFailed'))
         }
     }
 
-    const openEdit = (user: User) => {
-        setEditUser(user)
-        setEditName(user.name)
-        setEditIsActive(user.isActive)
+    const handleAddIdentity = async (dto: CreateLoginDto) => {
+        await apiClient.post('/api/auth/users', dto)
+        toast.success(t('toast.createSuccess'))
+        await load()
+    }
+
+    const handleChangePassword = async (loginId: string, password: string) => {
+        await apiClient.post(`/api/auth/users/${loginId}/change-password`, { newPassword: password })
+        toast.success(t('toast.saveSuccess'))
+    }
+
+    const handleDeleteLogin = async (loginId: string) => {
+        if (!window.confirm(t('confirm.deleteUser'))) return
+        try {
+            await apiClient.delete(`/api/auth/users/${loginId}`)
+            toast.success(t('toast.deleteSuccess'))
+            await load()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
+    const handleSaveRoles = async (login: LoginUser, roles: string[]) => {
+        await apiClient.put(`/api/auth/users/${login.id}/roles`, { roles })
+        toast.success(t('toast.saveSuccess'))
+        await load()
     }
 
     if (loading) return <LoadingSpinner />
-    if (error) return <ErrorMessage message={error} onRetry={() => void loadUsers()} />
+    if (error) return <ErrorMessage message={error} onRetry={() => void load()} />
 
     return (
-        <div>
-            <AdminPageHeader title={t('admin.users.title')} action={{ label: t('admin.users.addUser'), onClick: () => setShowAddModal(true) }} />
-
-            <div className="mb-4">
-                <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+        <div className="space-y-8">
+            <div>
+                <h1 className="text-2xl font-medium tracking-tight text-text">Používatelia a prístupy</h1>
+                <p className="text-sm text-text-muted mt-1">
+                    Centrálna správa osôb, ich identít a systémových oprávnení.
+                </p>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="text-left border-b border-border text-text-muted">
-                            <th className="pb-2 pr-4">{t('common.name')}</th>
-                            <th className="pb-2 pr-4">{t('common.status')}</th>
-                            <th className="pb-2">{t('common.actions')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pageItems.map((user) => (
-                            <tr key={user.id} className="border-b border-border/50">
-                                <td className="py-3 pr-4">{user.name}</td>
-                                <td className="py-3 pr-4">
-                                    <StatusBadge variant={user.isActive ? 'success' : 'muted'}>
-                                        {user.isActive ? t('common.active') : t('common.inactive')}
-                                    </StatusBadge>
-                                </td>
-                                <td className="py-3 flex gap-2">
-                                    <button
-                                        onClick={() => openEdit(user)}
-                                        className="text-xs bg-border hover:bg-border/80 px-3 py-1 rounded"
-                                    >
-                                        {t('common.edit')}
-                                    </button>
-                                    {user.isActive && (
-                                        <button
-                                            onClick={() => void handleDeactivate(user)}
-                                            className="text-xs bg-warning/20 hover:bg-warning/30 text-warning px-3 py-1 rounded"
-                                        >
-                                            {t('common.deactivate')}
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            <Pagination
-                currentPage={currentPage}
-                totalItems={totalFiltered}
-                pageSize={20}
-                onPageChange={setCurrentPage}
+            <UsersTable
+                filteredUsers={filteredUsers}
+                search={search}
+                onSearchChange={setSearch}
+                onSelectUser={setSelectedUserId}
+                onAddUser={() => setShowAddUserModal(true)}
             />
 
-            {/* Add modal */}
-            {showAddModal && (
-                <Modal title={t('admin.users.addUser')} onClose={() => setShowAddModal(false)}>
-                    <form onSubmit={(e) => void handleAdd(e)}>
-                        <label
-                            htmlFor="add-user-name"
-                            className="label"
-                        >
-                            {t('common.name')}
-                        </label>
-                        <input
-                            id="add-user-name"
-                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            required
-                        />
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setShowAddModal(false)}
-                                className="btn-ghost text-sm"
-                            >
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
-                            >
-                                {t('common.save')}
-                            </button>
-                        </div>
-                    </form>
-                </Modal>
+            {selectedUser && (
+                <UserDrawer
+                    user={selectedUser}
+                    onClose={() => setSelectedUserId(null)}
+                    onAddIdentity={handleAddIdentity}
+                    onChangePassword={handleChangePassword}
+                    onDeleteLogin={handleDeleteLogin}
+                    onSaveRoles={handleSaveRoles}
+                    onDeactivate={handleDeactivate}
+                />
             )}
 
-            {/* Edit modal */}
-            {editUser && (
-                <Modal title={t('admin.users.editUser')} onClose={() => setEditUser(null)}>
-                    <form onSubmit={(e) => void handleEdit(e)}>
-                        <label
-                            htmlFor="edit-user-name"
-                            className="label"
-                        >
-                            {t('common.name')}
-                        </label>
-                        <input
-                            id="edit-user-name"
-                            className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            required
-                        />
-                        <label className="flex items-center gap-2 mb-4 text-sm text-text cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={editIsActive}
-                                onChange={(e) => setEditIsActive(e.target.checked)}
-                                className="accent-[var(--color-primary)]"
-                            />
-                            {t('common.active')}
-                        </label>
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setEditUser(null)}
-                                className="btn-ghost text-sm"
-                            >
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-4 py-2 text-sm bg-primary hover:bg-primary-hover rounded"
-                            >
-                                {t('common.save')}
-                            </button>
-                        </div>
-                    </form>
-                </Modal>
+            {showAddUserModal && (
+                <AddUserModal
+                    onClose={() => setShowAddUserModal(false)}
+                    onSubmit={handleAddUser}
+                />
             )}
         </div>
     )

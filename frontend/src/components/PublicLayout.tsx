@@ -5,7 +5,7 @@ import { CaretDown, Key, SignOut } from '@phosphor-icons/react'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
-import { publicNavItems, adminNavGroups, type NavGroup } from '../config/navConfig'
+import { publicNavItems, adminNavGroups, adminTopNavItems, type NavGroup } from '../config/navConfig'
 
 function AccordionGroup({
     group,
@@ -164,6 +164,28 @@ export default function PublicLayout() {
                     </div>
                 ) : (
                     <div className="space-y-2">
+                        <div className="space-y-0.5">
+                            {adminTopNavItems.map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <NavLink
+                                        key={item.to}
+                                        to={item.to}
+                                        onClick={closeSidebar}
+                                        className={({ isActive }) =>
+                                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                                isActive
+                                                    ? 'bg-primary text-white'
+                                                    : 'text-text-muted hover:bg-border hover:text-text'
+                                            }`
+                                        }
+                                    >
+                                        <Icon size={15} />
+                                        {t(item.labelKey)}
+                                    </NavLink>
+                                )
+                            })}
+                        </div>
                         {adminNavGroups.map((group) => (
                             <AccordionGroup
                                 key={group.labelKey}
