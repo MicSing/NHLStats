@@ -307,18 +307,18 @@ export default function RosterTab({ seasonId, teams, seasons }: RosterTabProps) 
                                 t('common.actions'),
                             ]}
                         />
-                        <tbody className="text-sm">
+                        <tbody className="divide-y divide-border text-sm">
                             {pageItems.map((p) => (
                                 <tr
                                     key={p.id}
-                                    className="border-b border-border/50 last:border-0 hover:bg-border/20 transition-colors group"
+                                    className="hover:bg-surface/50 transition-colors group"
                                 >
-                                    <td className="p-4 font-medium">
+                                    <td className="px-4 py-3 font-medium">
                                         {p.firstName} {p.surname}
                                     </td>
-                                    <td className="p-4 text-text-muted">{p.position ?? '—'}</td>
-                                    <td className="p-4 text-text-muted">{p.teamShortName}</td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-3 text-text-muted">{p.position ?? '—'}</td>
+                                    <td className="px-4 py-3 text-text-muted">{p.teamShortName}</td>
+                                    <td className="px-4 py-3">
                                         <StatusBadge variant={p.isActive ? 'success' : 'muted'}>
                                             {p.isActive ? t('common.active') : t('common.inactive')}
                                         </StatusBadge>
@@ -335,7 +335,7 @@ export default function RosterTab({ seasonId, teams, seasons }: RosterTabProps) 
                                 <tr>
                                     <td
                                         colSpan={5}
-                                        className="p-8 text-center text-text-muted text-sm"
+                                        className="px-4 py-8 text-center text-text-muted text-sm"
                                     >
                                         No players in this season yet.
                                     </td>

@@ -927,16 +927,16 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                                 t('common.actions'),
                             ]}
                         />
-                        <tbody className="text-sm">
+                        <tbody className="divide-y divide-border text-sm">
                             {pageItems.map((m) => (
                                 <tr
                                     key={m.id}
-                                    className="border-b border-border/50 last:border-0 hover:bg-border/20 transition-colors group"
+                                    className="hover:bg-surface/50 transition-colors group"
                                 >
-                                    <td className="p-4 font-mono text-text-muted w-12">
+                                    <td className="px-4 py-3 font-mono text-text-muted w-12">
                                         {m.matchNumber}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-3">
                                         <Link
                                             to={`/seasons/${seasonId}/matches/${m.id}`}
                                             className="hover:text-primary"
@@ -944,17 +944,17 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                                             {m.homeTeamName} vs {m.awayTeamName}
                                         </Link>
                                     </td>
-                                    <td className="p-4 font-mono">
+                                    <td className="px-4 py-3 font-mono">
                                         {m.matchDate
                                             ? `${m.homeScore} – ${m.awayScore}`
                                             : '—'}
                                     </td>
-                                    <td className="p-4 text-text-muted">
+                                    <td className="px-4 py-3 text-text-muted">
                                         {m.matchDate
                                             ? new Date(m.matchDate).toLocaleDateString()
                                             : t('admin.matches.tbd')}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-3">
                                         <CompletionBadge type={m.completionType} />
                                     </td>
                                     <ActionCell
@@ -969,7 +969,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                                 <tr>
                                     <td
                                         colSpan={6}
-                                        className="p-8 text-center text-text-muted text-sm"
+                                        className="px-4 py-8 text-center text-text-muted text-sm"
                                     >
                                         {t('admin.matches.noMatches')}
                                     </td>

@@ -153,20 +153,20 @@ export default function ManualPointsTab({ seasonId, seasonDetail }: ManualPoints
                                     t('common.actions'),
                                 ]}
                             />
-                            <tbody className="text-sm">
+                            <tbody className="divide-y divide-border text-sm">
                                 {entries.map((entry) => (
                                     <tr
                                         key={entry.aggregatedData.id}
-                                        className="border-b border-border/50 last:border-0 hover:bg-border/20 transition-colors group"
+                                        className="hover:bg-surface/50 transition-colors group"
                                     >
-                                        <td className="p-4">{entry.userName}</td>
-                                        <td className="p-4 text-success font-mono">
+                                        <td className="px-4 py-3">{entry.userName}</td>
+                                        <td className="px-4 py-3 text-success font-mono">
                                             {entry.aggregatedData.totalPlus}
                                         </td>
-                                        <td className="p-4 text-danger font-mono">
+                                        <td className="px-4 py-3 text-danger font-mono">
                                             {entry.aggregatedData.totalMinus}
                                         </td>
-                                        <td className="p-4 font-mono">
+                                        <td className="px-4 py-3 font-mono">
                                             {entry.aggregatedData.matchesPlayed}
                                         </td>
                                         <ActionCell

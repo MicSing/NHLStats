@@ -18,22 +18,20 @@ export function Tab({ label, active, onClick }: { label: string; active: boolean
 
 export function TableCard({ children }: { children: ReactNode }) {
     return (
-        <div className="bg-surface border border-border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">{children}</table>
-            </div>
+        <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">{children}</table>
         </div>
     )
 }
 
 export function TableHead({ columns }: { columns: string[] }) {
     return (
-        <thead>
-            <tr className="text-left border-b border-border text-text-muted text-xs uppercase tracking-wider font-semibold bg-bg/50">
+        <thead className="bg-surface">
+            <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
                 {columns.map((col, i) => (
                     <th
                         key={col}
-                        className={`p-4 ${i === columns.length - 1 ? 'text-right' : ''}`}
+                        className={`px-4 py-3 font-medium ${i === columns.length - 1 ? 'text-right' : ''}`}
                     >
                         {col}
                     </th>
@@ -55,7 +53,7 @@ export function ActionCell({
     deleteTitle: string
 }) {
     return (
-        <td className="p-4">
+        <td className="px-4 py-3">
             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onEdit && (
                     <button

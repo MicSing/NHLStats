@@ -50,13 +50,13 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
         <div className="max-w-xl space-y-4">
             <TableCard>
                 <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-border text-text-muted text-xs uppercase tracking-wider">
-                            <th className="px-4 py-3 text-left font-medium">{t('common.name')}</th>
-                            <th className="px-4 py-3 text-right font-medium">{t('common.actions')}</th>
+                    <thead className="bg-surface">
+                        <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
+                            <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                            <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border">
                         {seasonDetail.users.length === 0 ? (
                             <tr>
                                 <td colSpan={2} className="px-4 py-6 text-center text-text-muted text-sm">
@@ -65,7 +65,7 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                             </tr>
                         ) : (
                             seasonDetail.users.map((u) => (
-                                <tr key={u.id} className="border-b border-border/50 last:border-0">
+                                <tr key={u.id} className="hover:bg-surface/50 transition-colors">
                                     <td className="px-4 py-3">{u.name}</td>
                                     <td className="px-4 py-3 text-right">
                                         <button
