@@ -30,6 +30,7 @@ export const publicNavItems: NavItem[] = [
 export const adminTopNavItems: NavItem[] = [
     { to: '/admin/users', labelKey: 'nav.users', icon: Users },
     { to: '/admin/finance', labelKey: 'nav.finance', icon: Wallet },
+    { to: '/admin/seasons', labelKey: 'nav.adminSeasons', icon: Trophy },
 ]
 
 export const adminNavGroups: NavGroup[] = [
@@ -37,7 +38,6 @@ export const adminNavGroups: NavGroup[] = [
         labelKey: 'nav.groupGameData',
         icon: Database,
         items: [
-            { to: '/admin/seasons', labelKey: 'nav.adminSeasons', icon: Trophy },
             { to: '/admin/teams', labelKey: 'nav.teams', icon: Shield },
         ],
     },
