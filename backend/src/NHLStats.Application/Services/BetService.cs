@@ -130,7 +130,7 @@ public class BetService : IBetService
         leg.EvaluatedOn,
         IsAnonymized: true);
 
-    public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync(string currentLoginId)
+    public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync(string? currentLoginId)
     {
         var bets = await _db.Bets
             .AsNoTracking()
