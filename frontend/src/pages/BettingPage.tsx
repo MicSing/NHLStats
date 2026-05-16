@@ -18,7 +18,10 @@ export default function BettingPage() {
     const userId = user?.userId ?? null
 
     const rawTab = searchParams.get('tab')
-    const tab: Tab = rawTab === 'archive' || rawTab === 'tickets' ? rawTab : 'betting'
+    const tab: Tab =
+        rawTab === 'archive' || rawTab === 'tickets'
+            ? rawTab
+            : userId ? 'betting' : 'tickets'
 
     const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
 
@@ -36,35 +39,31 @@ export default function BettingPage() {
         })
     }
 
-    if (!userId) {
-        return (
-            <PageLayout>
-                <p>{t('betting.loginRequired')}</p>
-            </PageLayout>
-        )
-    }
-
     return (
         <PageLayout>
             <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
                     <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
-                        <button
-                            onClick={() => setTab('betting')}
-                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
-                                tab === 'betting' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-                            }`}
-                        >
-                            {t('betting.tabBetting')}
-                        </button>
-                        <button
-                            onClick={() => setTab('archive')}
-                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
-                                tab === 'archive' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-                            }`}
-                        >
-                            {t('betting.tabArchive')}
-                        </button>
+                        {userId && (
+                            <>
+                                <button
+                                    onClick={() => setTab('betting')}
+                                    className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                        tab === 'betting' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                                    }`}
+                                >
+                                    {t('betting.tabBetting')}
+                                </button>
+                                <button
+                                    onClick={() => setTab('archive')}
+                                    className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                        tab === 'archive' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                                    }`}
+                                >
+                                    {t('betting.tabArchive')}
+                                </button>
+                            </>
+                        )}
                         <button
                             onClick={() => setTab('tickets')}
                             className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
@@ -90,9 +89,9 @@ export default function BettingPage() {
                     )}
                 </div>
 
-                {tab === 'betting' ? (
+                {tab === 'betting' && userId ? (
                     <BettingTab userId={userId} onBalanceChanged={setBalance} />
-                ) : tab === 'archive' ? (
+                ) : tab === 'archive' && userId ? (
                     <ArchiveTab />
                 ) : (
                     <TicketsTab />

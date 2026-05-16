@@ -35,7 +35,7 @@ function App() {
                   <Route path="/change-password" element={<ChangePasswordPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/earnings" element={<EarningsExpensesPage />} />
-                  <Route path="/betting" element={<ProtectedRoute><BettingPage /></ProtectedRoute>} />
+                  <Route path="/betting" element={<BettingPage />} />
                   <Route path="/seasons" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />

@@ -62,10 +62,10 @@ public class BetsController : ControllerBase
 
     // GET /api/betting/bets/all
     [HttpGet("api/betting/bets/all")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
         var loginId = GetLoginId();
-        if (loginId == null) return Unauthorized();
         var bets = await _betService.GetAllBetsAsync(loginId);
         return Ok(bets);
     }
