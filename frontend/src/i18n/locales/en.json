@@ -288,7 +288,14 @@
         "scoringPartnersDesc": "Roster players you score goals with most often.",
         "penaltyPartnersDesc": "Roster players most frequently on ice during your penalties.",
         "records": "Season Records",
-        "recordsDesc": "Extreme values identified across played matches and weekly cycles."
+        "recordsDesc": "Extreme values identified across played matches and weekly cycles.",
+        "tickets": "Tickets",
+        "bestBet": "Best Bet",
+        "worstBet": "Worst Bet",
+        "betSingle": "Single",
+        "betCombo": "Combo ×{{count}}",
+        "bettingRecords": "Betting Records",
+        "bettingRecordsDesc": "Most notable betting outcomes — highest win and biggest stake lost."
     },
     "rules": {
         "title": "📋 Rules",

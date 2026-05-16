@@ -4,6 +4,8 @@ import type { Season } from '../types/season'
 import type { User } from '../types/user'
 import type { DashboardData, MatchHistoryItem, PointReasonBreakdownItem, RosterPenalizedByUser, RosterScorerByUser, SeasonMatchHistory } from '../types/stats'
 import { cacheService } from '../services/cacheService'
+import { bettingService } from '../services/bettingService'
+import type { BetDto, BetLegDto } from '../types/bet'
 import PenaltyPointedChart from '../components/charts/PenaltyPointedChart'
 import MinusPointsPieChart from '../components/charts/MinusPointsPieChart'
 import UserWeekTrendChart from '../components/charts/UserWeekTrendChart'
@@ -197,6 +199,117 @@ function WeekCard({ variant, week }: { variant: 'best' | 'worst'; week: WeekSumm
     )
 }
 
+const LEG_TYPE_LABEL: Record<BetLegDto['betType'], string> = {
+    TeamWin: 'Win',
+    TeamWinOrDraw: '1X',
+    TeamDraw: 'Draw',
+    UserGoal: 'Goal',
+    UserPenalty: 'Penalty',
+    UserPlusPoint: '+Point',
+    UserMinusPoint: '−Point',
+}
+
+const LEG_STATUS_DOT: Record<BetLegDto['status'], string> = {
+    Pending: 'bg-blue-400',
+    Won: 'bg-green-500',
+    Lost: 'bg-red-500',
+    Cancelled: 'bg-gray-500',
+}
+
+function BetCard({ variant, bet }: { variant: 'best' | 'worst'; bet: BetDto | null }) {
+    const { t } = useTranslation()
+    const isBest = variant === 'best'
+    const borderColor = isBest ? 'border-l-success' : 'border-l-danger'
+    const labelColor = isBest ? 'text-success' : 'text-danger'
+    const Icon = isBest ? Trophy : Skull
+    const label = isBest ? t('userStats.bestBet') : t('userStats.worstBet')
+
+    if (!bet) {
+        return (
+            <div className={`bg-surface rounded-xl p-5 border border-border border-l-4 ${borderColor} flex flex-col gap-2`}>
+                <span className={`text-[10px] uppercase tracking-wider font-medium flex items-center gap-1.5 ${labelColor}`}>
+                    <Icon size={14} weight="bold" />
+                    {label}
+                </span>
+                <p className="text-text-muted text-sm">{t('common.noData')}</p>
+            </div>
+        )
+    }
+
+    const date = new Date(bet.evaluatedOn ?? bet.createdOn).toLocaleDateString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+    })
+    const structure = bet.legs.length === 1 ? t('userStats.betSingle') : t('userStats.betCombo', { count: bet.legs.length })
+    const potentialWin = bet.stake * bet.totalOdds
+    const netProfit = bet.wonAmount != null ? bet.wonAmount - bet.stake : null
+
+    return (
+        <div className={`bg-surface rounded-xl p-5 border border-border border-l-4 ${borderColor} flex flex-col gap-3`}>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <span className={`text-[10px] uppercase tracking-wider font-medium flex items-center gap-1.5 ${labelColor}`}>
+                    <Icon size={14} weight="bold" />
+                    {label}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-text-muted bg-border/50 px-1.5 py-0.5 rounded">
+                    {structure}
+                </span>
+            </div>
+
+            {/* ID + date */}
+            <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-text bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                    {bet.shortId}
+                </span>
+                <span className="text-text-muted text-xs">{date}</span>
+            </div>
+
+            {/* Legs */}
+            <div className="space-y-1.5">
+                {bet.legs.map((leg) => {
+                    const matchName = leg.homeTeamName && leg.awayTeamName
+                        ? `${leg.homeTeamName} vs ${leg.awayTeamName}`
+                        : `Match #${leg.matchNumber}`
+                    const typeLabel = LEG_TYPE_LABEL[leg.betType] ?? leg.betType
+                    return (
+                        <div key={leg.id} className="bg-bg rounded-lg px-3 py-2 flex items-center gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${LEG_STATUS_DOT[leg.status]}`} />
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[10px] text-text-muted truncate">{matchName}</p>
+                                <p className="text-xs text-text font-medium truncate">
+                                    <span className="text-text-muted">{typeLabel}:</span>{' '}
+                                    {leg.targetName ?? '—'}
+                                </p>
+                            </div>
+                            <span className="text-xs font-mono text-text-muted shrink-0">{leg.odds.toFixed(2)}</span>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Bottom: financials */}
+            <div className="flex items-end justify-between mt-auto pt-1 border-t border-border/50">
+                <div className="text-xs text-text-muted">
+                    {bet.stake.toFixed(2)}€ <span className="opacity-60">×</span> {bet.totalOdds.toFixed(2)}
+                </div>
+                {isBest ? (
+                    <div className="text-right">
+                        <div className="text-success font-bold text-lg leading-none">{bet.wonAmount!.toFixed(2)}€</div>
+                        {netProfit != null && (
+                            <div className="text-[10px] text-success/70 mt-0.5">+{netProfit.toFixed(2)}€ profit</div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-right">
+                        <div className="text-danger font-bold text-lg leading-none">−{bet.stake.toFixed(2)}€</div>
+                        <div className="text-[10px] text-text-muted mt-0.5">could win {potentialWin.toFixed(2)}€</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 export default function UserStatsPage() {
     const { t } = useTranslation()
     const [seasons, setSeasons] = useState<Season[]>([])
@@ -209,6 +322,7 @@ export default function UserStatsPage() {
     const [breakdownItems, setBreakdownItems] = useState<PointReasonBreakdownItem[]>([])
     const [allMatchData, setAllMatchData] = useState<SeasonMatchHistory[]>([])
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+    const [allBets, setAllBets] = useState<BetDto[] | null>(null)
 
     useEffect(() => {
         cacheService
@@ -239,6 +353,12 @@ export default function UserStatsPage() {
         cacheService.getDashboardData()
             .then((data) => setDashboardData(data))
             .catch(() => setDashboardData(null))
+    }, [])
+
+    useEffect(() => {
+        bettingService.listAll()
+            .then((bets) => setAllBets(bets))
+            .catch(() => setAllBets([]))
     }, [])
 
     useEffect(() => {
@@ -365,6 +485,22 @@ export default function UserStatsPage() {
     const bestWeek = allWeeks.length > 0 ? [...allWeeks].sort(compareWeekBest)[0] : null
     const worstWeek = allWeeks.length > 0 ? [...allWeeks].sort(compareWeekWorst)[0] : null
 
+    const selectedUser = users.find((u) => u.id === selectedUserId) ?? null
+    const userBets = allBets !== null && selectedUser
+        ? allBets.filter((b) => b.createdByName === selectedUser.name)
+        : []
+    const userTicketCount = userBets.filter((b) => b.status !== 'Cancelled').length
+
+    const wonBets = userBets.filter((b) => b.status === 'Won' && b.wonAmount != null)
+    const bestBet = wonBets.length > 0
+        ? wonBets.reduce((best, b) => (b.wonAmount! > best.wonAmount! ? b : best))
+        : null
+
+    const lostBets = userBets.filter((b) => b.status === 'Lost')
+    const worstBet = lostBets.length > 0
+        ? lostBets.reduce((worst, b) => (b.stake > worst.stake ? b : worst))
+        : null
+
     const selectClass = 'bg-surface border border-border text-text text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary transition-colors appearance-none'
 
     return (
@@ -416,7 +552,7 @@ export default function UserStatsPage() {
                 {/* ── KPI cards ──────────────────────────────────────────── */}
                 {matchData.length > 0 && (
                     <section>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             <div className="bg-surface rounded-xl p-5 border border-border">
                                 <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.matchesPlayed')}
@@ -446,6 +582,12 @@ export default function UserStatsPage() {
                                     {t('userStats.penalties')}
                                 </span>
                                 <div className="text-3xl font-bold mt-1 text-text-muted">{overallPenaltyCount}</div>
+                            </div>
+                            <div className="bg-surface rounded-xl p-5 border border-border">
+                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                                    {t('userStats.tickets')}
+                                </span>
+                                <div className="text-3xl font-bold mt-1 text-text">{userTicketCount}</div>
                             </div>
                         </div>
                     </section>
@@ -503,6 +645,18 @@ export default function UserStatsPage() {
                         <WeekCard variant="worst" week={worstWeek} />
                     </div>
                 </section>
+
+                {/* ── Betting Records ────────────────────────────────── */}
+                {(bestBet !== null || worstBet !== null) && (
+                    <section>
+                        <h3 className="text-sm font-semibold text-text mb-1">{t('userStats.bettingRecords')}</h3>
+                        <p className="text-xs text-text-muted mb-4">{t('userStats.bettingRecordsDesc')}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <BetCard variant="best" bet={bestBet} />
+                            <BetCard variant="worst" bet={worstBet} />
+                        </div>
+                    </section>
+                )}
 
             </main>
         </div>

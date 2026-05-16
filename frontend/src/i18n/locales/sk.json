@@ -288,7 +288,14 @@
         "scoringPartnersDesc": "Hráči zo zostavy, s ktorými najčastejšie strelíš gól.",
         "penaltyPartnersDesc": "Hráči zo zostavy najčastejšie prítomní na ľade počas tvojich trestov.",
         "records": "Sezónne rekordy",
-        "recordsDesc": "Extrémne hodnoty identifikované v odohraných zápasoch a týždenných cykloch."
+        "recordsDesc": "Extrémne hodnoty identifikované v odohraných zápasoch a týždenných cykloch.",
+        "tickets": "Tikety",
+        "bestBet": "Najlepšia stávka",
+        "worstBet": "Najhoršia stávka",
+        "betSingle": "Jednoduchá",
+        "betCombo": "Kombi ×{{count}}",
+        "bettingRecords": "Stávkové rekordy",
+        "bettingRecordsDesc": "Najvýraznejšie stávkové výsledky — najvyššia výhra a najvyššia stratená stávka."
     },
     "rules": {
         "title": "📋 Pravidlá",
