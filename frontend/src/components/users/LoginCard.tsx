@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { LoginUser } from '../../types/loginManagement'
+import StatusBadge from '../StatusBadge'
 import { MailIcon, AliasIcon, KeyIcon, TrashIcon } from './userIcons'
 
 interface LoginCardProps {
@@ -62,16 +63,7 @@ export default function LoginCard({
                 </span>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                     {login.roles.map((role) => (
-                        <span
-                            key={role}
-                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ring-1 ring-inset ${
-                                role === 'Admin'
-                                    ? 'bg-indigo-500/10 text-indigo-400 ring-indigo-500/20'
-                                    : 'bg-border/50 text-text-muted ring-border'
-                            }`}
-                        >
-                            {role}
-                        </span>
+                        <StatusBadge key={role} status={role} />
                     ))}
                 </div>
                 <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">

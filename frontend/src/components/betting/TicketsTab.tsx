@@ -7,6 +7,7 @@ import { bettingService } from '../../services/bettingService'
 import { cacheService } from '../../services/cacheService'
 import Pagination from '../Pagination'
 import LoadingSpinner from '../LoadingSpinner'
+import StatusBadge from '../StatusBadge'
 import type { BetDto, BetLegDto, BetStatus, LegStatus, ApiBetType } from '../../types/bet'
 import type { Season } from '../../types/season'
 import type { User } from '../../types/user'
@@ -20,13 +21,6 @@ const ALL_BET_TYPES: ApiBetType[] = [
     'TeamWin', 'UserGoal', 'UserPenalty', 'TeamWinOrDraw',
     'UserPlusPoint', 'UserMinusPoint', 'TeamDraw',
 ]
-
-const STATUS_BADGE: Record<BetStatus, string> = {
-    Pending: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    Won: 'bg-green-500/10 text-green-500 border-green-500/20',
-    Lost: 'bg-red-500/10 text-red-500 border-red-500/20',
-    Cancelled: 'bg-gray-700/50 text-gray-400 border-gray-600',
-}
 
 const STATUS_BORDER: Record<BetStatus, string> = {
     Pending: 'border-l-blue-500',
@@ -534,9 +528,7 @@ export default function TicketsTab() {
                                     </div>
 
                                     <div className="ml-5 shrink-0">
-                                        <span className={`text-[9px] px-2.5 py-1 rounded border font-black uppercase tracking-widest ${STATUS_BADGE[bet.status]}`}>
-                                            {t(`betting.outcome${bet.status}`)}
-                                        </span>
+                                        <StatusBadge status={bet.status} />
                                     </div>
                                 </div>
 
