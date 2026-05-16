@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { WeekGroup } from '../../types/stats'
 import type { Match } from '../../types/match'
 import type { Season } from '../../types/season'
+import type { BetDto } from '../../types/bet'
 import { CompletionType } from '../../types/match'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import CompletionBadge from '../CompletionBadge'
@@ -69,6 +70,7 @@ interface Props {
     matchDetailCache: Map<number, MatchExpandDetail>
     reEvaluatingMatchId: number | null
     isAdmin: boolean
+    allBets: BetDto[]
     onToggleExpand: (matchId: number) => void
     onReEvaluateBets: (matchId: number) => void
 }
@@ -82,6 +84,7 @@ export default function WeeklyMatches({
     matchDetailCache,
     reEvaluatingMatchId,
     isAdmin,
+    allBets,
     onToggleExpand,
     onReEvaluateBets,
 }: Props) {
@@ -213,6 +216,12 @@ export default function WeeklyMatches({
                                                 <ExpandedMatchSection
                                                     users={m.users ?? []}
                                                     detail={detail}
+                                                    ticketCounts={allBets.reduce<Record<string, number>>((acc, bet) => {
+                                                        if (bet.legs.some(l => l.matchId === m.matchId)) {
+                                                            acc[bet.createdByName] = (acc[bet.createdByName] ?? 0) + 1
+                                                        }
+                                                        return acc
+                                                    }, {})}
                                                 />
                                                 <div className="flex items-center justify-between gap-3 p-3 border-t border-border/50 bg-bg/30">
                                                     <Link

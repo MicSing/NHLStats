@@ -18,9 +18,10 @@ export interface MatchExpandDetail {
 interface Props {
     users: WeeklyMatchUser[]
     detail: MatchExpandDetail | undefined
+    ticketCounts?: Record<string, number>
 }
 
-export default function ExpandedMatchSection({ users, detail }: Props) {
+export default function ExpandedMatchSection({ users, detail, ticketCounts }: Props) {
     const { t } = useTranslation()
 
     return (
@@ -34,6 +35,7 @@ export default function ExpandedMatchSection({ users, detail }: Props) {
                         <th className="py-2.5 px-3 font-bold text-center w-12">○</th>
                         <th className="py-2.5 px-4 font-bold text-center w-16">{t('season.goals')}</th>
                         <th className="py-2.5 px-4 font-bold text-center w-20">{t('season.penalties')}</th>
+                        <th className="py-2.5 px-4 font-bold text-center w-16">{t('season.tickets')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,6 +76,9 @@ export default function ExpandedMatchSection({ users, detail }: Props) {
                                         <span className="text-text-muted font-medium tabular-nums">{u.totalPenalties}</span>
                                         {ud && <PenaltiesTooltip penalties={ud.penalties} />}
                                     </div>
+                                </td>
+                                <td className="py-2.5 px-4 text-center">
+                                    <span className="font-bold tabular-nums text-text">{ticketCounts?.[u.userName] ?? 0}</span>
                                 </td>
                             </tr>
                         )

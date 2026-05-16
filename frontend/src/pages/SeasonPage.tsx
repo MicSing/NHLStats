@@ -6,9 +6,11 @@ import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, Hea
 import { CompletionType } from '../types/match'
 import type { Match } from '../types/match'
 import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../types/userMatch'
+import type { BetDto } from '../types/bet'
 import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
 import { statsService } from '../services/statsService'
+import { bettingService } from '../services/bettingService'
 import SeasonSelector from '../components/SeasonSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
 import PageLayout from '../components/PageLayout'
@@ -52,6 +54,7 @@ export default function SeasonPage() {
     const [matchDetailCache, setMatchDetailCache] = useState<Map<number, MatchExpandDetail>>(new Map())
     const [reEvaluatingMatchId, setReEvaluatingMatchId] = useState<number | null>(null)
     const [aggregatedEntries, setAggregatedEntries] = useState<AggEntry[]>([])
+    const [allBets, setAllBets] = useState<BetDto[]>([])
     const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
     const [loadingH2H, setLoadingH2H] = useState(false)
     const [h2hExpanded, setH2hExpanded] = useState(false)
@@ -65,6 +68,7 @@ export default function SeasonPage() {
             .then(data => setSeasonTotals(data))
             .catch(err => console.error('Failed to fetch season totals:', err))
             .finally(() => setLoadingTotals(false))
+        bettingService.listAll().then(setAllBets).catch(() => {})
     }, [])
 
     useEffect(() => {
@@ -368,6 +372,7 @@ export default function SeasonPage() {
                                     matchDetailCache={matchDetailCache}
                                     reEvaluatingMatchId={reEvaluatingMatchId}
                                     isAdmin={isAdmin}
+                                    allBets={allBets}
                                     onToggleExpand={(matchId) => { void toggleExpand(matchId) }}
                                     onReEvaluateBets={(matchId) => { void reEvaluateBets(matchId) }}
                                 />
