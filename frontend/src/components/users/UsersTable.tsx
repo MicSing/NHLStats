@@ -22,8 +22,8 @@ export default function UsersTable({
     const { t } = useTranslation()
 
     return (
-        <div className="bg-surface rounded-2xl border border-border shadow-xl overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div className="relative w-full sm:max-w-xs">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
                         <SearchIcon />
@@ -45,35 +45,35 @@ export default function UsersTable({
                 </button>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse whitespace-nowrap">
-                    <thead>
-                        <tr className="border-b border-border/50">
-                            <th className="table-header">Používateľ</th>
-                            <th className="table-header">Prístupové metódy</th>
-                            <th className="table-header w-32">{t('common.status')}</th>
-                            <th className="table-header w-12"></th>
+            <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="bg-surface">
+                        <tr className="text-left text-text-muted uppercase text-xs tracking-wider">
+                            <th className="px-4 py-3 font-medium">Používateľ</th>
+                            <th className="px-4 py-3 font-medium">Prístupové metódy</th>
+                            <th className="px-4 py-3 font-medium w-32">{t('common.status')}</th>
+                            <th className="px-4 py-3 font-medium w-12"></th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/50">
+                    <tbody className="divide-y divide-border">
                         {filteredUsers.map((user) => (
                             <tr
                                 key={user.id}
                                 onClick={() => onSelectUser(user.id)}
-                                className="hover:bg-primary/5 transition-colors cursor-pointer group"
+                                className="hover:bg-surface/50 transition-colors cursor-pointer group"
                             >
-                                <td className="table-cell">
+                                <td className="px-4 py-3">
                                     <div className="flex items-center gap-3">
                                         <UserAvatar name={user.name} size="sm" />
-                                        <span className="text-sm font-medium text-text group-hover:text-primary transition-colors">
+                                        <span className="font-medium text-text group-hover:text-primary transition-colors">
                                             {user.name}
                                         </span>
                                     </div>
                                 </td>
-                                <td className="table-cell">
+                                <td className="px-4 py-3">
                                     {user.logins.length > 0 ? (
                                         <div className="flex flex-col gap-1">
-                                            <span className="text-sm text-text-muted flex items-center gap-1.5">
+                                            <span className="text-text-muted flex items-center gap-1.5">
                                                 {user.logins[0].email ? <MailIcon /> : <AliasIcon />}
                                                 {user.logins[0].email ?? user.logins[0].alias}
                                             </span>
@@ -84,17 +84,17 @@ export default function UsersTable({
                                             )}
                                         </div>
                                     ) : (
-                                        <span className="text-sm text-text-muted/50 italic">
+                                        <span className="text-text-muted/50 italic">
                                             Zatiaľ bez loginu
                                         </span>
                                     )}
                                 </td>
-                                <td className="table-cell">
+                                <td className="px-4 py-3">
                                     <StatusBadge variant={user.isActive ? 'success' : 'muted'}>
                                         {user.isActive ? t('common.active') : t('common.inactive')}
                                     </StatusBadge>
                                 </td>
-                                <td className="table-cell text-right text-text-muted/40 group-hover:text-text-muted transition-colors">
+                                <td className="px-4 py-3 text-right text-text-muted/40 group-hover:text-text-muted transition-colors">
                                     <ChevronRightIcon />
                                 </td>
                             </tr>
@@ -103,7 +103,7 @@ export default function UsersTable({
                             <tr>
                                 <td
                                     colSpan={4}
-                                    className="px-6 py-12 text-center text-sm text-text-muted/60 italic"
+                                    className="px-6 py-12 text-center text-text-muted/60 italic"
                                 >
                                     {search
                                         ? 'Žiadni používatelia nezodpovedajú vyhľadávaniu.'
