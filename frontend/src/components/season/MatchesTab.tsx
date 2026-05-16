@@ -16,6 +16,7 @@ import CompletionBadge from '../CompletionBadge'
 import LoadingSpinner from '../LoadingSpinner'
 import useTable from '../../hooks/useTable'
 import { TableCard, TableHead, ActionCell, PrimaryButton, SecondaryButton } from './SeasonPrimitives'
+import { normalizeCompletionType } from './seasonUtils'
 
 // ─── Bulk match creator ───────────────────────────────────────────────────────
 
@@ -859,7 +860,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
             matchDate: m.matchDate,
             homeScore: m.homeScore,
             awayScore: m.awayScore,
-            completionType: m.completionType,
+            completionType: normalizeCompletionType(m.completionType),
         })
     }
 
@@ -955,7 +956,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                                             : t('admin.matches.tbd')}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <CompletionBadge type={m.completionType} />
+                                        <CompletionBadge type={normalizeCompletionType(m.completionType)} />
                                     </td>
                                     <ActionCell
                                         onEdit={() => openEdit(m)}
