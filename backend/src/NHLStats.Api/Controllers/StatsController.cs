@@ -10,16 +10,29 @@ namespace NHLStats.Api.Controllers;
 [Route("api/seasons/{seasonId:int}/stats")]
 public class SeasonStatsController : ControllerBase
 {
-    private readonly IStatsService _stats;
+    private readonly ISeasonStatsService _seasonStats;
+    private readonly IRosterStatsService _rosterStats;
+    private readonly IEarningsService _earnings;
+    private readonly IMatchStatsService _matchStats;
 
-    public SeasonStatsController(IStatsService stats) => _stats = stats;
+    public SeasonStatsController(
+        ISeasonStatsService seasonStats,
+        IRosterStatsService rosterStats,
+        IEarningsService earnings,
+        IMatchStatsService matchStats)
+    {
+        _seasonStats = seasonStats;
+        _rosterStats = rosterStats;
+        _earnings = earnings;
+        _matchStats = matchStats;
+    }
 
     /// <summary>GET /api/seasons/{seasonId}/stats</summary>
     /// <remarks>Returns per-user point totals and earnings for the season.</remarks>
     [HttpGet]
     public async Task<IActionResult> GetSeasonStats(int seasonId)
     {
-        var result = await _stats.GetSeasonStatsAsync(seasonId);
+        var result = await _earnings.GetSeasonStatsAsync(seasonId);
         return Ok(result);
     }
 
@@ -28,7 +41,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("weekly")]
     public async Task<IActionResult> GetWeekly(int seasonId)
     {
-        var result = await _stats.GetMatchesGroupedByWeekAsync(seasonId);
+        var result = await _matchStats.GetMatchesGroupedByWeekAsync(seasonId);
         return Ok(result);
     }
 
@@ -37,7 +50,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("top-scorers")]
     public async Task<IActionResult> GetTopScorers(int seasonId)
     {
-        var result = await _stats.GetTopGoalScorerAsync(seasonId);
+        var result = await _rosterStats.GetTopGoalScorerAsync(seasonId);
         if (result == null) return NoContent();
         return Ok(result);
     }
@@ -47,7 +60,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("top-penalized")]
     public async Task<IActionResult> GetTopPenalized(int seasonId)
     {
-        var result = await _stats.GetTopPenaltyPlayerAsync(seasonId);
+        var result = await _rosterStats.GetTopPenaltyPlayerAsync(seasonId);
         if (result == null) return NoContent();
         return Ok(result);
     }
@@ -57,7 +70,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("roster-scorers")]
     public async Task<IActionResult> GetRosterScorers(int seasonId)
     {
-        var result = await _stats.GetAllGoalScorersAsync(seasonId);
+        var result = await _rosterStats.GetAllGoalScorersAsync(seasonId);
         return Ok(result);
     }
 
@@ -66,7 +79,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("roster-penalized")]
     public async Task<IActionResult> GetRosterPenalized(int seasonId)
     {
-        var result = await _stats.GetAllPenaltyPlayersAsync(seasonId);
+        var result = await _rosterStats.GetAllPenaltyPlayersAsync(seasonId);
         return Ok(result);
     }
 
@@ -75,7 +88,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("user-totals")]
     public async Task<IActionResult> GetUserTotals(int seasonId)
     {
-        var result = await _stats.GetUserSeasonTotalsAsync(seasonId);
+        var result = await _seasonStats.GetUserSeasonTotalsAsync(seasonId);
         return Ok(result);
     }
 
@@ -84,7 +97,7 @@ public class SeasonStatsController : ControllerBase
     [HttpGet("plus-minus-trend-weekly")]
     public async Task<IActionResult> GetWeeklyPlusMinusTrend(int seasonId)
     {
-        var result = await _stats.GetWeeklyPlusMinusTrendAsync(seasonId);
+        var result = await _matchStats.GetWeeklyPlusMinusTrendAsync(seasonId);
         return Ok(result);
     }
 }
@@ -96,8 +109,18 @@ public class SeasonStatsController : ControllerBase
 public class StatsController : ControllerBase
 {
     private readonly IStatsService _stats;
+    private readonly IEarningsService _earnings;
+    private readonly IMatchStatsService _matchStats;
 
-    public StatsController(IStatsService stats) => _stats = stats;
+    public StatsController(
+        IStatsService stats,
+        IEarningsService earnings,
+        IMatchStatsService matchStats)
+    {
+        _stats = stats;
+        _earnings = earnings;
+        _matchStats = matchStats;
+    }
 
     /// <summary>GET /api/stats/earnings-by-season</summary>
     /// <remarks>
@@ -106,7 +129,7 @@ public class StatsController : ControllerBase
     [HttpGet("earnings-by-season")]
     public async Task<IActionResult> GetEarningsBySeason()
     {
-        var result = await _stats.GetEarningsBySeasonAsync();
+        var result = await _earnings.GetEarningsBySeasonAsync();
         return Ok(result);
     }
 
@@ -119,7 +142,7 @@ public class StatsController : ControllerBase
     [HttpGet("users/{userId:int}/point-reasons")]
     public async Task<IActionResult> GetUserPointReasonBreakdown(int userId, [FromQuery] int? seasonId = null)
     {
-        var result = await _stats.GetUserPointReasonBreakdownAsync(userId, seasonId);
+        var result = await _matchStats.GetUserPointReasonBreakdownAsync(userId, seasonId);
         if (result == null) return NotFound();
         return Ok(result);
     }
@@ -133,7 +156,7 @@ public class StatsController : ControllerBase
     [HttpGet("head-to-head/{teamId:int}")]
     public async Task<IActionResult> GetHeadToHead(int teamId, [FromQuery] int hostedTeamId)
     {
-        var result = await _stats.GetHeadToHeadAsync(teamId, hostedTeamId);
+        var result = await _matchStats.GetHeadToHeadAsync(teamId, hostedTeamId);
         return Ok(result);
     }
 
@@ -146,15 +169,13 @@ public class StatsController : ControllerBase
     [HttpGet("users/{userId:int}/match-history")]
     public async Task<IActionResult> GetUserMatchHistory(int userId, [FromQuery] int? seasonId = null)
     {
-        var result = await _stats.GetUserMatchHistoryAsync(userId, seasonId);
+        var result = await _matchStats.GetUserMatchHistoryAsync(userId, seasonId);
         return Ok(result);
     }
 
     /// <summary>GET /api/stats/dashboard</summary>
     /// <remarks>
     /// Returns consolidated dashboard data including season stats, earnings, trends, and roster statistics.
-    /// If seasonId is provided, returns season-specific data and weekly trends.
-    /// If seasonId is null, returns aggregated data across all seasons.
     /// </remarks>
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboardData()
@@ -167,7 +188,6 @@ public class StatsController : ControllerBase
     /// GET /api/stats/season
     /// Returns total season stats including total goals, penalties, matches, earnings and top roster players for a season.
     /// </summary>
-    /// <returns></returns>
     [HttpGet("season")]
     public async Task<IActionResult> GetSeasonTotals()
     {
@@ -178,7 +198,7 @@ public class StatsController : ControllerBase
     [HttpGet("financial-stats")]
     public async Task<IActionResult> GetFinancialStats()
     {
-        var result = await _stats.GetFinancialStatsAsync();
+        var result = await _earnings.GetFinancialStatsAsync();
         return Ok(result);
     }
 
@@ -187,7 +207,7 @@ public class StatsController : ControllerBase
     [HttpGet("earnings")]
     public async Task<IActionResult> GetEarningsSummary()
     {
-        var result = await _stats.GetEarningsSummaryAsync();
+        var result = await _earnings.GetEarningsSummaryAsync();
         return Ok(result);
     }
 }
