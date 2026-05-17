@@ -258,6 +258,11 @@ export interface SeasonMatchHistory {
     weeks: WeekMatchHistory[]
 }
 
+export interface UserWeeklyBettingBalance { userId: number; userName: string; balance: number }
+export interface WeeklyBettingBalancePeriod { label: string; users: UserWeeklyBettingBalance[] }
+export interface UserWeeklyBetDelta { userId: number; userName: string; delta: number }
+export interface WeeklyBetDeltaPeriod { label: string; users: UserWeeklyBetDelta[] }
+
 export interface DashboardData {
     seasonStats: SeasonStatsSummary[]
     earningsBySeason: SeasonalUserEarnings[]
@@ -270,6 +275,11 @@ export interface DashboardData {
     allTimePlusMinusTrend: PeriodPlusMinus[]
     allTimeRosterScorers: AllTimeRosterScorer[]
     allTimeRosterPenalized: AllTimeRosterPenalized[]
+
+    bettingBalanceTrend: WeeklyBettingBalancePeriod[]
+    allTimeBettingBalanceTrend: WeeklyBettingBalancePeriod[]
+    betDeltaTrend: WeeklyBetDeltaPeriod[]
+    allTimeBetDeltaTrend: WeeklyBetDeltaPeriod[]
 }
 
 export interface UserPerformanceMetrics {

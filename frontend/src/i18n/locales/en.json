@@ -143,7 +143,9 @@
         "plusTrend": "Plus Trend",
         "minusTrend": "Minus Trend",
         "byWeek": "(by Week)",
-        "bySeason": "(by Season)"
+        "bySeason": "(by Season)",
+        "bettingBalanceTrend": "Positive Balance",
+        "betDeltaTrend": "Bet Delta"
     },
     "notifications": {
         "banner": "Get a desktop alert when goals, penalties, or points are recorded.",

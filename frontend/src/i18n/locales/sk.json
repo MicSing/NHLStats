@@ -143,7 +143,9 @@
         "plusTrend": "Trend plusov",
         "minusTrend": "Trend mínusov",
         "byWeek": "(podľa týždňa)",
-        "bySeason": "(podľa sezóny)"
+        "bySeason": "(podľa sezóny)",
+        "bettingBalanceTrend": "Pozitívny zostatok",
+        "betDeltaTrend": "Delta stávok"
     },
     "notifications": {
         "banner": "Dostávajte upozornenie na ploche pri zapísaní gólu, trestu alebo bodu.",

@@ -238,6 +238,14 @@ public record SeasonMatchHistoryDto(
     int PenaltyCount,
     IEnumerable<WeekMatchHistoryDto> Weeks);
 
+// ─── Betting trend charts ─────────────────────────────────────────────────────
+
+public record UserWeeklyBettingBalanceDto(int UserId, string UserName, decimal Balance);
+public record WeeklyBettingBalancePeriodDto(string Label, IEnumerable<UserWeeklyBettingBalanceDto> Users);
+
+public record UserWeeklyBetDeltaDto(int UserId, string UserName, decimal Delta);
+public record WeeklyBetDeltaPeriodDto(string Label, IEnumerable<UserWeeklyBetDeltaDto> Users);
+
 // ─── Consolidated dashboard data ──────────────────────────────────────────────
 
 public record DashboardDataDto(
@@ -251,7 +259,12 @@ public record DashboardDataDto(
     AllTimeEarningsDto AllTimeEarnings,
     IEnumerable<PeriodPlusMinusDto> AllTimePlusMinusTrend,
     IEnumerable<AllTimeRosterScorerDto> AllTimeRosterScorers,
-    IEnumerable<AllTimeRosterPenalizedDto> AllTimeRosterPenalized);
+    IEnumerable<AllTimeRosterPenalizedDto> AllTimeRosterPenalized,
+
+    IEnumerable<WeeklyBettingBalancePeriodDto> BettingBalanceTrend,
+    IEnumerable<WeeklyBettingBalancePeriodDto> AllTimeBettingBalanceTrend,
+    IEnumerable<WeeklyBetDeltaPeriodDto> BetDeltaTrend,
+    IEnumerable<WeeklyBetDeltaPeriodDto> AllTimeBetDeltaTrend);
 
 // --- Consolidated Season data ─────────────────────────────────────────────────
 

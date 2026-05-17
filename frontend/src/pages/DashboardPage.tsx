@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import type { Season } from '../types/season'
 import type { DashboardData, RosterPenalizedByUser, RosterScorerByUser, UserSeasonStats } from '../types/stats'
 import type { User } from '../types/user'
-import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
 import SeasonSelector from '../components/SeasonSelector'
 import PlusMinusChart from '../components/charts/PlusMinusChart'
 import TrendChart from '../components/charts/TrendChart'
+import BettingBalanceTrendChart from '../components/charts/BettingBalanceTrendChart'
+import BetDeltaTrendChart from '../components/charts/BetDeltaTrendChart'
 import TopScorersChart from '../components/charts/TopScorersChart'
 import PenaltyLeadersChart from '../components/charts/PenaltyLeadersChart'
 import EarningsChart from '../components/charts/EarningsChart'
@@ -29,7 +30,7 @@ export default function DashboardPage() {
     // Load dashboard and supporting lookup data once.
     useEffect(() => {
         Promise.all([
-            apiClient.get<DashboardData>('/api/stats/dashboard'),
+            cacheService.getDashboardData(),
             cacheService.getSeasons(),
             cacheService.getUsers(),
         ])
@@ -70,6 +71,10 @@ export default function DashboardPage() {
         allTimePlusMinusTrend: [],
         allTimeRosterScorers: [],
         allTimeRosterPenalized: [],
+        bettingBalanceTrend: [],
+        allTimeBettingBalanceTrend: [],
+        betDeltaTrend: [],
+        allTimeBetDeltaTrend: [],
     }
 
     const userNameById = new Map(users.map((u) => [u.id, u.name]))
@@ -130,6 +135,14 @@ export default function DashboardPage() {
     const trendData = selectedSeasonId
         ? safeDashboardData.trendData
         : safeDashboardData.allTimePlusMinusTrend
+
+    const bettingBalanceData = selectedSeasonId
+        ? safeDashboardData.bettingBalanceTrend
+        : safeDashboardData.allTimeBettingBalanceTrend
+
+    const betDeltaData = selectedSeasonId
+        ? safeDashboardData.betDeltaTrend
+        : safeDashboardData.allTimeBetDeltaTrend
 
     // Show trend charts only for all-time view or the most recent season
     const isLastSeason = selectedSeasonId === seasons[0]?.id
@@ -245,6 +258,26 @@ export default function DashboardPage() {
                                 <LoadingSpinner size="sm" inline />
                             ) : (
                                 <TrendChart data={trendData} mode="minus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                            )}
+                        </section>
+                        <section className="card p-3 sm:p-6">
+                            <h2 className="text-base font-medium text-text mb-4">
+                                {t('dashboard.bettingBalanceTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                            </h2>
+                            {loadingDashboard ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <BettingBalanceTrendChart data={bettingBalanceData} />
+                            )}
+                        </section>
+                        <section className="card p-3 sm:p-6">
+                            <h2 className="text-base font-medium text-text mb-4">
+                                {t('dashboard.betDeltaTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                            </h2>
+                            {loadingDashboard ? (
+                                <LoadingSpinner size="sm" inline />
+                            ) : (
+                                <BetDeltaTrendChart data={betDeltaData} />
                             )}
                         </section>
                     </div>
