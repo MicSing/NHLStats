@@ -121,7 +121,7 @@ public class EarningsService : IEarningsService
                 aggMinus = aggEntries.ToDictionary(a => a.UserId, a => a.TotalMinus);
             }
 
-            var earningsByUser = await ComputeEarningsForMatchesAsync(matchIds, aggPlus, aggMinus);
+            var earningsByUser = await ComputeEarningsForMatchesAsync(matchIds, aggPlus, aggMinus, allTimeBets: true);
             result.Add(new SeasonalUserEarningsDto(
                 seasonId,
                 earningsByUser

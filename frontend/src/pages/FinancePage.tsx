@@ -17,7 +17,7 @@ function formatDate(dateStr: string): string {
     return dateStr.split('T')[0]
 }
 
-export default function EarningsExpensesPage() {
+export default function FinancePage() {
     const { t } = useTranslation()
     const [stats, setStats] = useState<FinancialStats | null>(null)
     const [expenses, setExpenses] = useState<Expense[]>([])

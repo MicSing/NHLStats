@@ -1,17 +1,17 @@
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from './testUtils'
-import EarningsExpensesPage from '../pages/EarningsExpensesPage'
+import FinancePage from '../pages/FinancePage'
 
 // MSW handlers already provide:
 //   GET /api/stats/financial-stats → { totalCollected:0.75, totalExpenses:80.0, canBeCollected:0, totalEarnings:0.75, expenses:[...], financesByUser:[{ userId:1, totalPluses:5, totalMinuses:3, collected:0.75, totalEarnings:0.75, canBeCollected:0, bettingBalance:0, stakes:0, betWins:0, betLosses:0, negativeCash:1.50 }] }
 //   GET /api/users → [{ id:1, name:'Player One', isActive:true }, ...]
-// Note: EarningsExpensesPage uses € (euro) as the currency symbol.
+// Note: FinancePage uses € (euro) as the currency symbol.
 
 // ── Earnings Table ──────────────────────────────────────────────────────────
 
-describe('EarningsExpensesPage — earnings table', () => {
+describe('FinancePage — earnings table', () => {
     test('renders row for each user with Plus, Minus, Paid, Can Be Collected', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByText('Player One')).toBeInTheDocument())
 
         const row = screen.getByText('Player One').closest('tr')!
@@ -21,7 +21,7 @@ describe('EarningsExpensesPage — earnings table', () => {
     })
 
     test('totals row sums all users', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByText('Player One')).toBeInTheDocument())
 
         const table = screen.getByTestId('earnings-table')
@@ -32,16 +32,16 @@ describe('EarningsExpensesPage — earnings table', () => {
     })
 
     test('handles users with no data gracefully', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByTestId('earnings-table')).toBeInTheDocument())
     })
 })
 
 // ── Expenses Table ──────────────────────────────────────────────────────────
 
-describe('EarningsExpensesPage — expenses table', () => {
+describe('FinancePage — expenses table', () => {
     test('renders all expenses with description, amount, date', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByText('Pizza party')).toBeInTheDocument())
 
         expect(screen.getByText('Trophy')).toBeInTheDocument()
@@ -52,7 +52,7 @@ describe('EarningsExpensesPage — expenses table', () => {
     })
 
     test('total expenses row shows sum', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByText('Pizza party')).toBeInTheDocument())
 
         const table = screen.getByTestId('expenses-table')
@@ -63,9 +63,9 @@ describe('EarningsExpensesPage — expenses table', () => {
 
 // ── Balance Summary ─────────────────────────────────────────────────────────
 
-describe('EarningsExpensesPage — balance summary', () => {
+describe('FinancePage — balance summary', () => {
     test('shows Can Be Collected, Total Collected, Total Expenses', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
         const summary = screen.getByTestId('balance-summary')
@@ -75,7 +75,7 @@ describe('EarningsExpensesPage — balance summary', () => {
     })
 
     test('displays correct summary values', async () => {
-        renderWithProviders(<EarningsExpensesPage />)
+        renderWithProviders(<FinancePage />)
         await waitFor(() => expect(screen.getByTestId('balance-summary')).toBeInTheDocument())
 
         const summary = screen.getByTestId('balance-summary')
@@ -84,4 +84,3 @@ describe('EarningsExpensesPage — balance summary', () => {
         expect(amounts).toHaveLength(3)
     })
 })
-
