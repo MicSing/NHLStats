@@ -10,13 +10,14 @@ public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
     private const decimal AppMargin = 0.80m;
+    private const decimal TeamMargin = 0.75m;
 
     public BettingOddsService(NhlStatsDbContext db) => _db = db;
 
-    private static decimal ComputeOdds(decimal probability)
+    private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin)
     {
         probability = Math.Clamp(probability, 0.01m, 0.99m);
-        return Math.Floor(AppMargin / probability * 100m) / 100m;
+        return Math.Floor(margin / probability * 100m) / 100m;
     }
 
     public async Task RecalculateForMatchAsync(int matchId)
@@ -36,16 +37,16 @@ public class BettingOddsService : IBettingOddsService
         {
             // 1 / 2 narrowed to regulation-time wins; 1X / 2X cover any-time wins + draw.
             var regulationShare = await ComputeSeasonRegulationShareAsync(match.SeasonId);
-            decimal p1  = probs.PHosted   * regulationShare;
-            decimal p2  = probs.POpponent * regulationShare;
+            decimal p1 = probs.PHosted * regulationShare;
+            decimal p2 = probs.POpponent * regulationShare;
             decimal p1X = probs.PHosted + probs.PDraw;
             decimal p2X = probs.POpponent + probs.PDraw;
 
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.HostedTeamId, Probability = p1, Odds = ComputeOdds(p1), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.OpponentTeamId, Probability = p2, Odds = ComputeOdds(p2), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.Draw, TargetId = null, Probability = probs.PDraw, Odds = ComputeOdds(probs.PDraw), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.HostedTeamId, Probability = p1X, Odds = ComputeOdds(p1X), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.OpponentTeamId, Probability = p2X, Odds = ComputeOdds(p2X), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.OpponentTeamId, Probability = p2, Odds = ComputeOdds(p2, TeamMargin), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.Draw, TargetId = null, Probability = probs.PDraw, Odds = ComputeOdds(probs.PDraw, TeamMargin), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.HostedTeamId, Probability = p1X, Odds = ComputeOdds(p1X, TeamMargin), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.OpponentTeamId, Probability = p2X, Odds = ComputeOdds(p2X, TeamMargin), ComputedOn = now });
         }
 
         // ── User Goal/Penalty/PlusPoint/MinusPoint Odds ─────────────────────────
@@ -57,14 +58,14 @@ public class BettingOddsService : IBettingOddsService
 
         foreach (var userId in activeUserIds)
         {
-            var goalP     = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Goal);
-            var penP      = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Penalty);
-            var plusP     = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.PlusPoint);
-            var minusP    = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.MinusPoint);
+            var goalP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Goal);
+            var penP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Penalty);
+            var plusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.PlusPoint);
+            var minusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.MinusPoint);
 
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserGoal,       TargetId = userId, Probability = goalP,  Odds = ComputeOdds(goalP),  ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPenalty,    TargetId = userId, Probability = penP,   Odds = ComputeOdds(penP),   ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPlusPoint,  TargetId = userId, Probability = plusP,  Odds = ComputeOdds(plusP),  ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserGoal, TargetId = userId, Probability = goalP, Odds = ComputeOdds(goalP), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPenalty, TargetId = userId, Probability = penP, Odds = ComputeOdds(penP), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPlusPoint, TargetId = userId, Probability = plusP, Odds = ComputeOdds(plusP), ComputedOn = now });
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserMinusPoint, TargetId = userId, Probability = minusP, Odds = ComputeOdds(minusP), ComputedOn = now });
         }
 
@@ -409,9 +410,9 @@ public class BettingOddsService : IBettingOddsService
     private Task<int> CountUserMatchesWithEventAsync(List<int> userMatchIds, UserEventKind kind) =>
         kind switch
         {
-            UserEventKind.Goal       => CountUserMatchesWithGoalAsync(userMatchIds),
-            UserEventKind.Penalty    => CountUserMatchesWithPenaltyAsync(userMatchIds),
-            UserEventKind.PlusPoint  => CountUserMatchesWithPointTypeAsync(userMatchIds, PointType.Positive),
+            UserEventKind.Goal => CountUserMatchesWithGoalAsync(userMatchIds),
+            UserEventKind.Penalty => CountUserMatchesWithPenaltyAsync(userMatchIds),
+            UserEventKind.PlusPoint => CountUserMatchesWithPointTypeAsync(userMatchIds, PointType.Positive),
             UserEventKind.MinusPoint => CountUserMatchesWithPointTypeAsync(userMatchIds, PointType.Negative),
             _ => Task.FromResult(0)
         };
