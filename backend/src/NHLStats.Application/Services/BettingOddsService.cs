@@ -16,7 +16,7 @@ public class BettingOddsService : IBettingOddsService
     private static decimal ComputeOdds(decimal probability)
     {
         probability = Math.Clamp(probability, 0.01m, 0.99m);
-        return AppMargin / probability;
+        return Math.Floor(AppMargin / probability * 100m) / 100m;
     }
 
     public async Task RecalculateForMatchAsync(int matchId)

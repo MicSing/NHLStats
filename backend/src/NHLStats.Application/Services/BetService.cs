@@ -226,7 +226,7 @@ public class BetService : IBetService
             var lockedOdds = oddsRow?.Odds ?? 1.0m;
             if (lockedOdds < 1.0m)
                 return (null, "Odds for this bet are below 1.0 and cannot be placed.");
-            totalOdds *= lockedOdds;
+            totalOdds = Math.Floor(totalOdds * lockedOdds * 100m) / 100m;
 
             legsToInsert.Add(new BetLeg
             {
