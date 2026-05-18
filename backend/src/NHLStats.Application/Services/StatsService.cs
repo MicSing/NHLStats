@@ -257,7 +257,7 @@ public class StatsService : IStatsService
             {
                 betsUpToWeek.TryGetValue(uid, out var bet);
                 var cash = positiveCash.TryGetValue(uid, out var pc) ? pc : 0m;
-                return new UserWeeklyBettingBalanceDto(uid, userMap[uid], Math.Max(0m, cash + bet.WonProfit - bet.LostStake));
+                return new UserWeeklyBettingBalanceDto(uid, userMap[uid], cash + bet.WonProfit - bet.LostStake);
             }).ToList();
             balancePeriods.Add(new WeeklyBettingBalancePeriodDto(currentWeeks[i].Label, balanceUsers));
 
@@ -387,7 +387,7 @@ public class StatsService : IStatsService
                 betsUpToSeason.TryGetValue(uid, out var bet);
                 var cash = positiveCash.TryGetValue(uid, out var pc) ? pc : 0m;
                 var name = userNames.TryGetValue(uid, out var n) ? n : $"User {uid}";
-                return new UserWeeklyBettingBalanceDto(uid, name, Math.Max(0m, cash + bet.WonProfit - bet.LostStake));
+                return new UserWeeklyBettingBalanceDto(uid, name, cash + bet.WonProfit - bet.LostStake);
             }).ToList();
             balancePeriods.Add(new WeeklyBettingBalancePeriodDto(season.Name, balanceUsers));
 
