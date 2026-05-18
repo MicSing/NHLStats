@@ -121,7 +121,7 @@ public class EarningsService : IEarningsService
                 aggMinus = aggEntries.ToDictionary(a => a.UserId, a => a.TotalMinus);
             }
 
-            var earningsByUser = await ComputeEarningsForMatchesAsync(matchIds, aggPlus, aggMinus, allTimeBets: true);
+            var earningsByUser = await ComputeEarningsForMatchesAsync(matchIds, aggPlus, aggMinus);
             result.Add(new SeasonalUserEarningsDto(
                 seasonId,
                 earningsByUser
@@ -247,7 +247,7 @@ public class EarningsService : IEarningsService
             .Distinct()
             .ToListAsync();
 
-        var aggregatedPlusCounts  = aggregatedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.plus);
+        var aggregatedPlusCounts = aggregatedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.plus);
         var aggregatedMinusCounts = aggregatedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.minus);
         var earningsByUser = await ComputeEarningsForMatchesAsync(allMatchIds, aggregatedPlusCounts, aggregatedMinusCounts, allTimeBets: true);
 
