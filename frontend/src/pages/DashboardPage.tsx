@@ -267,7 +267,7 @@ export default function DashboardPage() {
                             {loadingDashboard ? (
                                 <LoadingSpinner size="sm" inline />
                             ) : (
-                                <BettingBalanceTrendChart data={bettingBalanceData} />
+                                <BettingBalanceTrendChart data={bettingBalanceData} isWeekly={!!selectedSeasonId} />
                             )}
                         </section>
                         <section className="card p-3 sm:p-6">

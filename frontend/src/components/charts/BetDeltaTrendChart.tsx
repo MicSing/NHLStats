@@ -76,7 +76,7 @@ export default function BetDeltaTrendChart({ data }: Props) {
                             tick={{ fill: ct.tick, fontSize: 12 }}
                             domain={['auto', 'auto']}
                             tickFormatter={(v) => `${Number(v).toFixed(2)} €`}
-                            width={ct.yAxisWidthNarrow}
+                            width={ct.yAxisWidthCurrency}
                         />
                         <Tooltip
                             contentStyle={{

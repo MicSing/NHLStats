@@ -27,9 +27,10 @@ const USER_COLORS = [
 
 interface Props {
     data: WeeklyBettingBalancePeriod[]
+    isWeekly?: boolean
 }
 
-export default function BettingBalanceTrendChart({ data }: Props) {
+export default function BettingBalanceTrendChart({ data, isWeekly }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
 
@@ -73,9 +74,9 @@ export default function BettingBalanceTrendChart({ data }: Props) {
                         />
                         <YAxis
                             tick={{ fill: ct.tick, fontSize: 12 }}
-                            domain={[0, 'auto']}
+                            domain={isWeekly ? ['auto', 'auto'] : [0, 'auto']}
                             tickFormatter={(v) => `${Number(v).toFixed(2)} €`}
-                            width={ct.yAxisWidthNarrow}
+                            width={ct.yAxisWidthCurrency}
                         />
                         <Tooltip
                             contentStyle={{

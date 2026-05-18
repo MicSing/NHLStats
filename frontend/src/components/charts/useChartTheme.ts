@@ -18,5 +18,6 @@ export function useChartTheme() {
             ? { top: 6, right: 8, left: 0, bottom: 4 }
             : { top: 10, right: 30, left: 0, bottom: 5 },
         yAxisWidthNarrow: isMobile ? 24 : 32,
+        yAxisWidthCurrency: isMobile ? 58 : 68,
     }
 }
