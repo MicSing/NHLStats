@@ -187,29 +187,6 @@ export default function DashboardPage() {
                             seasons={seasons}
                             allTimeEarnings={safeDashboardData.allTimeEarnings}
                         />
-                        {!selectedSeasonId && safeDashboardData.allTimeEarnings && (
-                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-center">
-                                <div className="bg-bg rounded-lg p-2 border border-border">
-                                    <p className="text-text-muted">{t('dashboard.collected')}</p>
-                                    <p className="text-success font-semibold">
-                                        {safeDashboardData.allTimeEarnings.totalCollected.toFixed(2)} €
-                                    </p>
-                                </div>
-                                <div className="bg-bg rounded-lg p-2 border border-border">
-                                    <p className="text-text-muted">{t('dashboard.expenses')}</p>
-                                    <p className="text-danger font-semibold">
-                                        {safeDashboardData.allTimeEarnings.totalExpenses.toFixed(2)} €
-                                    </p>
-                                </div>
-                                <div className="bg-bg rounded-lg p-2 border border-border">
-                                    <p className="text-text-muted">{t('dashboard.canBeCollected')}</p>
-                                    <p className={`font-semibold ${safeDashboardData.allTimeEarnings.canBeCollected > 100 ? 'text-danger' :
-                                        safeDashboardData.allTimeEarnings.canBeCollected > 20 ? 'text-warning' : 'text-success'}`}>
-                                        {safeDashboardData.allTimeEarnings.canBeCollected.toFixed(2)} €
-                                    </p>
-                                </div>
-                            </div>
-                        )}
                     </section>
 
                     {/* Top Scorers */}
