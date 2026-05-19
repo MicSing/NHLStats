@@ -12,7 +12,7 @@ interface MarketsSectionProps {
     odds: MatchOddsDto | null
     currentUserId: number | null
     matchHasTeamOutcome: boolean
-    onAddLeg: (leg: Omit<DraftLeg, 'key'>) => void
+    onAddLeg: (leg: Omit<DraftLeg, 'key' | 'maxOccasions'> & { maxOccasions?: number }) => void
 }
 
 export default function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAddLeg }: MarketsSectionProps) {
