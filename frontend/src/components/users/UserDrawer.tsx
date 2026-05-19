@@ -4,7 +4,7 @@ import type { LoginUser, CreateLoginDto } from '../../types/loginManagement'
 import type { MergedUser } from './userTypes'
 import StatusBadge from '../StatusBadge'
 import UserAvatar from './UserAvatar'
-import { XIcon } from './userIcons'
+import { XIcon } from '@phosphor-icons/react'
 import LoginCard from './LoginCard'
 import AddIdentityModal from './AddIdentityModal'
 import ChangePasswordModal from './ChangePasswordModal'
@@ -90,7 +90,7 @@ export default function UserDrawer({
                         onClick={onClose}
                         className="text-text-muted hover:text-text hover:bg-border/50 p-2 rounded-lg transition-colors"
                     >
-                        <XIcon />
+                        <XIcon size={20} />
                     </button>
                 </div>
 

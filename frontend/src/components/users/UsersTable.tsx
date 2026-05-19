@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { MergedUser } from './userTypes'
 import StatusBadge from '../StatusBadge'
 import UserAvatar from './UserAvatar'
-import { SearchIcon, UserPlusIcon, ChevronRightIcon, MailIcon, AliasIcon } from './userIcons'
+import { MagnifyingGlassIcon, UserPlusIcon, CaretRightIcon, EnvelopeIcon, UserIcon } from '@phosphor-icons/react'
 
 interface UsersTableProps {
     filteredUsers: MergedUser[]
@@ -26,7 +26,7 @@ export default function UsersTable({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div className="relative w-full sm:max-w-xs">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
-                        <SearchIcon />
+                        <MagnifyingGlassIcon size={16} />
                     </div>
                     <input
                         type="text"
@@ -40,7 +40,7 @@ export default function UsersTable({
                     onClick={onAddUser}
                     className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
                 >
-                    <UserPlusIcon />
+                    <UserPlusIcon size={16} />
                     {t('admin.users.addUser')}
                 </button>
             </div>
@@ -74,7 +74,7 @@ export default function UsersTable({
                                     {user.logins.length > 0 ? (
                                         <div className="flex flex-col gap-1">
                                             <span className="text-text-muted flex items-center gap-1.5">
-                                                {user.logins[0].email ? <MailIcon /> : <AliasIcon />}
+                                                {user.logins[0].email ? <EnvelopeIcon size={13} /> : <UserIcon size={13} />}
                                                 {user.logins[0].email ?? user.logins[0].alias}
                                             </span>
                                             {user.logins.length > 1 && (
@@ -95,7 +95,7 @@ export default function UsersTable({
                                     </StatusBadge>
                                 </td>
                                 <td className="px-4 py-3 text-right text-text-muted/40 group-hover:text-text-muted transition-colors">
-                                    <ChevronRightIcon />
+                                    <CaretRightIcon size={16} />
                                 </td>
                             </tr>
                         ))}

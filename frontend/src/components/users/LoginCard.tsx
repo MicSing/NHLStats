@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { LoginUser } from '../../types/loginManagement'
 import StatusBadge from '../StatusBadge'
-import { MailIcon, AliasIcon, KeyIcon, TrashIcon } from './userIcons'
+import { EnvelopeIcon, UserIcon, KeyIcon, TrashIcon } from '@phosphor-icons/react'
 
 interface LoginCardProps {
     login: LoginUser
@@ -35,7 +35,7 @@ export default function LoginCard({
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 min-w-0">
                     <div className="p-1.5 bg-surface rounded-md text-text-muted flex-shrink-0">
-                        {isEmail ? <MailIcon /> : <AliasIcon />}
+                        {isEmail ? <EnvelopeIcon size={13} /> : <UserIcon size={13} />}
                     </div>
                     <span className="text-sm font-medium text-text truncate">{identifier}</span>
                 </div>
@@ -45,14 +45,14 @@ export default function LoginCard({
                         className="p-1.5 text-text-muted hover:text-text hover:bg-border/50 rounded-md transition-all"
                         title={t('common.changePassword')}
                     >
-                        <KeyIcon />
+                        <KeyIcon size={14} />
                     </button>
                     <button
                         onClick={onDelete}
                         className="p-1.5 text-text-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all"
                         title={t('common.delete')}
                     >
-                        <TrashIcon />
+                        <TrashIcon size={14} />
                     </button>
                 </div>
             </div>
