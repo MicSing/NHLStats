@@ -77,7 +77,8 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
     }
 
     const addLeg = (leg: Omit<DraftLeg, 'key'>) => {
-        const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null)
+        const occasions = leg.occasions ?? 1
+        const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null, occasions)
         if (draftLegs.some((l) => l.key === key)) return
         if (
             teamOutcomeTypes.includes(leg.betType) &&
@@ -86,7 +87,17 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
             error(t('betting.oneMatchResultPerMatch'))
             return
         }
-        setDraftLegs((prev) => [...prev, { ...leg, key }])
+        setDraftLegs((prev) => [...prev, { ...leg, occasions, key }])
+    }
+
+    const updateLegOccasions = (key: string, occasions: number, newOdds: number) => {
+        setDraftLegs((prev) =>
+            prev.map((l) => {
+                if (l.key !== key) return l
+                const newKey = legKey(l.matchId, l.betType, l.userId ?? l.teamId ?? null, occasions)
+                return { ...l, occasions, odds: newOdds, key: newKey }
+            }),
+        )
     }
 
     const removeLeg = (key: string) => {
@@ -117,6 +128,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
                 betType: l.betType,
                 userId: l.userId ?? undefined,
                 teamId: l.teamId ?? undefined,
+                occasions: l.occasions,
             })),
         }
         try {
@@ -181,6 +193,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
                 canCreate={canCreate}
                 potentialWin={potentialWin}
                 maxStake={balance?.availableBalance}
+                onUpdateOccasions={updateLegOccasions}
             />
         </div>
     )

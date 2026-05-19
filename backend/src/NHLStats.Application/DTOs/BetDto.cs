@@ -13,6 +13,7 @@ public record BetLegDto(
     int? TeamId,
     string? TargetName,
     decimal Odds,
+    int Occasions,
     BetLegStatus Status,
     DateTime? EvaluatedOn,
     bool IsAnonymized = false);
@@ -35,7 +36,8 @@ public record CreateBetLegDto(
     int MatchId,
     BetType BetType,
     int? UserId,
-    int? TeamId);
+    int? TeamId,
+    int Occasions = 1);
 
 public record CreateBetDto(
     decimal Stake,

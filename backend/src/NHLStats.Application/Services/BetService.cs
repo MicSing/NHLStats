@@ -58,6 +58,7 @@ public class BetService : IBetService
                 l.BetType == BetType.TeamDraw ? "Draw"
                     : (l.BetType == BetType.TeamWin || l.BetType == BetType.TeamWinOrDraw) ? l.Team?.Name : l.User?.Name,
                 l.Odds,
+                l.Occasions,
                 l.Status,
                 l.EvaluatedOn))
             .ToList();
@@ -126,6 +127,7 @@ public class BetService : IBetService
         TeamId: null,
         TargetName: null,
         Odds: 0,
+        Occasions: 1,
         leg.Status,
         leg.EvaluatedOn,
         IsAnonymized: true);
@@ -217,13 +219,31 @@ public class BetService : IBetService
                     return (null, $"Only one match-result bet (1, X, 1X) is allowed per match in a single ticket.");
             }
 
-            var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
-            if (oddsRow == null)
+            var occasions = IsUserEventBetType(legDto.BetType) ? Math.Max(1, legDto.Occasions) : 1;
+
+            decimal lockedOdds;
+            if (occasions > 1 && IsUserEventBetType(legDto.BetType) && legDto.UserId.HasValue)
             {
-                await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
-                oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
+                var oddsBetType = BetTypeToOddsBetType(legDto.BetType);
+                var occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
+                if (occasionsResult == null)
+                {
+                    await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
+                    occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
+                }
+                lockedOdds = occasionsResult?.Odds ?? 1.0m;
             }
-            var lockedOdds = oddsRow?.Odds ?? 1.0m;
+            else
+            {
+                var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
+                if (oddsRow == null)
+                {
+                    await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
+                    oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
+                }
+                lockedOdds = oddsRow?.Odds ?? 1.0m;
+            }
+
             if (lockedOdds < 1.0m)
                 return (null, "Odds for this bet are below 1.0 and cannot be placed.");
             totalOdds = Math.Floor(totalOdds * lockedOdds * 100m) / 100m;
@@ -235,6 +255,7 @@ public class BetService : IBetService
                 UserId = (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw || legDto.BetType == BetType.TeamDraw) ? null : legDto.UserId,
                 TeamId = legDto.BetType == BetType.TeamDraw ? null : legDto.TeamId,
                 Odds = lockedOdds,
+                Occasions = occasions,
                 Status = BetLegStatus.Pending
             });
         }
@@ -337,35 +358,35 @@ public class BetService : IBetService
 
         bool isDraw = matchCompleted && match.HomeScore == match.AwayScore;
 
-        var userMatchGoalIds = await _db.UserMatchGoals
+        var userGoalCounts = await _db.UserMatchGoals
             .Include(g => g.UserMatch)
             .Where(g => g.UserMatch!.MatchId == matchId)
-            .Select(g => g.UserMatch!.UserId)
-            .Distinct()
-            .ToListAsync();
+            .GroupBy(g => g.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
 
-        var userMatchPenaltyIds = await _db.UserMatchPenalties
+        var userPenaltyCounts = await _db.UserMatchPenalties
             .Include(p => p.UserMatch)
             .Where(p => p.UserMatch!.MatchId == matchId)
-            .Select(p => p.UserMatch!.UserId)
-            .Distinct()
-            .ToListAsync();
+            .GroupBy(p => p.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
 
-        var userMatchPlusPointIds = await _db.UserMatchPoints
+        var userPlusPointCounts = await _db.UserMatchPoints
             .Include(p => p.UserMatch)
             .Include(p => p.PointReason)
             .Where(p => p.UserMatch!.MatchId == matchId && p.PointReason!.PointType == PointType.Positive)
-            .Select(p => p.UserMatch!.UserId)
-            .Distinct()
-            .ToListAsync();
+            .GroupBy(p => p.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
 
-        var userMatchMinusPointIds = await _db.UserMatchPoints
+        var userMinusPointCounts = await _db.UserMatchPoints
             .Include(p => p.UserMatch)
             .Include(p => p.PointReason)
             .Where(p => p.UserMatch!.MatchId == matchId && p.PointReason!.PointType == PointType.Negative)
-            .Select(p => p.UserMatch!.UserId)
-            .Distinct()
-            .ToListAsync();
+            .GroupBy(p => p.UserMatch!.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
 
         var now = DateTime.UtcNow;
         var affectedBets = new HashSet<Bet>();
@@ -382,16 +403,16 @@ public class BetService : IBetService
                     : (anyWinnerId.HasValue && anyWinnerId.Value == leg.TeamId.Value) || isDraw,
                 BetType.TeamDraw => !matchCompleted ? (bool?)null : isDraw,
                 BetType.UserGoal => leg.UserId.HasValue
-                    ? userMatchGoalIds.Contains(leg.UserId.Value)
+                    ? userGoalCounts.GetValueOrDefault(leg.UserId.Value) >= leg.Occasions
                     : (bool?)null,
                 BetType.UserPenalty => leg.UserId.HasValue
-                    ? userMatchPenaltyIds.Contains(leg.UserId.Value)
+                    ? userPenaltyCounts.GetValueOrDefault(leg.UserId.Value) >= leg.Occasions
                     : (bool?)null,
                 BetType.UserPlusPoint => leg.UserId.HasValue
-                    ? userMatchPlusPointIds.Contains(leg.UserId.Value)
+                    ? userPlusPointCounts.GetValueOrDefault(leg.UserId.Value) >= leg.Occasions
                     : (bool?)null,
                 BetType.UserMinusPoint => leg.UserId.HasValue
-                    ? userMatchMinusPointIds.Contains(leg.UserId.Value)
+                    ? userMinusPointCounts.GetValueOrDefault(leg.UserId.Value) >= leg.Occasions
                     : (bool?)null,
                 _ => null
             };
@@ -473,4 +494,18 @@ public class BetService : IBetService
         return await _db.MatchOdds
             .FirstOrDefaultAsync(o => o.MatchId == matchId && o.BetType == oddsBetType && o.TargetId == targetId);
     }
+
+    private static bool IsUserEventBetType(BetType betType) =>
+        betType is BetType.UserGoal or BetType.UserPenalty or BetType.UserPlusPoint or BetType.UserMinusPoint;
+
+    private static OddsBetType BetTypeToOddsBetType(BetType betType) => betType switch
+    {
+        BetType.UserGoal       => OddsBetType.UserGoal,
+        BetType.UserPenalty    => OddsBetType.UserPenalty,
+        BetType.UserPlusPoint  => OddsBetType.UserPlusPoint,
+        BetType.UserMinusPoint => OddsBetType.UserMinusPoint,
+        BetType.TeamWin        => OddsBetType.TeamWin,
+        BetType.TeamWinOrDraw  => OddsBetType.TeamWinOrDraw,
+        _                      => OddsBetType.Draw
+    };
 }

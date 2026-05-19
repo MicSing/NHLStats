@@ -12,7 +12,11 @@ public record TeamWinOddsDto(
 public record UserOddsDto(
     int UserId,
     string? UserName,
-    decimal Odds);
+    decimal Odds,
+    int MinOccasions,
+    decimal EffectiveOdds);
+
+public record OccasionsOddsDto(int Occasions, decimal Odds);
 
 public record MatchOddsDto(
     TeamWinOddsDto? TeamWin,

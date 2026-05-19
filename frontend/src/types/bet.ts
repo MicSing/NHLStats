@@ -16,6 +16,8 @@ export interface UserOddsDto {
     userId: number
     userName: string | null
     odds: number
+    minOccasions: number
+    effectiveOdds: number
 }
 
 export interface MatchOddsDto {
@@ -47,6 +49,7 @@ export interface BetLegDto {
     teamId: number | null
     targetName: string | null
     odds: number
+    occasions: number
     status: LegStatus
     evaluatedOn: string | null
     isAnonymized?: boolean
@@ -72,6 +75,7 @@ export interface CreateBetLegDto {
     betType: ApiBetType
     userId?: number | null
     teamId?: number | null
+    occasions?: number
 }
 
 export interface CreateBetDto {

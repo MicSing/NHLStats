@@ -11,6 +11,7 @@ public class BettingOddsService : IBettingOddsService
     private readonly NhlStatsDbContext _db;
     private const decimal AppMargin = 0.80m;
     private const decimal TeamMargin = 0.75m;
+    private const decimal OccasionsMargin = 0.70m;
 
     public BettingOddsService(NhlStatsDbContext db) => _db = db;
 
@@ -19,6 +20,7 @@ public class BettingOddsService : IBettingOddsService
         probability = Math.Clamp(probability, 0.01m, 0.99m);
         return Math.Floor(margin / probability * 100m) / 100m;
     }
+
 
     public async Task RecalculateForMatchAsync(int matchId)
     {
@@ -83,6 +85,30 @@ public class BettingOddsService : IBettingOddsService
             await RecalculateForMatchAsync(matchId);
     }
 
+    public async Task<OccasionsOddsDto?> GetUserEventOddsForOccasionsAsync(int matchId, OddsBetType betType, int userId, int occasions)
+    {
+        occasions = Math.Max(1, occasions);
+        if (!TryGetUserEventKind(betType, out var kind)) return null;
+
+        var matchExists = await _db.Matches.AnyAsync(m => m.Id == matchId);
+        if (!matchExists) return null;
+
+        var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
+
+        static decimal OddsForN(UserEventCounts c, int n) =>
+            ComputeOdds(ComputeProbabilityForOccasions(c, n), n == 1 ? AppMargin : OccasionsMargin);
+
+        var odds = OddsForN(counts, occasions);
+        if (odds >= 1m) return new OccasionsOddsDto(occasions, odds);
+
+        for (int n = occasions + 1; n <= 30; n++)
+        {
+            var bumped = OddsForN(counts, n);
+            if (bumped >= 1m) return new OccasionsOddsDto(n, bumped);
+        }
+        return null;
+    }
+
     public async Task<MatchOddsDto?> GetMatchOddsAsync(int matchId)
     {
         var matchExists = await _db.Matches.AnyAsync(m => m.Id == matchId);
@@ -121,25 +147,10 @@ public class BettingOddsService : IBettingOddsService
         var userIds = matchOddsRows.Select(o => o.TargetId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var users = await _db.Users.Where(u => userIds.Contains(u.Id)).AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name);
 
-        var userGoal = matchOddsRows
-            .Where(o => o.BetType == OddsBetType.UserGoal && o.TargetId.HasValue)
-            .Select(o => new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds))
-            .ToList();
-
-        var userPenalty = matchOddsRows
-            .Where(o => o.BetType == OddsBetType.UserPenalty && o.TargetId.HasValue)
-            .Select(o => new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds))
-            .ToList();
-
-        var userPlusPoint = matchOddsRows
-            .Where(o => o.BetType == OddsBetType.UserPlusPoint && o.TargetId.HasValue)
-            .Select(o => new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds))
-            .ToList();
-
-        var userMinusPoint = matchOddsRows
-            .Where(o => o.BetType == OddsBetType.UserMinusPoint && o.TargetId.HasValue)
-            .Select(o => new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds))
-            .ToList();
+        var userGoal = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserGoal, matchId, users);
+        var userPenalty = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserPenalty, matchId, users);
+        var userPlusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserPlusPoint, matchId, users);
+        var userMinusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserMinusPoint, matchId, users);
 
         var computedOn = matchOddsRows.Max(o => o.ComputedOn);
         return new MatchOddsDto(teamWin, userGoal, userPenalty, userPlusPoint, userMinusPoint, computedOn);
@@ -438,6 +449,142 @@ public class BettingOddsService : IBettingOddsService
             .Select(p => p.UserMatchId)
             .Distinct()
             .CountAsync();
+    }
+
+    // ── Multi-occasion helpers ──────────────────────────────────────────────────
+
+    private async Task<List<UserOddsDto>> BuildUserOddsDtosAsync(
+        List<MatchOdds> rows, OddsBetType betType, int matchId, Dictionary<int, string> users)
+    {
+        var result = new List<UserOddsDto>();
+        if (!TryGetUserEventKind(betType, out var kind)) return result;
+        foreach (var o in rows.Where(o => o.BetType == betType && o.TargetId.HasValue))
+        {
+            var (n, eo) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
+            result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo));
+        }
+        return result;
+    }
+
+    private record UserEventCounts(List<int> Last10, List<int> Curr, List<int> Prev, bool HasPrev);
+
+    private async Task<UserEventCounts> LoadUserEventCountsAsync(int userId, int matchId, UserEventKind kind)
+    {
+        var targetMatch = await _db.Matches.AsNoTracking().FirstAsync(m => m.Id == matchId);
+        var currentSeasonId = targetMatch.SeasonId;
+
+        var last10Ids = (await _db.UserMatches
+            .Include(um => um.Match)
+            .Where(um => um.UserId == userId && um.Match!.CompletionType != CompletionType.None)
+            .OrderByDescending(um => um.Match!.MatchDate)
+            .Take(10)
+            .ToListAsync()).Select(um => um.Id).ToList();
+
+        var currIds = (await _db.UserMatches
+            .Include(um => um.Match)
+            .Where(um => um.UserId == userId && um.SeasonId == currentSeasonId && um.Match!.CompletionType != CompletionType.None)
+            .ToListAsync()).Select(um => um.Id).ToList();
+
+        var prevSeasonId = await _db.UserMatches
+            .Where(um => um.UserId == userId && um.SeasonId < currentSeasonId)
+            .OrderByDescending(um => um.SeasonId)
+            .Select(um => (int?)um.SeasonId)
+            .FirstOrDefaultAsync();
+
+        var prevIds = new List<int>();
+        if (prevSeasonId.HasValue)
+            prevIds = (await _db.UserMatches
+                .Include(um => um.Match)
+                .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value && um.Match!.CompletionType != CompletionType.None)
+                .ToListAsync()).Select(um => um.Id).ToList();
+
+        var last10 = await GetPerMatchCountsAsync(last10Ids, kind);
+        var curr = await GetPerMatchCountsAsync(currIds, kind);
+        var prev = await GetPerMatchCountsAsync(prevIds, kind);
+        return new UserEventCounts(last10, curr, prev, prev.Any(c => c > 0));
+    }
+
+    private Task<List<int>> GetPerMatchCountsAsync(List<int> userMatchIds, UserEventKind kind) =>
+        kind switch
+        {
+            UserEventKind.Goal => GetGoalCountsPerMatchAsync(userMatchIds),
+            UserEventKind.Penalty => GetPenaltyCountsPerMatchAsync(userMatchIds),
+            UserEventKind.PlusPoint => GetPointCountsPerMatchAsync(userMatchIds, PointType.Positive),
+            UserEventKind.MinusPoint => GetPointCountsPerMatchAsync(userMatchIds, PointType.Negative),
+            _ => Task.FromResult(new List<int>())
+        };
+
+    private async Task<List<int>> GetGoalCountsPerMatchAsync(List<int> userMatchIds)
+    {
+        if (userMatchIds.Count == 0) return [];
+        var dict = await _db.UserMatchGoals
+            .Where(g => userMatchIds.Contains(g.UserMatchId))
+            .GroupBy(g => g.UserMatchId)
+            .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.Id, x => x.Total);
+        return userMatchIds.Select(id => dict.GetValueOrDefault(id, 0)).ToList();
+    }
+
+    private async Task<List<int>> GetPenaltyCountsPerMatchAsync(List<int> userMatchIds)
+    {
+        if (userMatchIds.Count == 0) return [];
+        var dict = await _db.UserMatchPenalties
+            .Where(p => userMatchIds.Contains(p.UserMatchId))
+            .GroupBy(p => p.UserMatchId)
+            .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.Id, x => x.Total);
+        return userMatchIds.Select(id => dict.GetValueOrDefault(id, 0)).ToList();
+    }
+
+    private async Task<List<int>> GetPointCountsPerMatchAsync(List<int> userMatchIds, PointType pointType)
+    {
+        if (userMatchIds.Count == 0) return [];
+        var dict = await _db.UserMatchPoints
+            .Include(p => p.PointReason)
+            .Where(p => userMatchIds.Contains(p.UserMatchId) && p.PointReason!.PointType == pointType)
+            .GroupBy(p => p.UserMatchId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Count);
+        return userMatchIds.Select(id => dict.GetValueOrDefault(id, 0)).ToList();
+    }
+
+    private static decimal ComputeProbabilityForOccasions(UserEventCounts data, int occasions)
+    {
+        static decimal Rate(List<int> counts, int n) => counts.Count == 0 ? 0m
+            : n == 1 ? (decimal)counts.Sum() / counts.Count
+            : (decimal)counts.Count(c => c >= n) / counts.Count;
+
+        var plast10 = Rate(data.Last10, occasions);
+        var pcurr = Rate(data.Curr, occasions);
+        var pprev = Rate(data.Prev, occasions);
+        return BlendUserEventProbability(pprev, data.HasPrev && pprev > 0, pcurr, plast10);
+    }
+
+    private async Task<(int MinOccasions, decimal EffectiveOdds)> ResolveEffectiveOddsAsync(
+        int userId, int matchId, UserEventKind kind, decimal baseOdds)
+    {
+        var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
+        for (int n = 1; n <= 30; n++)
+        {
+            var margin = n == 1 ? AppMargin : OccasionsMargin;
+            var odds = ComputeOdds(ComputeProbabilityForOccasions(counts, n), margin);
+            if (odds >= 1m) return (n, odds);
+        }
+        return (1, baseOdds);
+    }
+
+    private static bool TryGetUserEventKind(OddsBetType betType, out UserEventKind kind)
+    {
+        kind = betType switch
+        {
+            OddsBetType.UserGoal => UserEventKind.Goal,
+            OddsBetType.UserPenalty => UserEventKind.Penalty,
+            OddsBetType.UserPlusPoint => UserEventKind.PlusPoint,
+            OddsBetType.UserMinusPoint => UserEventKind.MinusPoint,
+            _ => default
+        };
+        return betType is OddsBetType.UserGoal or OddsBetType.UserPenalty
+                       or OddsBetType.UserPlusPoint or OddsBetType.UserMinusPoint;
     }
 
     private static bool IsWinner(Match match, int teamId)

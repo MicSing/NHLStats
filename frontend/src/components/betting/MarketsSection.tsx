@@ -6,6 +6,7 @@ import { type DraftLeg } from './bettingTypes'
 import OddsButton from './OddsButton'
 import PlayerMarketRow from './PlayerMarketRow'
 
+
 interface MarketsSectionProps {
     match: FutureMatch | null
     odds: MatchOddsDto | null
@@ -94,6 +95,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                 teamId: match.homeTeamId,
                                 label: homeLabel,
                                 odds: homeOdds,
+                                occasions: 1,
+                                minOccasions: 1,
                             })
                         }
                     />
@@ -114,6 +117,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                 teamId: null,
                                 label: t('betting.drawLabel'),
                                 odds: drawOdds,
+                                occasions: 1,
+                                minOccasions: 1,
                             })
                         }
                     />
@@ -134,6 +139,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                 teamId: match.awayTeamId,
                                 label: awayLabel,
                                 odds: awayOdds,
+                                occasions: 1,
+                                minOccasions: 1,
                             })
                         }
                     />
@@ -160,6 +167,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                 teamId: match.homeTeamId,
                                 label: home1XLabel,
                                 odds: home1XOdds,
+                                occasions: 1,
+                                minOccasions: 1,
                             })
                         }
                     />
@@ -180,6 +189,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                 teamId: match.awayTeamId,
                                 label: away1XLabel,
                                 odds: away1XOdds,
+                                occasions: 1,
+                                minOccasions: 1,
                             })
                         }
                     />
@@ -198,15 +209,19 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                     ) : (
                         <div className="space-y-1">
                             {users.map((u) => {
-                                const o = odds?.userGoal.find((x) => x.userId === u.userId)?.odds ?? null
-                                if (!showUnavailable && (o == null || o < 1)) return null
+                                const entry = odds?.userGoal.find((x) => x.userId === u.userId)
+                                const raw = entry?.odds ?? null
+                                if (!showUnavailable && (entry == null || entry.effectiveOdds < 1)) return null
+                                const displayOdds = entry?.effectiveOdds ?? raw
+                                const occasions = entry?.minOccasions ?? 1
                                 return (
                                     <PlayerMarketRow
                                         key={`goal-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
-                                        odds={o}
+                                        odds={displayOdds}
+                                        occasionsBadge={occasions > 1 ? occasions : undefined}
                                         onAdd={() =>
-                                            o != null &&
+                                            displayOdds != null &&
                                             onAddLeg({
                                                 matchId: match.id,
                                                 matchNumber: match.matchNumber,
@@ -214,7 +229,9 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 userId: u.userId,
                                                 teamId: null,
                                                 label: `${t('betting.goals')}: ${u.userName ?? '?'}`,
-                                                odds: o,
+                                                odds: displayOdds,
+                                                occasions,
+                                                minOccasions: occasions,
                                             })
                                         }
                                     />
@@ -232,15 +249,19 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                     ) : (
                         <div className="space-y-1">
                             {users.map((u) => {
-                                const o = odds?.userPenalty.find((x) => x.userId === u.userId)?.odds ?? null
-                                if (!showUnavailable && (o == null || o < 1)) return null
+                                const entry = odds?.userPenalty.find((x) => x.userId === u.userId)
+                                const raw = entry?.odds ?? null
+                                if (!showUnavailable && (entry == null || entry.effectiveOdds < 1)) return null
+                                const displayOdds = entry?.effectiveOdds ?? raw
+                                const occasions = entry?.minOccasions ?? 1
                                 return (
                                     <PlayerMarketRow
                                         key={`pen-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
-                                        odds={o}
+                                        odds={displayOdds}
+                                        occasionsBadge={occasions > 1 ? occasions : undefined}
                                         onAdd={() =>
-                                            o != null &&
+                                            displayOdds != null &&
                                             onAddLeg({
                                                 matchId: match.id,
                                                 matchNumber: match.matchNumber,
@@ -248,7 +269,9 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 userId: u.userId,
                                                 teamId: null,
                                                 label: `${t('betting.penalties')}: ${u.userName ?? '?'}`,
-                                                odds: o,
+                                                odds: displayOdds,
+                                                occasions,
+                                                minOccasions: occasions,
                                             })
                                         }
                                     />
@@ -267,16 +290,20 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                     ) : (
                         <div className="space-y-1">
                             {users.map((u) => {
-                                const o = odds?.userPlusPoint.find((x) => x.userId === u.userId)?.odds ?? null
-                                if (!showUnavailable && (o == null || o < 1)) return null
+                                const entry = odds?.userPlusPoint.find((x) => x.userId === u.userId)
+                                const raw = entry?.odds ?? null
+                                if (!showUnavailable && (entry == null || entry.effectiveOdds < 1)) return null
+                                const displayOdds = entry?.effectiveOdds ?? raw
+                                const occasions = entry?.minOccasions ?? 1
                                 return (
                                     <PlayerMarketRow
                                         key={`plus-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
-                                        odds={o}
+                                        odds={displayOdds}
+                                        occasionsBadge={occasions > 1 ? occasions : undefined}
                                         forceDisabled={isUserInMatch}
                                         onAdd={() =>
-                                            o != null &&
+                                            displayOdds != null &&
                                             onAddLeg({
                                                 matchId: match.id,
                                                 matchNumber: match.matchNumber,
@@ -284,7 +311,9 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 userId: u.userId,
                                                 teamId: null,
                                                 label: `${t('betting.plusPoints')}: ${u.userName ?? '?'}`,
-                                                odds: o,
+                                                odds: displayOdds,
+                                                occasions,
+                                                minOccasions: occasions,
                                             })
                                         }
                                     />
@@ -304,16 +333,20 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                     ) : (
                         <div className="space-y-1">
                             {users.map((u) => {
-                                const o = odds?.userMinusPoint.find((x) => x.userId === u.userId)?.odds ?? null
-                                if (!showUnavailable && (o == null || o < 1)) return null
+                                const entry = odds?.userMinusPoint.find((x) => x.userId === u.userId)
+                                const raw = entry?.odds ?? null
+                                if (!showUnavailable && (entry == null || entry.effectiveOdds < 1)) return null
+                                const displayOdds = entry?.effectiveOdds ?? raw
+                                const occasions = entry?.minOccasions ?? 1
                                 return (
                                     <PlayerMarketRow
                                         key={`minus-${u.userId}`}
                                         name={u.userName ?? t('betting.unknownUser')}
-                                        odds={o}
+                                        odds={displayOdds}
+                                        occasionsBadge={occasions > 1 ? occasions : undefined}
                                         forceDisabled={isUserInMatch}
                                         onAdd={() =>
-                                            o != null &&
+                                            displayOdds != null &&
                                             onAddLeg({
                                                 matchId: match.id,
                                                 matchNumber: match.matchNumber,
@@ -321,7 +354,9 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 userId: u.userId,
                                                 teamId: null,
                                                 label: `${t('betting.minusPoints')}: ${u.userName ?? '?'}`,
-                                                odds: o,
+                                                odds: displayOdds,
+                                                occasions,
+                                                minOccasions: occasions,
                                             })
                                         }
                                     />

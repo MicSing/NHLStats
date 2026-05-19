@@ -9,6 +9,7 @@ public class BetLeg
     public int? UserId { get; set; }
     public int? TeamId { get; set; }
     public decimal Odds { get; set; }
+    public int Occasions { get; set; } = 1;
     public BetLegStatus Status { get; set; } = BetLegStatus.Pending;
     public DateTime? EvaluatedOn { get; set; }
 

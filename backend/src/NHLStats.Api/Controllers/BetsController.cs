@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
+using NHLStats.Domain.Entities;
 
 namespace NHLStats.Api.Controllers;
 
@@ -38,6 +39,14 @@ public class BetsController : ControllerBase
     {
         var odds = await _oddsService.GetMatchOddsAsync(matchId);
         return odds == null ? NotFound() : Ok(odds);
+    }
+
+    // GET /api/betting/matches/{matchId}/odds/occasions?betType=&userId=&occasions=
+    [HttpGet("api/betting/matches/{matchId:int}/odds/occasions")]
+    public async Task<IActionResult> GetOddsForOccasions(int matchId, [FromQuery] OddsBetType betType, [FromQuery] int userId, [FromQuery] int occasions = 1)
+    {
+        var result = await _oddsService.GetUserEventOddsForOccasionsAsync(matchId, betType, userId, occasions);
+        return result == null ? NotFound() : Ok(result);
     }
 
     // GET /api/betting/bets/active

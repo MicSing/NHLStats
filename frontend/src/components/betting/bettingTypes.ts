@@ -9,19 +9,22 @@ export interface DraftLeg {
     teamId: number | null
     label: string
     odds: number
+    occasions: number
+    minOccasions: number
 }
 
 export const teamOutcomeTypes: ApiBetType[] = ['TeamWin', 'TeamWinOrDraw', 'TeamDraw']
 
-export function legKey(matchId: number, betType: ApiBetType, target: number | null): string {
-    return `${matchId}:${betType}:${target ?? '-'}`
+export function legKey(matchId: number, betType: ApiBetType, target: number | null, occasions = 1): string {
+    return `${matchId}:${betType}:${target ?? '-'}:${occasions}`
 }
 
 type TFn = (k: string, opts?: Record<string, unknown>) => string
 
 export function describeLeg(leg: DraftLeg, t: TFn): string {
     const matchTag = t('betting.matchNumber', { number: leg.matchNumber })
-    return `${matchTag} · ${leg.label}`
+    const occasionsTag = leg.occasions > 1 ? ` (×${leg.occasions})` : ''
+    return `${matchTag} · ${leg.label}${occasionsTag}`
 }
 
 export function describeApiLeg(leg: BetDto['legs'][number], t: TFn): string {

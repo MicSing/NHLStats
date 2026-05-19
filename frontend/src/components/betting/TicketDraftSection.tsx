@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { bettingService } from '../../services/bettingService'
+import type { ApiBetType } from '../../types/bet'
 import { type DraftLeg, describeLeg } from './bettingTypes'
+
+const USER_EVENT_TYPES: ApiBetType[] = ['UserGoal', 'UserPenalty', 'UserPlusPoint', 'UserMinusPoint']
 
 interface TicketDraftSectionProps {
     legs: DraftLeg[]
@@ -12,6 +17,7 @@ interface TicketDraftSectionProps {
     canCreate: boolean
     potentialWin: number
     maxStake?: number
+    onUpdateOccasions: (key: string, occasions: number, newOdds: number) => void
 }
 
 const QUICK_STAKES = [0.05, 0.1, 0.5, 1] as const
@@ -27,8 +33,24 @@ export default function TicketDraftSection({
     canCreate,
     potentialWin,
     maxStake,
+    onUpdateOccasions,
 }: TicketDraftSectionProps) {
     const { t } = useTranslation()
+    const [loadingOccasions, setLoadingOccasions] = useState<Record<string, boolean>>({})
+
+    const handleOccasionsChange = async (leg: DraftLeg, newOccasions: number) => {
+        if (!leg.userId) return
+        const n = Math.max(leg.minOccasions, Math.min(10, newOccasions))
+        setLoadingOccasions((prev) => ({ ...prev, [leg.key]: true }))
+        try {
+            const result = await bettingService.getUserEventOddsForOccasions(leg.matchId, leg.betType, leg.userId, n)
+            if (result) {
+                onUpdateOccasions(leg.key, result.occasions, result.odds)
+            }
+        } finally {
+            setLoadingOccasions((prev) => ({ ...prev, [leg.key]: false }))
+        }
+    }
 
     const handleQuickStake = (val: (typeof QUICK_STAKES)[number] | 'max') => {
         if (val === 'max') {
@@ -38,6 +60,7 @@ export default function TicketDraftSection({
             onStakeChange((current + val).toFixed(2))
         }
     }
+
     return (
         <section className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -55,24 +78,49 @@ export default function TicketDraftSection({
                 <p className="text-sm text-text-muted italic">{t('betting.draftEmpty')}</p>
             ) : (
                 <ul className="space-y-1">
-                    {legs.map((leg) => (
-                        <li
-                            key={leg.key}
-                            className="flex items-center justify-between px-3 py-2 border border-border rounded bg-bg"
-                        >
-                            <span className="text-sm">{describeLeg(leg, t)}</span>
-                            <span className="flex items-center gap-3">
-                                <span className="font-bold text-warning">×{leg.odds.toFixed(2)}</span>
-                                <button
-                                    onClick={() => onRemove(leg.key)}
-                                    className="text-text-muted hover:text-danger text-sm"
-                                    aria-label={t('betting.removeLeg')}
-                                >
-                                    ✕
-                                </button>
-                            </span>
-                        </li>
-                    ))}
+                    {legs.map((leg) => {
+                        const isUserEvent = USER_EVENT_TYPES.includes(leg.betType)
+                        const isLoading = loadingOccasions[leg.key] ?? false
+                        return (
+                            <li
+                                key={leg.key}
+                                className="flex flex-col gap-1 px-3 py-2 border border-border rounded bg-bg"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm">{describeLeg(leg, t)}</span>
+                                    <span className="flex items-center gap-3">
+                                        <span className="font-bold text-warning">
+                                            {isLoading ? '…' : `×${leg.odds.toFixed(2)}`}
+                                        </span>
+                                        <button
+                                            onClick={() => onRemove(leg.key)}
+                                            className="text-text-muted hover:text-danger text-sm"
+                                            aria-label={t('betting.removeLeg')}
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                </div>
+                                {isUserEvent && (
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-xs text-text-muted">{t('betting.occasions')}:</span>
+                                        <input
+                                            type="number"
+                                            min={leg.minOccasions}
+                                            max={10}
+                                            value={leg.occasions}
+                                            disabled={isLoading}
+                                            onChange={(e) => {
+                                                const n = parseInt(e.target.value, 10)
+                                                if (!isNaN(n)) void handleOccasionsChange(leg, n)
+                                            }}
+                                            className="w-16 px-2 py-0.5 text-xs rounded border border-border bg-bg-secondary disabled:opacity-40"
+                                        />
+                                    </div>
+                                )}
+                            </li>
+                        )
+                    })}
                 </ul>
             )}
 
