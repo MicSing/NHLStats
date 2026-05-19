@@ -37,7 +37,6 @@ export default function TicketDraftSection({
 }: TicketDraftSectionProps) {
     const { t } = useTranslation()
     const [loadingOccasions, setLoadingOccasions] = useState<Record<string, boolean>>({})
-    const [occasionsDraft, setOccasionsDraft] = useState<Record<string, string>>({})
 
     const handleOccasionsChange = async (leg: DraftLeg, newOccasions: number) => {
         if (!leg.userId) return
@@ -47,15 +46,11 @@ export default function TicketDraftSection({
             const result = await bettingService.getUserEventOddsForOccasions(leg.matchId, leg.betType, leg.userId, n)
             if (result) {
                 onUpdateOccasions(leg.key, result.occasions, result.odds, result.maxOccasions)
-                setOccasionsDraft((prev) => ({ ...prev, [leg.key]: String(result.occasions) }))
             }
         } finally {
             setLoadingOccasions((prev) => ({ ...prev, [leg.key]: false }))
         }
     }
-
-    const getOccasionsDraftValue = (leg: DraftLeg) =>
-        occasionsDraft[leg.key] ?? String(leg.occasions)
 
     const handleQuickStake = (val: (typeof QUICK_STAKES)[number] | 'max') => {
         if (val === 'max') {
@@ -109,21 +104,25 @@ export default function TicketDraftSection({
                                 {isUserEvent && (
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <span className="text-xs text-text-muted">{t('betting.occasions')}:</span>
-                                        <input
-                                            type="number"
-                                            min={leg.minOccasions}
-                                            max={leg.maxOccasions}
-                                            value={getOccasionsDraftValue(leg)}
-                                            disabled={isLoading}
-                                            onChange={(e) =>
-                                                setOccasionsDraft((prev) => ({ ...prev, [leg.key]: e.target.value }))
-                                            }
-                                            onBlur={(e) => {
-                                                const n = parseInt(e.target.value, 10)
-                                                if (!isNaN(n)) void handleOccasionsChange(leg, n)
-                                            }}
-                                            className="w-16 px-2 py-0.5 text-xs rounded border border-border bg-bg-secondary disabled:opacity-40"
-                                        />
+                                        <button
+                                            type="button"
+                                            disabled={isLoading || leg.occasions <= leg.minOccasions}
+                                            onClick={() => void handleOccasionsChange(leg, leg.occasions - 1)}
+                                            className="w-6 h-6 flex items-center justify-center rounded border border-border bg-bg-secondary text-xs font-bold disabled:opacity-40"
+                                        >
+                                            −
+                                        </button>
+                                        <span className="w-6 text-center text-xs font-medium">
+                                            {isLoading ? '…' : leg.occasions}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            disabled={isLoading || leg.occasions >= leg.maxOccasions}
+                                            onClick={() => void handleOccasionsChange(leg, leg.occasions + 1)}
+                                            className="w-6 h-6 flex items-center justify-center rounded border border-border bg-bg-secondary text-xs font-bold disabled:opacity-40"
+                                        >
+                                            +
+                                        </button>
                                     </div>
                                 )}
                             </li>
