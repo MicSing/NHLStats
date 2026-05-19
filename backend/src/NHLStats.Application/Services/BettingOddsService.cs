@@ -58,20 +58,43 @@ public class BettingOddsService : IBettingOddsService
             .Distinct()
             .ToListAsync();
 
+        var completedMatchCount = await _db.Matches
+            .Where(m => m.SeasonId == match.SeasonId
+                        && m.CompletionType != CompletionType.None
+                        && m.CompletionType != CompletionType.InProgress)
+            .CountAsync();
+        bool goalBettingEnabled = completedMatchCount >= 10;
+
         foreach (var userId in activeUserIds)
         {
-            var goalP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Goal);
+            if (goalBettingEnabled)
+            {
+                var goalP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Goal);
+                oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserGoal, TargetId = userId, Probability = goalP, Odds = ComputeOdds(goalP), ComputedOn = now });
+            }
+
             var penP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Penalty);
             var plusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.PlusPoint);
             var minusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.MinusPoint);
 
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserGoal, TargetId = userId, Probability = goalP, Odds = ComputeOdds(goalP), ComputedOn = now });
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPenalty, TargetId = userId, Probability = penP, Odds = ComputeOdds(penP), ComputedOn = now });
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPlusPoint, TargetId = userId, Probability = plusP, Odds = ComputeOdds(plusP), ComputedOn = now });
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserMinusPoint, TargetId = userId, Probability = minusP, Odds = ComputeOdds(minusP), ComputedOn = now });
         }
 
         await UpsertMatchOddsAsync(oddsToUpsert);
+
+        if (!goalBettingEnabled)
+        {
+            var staleGoalOdds = await _db.MatchOdds
+                .Where(o => o.MatchId == matchId && o.BetType == OddsBetType.UserGoal)
+                .ToListAsync();
+            if (staleGoalOdds.Count > 0)
+            {
+                _db.MatchOdds.RemoveRange(staleGoalOdds);
+                await _db.SaveChangesAsync();
+            }
+        }
     }
 
     public async Task RecalculateAllUpcomingAsync()
@@ -92,6 +115,17 @@ public class BettingOddsService : IBettingOddsService
 
         var matchExists = await _db.Matches.AnyAsync(m => m.Id == matchId);
         if (!matchExists) return null;
+
+        if (betType == OddsBetType.UserGoal)
+        {
+            var targetMatch = await _db.Matches.AsNoTracking().FirstAsync(m => m.Id == matchId);
+            var completedCount = await _db.Matches
+                .Where(m => m.SeasonId == targetMatch.SeasonId
+                            && m.CompletionType != CompletionType.None
+                            && m.CompletionType != CompletionType.InProgress)
+                .CountAsync();
+            if (completedCount < 10) return null;
+        }
 
         var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
 
@@ -356,10 +390,16 @@ public class BettingOddsService : IBettingOddsService
         var targetMatch = await _db.Matches.AsNoTracking().FirstAsync(m => m.Id == matchId);
         var currentSeasonId = targetMatch.SeasonId;
 
-        // Plast10: last 10 completed matches for this user
-        var last10UserMatches = await _db.UserMatches
+        bool isGoal = kind == UserEventKind.Goal;
+
+        // Plast10: last 10 completed matches — scoped to current season for goals, all-time otherwise
+        var last10Query = _db.UserMatches
             .Include(um => um.Match)
-            .Where(um => um.UserId == userId && um.Match!.CompletionType != CompletionType.None)
+            .Where(um => um.UserId == userId && um.Match!.CompletionType != CompletionType.None);
+        if (isGoal)
+            last10Query = last10Query.Where(um => um.SeasonId == currentSeasonId);
+
+        var last10UserMatches = await last10Query
             .OrderByDescending(um => um.Match!.MatchDate)
             .Take(10)
             .ToListAsync();
@@ -387,30 +427,33 @@ public class BettingOddsService : IBettingOddsService
             pcurr = (decimal)withEvents / currUserMatches.Count;
         }
 
-        // Pprev: previous season event rate
-        var prevSeasonId = await _db.UserMatches
-            .Where(um => um.UserId == userId && um.SeasonId < currentSeasonId)
-            .OrderByDescending(um => um.SeasonId)
-            .Select(um => (int?)um.SeasonId)
-            .FirstOrDefaultAsync();
-
+        // Pprev: previous season event rate (goals use current season only, no prev)
         decimal pprev = 0m;
         bool hasPrev = false;
-        if (prevSeasonId.HasValue)
+        if (!isGoal)
         {
-            var prevUserMatches = await _db.UserMatches
-                .Include(um => um.Match)
-                .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value
-                             && um.Match!.CompletionType != CompletionType.None)
-                .ToListAsync();
-            if (prevUserMatches.Count > 0)
+            var prevSeasonId = await _db.UserMatches
+                .Where(um => um.UserId == userId && um.SeasonId < currentSeasonId)
+                .OrderByDescending(um => um.SeasonId)
+                .Select(um => (int?)um.SeasonId)
+                .FirstOrDefaultAsync();
+
+            if (prevSeasonId.HasValue)
             {
-                var umIds = prevUserMatches.Select(um => um.Id).ToList();
-                var withEvents = await CountUserMatchesWithEventAsync(umIds, kind);
-                if (withEvents > 0)
+                var prevUserMatches = await _db.UserMatches
+                    .Include(um => um.Match)
+                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value
+                                 && um.Match!.CompletionType != CompletionType.None)
+                    .ToListAsync();
+                if (prevUserMatches.Count > 0)
                 {
-                    pprev = (decimal)withEvents / prevUserMatches.Count;
-                    hasPrev = true;
+                    var umIds = prevUserMatches.Select(um => um.Id).ToList();
+                    var withEvents = await CountUserMatchesWithEventAsync(umIds, kind);
+                    if (withEvents > 0)
+                    {
+                        pprev = (decimal)withEvents / prevUserMatches.Count;
+                        hasPrev = true;
+                    }
                 }
             }
         }
@@ -473,9 +516,15 @@ public class BettingOddsService : IBettingOddsService
         var targetMatch = await _db.Matches.AsNoTracking().FirstAsync(m => m.Id == matchId);
         var currentSeasonId = targetMatch.SeasonId;
 
-        var last10Ids = (await _db.UserMatches
+        bool goalKind = kind == UserEventKind.Goal;
+
+        var last10Query = _db.UserMatches
             .Include(um => um.Match)
-            .Where(um => um.UserId == userId && um.Match!.CompletionType != CompletionType.None)
+            .Where(um => um.UserId == userId && um.Match!.CompletionType != CompletionType.None);
+        if (goalKind)
+            last10Query = last10Query.Where(um => um.SeasonId == currentSeasonId);
+
+        var last10Ids = (await last10Query
             .OrderByDescending(um => um.Match!.MatchDate)
             .Take(10)
             .ToListAsync()).Select(um => um.Id).ToList();
@@ -485,23 +534,26 @@ public class BettingOddsService : IBettingOddsService
             .Where(um => um.UserId == userId && um.SeasonId == currentSeasonId && um.Match!.CompletionType != CompletionType.None)
             .ToListAsync()).Select(um => um.Id).ToList();
 
-        var prevSeasonId = await _db.UserMatches
-            .Where(um => um.UserId == userId && um.SeasonId < currentSeasonId)
-            .OrderByDescending(um => um.SeasonId)
-            .Select(um => (int?)um.SeasonId)
-            .FirstOrDefaultAsync();
+        List<int> prevIds = [];
+        if (!goalKind)
+        {
+            var prevSeasonId = await _db.UserMatches
+                .Where(um => um.UserId == userId && um.SeasonId < currentSeasonId)
+                .OrderByDescending(um => um.SeasonId)
+                .Select(um => (int?)um.SeasonId)
+                .FirstOrDefaultAsync();
 
-        var prevIds = new List<int>();
-        if (prevSeasonId.HasValue)
-            prevIds = (await _db.UserMatches
-                .Include(um => um.Match)
-                .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value && um.Match!.CompletionType != CompletionType.None)
-                .ToListAsync()).Select(um => um.Id).ToList();
+            if (prevSeasonId.HasValue)
+                prevIds = (await _db.UserMatches
+                    .Include(um => um.Match)
+                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value && um.Match!.CompletionType != CompletionType.None)
+                    .ToListAsync()).Select(um => um.Id).ToList();
+        }
 
         var last10 = await GetPerMatchCountsAsync(last10Ids, kind);
         var curr = await GetPerMatchCountsAsync(currIds, kind);
         var prev = await GetPerMatchCountsAsync(prevIds, kind);
-        return new UserEventCounts(last10, curr, prev, prev.Any(c => c > 0));
+        return new UserEventCounts(last10, curr, prev, !goalKind && prev.Any(c => c > 0));
     }
 
     private Task<List<int>> GetPerMatchCountsAsync(List<int> userMatchIds, UserEventKind kind) =>
