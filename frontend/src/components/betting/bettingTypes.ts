@@ -11,6 +11,7 @@ export interface DraftLeg {
     odds: number
     occasions: number
     minOccasions: number
+    maxOccasions: number
 }
 
 export const teamOutcomeTypes: ApiBetType[] = ['TeamWin', 'TeamWinOrDraw', 'TeamDraw']

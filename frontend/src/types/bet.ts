@@ -18,6 +18,7 @@ export interface UserOddsDto {
     odds: number
     minOccasions: number
     effectiveOdds: number
+    maxOccasions: number
 }
 
 export interface MatchOddsDto {

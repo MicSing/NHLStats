@@ -133,14 +133,32 @@ public class BettingOddsService : IBettingOddsService
             ComputeOdds(ComputeProbabilityForOccasions(c, n), n == 1 ? AppMargin : OccasionsMargin);
 
         var odds = OddsForN(counts, occasions);
-        if (odds >= 1m) return new OccasionsOddsDto(occasions, odds);
-
-        for (int n = occasions + 1; n <= 30; n++)
+        int effectiveN = occasions;
+        decimal effectiveOdds = odds;
+        if (odds < 1m)
         {
-            var bumped = OddsForN(counts, n);
-            if (bumped >= 1m) return new OccasionsOddsDto(n, bumped);
+            bool found = false;
+            for (int n = occasions + 1; n <= 30; n++)
+            {
+                var bumped = OddsForN(counts, n);
+                if (bumped >= 1m) { effectiveN = n; effectiveOdds = bumped; found = true; break; }
+            }
+            if (!found) return null;
         }
-        return null;
+
+        if (ComputeProbabilityForOccasions(counts, effectiveN) < BettingConstants.MinBettableProbability)
+            return null;
+
+        int maxN = effectiveN;
+        for (int n = effectiveN + 1; n <= 30; n++)
+        {
+            if (ComputeProbabilityForOccasions(counts, n) >= BettingConstants.MinBettableProbability)
+                maxN = n;
+            else
+                break;
+        }
+
+        return new OccasionsOddsDto(effectiveN, effectiveOdds, maxN);
     }
 
     public async Task<MatchOddsDto?> GetMatchOddsAsync(int matchId)
@@ -169,6 +187,11 @@ public class BettingOddsService : IBettingOddsService
             var drawRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.Draw);
             var home1XRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == match.HomeTeamId);
             var away1XRow = matchOddsRows.FirstOrDefault(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == match.AwayTeamId);
+            if (homeRow?.Probability < BettingConstants.MinBettableProbability) homeRow = null;
+            if (awayRow?.Probability < BettingConstants.MinBettableProbability) awayRow = null;
+            if (drawRow?.Probability < BettingConstants.MinBettableProbability) drawRow = null;
+            if (home1XRow?.Probability < BettingConstants.MinBettableProbability) home1XRow = null;
+            if (away1XRow?.Probability < BettingConstants.MinBettableProbability) away1XRow = null;
             if (homeRow != null && awayRow != null)
                 teamWin = new TeamWinOddsDto(
                     match.HomeTeamId, homeRow.Odds,
@@ -503,8 +526,9 @@ public class BettingOddsService : IBettingOddsService
         if (!TryGetUserEventKind(betType, out var kind)) return result;
         foreach (var o in rows.Where(o => o.BetType == betType && o.TargetId.HasValue))
         {
-            var (n, eo) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
-            result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo));
+            if (o.Probability < BettingConstants.MinBettableProbability) continue;
+            var (n, eo, maxN) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
+            result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo, maxN));
         }
         return result;
     }
@@ -612,17 +636,30 @@ public class BettingOddsService : IBettingOddsService
         return BlendUserEventProbability(pprev, data.HasPrev && pprev > 0, pcurr, plast10);
     }
 
-    private async Task<(int MinOccasions, decimal EffectiveOdds)> ResolveEffectiveOddsAsync(
+    private async Task<(int MinOccasions, decimal EffectiveOdds, int MaxOccasions)> ResolveEffectiveOddsAsync(
         int userId, int matchId, UserEventKind kind, decimal baseOdds)
     {
         var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
+
+        int minN = 1;
+        decimal effectiveOdds = baseOdds;
         for (int n = 1; n <= 30; n++)
         {
             var margin = n == 1 ? AppMargin : OccasionsMargin;
-            var odds = ComputeOdds(ComputeProbabilityForOccasions(counts, n), margin);
-            if (odds >= 1m) return (n, odds);
+            var o = ComputeOdds(ComputeProbabilityForOccasions(counts, n), margin);
+            if (o >= 1m) { minN = n; effectiveOdds = o; break; }
         }
-        return (1, baseOdds);
+
+        int maxN = minN;
+        for (int n = minN; n <= 30; n++)
+        {
+            if (ComputeProbabilityForOccasions(counts, n) >= BettingConstants.MinBettableProbability)
+                maxN = n;
+            else
+                break;
+        }
+
+        return (minN, effectiveOdds, maxN);
     }
 
     private static bool TryGetUserEventKind(OddsBetType betType, out UserEventKind kind)

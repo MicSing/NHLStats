@@ -231,7 +231,9 @@ public class BetService : IBetService
                     await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
                     occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
                 }
-                lockedOdds = occasionsResult?.Odds ?? 1.0m;
+                if (occasionsResult == null)
+                    return (null, "This selection is not available for betting.");
+                lockedOdds = occasionsResult.Odds;
             }
             else
             {
@@ -241,6 +243,8 @@ public class BetService : IBetService
                     await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
                     oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
                 }
+                if (oddsRow != null && oddsRow.Probability < BettingConstants.MinBettableProbability)
+                    return (null, "Probability too low — this selection is not available for betting.");
                 lockedOdds = oddsRow?.Odds ?? 1.0m;
             }
 

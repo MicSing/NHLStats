@@ -3,7 +3,7 @@ import type { ApiBetType, BetDto, BettingBalanceDto, CreateBetDto, MatchOddsDto 
 import type { FutureMatch } from '../types/match'
 
 const OCCASIONS_CACHE_TTL = 5 * 60 * 1000
-const occasionsCache = new Map<string, { odds: number; fetchedAt: number }>()
+const occasionsCache = new Map<string, { odds: number; maxOccasions: number; fetchedAt: number }>()
 
 export const bettingService = {
     async getBalance(): Promise<BettingBalanceDto> {
@@ -50,17 +50,17 @@ export const bettingService = {
         betType: ApiBetType,
         userId: number,
         occasions: number,
-    ): Promise<{ occasions: number; odds: number } | null> {
+    ): Promise<{ occasions: number; odds: number; maxOccasions: number } | null> {
         const cacheKey = `${matchId}:${betType}:${userId}:${occasions}`
         const cached = occasionsCache.get(cacheKey)
         if (cached && Date.now() - cached.fetchedAt < OCCASIONS_CACHE_TTL) {
-            return { occasions, odds: cached.odds }
+            return { occasions, odds: cached.odds, maxOccasions: cached.maxOccasions }
         }
         try {
-            const result = await apiClient.get<{ occasions: number; odds: number }>(
+            const result = await apiClient.get<{ occasions: number; odds: number; maxOccasions: number }>(
                 `/api/betting/matches/${matchId}/odds/occasions?betType=${betType}&userId=${userId}&occasions=${occasions}`,
             )
-            occasionsCache.set(cacheKey, { odds: result.odds, fetchedAt: Date.now() })
+            occasionsCache.set(cacheKey, { odds: result.odds, maxOccasions: result.maxOccasions, fetchedAt: Date.now() })
             return result
         } catch {
             return null

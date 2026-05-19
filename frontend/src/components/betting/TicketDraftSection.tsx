@@ -17,7 +17,7 @@ interface TicketDraftSectionProps {
     canCreate: boolean
     potentialWin: number
     maxStake?: number
-    onUpdateOccasions: (key: string, occasions: number, newOdds: number) => void
+    onUpdateOccasions: (key: string, occasions: number, newOdds: number, maxOccasions: number) => void
 }
 
 const QUICK_STAKES = [0.05, 0.1, 0.5, 1] as const
@@ -40,12 +40,12 @@ export default function TicketDraftSection({
 
     const handleOccasionsChange = async (leg: DraftLeg, newOccasions: number) => {
         if (!leg.userId) return
-        const n = Math.max(leg.minOccasions, Math.min(10, newOccasions))
+        const n = Math.max(leg.minOccasions, Math.min(leg.maxOccasions, newOccasions))
         setLoadingOccasions((prev) => ({ ...prev, [leg.key]: true }))
         try {
             const result = await bettingService.getUserEventOddsForOccasions(leg.matchId, leg.betType, leg.userId, n)
             if (result) {
-                onUpdateOccasions(leg.key, result.occasions, result.odds)
+                onUpdateOccasions(leg.key, result.occasions, result.odds, result.maxOccasions)
             }
         } finally {
             setLoadingOccasions((prev) => ({ ...prev, [leg.key]: false }))
@@ -107,7 +107,7 @@ export default function TicketDraftSection({
                                         <input
                                             type="number"
                                             min={leg.minOccasions}
-                                            max={10}
+                                            max={leg.maxOccasions}
                                             value={leg.occasions}
                                             disabled={isLoading}
                                             onChange={(e) => {

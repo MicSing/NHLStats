@@ -90,12 +90,12 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
         setDraftLegs((prev) => [...prev, { ...leg, occasions, key }])
     }
 
-    const updateLegOccasions = (key: string, occasions: number, newOdds: number) => {
+    const updateLegOccasions = (key: string, occasions: number, newOdds: number, maxOccasions: number) => {
         setDraftLegs((prev) =>
             prev.map((l) => {
                 if (l.key !== key) return l
                 const newKey = legKey(l.matchId, l.betType, l.userId ?? l.teamId ?? null, occasions)
-                return { ...l, occasions, odds: newOdds, key: newKey }
+                return { ...l, occasions, odds: newOdds, maxOccasions, key: newKey }
             }),
         )
     }

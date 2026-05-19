@@ -232,6 +232,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 odds: displayOdds,
                                                 occasions,
                                                 minOccasions: occasions,
+                                                maxOccasions: entry?.maxOccasions ?? occasions,
                                             })
                                         }
                                     />
@@ -272,6 +273,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 odds: displayOdds,
                                                 occasions,
                                                 minOccasions: occasions,
+                                                maxOccasions: entry?.maxOccasions ?? occasions,
                                             })
                                         }
                                     />
@@ -314,6 +316,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 odds: displayOdds,
                                                 occasions,
                                                 minOccasions: occasions,
+                                                maxOccasions: entry?.maxOccasions ?? occasions,
                                             })
                                         }
                                     />
@@ -357,6 +360,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                                 odds: displayOdds,
                                                 occasions,
                                                 minOccasions: occasions,
+                                                maxOccasions: entry?.maxOccasions ?? occasions,
                                             })
                                         }
                                     />
