@@ -1,4 +1,4 @@
-import { Trophy, Skull, Hockey, FlagBanner } from '@phosphor-icons/react'
+import { TrophyIcon, SkullIcon, HockeyIcon, FlagBannerIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { WeekSummary } from './statsTypes'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
@@ -8,7 +8,7 @@ export default function WeekCard({ variant, week }: { variant: 'best' | 'worst';
     const isBest = variant === 'best'
     const borderColor = isBest ? 'border-l-success' : 'border-l-danger'
     const labelColor = isBest ? 'text-success' : 'text-danger'
-    const Icon = isBest ? Trophy : Skull
+    const Icon = isBest ? TrophyIcon : SkullIcon
     const label = isBest ? t('userStats.bestWeek') : t('userStats.worstWeek')
 
     if (!week) {
@@ -58,11 +58,11 @@ export default function WeekCard({ variant, week }: { variant: 'best' | 'worst';
                 <span className="text-success font-bold text-lg">+{week.totalPlus}</span>
                 <span className="text-danger font-bold text-lg">−{week.totalMinus}</span>
                 <span className="flex items-center gap-1 text-text-muted font-bold text-lg">
-                    <Hockey size={18} />
+                    <HockeyIcon size={18} />
                     {week.goalCount}
                 </span>
                 <span className="flex items-center gap-1 text-text-muted font-bold text-lg">
-                    <FlagBanner size={18} />
+                    <FlagBannerIcon size={18} />
                     {week.penaltyCount}
                 </span>
             </div>

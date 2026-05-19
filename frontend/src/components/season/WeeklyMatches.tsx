@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CaretDown, ArrowsClockwise, PencilSimple, Ticket } from '@phosphor-icons/react'
+import { CaretDownIcon, ArrowsClockwiseIcon, PencilSimpleIcon, TicketIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { WeekGroup } from '../../types/stats'
 import type { Match } from '../../types/match'
@@ -170,7 +170,7 @@ export default function WeeklyMatches({
                                                     src={homeLogo}
                                                     alt={m.homeTeamShortName ?? ''}
                                                     className="w-7 h-7 object-contain flex-shrink-0"
-                                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                    onError={(e) => { ; (e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
                                                 <span className={`font-bold text-sm ${homeWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.homeTeamShortName}
@@ -200,9 +200,9 @@ export default function WeeklyMatches({
                                                     src={awayLogo}
                                                     alt={m.awayTeamShortName ?? ''}
                                                     className="w-7 h-7 object-contain flex-shrink-0"
-                                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                    onError={(e) => { ; (e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
-                                                <CaretDown
+                                                <CaretDownIcon
                                                     size={16}
                                                     aria-hidden="true"
                                                     className={`text-text-muted group-hover:text-text transition-all flex-shrink-0 duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -228,7 +228,7 @@ export default function WeeklyMatches({
                                                         to={`/betting?tab=tickets&seasonId=${seasonId}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                     >
-                                                        <Ticket size={12} />
+                                                        <TicketIcon size={12} />
                                                         <span>{t('season.viewTickets')}</span>
                                                     </Link>
                                                     {isAdmin && (
@@ -240,7 +240,7 @@ export default function WeeklyMatches({
                                                                     disabled={reEvaluatingMatchId === m.matchId}
                                                                     className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
                                                                 >
-                                                                    <ArrowsClockwise size={12} />
+                                                                    <ArrowsClockwiseIcon size={12} />
                                                                     <span>{reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}</span>
                                                                 </button>
                                                             )}
@@ -248,7 +248,7 @@ export default function WeeklyMatches({
                                                                 to={`/seasons/${seasonId}/matches/${m.matchId}`}
                                                                 className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                             >
-                                                                <PencilSimple size={12} />
+                                                                <PencilSimpleIcon size={12} />
                                                                 <span>{t('season.editMatch')}</span>
                                                             </Link>
                                                         </div>

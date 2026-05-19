@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarBlank } from '@phosphor-icons/react'
+import { CalendarBlankIcon } from '@phosphor-icons/react'
 import type { Match, UpdateMatchDto } from '../types/match'
 import { CompletionType } from '../types/match'
 import apiClient from '../services/apiClient'
@@ -183,7 +183,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                                 </select>
 
                                 <div className="relative flex items-center">
-                                    <CalendarBlank
+                                    <CalendarBlankIcon
                                         size={16}
                                         className="absolute left-3 text-text-muted pointer-events-none"
                                     />

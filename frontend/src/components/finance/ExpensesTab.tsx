@@ -9,7 +9,7 @@ import SearchInput from '../SearchInput'
 import Pagination from '../Pagination'
 import useTable from '../../hooks/useTable'
 import { useToast } from '../../context/ToastContext'
-import { Pencil, Trash } from '@phosphor-icons/react'
+import { PencilIcon, TrashIcon } from '@phosphor-icons/react'
 
 interface Props {
     addOpen?: boolean
@@ -152,14 +152,14 @@ export default function ExpensesTab({ addOpen, onAddClose }: Props) {
                                             className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"
                                             title={t('common.edit')}
                                         >
-                                            <Pencil size={16} />
+                                            <PencilIcon size={16} />
                                         </button>
                                         <button
                                             onClick={() => void handleDelete(expense.id)}
                                             className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded transition-colors"
                                             title={t('common.delete')}
                                         >
-                                            <Trash size={16} />
+                                            <TrashIcon size={16} />
                                         </button>
                                     </div>
                                 </td>

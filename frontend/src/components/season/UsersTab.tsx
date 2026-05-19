@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Trash } from '@phosphor-icons/react'
+import { TrashIcon } from '@phosphor-icons/react'
 import type { Season, SeasonDetail } from '../../types/season'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
@@ -73,7 +73,7 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                                             className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
                                             title={t('common.remove')}
                                         >
-                                            <Trash size={15} />
+                                            <TrashIcon size={15} />
                                         </button>
                                     </td>
                                 </tr>

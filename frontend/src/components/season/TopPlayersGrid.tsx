@@ -1,4 +1,4 @@
-import { Star, Lightning, Shield, WarningOctagon } from '@phosphor-icons/react'
+import { StarIcon, LightningIcon, ShieldIcon, WarningOctagonIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { TopRosterPlayer } from '../../types/stats'
 
@@ -19,7 +19,7 @@ export default function TopPlayersGrid({ topScorer, topPenalized, topPpScorer, t
             {topScorer && (
                 <div className="bg-surface border border-border rounded-lg p-5 flex flex-col justify-between shadow-card relative overflow-hidden group">
                     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Star size={96} weight="fill" />
+                        <StarIcon size={96} weight="fill" />
                     </div>
                     <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-4 relative z-10">{t('season.topScorer')}</h3>
                     <p className="text-base font-bold leading-tight mb-2 relative z-10">
@@ -33,7 +33,7 @@ export default function TopPlayersGrid({ topScorer, topPenalized, topPpScorer, t
             {topPpScorer && (
                 <div className="bg-surface border border-border rounded-lg p-5 flex flex-col justify-between shadow-card relative overflow-hidden group">
                     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Lightning size={96} weight="fill" />
+                        <LightningIcon size={96} weight="fill" />
                     </div>
                     <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-4 relative z-10">{t('season.topPowerPlayScorer')}</h3>
                     <p className="text-base font-bold leading-tight mb-2 relative z-10">
@@ -47,7 +47,7 @@ export default function TopPlayersGrid({ topScorer, topPenalized, topPpScorer, t
             {topShScorer && (
                 <div className="bg-surface border border-border rounded-lg p-5 flex flex-col justify-between shadow-card relative overflow-hidden group">
                     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                        <Shield size={96} weight="fill" />
+                        <ShieldIcon size={96} weight="fill" />
                     </div>
                     <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-4 relative z-10">{t('season.topShortHandedScorer')}</h3>
                     <p className="text-base font-bold leading-tight mb-2 relative z-10">
@@ -61,7 +61,7 @@ export default function TopPlayersGrid({ topScorer, topPenalized, topPpScorer, t
             {topPenalized && (
                 <div className="bg-surface border border-border rounded-lg p-5 flex flex-col justify-between shadow-card relative overflow-hidden group">
                     <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-danger">
-                        <WarningOctagon size={96} weight="fill" />
+                        <WarningOctagonIcon size={96} weight="fill" />
                     </div>
                     <h3 className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-4 relative z-10">{t('season.mostPenalized')}</h3>
                     <p className="text-base font-bold leading-tight mb-2 relative z-10">

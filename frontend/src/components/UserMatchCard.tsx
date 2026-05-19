@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash, X, Plus } from '@phosphor-icons/react'
+import { TrashIcon, XIcon, PlusIcon } from '@phosphor-icons/react'
 import type {
     UserMatch,
     UserMatchPoint,
@@ -332,7 +332,7 @@ export default function UserMatchCard({
                             aria-label={t('userMatchCard.deleteUserMatch')}
                             className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
                         >
-                            <Trash size={18} />
+                            <TrashIcon size={18} />
                         </button>
                     )}
                 </div>
@@ -381,7 +381,7 @@ export default function UserMatchCard({
                                                 onClick={() => void handleDeleteGoal(g.ids)}
                                                 className="ml-0.5 text-text-muted hover:text-danger transition-colors"
                                             >
-                                                <X size={13} />
+                                                <XIcon size={13} />
                                             </button>
                                         )}
                                     </span>
@@ -420,7 +420,7 @@ export default function UserMatchCard({
                                         className="btn-primary flex items-center gap-1.5 text-sm px-3 py-1.5"
                                         onClick={() => void handleAddGoal('Regular')}
                                     >
-                                        <Plus size={15} weight="bold" />
+                                        <PlusIcon size={15} weight="bold" />
                                         {t('userMatchCard.addGoal')}
                                     </button>
                                     <button
@@ -466,7 +466,7 @@ export default function UserMatchCard({
                                                 onClick={() => void handleDeletePenalty(p.ids)}
                                                 className="ml-0.5 text-text-muted hover:text-danger transition-colors"
                                             >
-                                                <X size={13} />
+                                                <XIcon size={13} />
                                             </button>
                                         )}
                                     </span>
@@ -507,7 +507,7 @@ export default function UserMatchCard({
                                     className="btn-warning flex items-center gap-1.5 text-sm px-3 py-1.5"
                                     onClick={() => void handleAddPenalty()}
                                 >
-                                    <Plus size={15} weight="bold" />
+                                    <PlusIcon size={15} weight="bold" />
                                     {t('userMatchCard.addPenalty')}
                                 </button>
                             </div>
@@ -544,7 +544,7 @@ export default function UserMatchCard({
                                                 onClick={() => void handleDeletePointsByReason(g.ids)}
                                                 className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
                                             >
-                                                <X size={13} />
+                                                <XIcon size={13} />
                                             </button>
                                         )}
                                     </span>
@@ -604,7 +604,7 @@ export default function UserMatchCard({
                                             void handleAddPoint(pointForm.pointReasonId, pointForm.count)
                                         }
                                     >
-                                        <Plus size={15} weight="bold" />
+                                        <PlusIcon size={15} weight="bold" />
                                         {t(`common.${pointForm.pointType.toLowerCase()}`)}
                                     </button>
                                 </div>

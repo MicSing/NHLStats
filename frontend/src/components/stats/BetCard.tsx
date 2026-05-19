@@ -1,4 +1,4 @@
-import { Trophy, Skull } from '@phosphor-icons/react'
+import { TrophyIcon, SkullIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { BetDto, BetLegDto } from '../../types/bet'
 
@@ -24,7 +24,7 @@ export default function BetCard({ variant, bet }: { variant: 'best' | 'worst'; b
     const isBest = variant === 'best'
     const borderColor = isBest ? 'border-l-success' : 'border-l-danger'
     const labelColor = isBest ? 'text-success' : 'text-danger'
-    const Icon = isBest ? Trophy : Skull
+    const Icon = isBest ? TrophyIcon : SkullIcon
     const label = isBest ? t('userStats.bestBet') : t('userStats.worstBet')
 
     if (!bet) {

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { PencilSimple, Trash } from '@phosphor-icons/react'
+import { PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react'
 
 export function Tab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
     return (
@@ -61,7 +61,7 @@ export function ActionCell({
                         className="p-1.5 text-text-muted hover:text-text hover:bg-border rounded transition-colors"
                         title={editTitle}
                     >
-                        <PencilSimple size={16} />
+                        <PencilSimpleIcon size={16} />
                     </button>
                 )}
                 <button
@@ -69,7 +69,7 @@ export function ActionCell({
                     className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                     title={deleteTitle}
                 >
-                    <Trash size={16} />
+                    <TrashIcon size={16} />
                 </button>
             </div>
         </td>

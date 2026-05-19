@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CaretDown, Key, SignOut } from '@phosphor-icons/react'
+import { CaretDownIcon, KeyIcon, SignOutIcon } from '@phosphor-icons/react'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -31,7 +31,7 @@ function AccordionGroup({
                     <GroupIcon size={14} />
                     <span>{t(group.labelKey)}</span>
                 </div>
-                <CaretDown
+                <CaretDownIcon
                     size={14}
                     className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                 />
@@ -228,14 +228,14 @@ export default function PublicLayout() {
                                 className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
                                 title={t('common.changePassword')}
                             >
-                                <Key size={14} />
+                                <KeyIcon size={14} />
                             </NavLink>
                             <button
                                 onClick={() => { logout(); closeSidebar() }}
                                 className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
                                 title={t('layout.logout')}
                             >
-                                <SignOut size={14} />
+                                <SignOutIcon size={14} />
                             </button>
                         </div>
                     </div>
