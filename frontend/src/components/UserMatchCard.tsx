@@ -417,10 +417,9 @@ export default function UserMatchCard({
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
-                                        className="btn-primary flex items-center gap-1.5 text-sm px-3 py-1.5"
+                                        className="btn-primary text-sm px-3 py-1.5"
                                         onClick={() => void handleAddGoal('Regular')}
                                     >
-                                        <PlusIcon size={15} weight="bold" />
                                         {t('userMatchCard.addGoal')}
                                     </button>
                                     <button
@@ -504,10 +503,9 @@ export default function UserMatchCard({
                                 />
                                 <button
                                     type="button"
-                                    className="btn-warning flex items-center gap-1.5 text-sm px-3 py-1.5"
+                                    className="btn-warning text-sm px-3 py-1.5"
                                     onClick={() => void handleAddPenalty()}
                                 >
-                                    <PlusIcon size={15} weight="bold" />
                                     {t('userMatchCard.addPenalty')}
                                 </button>
                             </div>
