@@ -163,7 +163,7 @@ export default function WeeklyMatches({
                                         >
                                             {/* Home team */}
                                             <div className={`flex items-center gap-3 w-[30%] ${!homeWins && isCompleted ? 'opacity-60' : ''}`}>
-                                                <span className="text-xs font-bold text-text-muted tabular-nums w-8 flex-shrink-0">
+                                                <span className="hidden sm:block text-xs font-bold text-text-muted tabular-nums w-8 flex-shrink-0">
                                                     {matchNumber != null ? `#${matchNumber}` : ''}
                                                 </span>
                                                 <img
@@ -179,11 +179,11 @@ export default function WeeklyMatches({
 
                                             {/* Score */}
                                             <div className="flex items-center justify-center gap-3 w-[40%]">
-                                                <span className={`text-2xl font-bold tabular-nums ${homeWins ? 'text-text' : 'text-text-muted'}`}>
+                                                <span className={`text-xl sm:text-2xl font-bold tabular-nums ${homeWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.homeScore}
                                                 </span>
                                                 <span className="text-text-muted/50">—</span>
-                                                <span className={`text-2xl font-bold tabular-nums ${awayWins ? 'text-text' : 'text-text-muted'}`}>
+                                                <span className={`text-xl sm:text-2xl font-bold tabular-nums ${awayWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.awayScore}
                                                 </span>
                                                 {completionType !== CompletionType.None && (
