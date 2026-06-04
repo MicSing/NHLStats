@@ -65,6 +65,8 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
         match.matchDate ? match.matchDate.split('T')[0] : '',
     )
     const [saving, setSaving] = useState(false)
+    const [saved, setSaved] = useState(false)
+    const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastSavedCompletionTypeRef = useRef(normalizeCompletionType(match.completionType))
     const isFirstRender = useRef(true)
 
@@ -82,6 +84,10 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
     const matchDateRef = useRef(matchDate)
     completionTypeRef.current = completionType
     matchDateRef.current = matchDate
+
+    useEffect(() => () => {
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }, [])
 
     // Only sync from parent prop when not actively saving — prevents overwriting in-progress clicks
     useEffect(() => {
@@ -114,6 +120,9 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
             if (!wasFinished && nowFinished) {
                 onMatchFinished?.(scores.home, scores.away)
             }
+            if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+            setSaved(true)
+            savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
         } finally {
             setSaving(false)
         }
@@ -249,11 +258,15 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                                 </div>
                             </div>
 
-                            {saving && (
+                            {saving ? (
                                 <span className="text-xs text-text-muted animate-pulse">
                                     {t('common.saving')}
                                 </span>
-                            )}
+                            ) : saved ? (
+                                <span className="text-xs text-green-500">
+                                    {t('common.saved')}
+                                </span>
+                            ) : null}
                         </>
                     ) : (
                         <>
