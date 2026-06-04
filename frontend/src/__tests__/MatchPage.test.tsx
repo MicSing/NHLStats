@@ -40,9 +40,9 @@ describe('MatchPage', () => {
         // Team names are always shown in the header
         expect(await screen.findByText('Boston Bruins')).toBeInTheDocument()
         expect(screen.getByText('Edmonton Oilers')).toBeInTheDocument()
-        // In auth mode, score is rendered as editable number inputs
-        expect(screen.getByRole('spinbutton', { name: /home score/i })).toHaveValue(3)
-        expect(screen.getByRole('spinbutton', { name: /away score/i })).toHaveValue(2)
+        // In auth mode, score is rendered as a label with +/− buttons
+        expect(screen.getByLabelText(/increase home score/i)).toBeInTheDocument()
+        expect(screen.getByLabelText(/increase away score/i)).toBeInTheDocument()
     })
 
     test('renders all user entries for match', async () => {

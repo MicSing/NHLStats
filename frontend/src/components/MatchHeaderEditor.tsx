@@ -67,12 +67,28 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
     const [saving, setSaving] = useState(false)
     const lastSavedCompletionTypeRef = useRef(normalizeCompletionType(match.completionType))
     const isFirstRender = useRef(true)
-    const skipNextSave = useRef(false)
 
+    // Keep refs in sync so score click handlers always read latest values
+    const homeScoreRef = useRef(homeScore)
+    const awayScoreRef = useRef(awayScore)
+    homeScoreRef.current = homeScore
+    awayScoreRef.current = awayScore
+
+    // Save-queue refs: guarantee rapid clicks always persist the final state
+    const pendingSaveRef = useRef<{ home: number; away: number } | null>(null)
+    const saveInFlightRef = useRef(false)
+    // Stash latest ct/date for queue drain (score saves use values from click time)
+    const completionTypeRef = useRef(completionType)
+    const matchDateRef = useRef(matchDate)
+    completionTypeRef.current = completionType
+    matchDateRef.current = matchDate
+
+    // Only sync from parent prop when not actively saving — prevents overwriting in-progress clicks
     useEffect(() => {
-        skipNextSave.current = true
-        setHomeScore(match.homeScore)
-        setAwayScore(match.awayScore)
+        if (!saveInFlightRef.current) {
+            setHomeScore(match.homeScore)
+            setAwayScore(match.awayScore)
+        }
     }, [match.homeScore, match.awayScore])
 
     const handleSave = async (scores: { home: number; away: number }, ct: CompletionType, date: string) => {
@@ -103,22 +119,47 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
         }
     }
 
+    // Queue-draining save: if a save is in-flight, stores the latest scores and
+    // re-saves after the in-flight one completes — so the final value is always persisted.
+    const triggerScoreSave = (scores: { home: number; away: number }) => {
+        pendingSaveRef.current = scores
+        if (saveInFlightRef.current) return
+
+        const drain = async () => {
+            while (pendingSaveRef.current) {
+                const toSave = pendingSaveRef.current
+                pendingSaveRef.current = null
+                saveInFlightRef.current = true
+                try {
+                    await handleSave(toSave, completionTypeRef.current, matchDateRef.current)
+                } finally {
+                    saveInFlightRef.current = false
+                }
+            }
+        }
+        void drain()
+    }
+
+    const handleScoreChange = (field: 'home' | 'away', delta: number) => {
+        const newHome = field === 'home' ? Math.max(0, homeScoreRef.current + delta) : homeScoreRef.current
+        const newAway = field === 'away' ? Math.max(0, awayScoreRef.current + delta) : awayScoreRef.current
+        setHomeScore(newHome)
+        setAwayScore(newAway)
+        triggerScoreSave({ home: newHome, away: newAway })
+    }
+
+    // Debounce only for completionType / matchDate changes (dropdown + date picker)
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false
-            skipNextSave.current = false
-            return
-        }
-        if (skipNextSave.current) {
-            skipNextSave.current = false
             return
         }
         if (!isAuth) return
         const timer = setTimeout(() => {
-            void handleSave({ home: homeScore, away: awayScore }, completionType, matchDate)
+            void handleSave({ home: homeScoreRef.current, away: awayScoreRef.current }, completionType, matchDate)
         }, 600)
         return () => clearTimeout(timer)
-    }, [homeScore, awayScore, completionType, matchDate]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [completionType, matchDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleCompletionTypeChange = (newType: CompletionType) => {
         setCompletionType(newType)
@@ -127,10 +168,9 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
         }
     }
 
-    const scoreInputClass =
-        'w-16 bg-transparent text-center text-4xl font-bold focus:outline-none ' +
-        'hover:bg-surface/50 focus:bg-surface rounded-lg p-1 transition-colors ' +
-        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+    const scoreButtonClass =
+        'w-8 h-8 rounded-lg bg-border hover:bg-surface-alt flex items-center justify-center ' +
+        'text-xl font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
 
     return (
         <div className="card p-6 md:p-8 mb-6">
@@ -149,23 +189,35 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                     {isAuth ? (
                         <>
                             <div className="flex items-center gap-4">
-                                <input
-                                    type="number"
-                                    aria-label={t('match.homeScore')}
-                                    min={0}
-                                    value={homeScore}
-                                    onChange={(e) => setHomeScore(Number(e.target.value))}
-                                    className={scoreInputClass}
-                                />
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        aria-label={t('match.decrementHomeScore')}
+                                        onClick={() => handleScoreChange('home', -1)}
+                                        disabled={homeScore === 0}
+                                        className={scoreButtonClass}
+                                    >−</button>
+                                    <span className="w-10 text-center text-4xl font-bold tabular-nums">{homeScore}</span>
+                                    <button
+                                        aria-label={t('match.incrementHomeScore')}
+                                        onClick={() => handleScoreChange('home', 1)}
+                                        className={scoreButtonClass}
+                                    >+</button>
+                                </div>
                                 <span className="text-3xl text-text-muted font-light select-none">—</span>
-                                <input
-                                    type="number"
-                                    aria-label={t('match.awayScore')}
-                                    min={0}
-                                    value={awayScore}
-                                    onChange={(e) => setAwayScore(Number(e.target.value))}
-                                    className={scoreInputClass}
-                                />
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        aria-label={t('match.decrementAwayScore')}
+                                        onClick={() => handleScoreChange('away', -1)}
+                                        disabled={awayScore === 0}
+                                        className={scoreButtonClass}
+                                    >−</button>
+                                    <span className="w-10 text-center text-4xl font-bold tabular-nums">{awayScore}</span>
+                                    <button
+                                        aria-label={t('match.incrementAwayScore')}
+                                        onClick={() => handleScoreChange('away', 1)}
+                                        className={scoreButtonClass}
+                                    >+</button>
+                                </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center gap-2">

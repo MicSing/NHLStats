@@ -218,7 +218,11 @@
         "homeScore": "skóre domáci",
         "awayScore": "skóre hostia",
         "completionType": "typ ukončenia",
-        "matchDate": "dátum zápasu"
+        "matchDate": "dátum zápasu",
+        "decrementHomeScore": "znížiť skóre domáci",
+        "incrementHomeScore": "zvýšiť skóre domáci",
+        "decrementAwayScore": "znížiť skóre hostia",
+        "incrementAwayScore": "zvýšiť skóre hostia"
     },
     "earnings": {
         "title": "Financie",

@@ -218,7 +218,11 @@
         "homeScore": "home score",
         "awayScore": "away score",
         "completionType": "completion type",
-        "matchDate": "match date"
+        "matchDate": "match date",
+        "decrementHomeScore": "decrease home score",
+        "incrementHomeScore": "increase home score",
+        "decrementAwayScore": "decrease away score",
+        "incrementAwayScore": "increase away score"
     },
     "earnings": {
         "title": "Finances",
