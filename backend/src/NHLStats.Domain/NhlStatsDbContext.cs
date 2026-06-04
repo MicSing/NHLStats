@@ -251,6 +251,9 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             // Neutral reasons
             new PointReason{ Id=17, Name="Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
             new PointReason{ Id=18, Name="Secondary Shorthanded Goal", PointType=PointType.Neutral, IsActive=true},
+            // Negative-only reasons (no positive counterpart)
+            new PointReason{ Id=19, Name="Offside", PointType=PointType.Negative, IsActive=true},
+            new PointReason{ Id=20, Name="Icing",   PointType=PointType.Negative, IsActive=true},
         };
 
         modelBuilder.Entity<PointReason>().HasData(pointReasons);

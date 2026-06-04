@@ -325,7 +325,9 @@
             "scoring 10 goals": "Súper strelil 10 alebo viac gólov proti tímu vášho hráča zo zostavy v jednom zápase.",
             "last minute action": "Váš hráč zo zostavy spôsobil trest v poslednej minúte tretiny, keď bolo skóre vyrovnané alebo súper bol do jedného gólu od vyrovnania — čím dal súperovi nebezpečnú presilovku na konci.",
             "own goal": "Váš hráč zo zostavy omylom strelil gól do vlastnej siete.",
-            "error in defense": "Váš hráč zo zostavy urobil chybu v obrane, ktorá priamo viedla ku gólu. Chyba musí byť potvrdená súhlasom všetkých ostatných hráčov a musí byť jasné, že hráč sa mohol rozhodnúť inak."
+            "error in defense": "Váš hráč zo zostavy urobil chybu v obrane, ktorá priamo viedla ku gólu. Chyba musí byť potvrdená súhlasom všetkých ostatných hráčov a musí byť jasné, že hráč sa mohol rozhodnúť inak.",
+            "offside": "Tím vášho hráča zo zostavy spáchal tri alebo viac offsidov v zápase. Za každé tri ofsajdy dostáva hráč jeden negatívny bod.",
+            "icing": "Tím vášho hráča zo zostavy spáchal tri alebo viac zakazaných uvoľnení v zápase. Za každé tri zakazané uvoľnenia dostáva hráč jeden negatívny bod."
         },
         "positiveDescriptions": {
             "penalty": "Váš hráč zo zostavy bol faulovaný súperovým hráčom, čo viedlo k presilovke, a tím vášho hráča počas nej skóroval gól.",

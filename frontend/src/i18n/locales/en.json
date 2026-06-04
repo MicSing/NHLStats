@@ -325,7 +325,9 @@
             "scoring 10 goals": "The opposing team scored 10 or more goals against your roster player's team in a single match.",
             "last minute action": "Your roster player caused a penalty in the final minute of a period while the score was tied or the opponent was within one goal of equalising — handing the opponent a dangerous last-minute powerplay.",
             "own goal": "Your roster player accidentally scored into their own net.",
-            "error in defense": "Your roster player made a defensive mistake that directly led to a goal. The error must be confirmed by the agreement of all other players, and it must be clear the player could have made a different decision."
+            "error in defense": "Your roster player made a defensive mistake that directly led to a goal. The error must be confirmed by the agreement of all other players, and it must be clear the player could have made a different decision.",
+            "offside": "Your roster player's team committed three or more offsides in a match. For every three offsides, the player receives one negative point.",
+            "icing": "Your roster player's team committed three or more icings in a match. For every three icings, the player receives one negative point."
         },
         "positiveDescriptions": {
             "penalty": "Your roster player was fouled by an opponent's player, resulting in a powerplay, and your roster player's team scored a goal during that advantage.",
