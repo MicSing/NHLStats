@@ -202,8 +202,7 @@ public class BetService : IBetService
 
             if (userMatchIds.Contains(legDto.MatchId))
             {
-                if (legDto.BetType == BetType.TeamWinOrDraw ||
-                    legDto.BetType == BetType.TeamDraw ||
+                if (legDto.BetType == BetType.TeamDraw ||
                     legDto.BetType == BetType.UserPlusPoint ||
                     legDto.BetType == BetType.UserMinusPoint)
                     return (null, "Match participants can only bet on team win, player goals, and penalties.");

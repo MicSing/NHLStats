@@ -46,8 +46,8 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
     const homeDisabled = (isUserInMatch && !isHostingHome) || homeOdds == null || matchHasTeamOutcome || (homeOdds != null && homeOdds < 1)
     const drawDisabled = isUserInMatch || drawOdds == null || drawOdds < 1
     const awayDisabled = (isUserInMatch && !isHostingAway) || awayOdds == null || matchHasTeamOutcome || (awayOdds != null && awayOdds < 1)
-    const home1XDisabled = isUserInMatch || home1XOdds == null || matchHasTeamOutcome || (home1XOdds != null && home1XOdds < 1)
-    const away1XDisabled = isUserInMatch || away1XOdds == null || matchHasTeamOutcome || (away1XOdds != null && away1XOdds < 1)
+    const home1XDisabled = (isUserInMatch && !isHostingHome) || home1XOdds == null || matchHasTeamOutcome || (home1XOdds != null && home1XOdds < 1)
+    const away1XDisabled = (isUserInMatch && !isHostingAway) || away1XOdds == null || matchHasTeamOutcome || (away1XOdds != null && away1XOdds < 1)
     const show1X2Section = showUnavailable || !homeDisabled || !drawDisabled || !awayDisabled
     const show1XSection = showUnavailable || !home1XDisabled || !away1XDisabled
 
