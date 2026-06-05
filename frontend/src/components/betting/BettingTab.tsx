@@ -63,7 +63,7 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
     const selectedOdds = selectedMatchId != null ? oddsByMatch[selectedMatchId] ?? null : null
 
     const totalOdds = useMemo(
-        () => draftLegs.reduce((p, l) => p * l.odds, 1),
+        () => draftLegs.reduce((p, l) => Math.floor(p * l.odds * 100) / 100, 1),
         [draftLegs],
     )
 
