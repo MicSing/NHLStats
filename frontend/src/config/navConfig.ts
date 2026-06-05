@@ -22,7 +22,7 @@ export const publicNavItems: NavItem[] = [
     { to: '/dashboard', labelKey: 'nav.dashboard', icon: HouseIcon },
     { to: '/seasons', labelKey: 'nav.seasons', icon: TrophyIcon },
     { to: '/user-stats', labelKey: 'nav.playerStats', icon: ChartLineIcon },
-    { to: '/betting', labelKey: 'nav.betting', icon: TargetIcon, requiresAuth: true },
+    { to: '/betting', labelKey: 'nav.betting', icon: TargetIcon },
     { to: '/earnings', labelKey: 'nav.finances', icon: CurrencyDollarIcon },
     { to: '/rules', labelKey: 'nav.rules', icon: BookOpenIcon },
 ]
