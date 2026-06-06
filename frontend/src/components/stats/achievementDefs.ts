@@ -1,9 +1,10 @@
 export interface AchievementDef {
-    id:         string
-    levelIcons: readonly [string, string, string, string, string, string, string]
-    levelNames: readonly [string, string, string, string, string, string, string]
-    descKey:    string
-    valueLabel: string
+    id:           string
+    levelIcons:   readonly [string, string, string, string, string, string, string]
+    levelNames:   readonly [string, string, string, string, string, string, string]
+    descKey:      string
+    valueLabel:   string
+    disabledIcon?: string
 }
 
 const ICONS: readonly [string, string, string, string, string, string, string] =
@@ -12,7 +13,16 @@ const ICONS: readonly [string, string, string, string, string, string, string] =
 export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     {
         id: 'sniper',
-        levelIcons: ICONS,
+        levelIcons: [
+            '/achievements/sniper/sniper-stone.png',
+            '/achievements/sniper/sniper-bronze.png',
+            '/achievements/sniper/sniper-silver.png',
+            '/achievements/sniper/sniper-gold.png',
+            '/achievements/sniper/sniper-emerald.png',
+            '/achievements/sniper/sniper-ruby.png',
+            '/achievements/sniper/sniper-diamond.png',
+        ],
+        disabledIcon: '/achievements/sniper/sniper-disabled.png',
         levelNames: ['Shooter', 'Marksman', 'Sniper', 'Artillery', 'Executioner', 'Annihilator', 'One-Man Army'],
         descKey: 'achievements.sniper.desc',
         valueLabel: 'goals',
@@ -180,7 +190,16 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'the_bookie',
-        levelIcons: ICONS,
+        levelIcons: [
+            '/achievements/bookie/bookie-stone.png',
+            '/achievements/bookie/bookie-bronze.png',
+            '/achievements/bookie/bookie-silver.png',
+            '/achievements/bookie/bookie-gold.png',
+            '/achievements/bookie/bookie-emerald.png',
+            '/achievements/bookie/bookie-ruby.png',
+            '/achievements/bookie/bookie-diamond.png',
+        ],
+        disabledIcon: '/achievements/bookie/bookie-disabled.png',
         levelNames: ['Gambler', 'Hustler', 'Shark', 'The Bookie', 'Casino Boss', 'The House', 'Syndicate Leader'],
         descKey: 'achievements.theBookie.desc',
         valueLabel: 'wins',

@@ -39,21 +39,20 @@ interface BadgeCardProps {
 }
 
 function BadgeCard({ def, result, onClick }: BadgeCardProps) {
-    const { t } = useTranslation()
     const level = result?.level ?? 0
     const earned = level > 0
     const idx = Math.max(0, level - 1)
-    const icon = def.levelIcons[idx]
+    const icon = !earned && def.disabledIcon ? def.disabledIcon : def.levelIcons[idx]
     const name = def.levelNames[idx]
 
     return (
         <button
-            onClick={earned ? onClick : undefined}
+            onClick={onClick}
             className={[
-                'rounded-xl p-4 border border-border flex flex-col items-center gap-1.5 text-center relative w-full transition-transform',
+                'rounded-xl p-3 border border-border flex flex-col items-center gap-2 text-center relative w-full transition-transform cursor-pointer',
                 earned
-                    ? 'bg-surface hover:scale-105 cursor-pointer'
-                    : 'bg-surface opacity-35 grayscale cursor-default',
+                    ? 'bg-surface hover:scale-105'
+                    : 'bg-surface opacity-35 grayscale',
             ].join(' ')}
         >
             {!earned && (
@@ -68,16 +67,19 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
                     Lv {level}
                 </span>
             )}
-            <span className="text-3xl leading-none">{icon}</span>
+            {icon.startsWith('/') ? (
+                <img src={icon} alt={name} className="w-28 h-28 object-contain" />
+            ) : (
+                <span className="text-8xl leading-none">{icon}</span>
+            )}
             <span className="text-xs font-semibold text-text leading-tight">{name}</span>
-            <span className="text-[10px] text-text-muted leading-tight">{t(def.descKey)}</span>
         </button>
     )
 }
 
 export default function AchievementsTab({ achievements, loading }: Props) {
     const { t } = useTranslation()
-    const [selected, setSelected] = useState<{ def: (typeof ACHIEVEMENT_DEFS)[number]; result: AchievementResult } | null>(null)
+    const [selected, setSelected] = useState<{ def: (typeof ACHIEVEMENT_DEFS)[number]; result: AchievementResult | undefined } | null>(null)
 
     if (loading) {
         return (
@@ -105,16 +107,13 @@ export default function AchievementsTab({ achievements, loading }: Props) {
                         key={def.id}
                         def={def}
                         result={resultById[def.id]}
-                        onClick={() => {
-                            const r = resultById[def.id]
-                            if (r) setSelected({ def, result: r })
-                        }}
+                        onClick={() => setSelected({ def, result: resultById[def.id] })}
                     />
                 ))}
             </section>
 
             {selected && (() => {
-                const level = selected.result.level
+                const level = selected.result?.level ?? 0
                 const name = level > 0 ? selected.def.levelNames[level - 1] : selected.def.levelNames[0]
                 return (
                     <Modal
@@ -122,19 +121,21 @@ export default function AchievementsTab({ achievements, loading }: Props) {
                         onClose={() => setSelected(null)}
                     >
                         <p className="text-sm text-text-muted mb-4">{t(selected.def.descKey)}</p>
-                        {selected.result.occurrences.length === 0 ? (
-                            <p className="text-sm text-text-muted">{t('achievements.noOccurrences')}</p>
-                        ) : (
-                            <ul className="space-y-2">
-                                {selected.result.occurrences.map((occ, i) => (
-                                    <li
-                                        key={i}
-                                        className="text-sm text-text bg-bg rounded-lg px-4 py-2 border border-border"
-                                    >
-                                        {formatOccurrence(occ, selected.def.valueLabel)}
-                                    </li>
-                                ))}
-                            </ul>
+                        {selected.result && (
+                            selected.result.occurrences.length === 0 ? (
+                                <p className="text-sm text-text-muted">{t('achievements.noOccurrences')}</p>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {selected.result.occurrences.map((occ, i) => (
+                                        <li
+                                            key={i}
+                                            className="text-sm text-text bg-bg rounded-lg px-4 py-2 border border-border"
+                                        >
+                                            {formatOccurrence(occ, selected.def.valueLabel)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )
                         )}
                     </Modal>
                 )
