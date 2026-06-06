@@ -321,3 +321,25 @@ public record FinancialStatsDto(
     decimal TotalEarnings,
     IEnumerable<ExpenseDto> Expenses,
     IEnumerable<UserFinancialStatsDto> FinancesByUser);
+
+// ─── Achievement system ───────────────────────────────────────────────────────
+
+public record AchievementOccurrenceDto(
+    int?      MatchId,
+    DateTime? OccurredOn,
+    int?      WeekNumber,
+    int?      SeasonId,
+    string?   SeasonName,
+    string?   RosterPlayerName,
+    int?      Value
+);
+
+public record AchievementResultDto(
+    string                                Id,
+    bool                                  Earned,
+    IEnumerable<AchievementOccurrenceDto> Occurrences
+);
+
+public record UserAchievementsDto(
+    IEnumerable<AchievementResultDto> Achievements
+);

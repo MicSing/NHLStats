@@ -125,6 +125,7 @@ builder.Services.AddScoped<IRosterStatsService, RosterStatsService>();
 builder.Services.AddScoped<IEarningsService, EarningsService>();
 builder.Services.AddScoped<IMatchStatsService, MatchStatsService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 builder.Services.AddScoped<ISeasonEventBroadcaster, SignalRSeasonEventBroadcaster>();
 builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvider>();

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Season } from '../types/season'
 import type { User } from '../types/user'
 import type { DashboardData, MatchHistoryItem, PointReasonBreakdownItem, RosterPenalizedByUser, RosterScorerByUser, SeasonMatchHistory } from '../types/stats'
+import type { UserAchievements } from '../types/achievement'
 import { cacheService } from '../services/cacheService'
 import { bettingService } from '../services/bettingService'
 import type { BetDto } from '../types/bet'
@@ -16,9 +18,16 @@ import { flattenMatches, flattenWeeks } from '../components/stats/statsUtils'
 import MatchCard from '../components/stats/MatchCard'
 import WeekCard from '../components/stats/WeekCard'
 import BetCard from '../components/stats/BetCard'
+import AchievementsTab from '../components/stats/AchievementsTab'
+
+type Tab = 'stats' | 'achievements'
 
 export default function UserStatsPage() {
     const { t } = useTranslation()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const rawTab = searchParams.get('tab')
+    const tab: Tab = rawTab === 'achievements' ? 'achievements' : 'stats'
+    const setTab = (next: Tab) => setSearchParams((p) => { p.set('tab', next); return p }, { replace: true })
     const [seasons, setSeasons] = useState<Season[]>([])
     const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null)
     const [users, setUsers] = useState<User[]>([])
@@ -30,6 +39,8 @@ export default function UserStatsPage() {
     const [allMatchData, setAllMatchData] = useState<SeasonMatchHistory[]>([])
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
     const [allBets, setAllBets] = useState<BetDto[] | null>(null)
+    const [userAchievements, setUserAchievements] = useState<UserAchievements | null>(null)
+    const [loadingAchievements, setLoadingAchievements] = useState(false)
 
     useEffect(() => {
         cacheService
@@ -77,6 +88,18 @@ export default function UserStatsPage() {
         cacheService.getUserMatchHistory(selectedUserId)
             .then((matchHistory) => setAllMatchData(matchHistory))
             .catch(() => setAllMatchData([]))
+    }, [selectedUserId])
+
+    useEffect(() => {
+        if (selectedUserId == null) {
+            setUserAchievements(null)
+            return
+        }
+        setLoadingAchievements(true)
+        cacheService.getAchievements(selectedUserId)
+            .then(setUserAchievements)
+            .catch(() => setUserAchievements(null))
+            .finally(() => setLoadingAchievements(false))
     }, [selectedUserId])
 
     useEffect(() => {
@@ -215,7 +238,23 @@ export default function UserStatsPage() {
             {/* ── Sticky header ──────────────────────────────────────────── */}
             <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-6 py-3">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h1 className="text-lg font-semibold tracking-tight text-text">{t('userStats.title')}</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-lg font-semibold tracking-tight text-text">{t('userStats.title')}</h1>
+                        <div className="flex rounded-lg overflow-hidden border border-border text-sm">
+                            <button
+                                onClick={() => setTab('stats')}
+                                className={['px-3 py-1.5 transition-colors', tab === 'stats' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
+                            >
+                                {t('userStats.tabStats')}
+                            </button>
+                            <button
+                                onClick={() => setTab('achievements')}
+                                className={['px-3 py-1.5 transition-colors', tab === 'achievements' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
+                            >
+                                {t('userStats.tabAchievements')}
+                            </button>
+                        </div>
+                    </div>
                     <div className="flex gap-3 flex-wrap">
                         {loadingSeasons ? (
                             <span className="text-text-muted text-sm">{t('userStats.loadingSeasons')}</span>
@@ -255,6 +294,15 @@ export default function UserStatsPage() {
             </header>
 
             <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+                {tab === 'achievements' && (
+                    <AchievementsTab
+                        achievements={userAchievements?.achievements ?? []}
+                        loading={loadingAchievements}
+                    />
+                )}
+
+                {tab === 'stats' && <>
 
                 {/* ── KPI cards ──────────────────────────────────────────── */}
                 {matchData.length > 0 && (
@@ -364,6 +412,8 @@ export default function UserStatsPage() {
                         </div>
                     </section>
                 )}
+
+                </>}
 
             </main>
         </div>

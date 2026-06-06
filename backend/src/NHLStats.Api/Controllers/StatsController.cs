@@ -111,15 +111,18 @@ public class StatsController : ControllerBase
     private readonly IStatsService _stats;
     private readonly IEarningsService _earnings;
     private readonly IMatchStatsService _matchStats;
+    private readonly IAchievementService _achievements;
 
     public StatsController(
         IStatsService stats,
         IEarningsService earnings,
-        IMatchStatsService matchStats)
+        IMatchStatsService matchStats,
+        IAchievementService achievements)
     {
         _stats = stats;
         _earnings = earnings;
         _matchStats = matchStats;
+        _achievements = achievements;
     }
 
     /// <summary>GET /api/stats/earnings-by-season</summary>
@@ -194,6 +197,12 @@ public class StatsController : ControllerBase
         var result = await _stats.GetSeasonTotalsAsync();
         return Ok(result);
     }
+
+    /// <summary>GET /api/stats/users/{userId}/achievements</summary>
+    /// <remarks>Returns all 27 achievements for a user with full occurrence context.</remarks>
+    [HttpGet("users/{userId:int}/achievements")]
+    public async Task<IActionResult> GetUserAchievements(int userId)
+        => Ok(await _achievements.GetUserAchievementsAsync(userId));
 
     [HttpGet("financial-stats")]
     public async Task<IActionResult> GetFinancialStats()

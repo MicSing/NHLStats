@@ -2,6 +2,7 @@ import apiClient from './apiClient'
 import type { User } from '../types/user'
 import type { Season } from '../types/season'
 import type { DashboardData, SeasonMatchHistory, UserPointReasonBreakdown } from '../types/stats'
+import type { UserAchievements } from '../types/achievement'
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 day
 const USER_STATS_CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
@@ -23,6 +24,10 @@ function userMatchHistoryKey(userId: number): string {
 
 function userBreakdownKey(userId: number, seasonId?: number): string {
     return `nhl-stats-user-breakdown-${userId}-${seasonId ?? 'all'}`
+}
+
+function userAchievementsKey(userId: number): string {
+    return `nhl-stats-user-achievements-${userId}`
 }
 
 function isCacheValid<T>(entry: CacheEntry<T> | null, duration = CACHE_DURATION_MS): entry is CacheEntry<T> {
@@ -174,6 +179,21 @@ export const cacheService = {
      */
     invalidateDashboard(): void {
         sessionStorage.removeItem(CACHE_KEYS.DASHBOARD)
+    },
+
+    /**
+     * Get all achievements for a user from cache or fetch from API.
+     * Cache is valid for 5 minutes. Not tied to season — always all-time.
+     */
+    async getAchievements(userId: number, force = false): Promise<UserAchievements> {
+        const key = userAchievementsKey(userId)
+        if (!force) {
+            const cached = getFromCache<UserAchievements>(key, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+        const data = await apiClient.get<UserAchievements>(`/api/stats/users/${userId}/achievements`)
+        setInCache(key, data)
+        return data
     },
 
     /**
