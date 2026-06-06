@@ -156,7 +156,8 @@
         "penalty": "Penalty",
         "pointPositive": "Positive point",
         "pointNegative": "Negative point",
-        "pointNeutral": "Point"
+        "pointNeutral": "Point",
+        "matchCompleted": "Match completed"
     },
     "season": {
         "title": "Season Overview",

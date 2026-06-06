@@ -11,12 +11,32 @@ public class MatchService : IMatchService
     private readonly NhlStatsDbContext _db;
     private readonly IBetService _betService;
     private readonly IBettingOddsService _oddsService;
+    private readonly ISeasonEventBroadcaster? _broadcaster;
 
     public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService)
     {
         _db = db;
         _betService = betService;
         _oddsService = oddsService;
+    }
+
+    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, ISeasonEventBroadcaster broadcaster)
+        : this(db, betService, oddsService)
+    {
+        _broadcaster = broadcaster;
+    }
+
+    private async Task TryBroadcastAsync(SeasonEventNotificationDto evt)
+    {
+        if (_broadcaster == null) return;
+        try
+        {
+            await _broadcaster.BroadcastEventAsync(evt);
+        }
+        catch
+        {
+            // best-effort: broadcast failures must never affect the write
+        }
     }
 
     private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
@@ -125,7 +145,23 @@ public class MatchService : IMatchService
             && dto.CompletionType is CompletionType.RegularTime or CompletionType.Overtime or CompletionType.Shootout;
 
         if (justCompleted)
+        {
             await _betService.EvaluateMatchBetsAsync(id);
+            await TryBroadcastAsync(new SeasonEventNotificationDto(
+                SeasonId: match.SeasonId,
+                MatchId: match.Id,
+                UserMatchId: 0,
+                ActorUserId: null,
+                ActorUserName: null,
+                EventType: "MatchCompleted",
+                EventSubType: dto.CompletionType.ToString(),
+                PlayerName: null,
+                Count: 0,
+                HomeTeamName: match.HomeTeam?.Name,
+                AwayTeamName: match.AwayTeam?.Name,
+                HomeScore: match.HomeScore,
+                AwayScore: match.AwayScore));
+        }
 
         if (dto.CompletionType == CompletionType.None)
             await _oddsService.RecalculateForMatchAsync(id);

@@ -156,7 +156,8 @@
         "penalty": "Trest",
         "pointPositive": "Plusový bod",
         "pointNegative": "Mínusový bod",
-        "pointNeutral": "Bod"
+        "pointNeutral": "Bod",
+        "matchCompleted": "Zápas skončil"
     },
     "season": {
         "title": "Prehľad sezóny",

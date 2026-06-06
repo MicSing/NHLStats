@@ -9,5 +9,10 @@ public record SeasonEventNotificationDto(
     string EventType,
     string EventSubType,
     string? PlayerName,
-    int Count
+    int Count,
+    string? TargetUserName = null,
+    string? HomeTeamName = null,
+    string? AwayTeamName = null,
+    int? HomeScore = null,
+    int? AwayScore = null
 );

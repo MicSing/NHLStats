@@ -62,13 +62,22 @@ export function useSeasonEventNotifications(
                 if (evt.eventSubType === 'Positive') title = translate('notifications.pointPositive')
                 else if (evt.eventSubType === 'Negative') title = translate('notifications.pointNegative')
                 else title = translate('notifications.pointNeutral')
+            } else if (evt.eventType === 'MatchCompleted') {
+                title = translate('notifications.matchCompleted')
             }
 
-            const parts: string[] = []
-            if (evt.actorUserName) parts.push(evt.actorUserName)
-            if (evt.playerName) parts.push(evt.playerName)
-            if (evt.count > 1) parts.push(`×${evt.count}`)
-            const body = parts.join(' — ')
+            let body: string
+            if (evt.eventType === 'MatchCompleted') {
+                const sub = evt.eventSubType === 'Overtime' ? ' (OT)'
+                          : evt.eventSubType === 'Shootout' ? ' (SO)' : ''
+                body = `${evt.homeTeamName ?? '?'} ${evt.homeScore}:${evt.awayScore} ${evt.awayTeamName ?? '?'}${sub}`
+            } else {
+                const parts: string[] = []
+                if (evt.targetUserName) parts.push(evt.targetUserName)
+                if (evt.playerName) parts.push(evt.playerName)
+                if (evt.count > 1) parts.push(`×${evt.count}`)
+                body = parts.join(' — ')
+            }
 
             try {
                 const tag = `season-event-${evt.userMatchId}-${Date.now()}`

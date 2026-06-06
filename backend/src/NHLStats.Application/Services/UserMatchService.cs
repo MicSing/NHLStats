@@ -269,6 +269,7 @@ public class UserMatchService : IUserMatchService
     {
         var userMatch = await _db.UserMatches
             .Include(um => um.Match)
+            .Include(um => um.User)
             .FirstOrDefaultAsync(um => um.Id == userMatchId);
         if (userMatch == null)
             return (null, $"UserMatch {userMatchId} not found.");
@@ -302,7 +303,8 @@ public class UserMatchService : IUserMatchService
             EventType: "Point",
             EventSubType: reason.PointType.ToString(),
             PlayerName: reason.Name,
-            Count: dto.Count));
+            Count: dto.Count,
+            TargetUserName: userMatch.User?.Name));
 
         return (ToPointDto(loaded), null);
     }
@@ -361,7 +363,9 @@ public class UserMatchService : IUserMatchService
     public async Task<(UserMatchGoalDto? result, string? error)> AddGoalAsync(
         int userMatchId, CreateUserMatchGoalDto dto)
     {
-        var userMatch = await _db.UserMatches.FindAsync(userMatchId);
+        var userMatch = await _db.UserMatches
+            .Include(um => um.User)
+            .FirstOrDefaultAsync(um => um.Id == userMatchId);
         if (userMatch == null)
             return (null, $"UserMatch {userMatchId} not found.");
 
@@ -395,7 +399,8 @@ public class UserMatchService : IUserMatchService
             EventType: "Goal",
             EventSubType: dto.GoalType.ToString(),
             PlayerName: $"{loaded.RosterPlayer?.FirstName} {loaded.RosterPlayer?.Surname}".Trim(),
-            Count: dto.Count));
+            Count: dto.Count,
+            TargetUserName: userMatch.User?.Name));
 
         return (ToGoalDto(loaded), null);
     }
@@ -453,7 +458,9 @@ public class UserMatchService : IUserMatchService
     public async Task<(UserMatchPenaltyDto? result, string? error)> AddPenaltyAsync(
         int userMatchId, CreateUserMatchPenaltyDto dto)
     {
-        var userMatch = await _db.UserMatches.FindAsync(userMatchId);
+        var userMatch = await _db.UserMatches
+            .Include(um => um.User)
+            .FirstOrDefaultAsync(um => um.Id == userMatchId);
         if (userMatch == null)
             return (null, $"UserMatch {userMatchId} not found.");
 
@@ -486,7 +493,8 @@ public class UserMatchService : IUserMatchService
             EventType: "Penalty",
             EventSubType: "Standard",
             PlayerName: $"{loaded.RosterPlayer?.FirstName} {loaded.RosterPlayer?.Surname}".Trim(),
-            Count: dto.Count));
+            Count: dto.Count,
+            TargetUserName: userMatch.User?.Name));
 
         return (ToPenaltyDto(loaded), null);
     }

@@ -90,13 +90,18 @@ describe('useSeasonEventNotifications', () => {
                 eventSubType: 'Regular',
                 playerName: 'McDavid',
                 count: 1,
+                targetUserName: 'Alice',
+                homeTeamName: null,
+                awayTeamName: null,
+                homeScore: null,
+                awayScore: null,
             })
         })
 
         expect(NotificationCtor).toHaveBeenCalledTimes(1)
         const [title, opts] = NotificationCtor.mock.calls[0]
         expect(title).toMatch(/goal/i)
-        expect((opts as NotificationOptions).body).toContain('Bob')
+        expect((opts as NotificationOptions).body).toContain('Alice')
         expect((opts as NotificationOptions).body).toContain('McDavid')
     })
 
@@ -118,6 +123,11 @@ describe('useSeasonEventNotifications', () => {
                 eventSubType: 'Standard',
                 playerName: 'Crosby',
                 count: 1,
+                targetUserName: 'Alice',
+                homeTeamName: null,
+                awayTeamName: null,
+                homeScore: null,
+                awayScore: null,
             })
         })
 
@@ -143,6 +153,11 @@ describe('useSeasonEventNotifications', () => {
                 eventSubType: 'Positive',
                 playerName: null,
                 count: 1,
+                targetUserName: null,
+                homeTeamName: null,
+                awayTeamName: null,
+                homeScore: null,
+                awayScore: null,
             })
         })
 
@@ -167,9 +182,46 @@ describe('useSeasonEventNotifications', () => {
                 eventSubType: 'Regular',
                 playerName: null,
                 count: 1,
+                targetUserName: null,
+                homeTeamName: null,
+                awayTeamName: null,
+                homeScore: null,
+                awayScore: null,
             })
         })
 
         expect(NotificationCtor).not.toHaveBeenCalled()
+    })
+
+    test('shows match completed notification with score', async () => {
+        renderHook(() => useSeasonEventNotifications(42), { wrapper })
+
+        await waitFor(() => {
+            expect(invokeCalls.some(c => c.method === 'JoinSeason')).toBe(true)
+        })
+
+        act(() => {
+            emit({
+                seasonId: 42,
+                matchId: 5,
+                userMatchId: 0,
+                actorUserId: null,
+                actorUserName: null,
+                eventType: 'MatchCompleted',
+                eventSubType: 'RegularTime',
+                playerName: null,
+                count: 0,
+                targetUserName: null,
+                homeTeamName: 'TeamA',
+                awayTeamName: 'TeamB',
+                homeScore: 3,
+                awayScore: 0,
+            })
+        })
+
+        expect(NotificationCtor).toHaveBeenCalledTimes(1)
+        const [title, opts] = NotificationCtor.mock.calls[0]
+        expect(title).toMatch(/match completed/i)
+        expect((opts as NotificationOptions).body).toBe('TeamA 3:0 TeamB')
     })
 })

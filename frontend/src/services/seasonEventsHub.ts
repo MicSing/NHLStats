@@ -1,6 +1,6 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr'
 
-export type SeasonEventType = 'Goal' | 'Penalty' | 'Point'
+export type SeasonEventType = 'Goal' | 'Penalty' | 'Point' | 'MatchCompleted'
 
 export interface SeasonEvent {
     seasonId: number
@@ -12,6 +12,11 @@ export interface SeasonEvent {
     eventSubType: string
     playerName: string | null
     count: number
+    targetUserName: string | null
+    homeTeamName: string | null
+    awayTeamName: string | null
+    homeScore: number | null
+    awayScore: number | null
 }
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
