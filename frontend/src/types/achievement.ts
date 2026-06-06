@@ -11,6 +11,7 @@ export interface AchievementOccurrence {
 export interface AchievementResult {
     id:          string
     earned:      boolean
+    level:       number
     occurrences: AchievementOccurrence[]
 }
 

@@ -40,8 +40,11 @@ interface BadgeCardProps {
 
 function BadgeCard({ def, result, onClick }: BadgeCardProps) {
     const { t } = useTranslation()
-    const earned = result?.earned ?? false
-    const count = result?.occurrences.length ?? 0
+    const level = result?.level ?? 0
+    const earned = level > 0
+    const idx = Math.max(0, level - 1)
+    const icon = def.levelIcons[idx]
+    const name = def.levelNames[idx]
 
     return (
         <button
@@ -60,14 +63,14 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
                     className="absolute top-2 right-2 text-text-muted"
                 />
             )}
-            <span className="text-3xl leading-none">{def.icon}</span>
-            <span className="text-xs font-semibold text-text leading-tight">{t(def.nameKey)}</span>
-            <span className="text-[10px] text-text-muted leading-tight">{t(def.descKey)}</span>
-            {earned && count > 1 && (
-                <span className="text-[9px] bg-primary/20 text-primary rounded-full px-1.5 py-0.5 font-medium">
-                    ×{count}
+            {earned && (
+                <span className="absolute top-2 right-2 text-[9px] bg-primary/20 text-primary rounded-full px-1.5 py-0.5 font-medium">
+                    Lv {level}
                 </span>
             )}
+            <span className="text-3xl leading-none">{icon}</span>
+            <span className="text-xs font-semibold text-text leading-tight">{name}</span>
+            <span className="text-[10px] text-text-muted leading-tight">{t(def.descKey)}</span>
         </button>
     )
 }
@@ -89,9 +92,9 @@ export default function AchievementsTab({ achievements, loading }: Props) {
     const resultById = Object.fromEntries(achievements.map((a) => [a.id, a]))
 
     const sorted = [...ACHIEVEMENT_DEFS].sort((a, b) => {
-        const aEarned = resultById[a.id]?.earned ? 1 : 0
-        const bEarned = resultById[b.id]?.earned ? 1 : 0
-        return bEarned - aEarned
+        const aLevel = resultById[a.id]?.level ?? 0
+        const bLevel = resultById[b.id]?.level ?? 0
+        return bLevel - aLevel
     })
 
     return (
@@ -110,28 +113,32 @@ export default function AchievementsTab({ achievements, loading }: Props) {
                 ))}
             </section>
 
-            {selected && (
-                <Modal
-                    title={t(selected.def.nameKey)}
-                    onClose={() => setSelected(null)}
-                >
-                    <p className="text-sm text-text-muted mb-4">{t(selected.def.descKey)}</p>
-                    {selected.result.occurrences.length === 0 ? (
-                        <p className="text-sm text-text-muted">{t('achievements.noOccurrences')}</p>
-                    ) : (
-                        <ul className="space-y-2">
-                            {selected.result.occurrences.map((occ, i) => (
-                                <li
-                                    key={i}
-                                    className="text-sm text-text bg-bg rounded-lg px-4 py-2 border border-border"
-                                >
-                                    {formatOccurrence(occ, selected.def.valueLabel)}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Modal>
-            )}
+            {selected && (() => {
+                const level = selected.result.level
+                const name = level > 0 ? selected.def.levelNames[level - 1] : selected.def.levelNames[0]
+                return (
+                    <Modal
+                        title={name}
+                        onClose={() => setSelected(null)}
+                    >
+                        <p className="text-sm text-text-muted mb-4">{t(selected.def.descKey)}</p>
+                        {selected.result.occurrences.length === 0 ? (
+                            <p className="text-sm text-text-muted">{t('achievements.noOccurrences')}</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {selected.result.occurrences.map((occ, i) => (
+                                    <li
+                                        key={i}
+                                        className="text-sm text-text bg-bg rounded-lg px-4 py-2 border border-border"
+                                    >
+                                        {formatOccurrence(occ, selected.def.valueLabel)}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Modal>
+                )
+            })()}
         </>
     )
 }
