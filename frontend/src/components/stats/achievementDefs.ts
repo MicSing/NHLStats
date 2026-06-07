@@ -7,8 +7,6 @@ export interface AchievementDef {
     disabledIcon?: string
 }
 
-const ICONS: readonly [string, string, string, string, string, string, string] =
-    ['?', '?', '?', '?', '?', '?', '?']
 
 export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     {
