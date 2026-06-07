@@ -347,6 +347,9 @@ public record AchievementResultDto(
     string                                Id,
     bool                                  Earned,
     int                                   Level,
+    int                                   Count,
+    int                                   CurrentLevelAt,
+    int?                                  NextLevelAt,
     IEnumerable<AchievementOccurrenceDto> Occurrences
 );
 

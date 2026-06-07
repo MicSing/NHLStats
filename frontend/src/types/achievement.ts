@@ -9,10 +9,13 @@ export interface AchievementOccurrence {
 }
 
 export interface AchievementResult {
-    id:          string
-    earned:      boolean
-    level:       number
-    occurrences: AchievementOccurrence[]
+    id:             string
+    earned:         boolean
+    level:          number
+    count:          number
+    currentLevelAt: number
+    nextLevelAt:    number | null
+    occurrences:    AchievementOccurrence[]
 }
 
 export interface UserAchievements {
