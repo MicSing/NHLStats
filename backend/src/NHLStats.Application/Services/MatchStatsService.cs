@@ -404,6 +404,15 @@ public class MatchStatsService : IMatchStatsService
         var matchSeasonIds = mapped.Select(x => x.SeasonId).Distinct().ToHashSet();
         var result = new List<SeasonMatchHistoryDto>();
 
+        var allSeasonDates = await _db.Matches
+            .Where(m => matchSeasonIds.Contains(m.SeasonId) && m.MatchDate != null)
+            .Select(m => new { m.SeasonId, Date = m.MatchDate!.Value.Date })
+            .ToListAsync();
+
+        var allDatesBySeasonId = allSeasonDates
+            .GroupBy(x => x.SeasonId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Date).Distinct().OrderBy(d => d).ToList());
+
         var matchSeasons = mapped
             .GroupBy(x => x.SeasonId)
             .OrderBy(g => g.Min(x => x.MatchDate))
@@ -416,23 +425,32 @@ public class MatchStatsService : IMatchStatsService
                     .OrderBy(d => d)
                     .ToList();
 
-                var dateToWeek = distinctDates
+                var allDates = allDatesBySeasonId.TryGetValue(seasonGroup.Key, out var d) ? d : distinctDates;
+
+                var dateToWeek = allDates
                     .Select((date, index) => new { date, week = index + 1 })
                     .ToDictionary(x => x.date, x => x.week);
 
-                var weeks = seasonGroup
-                    .GroupBy(x => dateToWeek[x.MatchDate.Date])
-                    .OrderBy(wg => wg.Key)
-                    .Select(wg =>
+                var userWeekMap = seasonGroup
+                    .GroupBy(x => dateToWeek.TryGetValue(x.MatchDate.Date, out var w) ? w : 0)
+                    .Where(wg => wg.Key > 0)
+                    .ToDictionary(wg => wg.Key);
+
+                var weeks = Enumerable.Range(1, allDates.Count)
+                    .Select(weekNum =>
                     {
-                        var items = wg.OrderBy(x => x.MatchDate).Select(x => x.Item).ToList();
-                        return new WeekMatchHistoryDto(
-                            wg.Key,
-                            items.Sum(i => i.TotalPlus),
-                            items.Sum(i => i.TotalMinus),
-                            items.Sum(i => i.GoalCount),
-                            items.Sum(i => i.PenaltyCount),
-                            items);
+                        if (userWeekMap.TryGetValue(weekNum, out var wg))
+                        {
+                            var items = wg.OrderBy(x => x.MatchDate).Select(x => x.Item).ToList();
+                            return new WeekMatchHistoryDto(
+                                weekNum,
+                                items.Sum(i => i.TotalPlus),
+                                items.Sum(i => i.TotalMinus),
+                                items.Sum(i => i.GoalCount),
+                                items.Sum(i => i.PenaltyCount),
+                                items);
+                        }
+                        return new WeekMatchHistoryDto(weekNum, 0, 0, 0, 0, Enumerable.Empty<MatchHistoryItemDto>());
                     })
                     .ToList();
 

@@ -212,8 +212,9 @@ export default function UserStatsPage() {
         return a.goalCount - b.goalCount
     }
 
-    const bestWeek = allWeeks.length > 0 ? [...allWeeks].sort(compareWeekBest)[0] : null
-    const worstWeek = allWeeks.length > 0 ? [...allWeeks].sort(compareWeekWorst)[0] : null
+    const playedWeeks = allWeeks.filter((w) => w.matchCount > 0)
+    const bestWeek = playedWeeks.length > 0 ? [...playedWeeks].sort(compareWeekBest)[0] : null
+    const worstWeek = playedWeeks.length > 0 ? [...playedWeeks].sort(compareWeekWorst)[0] : null
 
     const selectedUser = users.find((u) => u.id === selectedUserId) ?? null
     const userBets = allBets !== null && selectedUser
