@@ -269,7 +269,16 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'deep_pockets',
-        levelIcons: ICONS,
+        levelIcons: [
+            '/achievements/deeppockets/pocket-stone.png',
+            '/achievements/deeppockets/pocket-bronze.png',
+            '/achievements/deeppockets/pocket-silver.png',
+            '/achievements/deeppockets/pocket-gold.png',
+            '/achievements/deeppockets/pocket-emerald.png',
+            '/achievements/deeppockets/pocket-ruby.png',
+            '/achievements/deeppockets/pocket-diamond.png',
+        ],
+        disabledIcon: '/achievements/deeppockets/pocket-disable.png',
         levelNames: ['Coin Tosser', 'Payer', 'Contributor', 'Deep Pockets', 'Cash Cow', 'Sugar Daddy', 'The Federal Reserve'],
         descKey: 'achievements.deepPockets.desc',
         valueLabel: 'minus',
