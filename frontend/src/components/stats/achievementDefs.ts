@@ -285,7 +285,16 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'vip_sponzor',
-        levelIcons: ICONS,
+        levelIcons: [
+            '/achievements/vipsponsor/sponsor-stone.png',
+            '/achievements/vipsponsor/sponsor-bronze.png',
+            '/achievements/vipsponsor/sponzor-silver.png',
+            '/achievements/vipsponsor/sponzor-gold.png',
+            '/achievements/vipsponsor/sponzor-emerald.png',
+            '/achievements/vipsponsor/sponzor-ruby.png',
+            '/achievements/vipsponsor/sponzor-diamond.png',
+        ],
+        disabledIcon: '/achievements/vipsponsor/sponsor-disabled.png',
         levelNames: ['Funder', 'Investor', 'Patron', 'VIP Sponzor', 'Philanthropist', 'Club Owner', 'Infinite Wallet'],
         descKey: 'achievements.vipSponzor.desc',
         valueLabel: 'minus',
