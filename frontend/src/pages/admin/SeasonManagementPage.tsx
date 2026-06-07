@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { GearSix, Plus, CaretRight } from '@phosphor-icons/react'
 import { LeagueType } from '../../types/team'
 import type { Team } from '../../types/team'
-import type { Season, SeasonDetail, CreateSeasonDto } from '../../types/season'
+import type { Season, SeasonDetail, CreateSeasonDto, SeasonStatus } from '../../types/season'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
@@ -138,8 +138,8 @@ export default function SeasonManagementPage() {
         }
     }
 
-    const statusVariant = (status: string | null): 'success' | 'muted' =>
-        status?.toLowerCase().includes('active') ? 'success' : 'muted'
+    const statusVariant = (status: SeasonStatus): 'success' | 'muted' =>
+        status === 'Active' ? 'success' : 'muted'
 
     if (loading) return <LoadingSpinner />
     if (error) return <ErrorMessage message={error} onRetry={() => void loadAll()} />

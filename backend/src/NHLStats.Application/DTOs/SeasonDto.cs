@@ -9,7 +9,7 @@ public record SeasonDto(
     int? HostedTeamId,
     string? HostedTeamName,
     DateTime StartedOn,
-    string? Status,
+    SeasonStatus Status,
     int? ParentSeasonId,
     LeagueType LeagueType);
 
@@ -19,7 +19,7 @@ public record SeasonDetailDto(
     int? HostedTeamId,
     string? HostedTeamName,
     DateTime StartedOn,
-    string? Status,
+    SeasonStatus Status,
     int? ParentSeasonId,
     List<UserDto> Users,
     LeagueType LeagueType);
@@ -28,14 +28,14 @@ public record CreateSeasonDto(
     [Required] string Name,
     int? HostedTeamId,
     DateTime StartedOn,
-    string? Status,
-    int? ParentSeasonId,
+    SeasonStatus Status = SeasonStatus.Active,
+    int? ParentSeasonId = null,
     LeagueType LeagueType = LeagueType.NHL);
 
 public record UpdateSeasonDto(
     [Required] string Name,
     int? HostedTeamId,
     DateTime StartedOn,
-    string? Status,
-    int? ParentSeasonId,
+    SeasonStatus Status = SeasonStatus.Active,
+    int? ParentSeasonId = null,
     LeagueType LeagueType = LeagueType.NHL);

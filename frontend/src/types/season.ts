@@ -1,13 +1,15 @@
 import type { User } from './user'
 import type { LeagueTypeValue } from './team'
 
+export type SeasonStatus = 'Active' | 'Complete'
+
 export interface Season {
     id: number
     name: string
     hostedTeamId: number | null
     hostedTeamName: string | null
     startedOn: string
-    status: string | null
+    status: SeasonStatus
     parentSeasonId: number | null
     leagueType: LeagueTypeValue
 }

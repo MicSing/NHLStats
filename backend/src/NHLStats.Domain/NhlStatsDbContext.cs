@@ -72,6 +72,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.Name).IsRequired();
             b.Property(x => x.LeagueType).HasConversion<int>();
+            b.Property(x => x.Status).HasConversion<int>();
             b.HasOne(x => x.HostedTeam).WithMany().HasForeignKey(x => x.HostedTeamId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.ParentSeason).WithMany().HasForeignKey(x => x.ParentSeasonId).OnDelete(DeleteBehavior.Restrict);
         });

@@ -8,7 +8,7 @@ public class Season
     public string Name { get; set; } = null!;
     public int? HostedTeamId { get; set; }
     public DateTime StartedOn { get; set; }
-    public string? Status { get; set; }
+    public SeasonStatus Status { get; set; } = SeasonStatus.Active;
     public int? ParentSeasonId { get; set; }
     public LeagueType LeagueType { get; set; } = LeagueType.NHL;
 

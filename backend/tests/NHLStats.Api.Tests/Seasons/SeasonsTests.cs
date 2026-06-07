@@ -70,12 +70,12 @@ public class SeasonsTests : ApiTestBase
         {
             name = "New Name",
             startedOn = "2024-02-01T00:00:00",
-            status = "active"
+            status = "Active"
         });
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
         updated.GetProperty("name").GetString().Should().Be("New Name");
-        updated.GetProperty("status").GetString().Should().Be("active");
+        updated.GetProperty("status").GetString().Should().Be("Active");
     }
 
     // ── DELETE /api/seasons/{id} ────────────────────────────────────────────

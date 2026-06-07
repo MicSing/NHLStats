@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { LeagueType } from '../../types/team'
 import type { LeagueTypeValue, Team } from '../../types/team'
-import type { CreateSeasonDto } from '../../types/season'
+import type { CreateSeasonDto, SeasonStatus } from '../../types/season'
 
 export interface SeasonFormProps {
     form: CreateSeasonDto
@@ -59,13 +59,15 @@ export default function SeasonForm({
                     <label htmlFor="season-status" className="label">
                         {t('common.status')}
                     </label>
-                    <input
+                    <select
                         id="season-status"
                         className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
-                        value={form.status ?? ''}
-                        onChange={(e) => set({ status: e.target.value || null })}
-                        placeholder="e.g. Active, Completed"
-                    />
+                        value={form.status ?? 'Active'}
+                        onChange={(e) => set({ status: e.target.value as SeasonStatus })}
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Complete">Complete</option>
+                    </select>
                 </div>
 
                 <div>

@@ -20,7 +20,7 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
     const [form, setForm] = useState<CreateSeasonDto>({
         name: season.name,
         startedOn: season.startedOn.split('T')[0],
-        status: season.status ?? '',
+        status: season.status,
         hostedTeamId: season.hostedTeamId,
         leagueType: season.leagueType,
     })
@@ -35,7 +35,7 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
                 ...season,
                 name: form.name,
                 startedOn: form.startedOn,
-                status: form.status || null,
+                status: form.status ?? 'Active',
                 hostedTeamId: form.hostedTeamId ?? null,
                 leagueType: form.leagueType,
             })
