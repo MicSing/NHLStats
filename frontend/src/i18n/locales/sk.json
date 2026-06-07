@@ -319,7 +319,7 @@
         "playerLover":          { "name": "Milovník hráčov",      "desc": "≥70 gólov s 1 hráčom za sezónu" },
         "goldenStick":          { "name": "Zlatá palica",         "desc": "Najviac gólov v sezóne spomedzi všetkých hráčov" },
         "sinBinVip":            { "name": "VIP trestná lavica",   "desc": "≥3 tresty s 1 hráčom v zápase" },
-        "broadStreetBully":     { "name": "Uličný tyran",         "desc": "≥3 tresty celkovo v zápase" },
+        "broadStreetBully":     { "name": "Uličný tyran",         "desc": "≥4 tresty celkovo s ≥2 hráčmi v zápase" },
         "disciplinaryHearing":  { "name": "Disciplinárka",        "desc": "≥5 trestov za týždeň" },
         "theEnforcer":          { "name": "Vymáhač",              "desc": "≥15 trestov s 1 hráčom za sezónu" },
         "goonSquad":            { "name": "Banda hrubiánov",      "desc": "≥40 trestov celkovo za sezónu" },

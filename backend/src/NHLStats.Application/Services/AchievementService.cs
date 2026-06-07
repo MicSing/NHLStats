@@ -379,7 +379,7 @@ public class AchievementService : IAchievementService
         {
             var occs = penalties
                 .GroupBy(p => p.MatchId)
-                .Where(mg => mg.Sum(p => p.Count) >= 3)
+                .Where(mg => mg.Sum(p => p.Count) >= 4 && mg.Select(p => p.RosterPlayerId).Distinct().Count() >= 2)
                 .Select(mg =>
                 {
                     weekMap.TryGetValue(mg.Key, out var w);

@@ -319,7 +319,7 @@
         "playerLover":          { "name": "Player Lover",         "desc": "≥70 goals with 1 player in a season" },
         "goldenStick":          { "name": "Golden Stick",         "desc": "Most goals in a season among all players" },
         "sinBinVip":            { "name": "Sin Bin VIP",          "desc": "≥3 penalties with 1 player in a match" },
-        "broadStreetBully":     { "name": "Broad Street Bully",   "desc": "≥3 total penalties in a match" },
+        "broadStreetBully":     { "name": "Broad Street Bully",   "desc": "≥4 total penalties with ≥2 players in a match" },
         "disciplinaryHearing":  { "name": "Disciplinary Hearing", "desc": "≥5 total penalties in a week" },
         "theEnforcer":          { "name": "The Enforcer",         "desc": "≥15 penalties with 1 player in a season" },
         "goonSquad":            { "name": "Goon Squad",           "desc": "≥40 total penalties in a season" },
