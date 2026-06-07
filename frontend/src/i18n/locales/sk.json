@@ -331,7 +331,7 @@
         "iceGeneral":           { "name": "Ľadový generál",       "desc": "≥3 plusové body v zápase" },
         "goodWeek":             { "name": "Dobrý týždeň",         "desc": "≥5 plusových bodov za týždeň" },
         "happySeason":          { "name": "Šťastná sezóna",       "desc": "≥25 plusových bodov za sezónu" },
-        "kingOfTheRnk":         { "name": "Kráľ šatne",           "desc": "Najviac plusových bodov v sezóne spomedzi všetkých" },
+        "kingOfTheRink":        { "name": "Kráľ šatne",           "desc": "Najviac plusových bodov v sezóne spomedzi všetkých" },
         "oracle":               { "name": "Veštec",               "desc": "Najvyššia stávka v sezóne" },
         "theBookie":            { "name": "Bookmacher",           "desc": "Najviac vyhratých stávok v sezóne" },
         "nostradamus":          { "name": "Nostradamus",          "desc": "Podal stávku s vkladom ≥ €3" },

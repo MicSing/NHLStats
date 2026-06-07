@@ -331,7 +331,7 @@
         "iceGeneral":           { "name": "Ice General",          "desc": "≥3 plus points in a match" },
         "goodWeek":             { "name": "Good Week",            "desc": "≥5 plus points in a week" },
         "happySeason":          { "name": "Happy Season",         "desc": "≥25 plus points in a season" },
-        "kingOfTheRnk":         { "name": "King of the Rnk",      "desc": "Most plus points in a season among all players" },
+        "kingOfTheRink":        { "name": "King of the Rink",     "desc": "Most plus points in a season among all players" },
         "oracle":               { "name": "Oracle",               "desc": "Highest single bet stake in a season" },
         "theBookie":            { "name": "The Bookie",           "desc": "Most won bets in a season among all players" },
         "nostradamus":          { "name": "Nostradamus",          "desc": "Placed a single bet with stake ≥ €3" },

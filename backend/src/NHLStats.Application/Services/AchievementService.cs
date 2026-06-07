@@ -600,7 +600,7 @@ public class AchievementService : IAchievementService
 
         // ─── Competitive season plus point achievement ────────────────────────
 
-        AchievementResultDto KingOfTheRnk()
+        AchievementResultDto KingOfTheRink()
         {
             var occs = allPlusTotals
                 .GroupBy(x => x.SeasonId)
@@ -613,7 +613,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
                 }).ToList();
-            return new("king_of_the_rnk", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
+            return new("king_of_the_rink", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Bet achievements ─────────────────────────────────────────────────
@@ -720,7 +720,7 @@ public class AchievementService : IAchievementService
             DisciplinaryHearing(),
             TheEnforcer(), GoonSquad(), Jailbird(),
             Unlucky(), DeepPockets(), VipSponzor(), TheAtm(),
-            IceGeneral(), GoodWeek(), HappySeason(), KingOfTheRnk(),
+            IceGeneral(), GoodWeek(), HappySeason(), KingOfTheRink(),
             Oracle(), TheBookie(), Nostradamus(),
             SwissArmyKnife(),
         });
