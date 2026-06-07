@@ -14,15 +14,37 @@ public class AchievementService : IAchievementService
     private static readonly HashSet<string> ForwardPositions =
         new(StringComparer.OrdinalIgnoreCase) { "LW", "C", "RW" };
 
-    private static int ToLevel(int count) => count switch {
-        >= 1000 => 7,
-        >= 300  => 6,
-        >= 100  => 5,
-        >= 30   => 4,
-        >= 10   => 3,
-        >= 3    => 2,
-        >= 1    => 1,
-        _       => 0
+    private static int ToMatchLevel(int count) => count switch {
+        >= 820 => 7,
+        >= 300 => 6,
+        >= 100 => 5,
+        >= 30  => 4,
+        >= 10  => 3,
+        >= 3   => 2,
+        >= 1   => 1,
+        _      => 0
+    };
+
+    private static int ToWeekLevel(int count) => count switch {
+        >= 130 => 7,
+        >= 65  => 6,
+        >= 26  => 5,
+        >= 13  => 4,
+        >= 5   => 3,
+        >= 2   => 2,
+        >= 1   => 1,
+        _      => 0
+    };
+
+    private static int ToSeasonLevel(int count) => count switch {
+        >= 10 => 7,
+        >= 8  => 6,
+        >= 6  => 5,
+        >= 4  => 4,
+        >= 3  => 3,
+        >= 2  => 2,
+        >= 1  => 1,
+        _     => 0
     };
 
     public AchievementService(NhlStatsDbContext db) => _db = db;
@@ -212,7 +234,7 @@ public class AchievementService : IAchievementService
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(g => g.Count)));
                 }).ToList();
-            return new("sniper", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("sniper", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         AchievementResultDto Domination()
@@ -227,7 +249,7 @@ public class AchievementService : IAchievementService
                         mg.First().SeasonId, mg.First().SeasonName,
                         null, mg.Sum(g => g.Count));
                 }).ToList();
-            return new("domination", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("domination", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         AchievementResultDto Shorty()
@@ -243,7 +265,7 @@ public class AchievementService : IAchievementService
                         mg.First().SeasonId, mg.First().SeasonName,
                         null, mg.Sum(g => g.Count));
                 }).ToList();
-            return new("shorty", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("shorty", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Week-level goal achievements ─────────────────────────────────────
@@ -260,7 +282,7 @@ public class AchievementService : IAchievementService
                     return O(null, first.MatchDate, wg.Key.Week,
                         wg.Key.SeasonId, first.SeasonName, null, wg.Sum(g => g.Count));
                 }).ToList();
-            return new("god_mode", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("god_mode", occs.Count > 0, ToWeekLevel(occs.Count), occs);
         }
 
         AchievementResultDto BlueLineSnipers()
@@ -275,7 +297,7 @@ public class AchievementService : IAchievementService
                     return O(null, first.MatchDate, wg.Key.Week,
                         wg.Key.SeasonId, first.SeasonName, null, wg.Sum(g => g.Count));
                 }).ToList();
-            return new("blue_line_snipers", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("blue_line_snipers", occs.Count > 0, ToWeekLevel(occs.Count), occs);
         }
 
         // ─── Season-level goal achievements ───────────────────────────────────
@@ -288,7 +310,7 @@ public class AchievementService : IAchievementService
                 .Where(sg => sg.Sum(g => g.Count) >= 140)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
-            return new("massive_attack", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("massive_attack", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         AchievementResultDto OffensiveDefenseman()
@@ -299,7 +321,7 @@ public class AchievementService : IAchievementService
                 .Where(sg => sg.Sum(g => g.Count) >= 45)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
-            return new("offensive_defenseman", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("offensive_defenseman", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         AchievementResultDto PlayerLover()
@@ -313,7 +335,7 @@ public class AchievementService : IAchievementService
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(g => g.Count))))
                 .ToList();
-            return new("player_lover", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("player_lover", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Competitive season goal achievement ──────────────────────────────
@@ -331,7 +353,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
                 }).ToList();
-            return new("golden_stick", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("golden_stick", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Match-level penalty achievements ─────────────────────────────────
@@ -350,7 +372,7 @@ public class AchievementService : IAchievementService
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(p => p.Count)));
                 }).ToList();
-            return new("sin_bin_vip", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("sin_bin_vip", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         AchievementResultDto BroadStreetBully()
@@ -365,7 +387,7 @@ public class AchievementService : IAchievementService
                         mg.First().SeasonId, mg.First().SeasonName,
                         null, mg.Sum(p => p.Count));
                 }).ToList();
-            return new("broad_street_bully", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("broad_street_bully", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Week-level penalty achievement ───────────────────────────────────
@@ -382,7 +404,7 @@ public class AchievementService : IAchievementService
                     return O(null, first.MatchDate, wg.Key.Week,
                         wg.Key.SeasonId, first.SeasonName, null, wg.Sum(p => p.Count));
                 }).ToList();
-            return new("disciplinary_hearing", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("disciplinary_hearing", occs.Count > 0, ToWeekLevel(occs.Count), occs);
         }
 
         // ─── Season-level penalty achievements ────────────────────────────────
@@ -398,7 +420,7 @@ public class AchievementService : IAchievementService
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(p => p.Count))))
                 .ToList();
-            return new("the_enforcer", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("the_enforcer", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         AchievementResultDto GoonSquad()
@@ -408,7 +430,7 @@ public class AchievementService : IAchievementService
                 .Where(sg => sg.Sum(p => p.Count) >= 40)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
-            return new("goon_squad", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("goon_squad", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Competitive season penalty achievement ───────────────────────────
@@ -426,7 +448,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
                 }).ToList();
-            return new("jailbird", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("jailbird", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Match-level minus point achievement ──────────────────────────────
@@ -444,7 +466,7 @@ public class AchievementService : IAchievementService
                         mg.First().SeasonId, mg.First().SeasonName,
                         null, mg.Sum(p => p.Count));
                 }).ToList();
-            return new("unlucky", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("unlucky", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Week-level minus point achievement ───────────────────────────────
@@ -461,7 +483,7 @@ public class AchievementService : IAchievementService
                     return O(null, first.MatchDate, wg.Key.Week,
                         wg.Key.SeasonId, first.SeasonName, null, wg.Sum(p => p.Count));
                 }).ToList();
-            return new("deep_pockets", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("deep_pockets", occs.Count > 0, ToWeekLevel(occs.Count), occs);
         }
 
         // ─── Season-level minus point achievement ─────────────────────────────
@@ -474,7 +496,7 @@ public class AchievementService : IAchievementService
                 .Where(sg => sg.Sum(p => p.Count) >= 36)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
-            return new("vip_sponzor", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("vip_sponzor", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Competitive season minus point achievement ───────────────────────
@@ -492,7 +514,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
                 }).ToList();
-            return new("the_atm", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("the_atm", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Match-level plus point achievement ───────────────────────────────
@@ -510,7 +532,7 @@ public class AchievementService : IAchievementService
                         mg.First().SeasonId, mg.First().SeasonName,
                         null, mg.Sum(p => p.Count));
                 }).ToList();
-            return new("ice_general", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("ice_general", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Week-level plus point achievement ────────────────────────────────
@@ -527,7 +549,7 @@ public class AchievementService : IAchievementService
                     return O(null, first.MatchDate, wg.Key.Week,
                         wg.Key.SeasonId, first.SeasonName, null, wg.Sum(p => p.Count));
                 }).ToList();
-            return new("good_week", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("good_week", occs.Count > 0, ToWeekLevel(occs.Count), occs);
         }
 
         // ─── Season-level plus point achievement ──────────────────────────────
@@ -540,7 +562,7 @@ public class AchievementService : IAchievementService
                 .Where(sg => sg.Sum(p => p.Count) >= 25)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
-            return new("happy_season", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("happy_season", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Competitive season plus point achievement ────────────────────────
@@ -558,7 +580,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
                 }).ToList();
-            return new("king_of_the_rnk", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("king_of_the_rnk", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         // ─── Bet achievements ─────────────────────────────────────────────────
@@ -583,7 +605,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, (int)Math.Floor(userMaxStake)) };
                 }).ToList();
-            return new("oracle", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("oracle", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         AchievementResultDto TheBookie()
@@ -608,7 +630,7 @@ public class AchievementService : IAchievementService
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
                     return new[] { O(null, null, null, sg.Key, sName, null, userCount) };
                 }).ToList();
-            return new("the_bookie", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("the_bookie", occs.Count > 0, ToSeasonLevel(occs.Count), occs);
         }
 
         AchievementResultDto Nostradamus()
@@ -623,7 +645,7 @@ public class AchievementService : IAchievementService
                     var sName = sid > 0 && seasonNames.TryGetValue(sid, out var n) ? n : null;
                     return O(null, null, null, sid > 0 ? (int?)sid : null, sName, null, (int)Math.Floor(b.Stake));
                 }).ToList();
-            return new("nostradamus", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("nostradamus", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Combo achievement ────────────────────────────────────────────────
@@ -652,7 +674,7 @@ public class AchievementService : IAchievementService
                     weekMap.TryGetValue(matchId, out var w);
                     return O(matchId, ctx?.MatchDate, w, ctx?.SeasonId, ctx?.SeasonName, null, null);
                 }).ToList();
-            return new("swiss_army_knife", occs.Count > 0, ToLevel(occs.Count), occs);
+            return new("swiss_army_knife", occs.Count > 0, ToMatchLevel(occs.Count), occs);
         }
 
         // ─── Assemble result ──────────────────────────────────────────────────
