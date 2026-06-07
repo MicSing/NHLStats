@@ -246,6 +246,12 @@ public record WeeklyBettingBalancePeriodDto(string Label, IEnumerable<UserWeekly
 public record UserWeeklyBetDeltaDto(int UserId, string UserName, decimal Delta);
 public record WeeklyBetDeltaPeriodDto(string Label, IEnumerable<UserWeeklyBetDeltaDto> Users);
 
+public record SeasonPlusMinusTrendDto(int SeasonId, IEnumerable<PeriodPlusMinusDto> TrendData);
+public record SeasonBettingTrendsDto(
+    int SeasonId,
+    IEnumerable<WeeklyBettingBalancePeriodDto> BettingBalanceTrend,
+    IEnumerable<WeeklyBetDeltaPeriodDto> BetDeltaTrend);
+
 // ─── Consolidated dashboard data ──────────────────────────────────────────────
 
 public record DashboardDataDto(
@@ -264,7 +270,10 @@ public record DashboardDataDto(
     IEnumerable<WeeklyBettingBalancePeriodDto> BettingBalanceTrend,
     IEnumerable<WeeklyBettingBalancePeriodDto> AllTimeBettingBalanceTrend,
     IEnumerable<WeeklyBetDeltaPeriodDto> BetDeltaTrend,
-    IEnumerable<WeeklyBetDeltaPeriodDto> AllTimeBetDeltaTrend);
+    IEnumerable<WeeklyBetDeltaPeriodDto> AllTimeBetDeltaTrend,
+
+    IEnumerable<SeasonPlusMinusTrendDto> PlusMinusTrendBySeason,
+    IEnumerable<SeasonBettingTrendsDto> BettingTrendsBySeason);
 
 // --- Consolidated Season data ─────────────────────────────────────────────────
 

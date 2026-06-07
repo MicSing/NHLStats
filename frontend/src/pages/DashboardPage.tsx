@@ -75,6 +75,8 @@ export default function DashboardPage() {
         allTimeBettingBalanceTrend: [],
         betDeltaTrend: [],
         allTimeBetDeltaTrend: [],
+        plusMinusTrendBySeason: [],
+        bettingTrendsBySeason: [],
     }
 
     const userNameById = new Map(users.map((u) => [u.id, u.name]))
@@ -132,21 +134,20 @@ export default function DashboardPage() {
             userCounts: penalized.userCounts,
         }))
 
+    const plusMinusTrendBySeason = safeDashboardData.plusMinusTrendBySeason ?? []
+    const bettingTrendsBySeason = safeDashboardData.bettingTrendsBySeason ?? []
+
     const trendData = selectedSeasonId
-        ? safeDashboardData.trendData
+        ? (plusMinusTrendBySeason.find(s => s.seasonId === selectedSeasonId)?.trendData ?? [])
         : safeDashboardData.allTimePlusMinusTrend
 
     const bettingBalanceData = selectedSeasonId
-        ? safeDashboardData.bettingBalanceTrend
+        ? (bettingTrendsBySeason.find(s => s.seasonId === selectedSeasonId)?.bettingBalanceTrend ?? [])
         : safeDashboardData.allTimeBettingBalanceTrend
 
     const betDeltaData = selectedSeasonId
-        ? safeDashboardData.betDeltaTrend
+        ? (bettingTrendsBySeason.find(s => s.seasonId === selectedSeasonId)?.betDeltaTrend ?? [])
         : safeDashboardData.allTimeBetDeltaTrend
-
-    // Show trend charts only for all-time view or the most recent season
-    const isLastSeason = selectedSeasonId === seasons[0]?.id
-    const showTrendCharts = !selectedSeasonId || isLastSeason
 
     return (
         <PageLayout>
@@ -214,51 +215,49 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                {/* Plus / Minus Trend (split into two charts) - only show for all-time or last season */}
-                {showTrendCharts && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
-                        <section className="card p-3 sm:p-6">
-                            <h2 className="text-base font-medium text-text mb-4">
-                                {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                            </h2>
-                            {loadingDashboard ? (
-                                <LoadingSpinner size="sm" inline />
-                            ) : (
-                                <TrendChart data={trendData} mode="plus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
-                            )}
-                        </section>
-                        <section className="card p-3 sm:p-6">
-                            <h2 className="text-base font-medium text-text mb-4">
-                                {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                            </h2>
-                            {loadingDashboard ? (
-                                <LoadingSpinner size="sm" inline />
-                            ) : (
-                                <TrendChart data={trendData} mode="minus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
-                            )}
-                        </section>
-                        <section className="card p-3 sm:p-6">
-                            <h2 className="text-base font-medium text-text mb-4">
-                                {t('dashboard.bettingBalanceTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                            </h2>
-                            {loadingDashboard ? (
-                                <LoadingSpinner size="sm" inline />
-                            ) : (
-                                <BettingBalanceTrendChart data={bettingBalanceData} />
-                            )}
-                        </section>
-                        <section className="card p-3 sm:p-6">
-                            <h2 className="text-base font-medium text-text mb-4">
-                                {t('dashboard.betDeltaTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
-                            </h2>
-                            {loadingDashboard ? (
-                                <LoadingSpinner size="sm" inline />
-                            ) : (
-                                <BetDeltaTrendChart data={betDeltaData} />
-                            )}
-                        </section>
-                    </div>
-                )}
+                {/* Plus / Minus Trend and Betting Trends */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
+                    <section className="card p-3 sm:p-6">
+                        <h2 className="text-base font-medium text-text mb-4">
+                            {t('dashboard.plusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                        </h2>
+                        {loadingDashboard ? (
+                            <LoadingSpinner size="sm" inline />
+                        ) : (
+                            <TrendChart data={trendData} mode="plus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                        )}
+                    </section>
+                    <section className="card p-3 sm:p-6">
+                        <h2 className="text-base font-medium text-text mb-4">
+                            {t('dashboard.minusTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                        </h2>
+                        {loadingDashboard ? (
+                            <LoadingSpinner size="sm" inline />
+                        ) : (
+                            <TrendChart data={trendData} mode="minus" isWeekly={!!selectedSeasonId} totalPeriodMatches={trendData[0]?.totalPeriodMatches} />
+                        )}
+                    </section>
+                    <section className="card p-3 sm:p-6">
+                        <h2 className="text-base font-medium text-text mb-4">
+                            {t('dashboard.bettingBalanceTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                        </h2>
+                        {loadingDashboard ? (
+                            <LoadingSpinner size="sm" inline />
+                        ) : (
+                            <BettingBalanceTrendChart data={bettingBalanceData} />
+                        )}
+                    </section>
+                    <section className="card p-3 sm:p-6">
+                        <h2 className="text-base font-medium text-text mb-4">
+                            {t('dashboard.betDeltaTrend')} {selectedSeasonId ? t('dashboard.byWeek') : t('dashboard.bySeason')}
+                        </h2>
+                        {loadingDashboard ? (
+                            <LoadingSpinner size="sm" inline />
+                        ) : (
+                            <BetDeltaTrendChart data={betDeltaData} />
+                        )}
+                    </section>
+                </div>
             </div>
         </PageLayout>
     )

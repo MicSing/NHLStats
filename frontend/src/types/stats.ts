@@ -263,6 +263,13 @@ export interface WeeklyBettingBalancePeriod { label: string; users: UserWeeklyBe
 export interface UserWeeklyBetDelta { userId: number; userName: string; delta: number }
 export interface WeeklyBetDeltaPeriod { label: string; users: UserWeeklyBetDelta[] }
 
+export interface SeasonPlusMinusTrend { seasonId: number; trendData: PeriodPlusMinus[] }
+export interface SeasonBettingTrends {
+    seasonId: number
+    bettingBalanceTrend: WeeklyBettingBalancePeriod[]
+    betDeltaTrend: WeeklyBetDeltaPeriod[]
+}
+
 export interface DashboardData {
     seasonStats: SeasonStatsSummary[]
     earningsBySeason: SeasonalUserEarnings[]
@@ -280,6 +287,9 @@ export interface DashboardData {
     allTimeBettingBalanceTrend: WeeklyBettingBalancePeriod[]
     betDeltaTrend: WeeklyBetDeltaPeriod[]
     allTimeBetDeltaTrend: WeeklyBetDeltaPeriod[]
+
+    plusMinusTrendBySeason: SeasonPlusMinusTrend[]
+    bettingTrendsBySeason: SeasonBettingTrends[]
 }
 
 export interface UserPerformanceMetrics {

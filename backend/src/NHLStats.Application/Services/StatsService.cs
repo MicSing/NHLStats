@@ -42,9 +42,11 @@ public class StatsService : IStatsService
         var allTimeRosterScorers = await _rosterStats.GetAllTimeRosterScorerAsync(rosterScorers);
         var allTimeRosterPenalized = await _rosterStats.GetAllTimePenaltyPlayersByUserAsync(rosterPenalized);
 
-        var latestSeason = await _db.Seasons.AsNoTracking()
+        var allSeasons = await _db.Seasons.AsNoTracking()
             .OrderByDescending(s => s.StartedOn)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        var latestSeason = allSeasons.FirstOrDefault();
 
         IEnumerable<WeeklyBettingBalancePeriodDto> bettingBalanceTrend = Enumerable.Empty<WeeklyBettingBalancePeriodDto>();
         IEnumerable<WeeklyBetDeltaPeriodDto> betDeltaTrend = Enumerable.Empty<WeeklyBetDeltaPeriodDto>();
@@ -52,6 +54,17 @@ public class StatsService : IStatsService
             (bettingBalanceTrend, betDeltaTrend) = await GetWeeklyBettingTrendsAsync(latestSeason.Id);
 
         var (allTimeBettingBalanceTrend, allTimeBetDeltaTrend) = await GetAllTimeBettingTrendsAsync();
+
+        var plusMinusTrendBySeason = new List<SeasonPlusMinusTrendDto>();
+        var bettingTrendsBySeason = new List<SeasonBettingTrendsDto>();
+        foreach (var season in allSeasons)
+        {
+            var weeklyTrend = await _matchStats.BuildWeeklyPeriodsAsync(season.Id);
+            plusMinusTrendBySeason.Add(new SeasonPlusMinusTrendDto(season.Id, weeklyTrend));
+
+            var (balance, delta) = await GetWeeklyBettingTrendsAsync(season.Id);
+            bettingTrendsBySeason.Add(new SeasonBettingTrendsDto(season.Id, balance, delta));
+        }
 
         return new DashboardDataDto(
             seasonStats,
@@ -69,7 +82,10 @@ public class StatsService : IStatsService
             bettingBalanceTrend,
             allTimeBettingBalanceTrend,
             betDeltaTrend,
-            allTimeBetDeltaTrend);
+            allTimeBetDeltaTrend,
+
+            plusMinusTrendBySeason,
+            bettingTrendsBySeason);
     }
 
     public async Task<SeasonTotalsDto> GetSeasonTotalsAsync()

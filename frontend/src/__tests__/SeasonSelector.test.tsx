@@ -21,7 +21,7 @@ const mockSeasons: Season[] = [
         hostedTeamId: 2,
         hostedTeamName: 'Edmonton Oilers',
         startedOn: '2024-10-01T00:00:00',
-        status: 'Upcoming',
+        status: 'Active',
         parentSeasonId: null,
         leagueType: 'NHL',
     },

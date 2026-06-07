@@ -843,6 +843,28 @@ export const handlers = [
                     userCounts: [{ userId: 1, userName: 'Player One', count: 7 }],
                 },
             ],
+            bettingBalanceTrend: [],
+            allTimeBettingBalanceTrend: [],
+            betDeltaTrend: [],
+            allTimeBetDeltaTrend: [],
+            plusMinusTrendBySeason: [
+                {
+                    seasonId: 1,
+                    trendData: [
+                        { label: 'Week 1', totalPeriodMatches: 82, users: [{ userId: 1, userName: 'Player One', totalPlus: 2, totalMinus: 1, matchesPlayed: 1 }] },
+                    ],
+                },
+                {
+                    seasonId: 2,
+                    trendData: [
+                        { label: 'Week 1', totalPeriodMatches: 82, users: [{ userId: 1, userName: 'Player One', totalPlus: 3, totalMinus: 2, matchesPlayed: 1 }] },
+                    ],
+                },
+            ],
+            bettingTrendsBySeason: [
+                { seasonId: 1, bettingBalanceTrend: [], betDeltaTrend: [] },
+                { seasonId: 2, bettingBalanceTrend: [], betDeltaTrend: [] },
+            ],
         }))
     }),
 

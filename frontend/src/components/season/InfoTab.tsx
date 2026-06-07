@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Season, CreateSeasonDto, UpdateSeasonDto } from '../../types/season'
+import type { Season, SeasonStatus, CreateSeasonDto, UpdateSeasonDto } from '../../types/season'
 import type { Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
@@ -35,7 +35,7 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
                 ...season,
                 name: form.name,
                 startedOn: form.startedOn,
-                status: form.status ?? 'Active',
+                status: (form.status ?? 'Active') as SeasonStatus,
                 hostedTeamId: form.hostedTeamId ?? null,
                 leagueType: form.leagueType,
             })
