@@ -343,7 +343,7 @@ public class BetService : IBetService
         var legs = await _db.BetLegs
             .Include(l => l.Bet)
                 .ThenInclude(b => b!.Legs)
-            .Where(l => l.MatchId == matchId && l.Status == BetLegStatus.Pending)
+            .Where(l => l.MatchId == matchId)
             .ToListAsync();
         if (legs.Count == 0) return;
 
@@ -430,7 +430,6 @@ public class BetService : IBetService
 
         foreach (var bet in affectedBets)
         {
-            if (bet.Status != BetStatus.Pending) continue;
             var newStatus = RollupStatus(bet.Legs);
             if (newStatus != BetStatus.Pending)
             {
