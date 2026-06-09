@@ -148,11 +148,10 @@ function AchievementModal({ def, result, onClose }: ModalProps) {
 
             {/* Progress bar */}
             <div className="mb-4">
-                <div className="flex justify-between text-xs text-text-muted mb-1">
-                    <span>{count} {def.valueLabel}</span>
+                <div className="flex justify-center text-xs text-text-muted mb-1">
                     {nextLevelAt == null
-                        ? <span className="text-primary font-medium">Max level reached</span>
-                        : <span>{nextLevelAt} to next level</span>
+                        ? <span className="text-primary font-medium">{t('achievements.maxLevelReached')}</span>
+                        : <span>{t('achievements.moreToNextLevel', { count: nextLevelAt - count })}</span>
                     }
                 </div>
                 <div className="h-2 rounded-full bg-border overflow-hidden">
