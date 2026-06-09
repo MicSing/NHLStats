@@ -28,6 +28,8 @@ import AggregatedEntriesTable from '../components/season/AggregatedEntriesTable'
 import TopPlayersGrid from '../components/season/TopPlayersGrid'
 import WeeklyMatches from '../components/season/WeeklyMatches'
 import UpNextPanel from '../components/season/UpNextPanel'
+import { Tab } from '../components/season/SeasonPrimitives'
+import type { LeagueTypeValue } from '../types/team'
 
 export default function SeasonPage() {
     const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>()
@@ -258,6 +260,17 @@ export default function SeasonPage() {
 
     const currentSeason = seasons.find((s) => s.id === seasonId) ?? null
 
+    const activeLeague: LeagueTypeValue = (currentSeason?.leagueType as LeagueTypeValue) ?? 'NHL'
+    const hasNHL = seasons.some(s => s.leagueType === 'NHL')
+    const hasIIHF = seasons.some(s => s.leagueType === 'IIHF')
+    const showLeagueTabs = hasNHL && hasIIHF
+    const filteredSeasons = showLeagueTabs ? seasons.filter(s => s.leagueType === activeLeague) : seasons
+
+    const handleLeagueTabClick = (league: LeagueTypeValue) => {
+        const first = seasons.find(s => s.leagueType === league)
+        if (first) navigate(`/seasons/${first.id}`)
+    }
+
     const hostedTeamShortName = (() => {
         if (!currentSeason?.hostedTeamId) return null
         for (const group of weekGroups) {
@@ -308,13 +321,20 @@ export default function SeasonPage() {
                         <h1 className="text-2xl font-bold tracking-tight">{t('season.title')}</h1>
                         {!loadingSeasons && (
                             <SeasonSelector
-                                seasons={seasons}
+                                seasons={filteredSeasons}
                                 selectedId={seasonId}
                                 onChange={handleSeasonChange}
                             />
                         )}
                     </div>
                 </header>
+
+                {showLeagueTabs && (
+                    <div className="flex gap-6 border-b border-border mb-6">
+                        <Tab label="NHL" active={activeLeague === 'NHL'} onClick={() => handleLeagueTabClick('NHL')} />
+                        <Tab label="IIHF" active={activeLeague === 'IIHF'} onClick={() => handleLeagueTabClick('IIHF')} />
+                    </div>
+                )}
 
                 {/* Notification banners */}
                 {isDesktop && seasonId && notificationPermission === 'default' && (
