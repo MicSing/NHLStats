@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Plus, DownloadSimple } from '@phosphor-icons/react'
+import { Plus, DownloadSimpleIcon } from '@phosphor-icons/react'
 import { CompletionType } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
 import type { Team } from '../../types/team'
@@ -109,51 +109,41 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
     }
 
     const exportColumnDefs: ColumnDef[] = [
-        { key: 'matchNumber', label: t('csvExport.columns.matchNumber') },
-        { key: 'homeTeamName', label: t('csvExport.columns.homeTeamName') },
-        { key: 'awayTeamName', label: t('csvExport.columns.awayTeamName') },
-        { key: 'homeScore', label: t('csvExport.columns.homeScore') },
-        { key: 'awayScore', label: t('csvExport.columns.awayScore') },
-        { key: 'matchDate', label: t('csvExport.columns.matchDate') },
-        { key: 'completionType', label: t('csvExport.columns.completionType') },
+        { key: 'match', label: t('csvExport.columns.match'), defaultSelected: true, required: true },
+        { key: 'details', label: t('csvExport.columns.details'), defaultSelected: true },
     ]
 
-    const completionTypeLabel = (ct: CompletionType): string => {
-        switch (ct) {
-            case CompletionType.RegularTime: return t('admin.matches.regularTime')
-            case CompletionType.Overtime: return t('admin.matches.overtime')
-            case CompletionType.Shootout: return t('admin.matches.shootout')
-            case CompletionType.InProgress: return 'In Progress'
-            default: return '—'
+    const completionTypeToken = (ct: CompletionType): string => {
+        switch (normalizeCompletionType(ct)) {
+            case CompletionType.RegularTime: return 'REG'
+            case CompletionType.Overtime: return 'OT'
+            case CompletionType.Shootout: return 'SO'
+            default: return 'NONE'
         }
     }
 
     const handleExport = (selectedKeys: string[]) => {
-        const escapeCsv = (val: string | number | null | undefined): string => {
-            const s = val == null ? '' : String(val)
-            return s.includes(',') || s.includes('"') || s.includes('\n')
-                ? `"${s.replace(/"/g, '""')}"`
-                : s
-        }
+        const shortMap = new Map(teams.map((t) => [t.id, t.shortName]))
+        const includeDetails = selectedKeys.includes('details')
 
-        const header = selectedKeys
-            .map((k) => exportColumnDefs.find((c) => c.key === k)?.label ?? k)
-            .join(',')
+        const commentHeader = includeDetails
+            ? '# Match, Score, Type, Date'
+            : '# Match'
 
         const rows = matches.map((m) => {
-            const values: Record<string, string | number | null> = {
-                matchNumber: m.matchNumber,
-                homeTeamName: m.homeTeamName,
-                awayTeamName: m.awayTeamName,
-                homeScore: m.matchDate != null ? m.homeScore : null,
-                awayScore: m.matchDate != null ? m.awayScore : null,
-                matchDate: m.matchDate ? new Date(m.matchDate).toLocaleDateString() : null,
-                completionType: completionTypeLabel(normalizeCompletionType(m.completionType)),
+            const away = shortMap.get(m.awayTeamId) ?? String(m.awayTeamId)
+            const home = shortMap.get(m.homeTeamId) ?? String(m.homeTeamId)
+            const base = `${away} @ ${home}`
+
+            if (includeDetails && m.matchDate != null) {
+                const d = new Date(m.matchDate)
+                const date = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`
+                return `${base}, ${m.homeScore}:${m.awayScore}, ${completionTypeToken(m.completionType)}, ${date}`
             }
-            return selectedKeys.map((k) => escapeCsv(values[k])).join(',')
+            return base
         })
 
-        const csv = [header, ...rows].join('\n')
+        const csv = [commentHeader, ...rows].join('\n')
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -181,7 +171,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                 <h2 className="text-lg font-semibold">{t('admin.matches.title')}</h2>
                 <div className="flex gap-2">
                     <SecondaryButton
-                        icon={<DownloadSimple size={16} />}
+                        icon={<DownloadSimpleIcon size={16} />}
                         label={t('admin.matches.exportCsv')}
                         onClick={() => setShowExportModal(true)}
                     />

@@ -778,13 +778,8 @@
         "noColumnsSelected": "Vyberte aspoň jeden stĺpec",
         "confirm": "Exportovať",
         "columns": {
-            "matchNumber": "#",
-            "homeTeamName": "Domáci tím",
-            "awayTeamName": "Hosťujúci tím",
-            "homeScore": "Skóre domáci",
-            "awayScore": "Skóre hostia",
-            "matchDate": "Dátum",
-            "completionType": "Ukončenie"
+            "match": "Zápas (skrátený názov)",
+            "details": "Detaily (skóre, typ a dátum)"
         }
     }
 }

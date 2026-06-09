@@ -776,13 +776,8 @@
         "noColumnsSelected": "Select at least one column",
         "confirm": "Export",
         "columns": {
-            "matchNumber": "#",
-            "homeTeamName": "Home Team",
-            "awayTeamName": "Away Team",
-            "homeScore": "Home Score",
-            "awayScore": "Away Score",
-            "matchDate": "Date",
-            "completionType": "Completion"
+            "match": "Match (Short Names)",
+            "details": "Details (Score, Type & Date)"
         }
     }
 }

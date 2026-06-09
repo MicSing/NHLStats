@@ -6,6 +6,7 @@ export interface ColumnDef {
     key: string
     label: string
     defaultSelected?: boolean
+    required?: boolean
 }
 
 interface CsvColumnSelectorModalProps {
@@ -29,6 +30,7 @@ export default function CsvColumnSelectorModal({
     )
 
     const toggle = (key: string) => {
+        if (columns.find((c) => c.key === key)?.required) return
         setSelected((prev) => {
             const next = new Set(prev)
             if (next.has(key)) { next.delete(key) } else { next.add(key) }
@@ -37,7 +39,7 @@ export default function CsvColumnSelectorModal({
     }
 
     const selectAll = () => setSelected(new Set(columns.map((c) => c.key)))
-    const deselectAll = () => setSelected(new Set())
+    const deselectAll = () => setSelected(new Set(columns.filter((c) => c.required).map((c) => c.key)))
 
     return (
         <Modal title={title} onClose={onClose}>
@@ -63,11 +65,12 @@ export default function CsvColumnSelectorModal({
                 <ul className="space-y-2">
                     {columns.map((col) => (
                         <li key={col.key}>
-                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                            <label className={`flex items-center gap-3 select-none ${col.required ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                                 <input
                                     type="checkbox"
                                     checked={selected.has(col.key)}
                                     onChange={() => toggle(col.key)}
+                                    disabled={col.required}
                                     className="w-4 h-4 accent-primary"
                                 />
                                 <span className="text-sm text-text">{col.label}</span>
