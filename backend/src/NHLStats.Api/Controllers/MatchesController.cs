@@ -65,9 +65,16 @@ public class MatchesController : ControllerBase
     public async Task<IActionResult> Update(int seasonId, int id, UpdateMatchDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        var updated = await _service.UpdateAsync(id, dto);
-        if (updated == null || updated.SeasonId != seasonId) return NotFound();
-        return Ok(updated);
+        try
+        {
+            var updated = await _service.UpdateAsync(id, dto);
+            if (updated == null || updated.SeasonId != seasonId) return NotFound();
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [Authorize(Roles = "Admin")]

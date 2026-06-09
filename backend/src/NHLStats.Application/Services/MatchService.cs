@@ -131,6 +131,10 @@ public class MatchService : IMatchService
             .FirstOrDefaultAsync(m => m.Id == id);
         if (match == null) return null;
 
+        if (!IsValidTransition(match.CompletionType, dto.CompletionType))
+            throw new InvalidOperationException(
+                $"Invalid match status transition: {match.CompletionType} → {dto.CompletionType}");
+
         var previousCompletionType = match.CompletionType;
 
         match.HomeTeamId = dto.HomeTeamId;
@@ -272,5 +276,18 @@ public class MatchService : IMatchService
             .ToListAsync();
 
         return created.Select(ToDto);
+    }
+
+    private static bool IsValidTransition(CompletionType from, CompletionType to)
+    {
+        if (from == to) return true;
+        return (from, to) switch
+        {
+            (CompletionType.None, CompletionType.InProgress) => true,
+            (CompletionType.InProgress, CompletionType.RegularTime) => true,
+            (CompletionType.InProgress, CompletionType.Overtime) => true,
+            (CompletionType.InProgress, CompletionType.Shootout) => true,
+            _ => false,
+        };
     }
 }

@@ -9,6 +9,14 @@ function isFinishedType(t: CompletionType): boolean {
     return t === CompletionType.RegularTime || t === CompletionType.Overtime || t === CompletionType.Shootout
 }
 
+function getAllowedTransitions(current: CompletionType): CompletionType[] {
+    switch (current) {
+        case CompletionType.None:       return [CompletionType.InProgress]
+        case CompletionType.InProgress: return [CompletionType.RegularTime, CompletionType.Overtime, CompletionType.Shootout]
+        default:                        return []
+    }
+}
+
 interface Props {
     seasonId: string
     match: Match
@@ -171,6 +179,7 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
     }, [completionType, matchDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleCompletionTypeChange = (newType: CompletionType) => {
+        if (!getAllowedTransitions(completionType).includes(newType)) return
         setCompletionType(newType)
         if (newType === CompletionType.InProgress) {
             setMatchDate(new Date().toISOString().split('T')[0])
@@ -230,18 +239,25 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center gap-2">
-                                <select
-                                    aria-label={t('match.completionType')}
-                                    value={completionType}
-                                    onChange={(e) => handleCompletionTypeChange(Number(e.target.value) as CompletionType)}
-                                    className="input !py-1 !px-2 !w-auto text-xs font-semibold uppercase bg-border border-transparent"
-                                >
-                                    <option value={CompletionType.None}>{t('match.notPlayed')}</option>
-                                    <option value={CompletionType.RegularTime}>{t('match.reg')}</option>
-                                    <option value={CompletionType.Overtime}>{t('match.ot')}</option>
-                                    <option value={CompletionType.Shootout}>{t('match.so')}</option>
-                                    <option value={CompletionType.InProgress}>{t('match.inProgress')}</option>
-                                </select>
+                                {isFinishedType(completionType) ? (
+                                    <span className="text-xs px-2 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
+                                        {completionTypeLabel(completionType, t)}
+                                    </span>
+                                ) : (
+                                    <select
+                                        aria-label={t('match.completionType')}
+                                        value={completionType}
+                                        onChange={(e) => handleCompletionTypeChange(Number(e.target.value) as CompletionType)}
+                                        className="input !py-1 !px-2 !w-auto text-xs font-semibold uppercase bg-border border-transparent"
+                                    >
+                                        <option value={completionType} disabled>
+                                            {completionTypeLabel(completionType, t)}
+                                        </option>
+                                        {getAllowedTransitions(completionType).map(ct => (
+                                            <option key={ct} value={ct}>{completionTypeLabel(ct, t)}</option>
+                                        ))}
+                                    </select>
+                                )}
 
                                 <div className="relative flex items-center">
                                     <CalendarBlankIcon
