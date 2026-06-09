@@ -272,7 +272,7 @@ export default function SeasonPage() {
     const hostedStats = (() => {
         const htId = currentSeason?.hostedTeamId
         if (!htId) return null
-        let W = 0, L = 0, OTL = 0, OT = 0
+        let W = 0, L = 0, OTW = 0, OT = 0
         let winsHome = 0, winsAway = 0, lossesHome = 0, lossesAway = 0
         for (const m of allMatches) {
             const ct = normalizeCompletionType(m.completionType)
@@ -288,13 +288,15 @@ export default function SeasonPage() {
             const os = isHome ? m.awayScore : m.homeScore
             const isOTGame = ct === CompletionType.Overtime || ct === CompletionType.Shootout
             if (isOTGame) OT++
-            if (hs > os) { W++; if (isHome) winsHome++; else winsAway++ }
-            else if (hs < os) {
-                if (isOTGame) OTL++; else L++
+            if (hs > os) {
+                if (!isOTGame) W++; else OTW++
+                if (isHome) winsHome++; else winsAway++
+            } else if (hs < os) {
+                L++
                 if (isHome) lossesHome++; else lossesAway++
             }
         }
-        return { W, L, OTL, OT, winsHome, winsAway, lossesHome, lossesAway }
+        return { W, L, OTW, OT, winsHome, winsAway, lossesHome, lossesAway }
     })()
 
     return (

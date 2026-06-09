@@ -5,7 +5,7 @@ import { teamLogoUrl } from '../../utils/teamLogoUrl'
 interface HostedStats {
     W: number
     L: number
-    OTL: number
+    OTW: number
     OT: number
     winsHome: number
     winsAway: number
@@ -55,8 +55,8 @@ export default function HostedTeamRecord({ currentSeason, hostedTeamShortName, h
                     </div>
                     <div className="p-5 flex justify-around items-center">
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">OTL</div>
-                            <div className="text-2xl font-bold tabular-nums">{hostedStats.OTL}</div>
+                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">OTW</div>
+                            <div className="text-2xl font-bold text-success tabular-nums">{hostedStats.OTW}</div>
                         </div>
                         <div className="w-px h-8 bg-border" />
                         <div className="text-center">
