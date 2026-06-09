@@ -181,6 +181,12 @@ public class StatsService : IStatsService
             .Where(m => m.SeasonId == seasonId && m.MatchDate != null)
             .ToDictionaryAsync(m => m.Id, m => m.MatchDate!.Value.Date);
 
+        var seasonStartDate = await _db.Seasons
+            .AsNoTracking()
+            .Where(s => s.Id == seasonId)
+            .Select(s => s.StartedOn)
+            .FirstOrDefaultAsync();
+
         var positivePointRows = await _db.UserMatchPoints
             .AsNoTracking()
             .Where(p => p.UserMatch != null
@@ -203,7 +209,8 @@ public class StatsService : IStatsService
 
         var allBets = await _db.Bets
             .AsNoTracking()
-            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost) && b.EvaluatedOn.HasValue)
+            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost) && b.EvaluatedOn.HasValue
+                     && b.EvaluatedOn >= seasonStartDate)
             .Select(b => new { b.CreatedBy, b.Stake, b.TotalOdds, b.Status, b.EvaluatedOn })
             .ToListAsync();
 
