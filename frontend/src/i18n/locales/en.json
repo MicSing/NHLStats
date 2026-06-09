@@ -657,7 +657,11 @@
             "orPasteCsv": "Or paste CSV:",
             "exportCsv": "Export CSV",
             "exportTitle": "Export Matches to CSV",
-            "exportConfirm": "Export"
+            "exportConfirm": "Export",
+            "initializeAll": "Initialize All Users",
+            "initializeAllConfirm": "Initialize all season users into every unplayed match?",
+            "initializeAllSuccess": "Initialized {{count}} user-match entries.",
+            "initializeAllNone": "All users are already initialized."
         },
         "pointReasons": {
             "title": "Point Reasons",

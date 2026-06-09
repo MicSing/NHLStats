@@ -60,6 +60,17 @@ public class UserMatchesController : ControllerBase
         return Ok(new { created });
     }
 
+    // ── POST api/seasons/{seasonId}/matches/usermatches/initialize-all ───────
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("api/seasons/{seasonId:int}/matches/usermatches/initialize-all")]
+    public async Task<IActionResult> InitializeAllUsers(int seasonId)
+    {
+        var (created, error) = await _service.InitializeUsersForAllUnplayedMatchesAsync(seasonId);
+        if (error != null) return BadRequest(new { error });
+        return Ok(new { created });
+    }
+
     // ── Aggregated Season Data ────────────────────────────────────────────────
 
     [HttpPost("api/users/{userId:int}/seasons/{seasonId:int}/aggregated-data")]

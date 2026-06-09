@@ -158,6 +158,49 @@ public class UserMatchService : IUserMatchService
         return (toCreate.Count, null);
     }
 
+    public async Task<(int created, string? error)> InitializeUsersForAllUnplayedMatchesAsync(int seasonId)
+    {
+        var unplayedMatchIds = await _db.Matches
+            .Where(m => m.SeasonId == seasonId && m.CompletionType == CompletionType.None)
+            .Select(m => m.Id)
+            .ToListAsync();
+
+        if (unplayedMatchIds.Count == 0)
+            return (0, null);
+
+        var seasonUserIds = await _db.SeasonUsers
+            .Where(su => su.SeasonId == seasonId)
+            .Select(su => su.UserId)
+            .ToListAsync();
+
+        if (seasonUserIds.Count == 0)
+            return (0, null);
+
+        var existingPairs = await _db.UserMatches
+            .Where(um => unplayedMatchIds.Contains(um.MatchId))
+            .Select(um => new { um.MatchId, um.UserId })
+            .ToListAsync();
+
+        var existingSet = existingPairs
+            .Select(p => (p.MatchId, p.UserId))
+            .ToHashSet();
+
+        var toCreate = unplayedMatchIds
+            .SelectMany(mId => seasonUserIds
+                .Where(userId => !existingSet.Contains((mId, userId)))
+                .Select(userId => new UserMatch
+                {
+                    UserId = userId,
+                    MatchId = mId,
+                    SeasonId = seasonId
+                }))
+            .ToList();
+
+        _db.UserMatches.AddRange(toCreate);
+        await _db.SaveChangesAsync();
+        return (toCreate.Count, null);
+    }
+
     // --- Aggregated data ────────────────────────────────────────────────────────────────
 
     public async Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(

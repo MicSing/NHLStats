@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Plus, DownloadSimpleIcon } from '@phosphor-icons/react'
+import { Plus, DownloadSimpleIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { CompletionType } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
 import type { Team } from '../../types/team'
@@ -36,6 +36,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
     const [editMatch, setEditMatch] = useState<Match | null>(null)
     const [showBulkModal, setShowBulkModal] = useState(false)
     const [showExportModal, setShowExportModal] = useState(false)
+    const [initializingAll, setInitializingAll] = useState(false)
     const [createForm, setCreateForm] = useState<CreateMatchDto>({ homeTeamId: 0, awayTeamId: 0 })
     const [editForm, setEditForm] = useState<UpdateMatchDto>({
         homeTeamId: 0,
@@ -165,6 +166,26 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
         }
     }
 
+    const handleInitializeAll = async () => {
+        if (!window.confirm(t('admin.matches.initializeAllConfirm'))) return
+        setInitializingAll(true)
+        try {
+            const { created } = await apiClient.post<{ created: number }>(
+                `/api/seasons/${seasonId}/matches/usermatches/initialize-all`,
+                {},
+            )
+            if (created > 0) {
+                toast.success(t('admin.matches.initializeAllSuccess', { count: created }))
+            } else {
+                toast.success(t('admin.matches.initializeAllNone'))
+            }
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setInitializingAll(false)
+        }
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -174,6 +195,12 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                         icon={<DownloadSimpleIcon size={16} />}
                         label={t('admin.matches.exportCsv')}
                         onClick={() => setShowExportModal(true)}
+                    />
+                    <SecondaryButton
+                        icon={<UsersThreeIcon size={16} />}
+                        label={t('admin.matches.initializeAll')}
+                        onClick={() => void handleInitializeAll()}
+                        disabled={initializingAll}
                     />
                     <SecondaryButton
                         label={t('admin.matches.bulkCreate')}

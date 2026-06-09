@@ -17,6 +17,9 @@ public interface IUserMatchService
     /// <summary>Creates a UserMatch for every SeasonUser not already represented in the match.</summary>
     Task<(int created, string? error)> InitializeUsersForMatchAsync(int seasonId, int matchId);
 
+    /// <summary>Creates missing UserMatches for every SeasonUser across all unplayed matches in the season.</summary>
+    Task<(int created, string? error)> InitializeUsersForAllUnplayedMatchesAsync(int seasonId);
+
     // ── Aggregated data ────────────────────────────────────────────────────────────────
     Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(int userId, int seasonId, CreateAggregatedSeasonDataDto dto);
     Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataAsync(int userId, int seasonId);

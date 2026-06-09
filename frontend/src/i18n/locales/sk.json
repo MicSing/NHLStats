@@ -659,7 +659,11 @@
             "orPasteCsv": "Alebo vložte CSV:",
             "exportCsv": "Exportovať CSV",
             "exportTitle": "Exportovať zápasy do CSV",
-            "exportConfirm": "Exportovať"
+            "exportConfirm": "Exportovať",
+            "initializeAll": "Inicializovať všetkých hráčov",
+            "initializeAllConfirm": "Inicializovať všetkých hráčov sezóny do každého neodohraného zápasu?",
+            "initializeAllSuccess": "Inicializovaných {{count}} záznamov.",
+            "initializeAllNone": "Všetci hráči sú už inicializovaní."
         },
         "pointReasons": {
             "title": "Dôvody bodov",
