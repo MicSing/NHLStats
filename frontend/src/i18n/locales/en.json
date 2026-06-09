@@ -654,7 +654,10 @@
             "valid": "{{count}} valid",
             "errors": "{{count}} errors",
             "exceedsWarning": "⚠ This exceeds a full NHL regular season (82 games) — continue?",
-            "orPasteCsv": "Or paste CSV:"
+            "orPasteCsv": "Or paste CSV:",
+            "exportCsv": "Export CSV",
+            "exportTitle": "Export Matches to CSV",
+            "exportConfirm": "Export"
         },
         "pointReasons": {
             "title": "Point Reasons",
@@ -766,5 +769,20 @@
         "matchCount": "{{count}} match",
         "matchCount_other": "{{count}} matches",
         "seasonWeekLabel": "{{season}} Week {{week}}"
+    },
+    "csvExport": {
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "noColumnsSelected": "Select at least one column",
+        "confirm": "Export",
+        "columns": {
+            "matchNumber": "#",
+            "homeTeamName": "Home Team",
+            "awayTeamName": "Away Team",
+            "homeScore": "Home Score",
+            "awayScore": "Away Score",
+            "matchDate": "Date",
+            "completionType": "Completion"
+        }
     }
 }

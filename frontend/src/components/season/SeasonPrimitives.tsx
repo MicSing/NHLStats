@@ -103,10 +103,12 @@ export function PrimaryButton({
 }
 
 export function SecondaryButton({
+    icon,
     label,
     onClick,
     disabled,
 }: {
+    icon?: ReactNode
     label: string
     onClick: () => void
     disabled?: boolean
@@ -116,8 +118,9 @@ export function SecondaryButton({
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 bg-border hover:bg-border/80 px-4 py-2 rounded text-sm transition-colors disabled:opacity-50"
         >
+            {icon}
             {label}
         </button>
     )

@@ -656,7 +656,10 @@
             "valid": "{{count}} platných",
             "errors": "{{count}} chýb",
             "exceedsWarning": "⚠ Toto presahuje celú sezónu NHL (82 zápasov) — pokračovať?",
-            "orPasteCsv": "Alebo vložte CSV:"
+            "orPasteCsv": "Alebo vložte CSV:",
+            "exportCsv": "Exportovať CSV",
+            "exportTitle": "Exportovať zápasy do CSV",
+            "exportConfirm": "Exportovať"
         },
         "pointReasons": {
             "title": "Dôvody bodov",
@@ -768,5 +771,20 @@
         "matchCount": "{{count}} zápas",
         "matchCount_other": "{{count}} zápasov",
         "seasonWeekLabel": "{{season}} Týždeň {{week}}"
+    },
+    "csvExport": {
+        "selectAll": "Vybrať všetko",
+        "deselectAll": "Zrušiť výber",
+        "noColumnsSelected": "Vyberte aspoň jeden stĺpec",
+        "confirm": "Exportovať",
+        "columns": {
+            "matchNumber": "#",
+            "homeTeamName": "Domáci tím",
+            "awayTeamName": "Hosťujúci tím",
+            "homeScore": "Skóre domáci",
+            "awayScore": "Skóre hostia",
+            "matchDate": "Dátum",
+            "completionType": "Ukončenie"
+        }
     }
 }

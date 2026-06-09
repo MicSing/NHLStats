@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Plus } from '@phosphor-icons/react'
+import { Plus, DownloadSimple } from '@phosphor-icons/react'
 import { CompletionType } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto, BatchCreateMatchDto } from '../../types/match'
 import type { Team } from '../../types/team'
@@ -9,6 +9,8 @@ import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import { useToast } from '../../context/ToastContext'
 import Modal from '../Modal'
+import CsvColumnSelectorModal from '../CsvColumnSelectorModal'
+import type { ColumnDef } from '../CsvColumnSelectorModal'
 import SearchableSelect from '../SearchableSelect'
 import SearchInput from '../SearchInput'
 import Pagination from '../Pagination'
@@ -808,6 +810,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
     const [showAddModal, setShowAddModal] = useState(false)
     const [editMatch, setEditMatch] = useState<Match | null>(null)
     const [showBulkModal, setShowBulkModal] = useState(false)
+    const [showExportModal, setShowExportModal] = useState(false)
     const [createForm, setCreateForm] = useState<CreateMatchDto>({ homeTeamId: 0, awayTeamId: 0 })
     const [editForm, setEditForm] = useState<UpdateMatchDto>({
         homeTeamId: 0,
@@ -880,6 +883,62 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
         }
     }
 
+    const exportColumnDefs: ColumnDef[] = [
+        { key: 'matchNumber', label: t('csvExport.columns.matchNumber') },
+        { key: 'homeTeamName', label: t('csvExport.columns.homeTeamName') },
+        { key: 'awayTeamName', label: t('csvExport.columns.awayTeamName') },
+        { key: 'homeScore', label: t('csvExport.columns.homeScore') },
+        { key: 'awayScore', label: t('csvExport.columns.awayScore') },
+        { key: 'matchDate', label: t('csvExport.columns.matchDate') },
+        { key: 'completionType', label: t('csvExport.columns.completionType') },
+    ]
+
+    const completionTypeLabel = (ct: CompletionType): string => {
+        switch (ct) {
+            case CompletionType.RegularTime: return t('admin.matches.regularTime')
+            case CompletionType.Overtime: return t('admin.matches.overtime')
+            case CompletionType.Shootout: return t('admin.matches.shootout')
+            case CompletionType.InProgress: return 'In Progress'
+            default: return '—'
+        }
+    }
+
+    const handleExport = (selectedKeys: string[]) => {
+        const escapeCsv = (val: string | number | null | undefined): string => {
+            const s = val == null ? '' : String(val)
+            return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? `"${s.replace(/"/g, '""')}"`
+                : s
+        }
+
+        const header = selectedKeys
+            .map((k) => exportColumnDefs.find((c) => c.key === k)?.label ?? k)
+            .join(',')
+
+        const rows = matches.map((m) => {
+            const values: Record<string, string | number | null> = {
+                matchNumber: m.matchNumber,
+                homeTeamName: m.homeTeamName,
+                awayTeamName: m.awayTeamName,
+                homeScore: m.matchDate != null ? m.homeScore : null,
+                awayScore: m.matchDate != null ? m.awayScore : null,
+                matchDate: m.matchDate ? new Date(m.matchDate).toLocaleDateString() : null,
+                completionType: completionTypeLabel(normalizeCompletionType(m.completionType)),
+            }
+            return selectedKeys.map((k) => escapeCsv(values[k])).join(',')
+        })
+
+        const csv = [header, ...rows].join('\n')
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `matches-season-${seasonId}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+        setShowExportModal(false)
+    }
+
     const handleDelete = async (id: number) => {
         if (!window.confirm(t('admin.matches.deleteConfirm'))) return
         try {
@@ -896,6 +955,11 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">{t('admin.matches.title')}</h2>
                 <div className="flex gap-2">
+                    <SecondaryButton
+                        icon={<DownloadSimple size={16} />}
+                        label={t('admin.matches.exportCsv')}
+                        onClick={() => setShowExportModal(true)}
+                    />
                     <SecondaryButton
                         label={t('admin.matches.bulkCreate')}
                         onClick={() => setShowBulkModal(true)}
@@ -1015,6 +1079,16 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                         onCancel={() => setEditMatch(null)}
                     />
                 </Modal>
+            )}
+
+            {showExportModal && (
+                <CsvColumnSelectorModal
+                    title={t('admin.matches.exportTitle')}
+                    columns={exportColumnDefs}
+                    confirmLabel={t('admin.matches.exportConfirm')}
+                    onConfirm={handleExport}
+                    onClose={() => setShowExportModal(false)}
+                />
             )}
 
             {showBulkModal && (
