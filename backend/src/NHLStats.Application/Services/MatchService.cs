@@ -44,8 +44,8 @@ public class MatchService : IMatchService
 
     private static MatchDto ToDto(Match m) => new(
         m.Id, m.SeasonId, m.MatchNumber,
-        m.HomeTeamId, m.HomeTeam?.Name,
-        m.AwayTeamId, m.AwayTeam?.Name,
+        m.HomeTeamId, m.HomeTeam?.Name, m.HomeTeam?.ShortName,
+        m.AwayTeamId, m.AwayTeam?.Name, m.AwayTeam?.ShortName,
         m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
 
     private static FutureMatchDto ToFutureDto(Match m) => new(

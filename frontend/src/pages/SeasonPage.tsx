@@ -382,7 +382,6 @@ export default function SeasonPage() {
                             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
                                 <UpNextPanel
                                     allMatches={allMatches}
-                                    weekGroups={weekGroups}
                                     seasonId={seasonId}
                                     seasons={seasons}
                                     loadingH2H={loadingH2H}

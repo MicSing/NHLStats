@@ -14,8 +14,10 @@ export interface Match {
     matchNumber: number
     homeTeamId: number
     homeTeamName: string | null
+    homeTeamShortName: string | null
     awayTeamId: number
     awayTeamName: string | null
+    awayTeamShortName: string | null
     homeScore: number
     awayScore: number
     matchDate: string | null

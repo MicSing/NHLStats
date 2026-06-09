@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Match } from '../../types/match'
 import type { Season } from '../../types/season'
-import type { WeekGroup, HeadToHeadMatch } from '../../types/stats'
+import type { HeadToHeadMatch } from '../../types/stats'
 import { CompletionType } from '../../types/match'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import CompletionBadge from '../CompletionBadge'
@@ -10,7 +10,6 @@ import { normalizeCompletionType } from './seasonUtils'
 
 interface Props {
     allMatches: Match[]
-    weekGroups: WeekGroup[]
     seasonId: number
     seasons: Season[]
     loadingH2H: boolean
@@ -21,7 +20,6 @@ interface Props {
 
 export default function UpNextPanel({
     allMatches,
-    weekGroups,
     seasonId,
     seasons,
     loadingH2H,
@@ -42,16 +40,8 @@ export default function UpNextPanel({
     const season = seasons.find((s) => s.id === seasonId)
     const hostedTeamId = season?.hostedTeamId ?? null
 
-    const teamShortNameById = new Map<number, string>()
-    for (const group of weekGroups) {
-        for (const wm of group.matches) {
-            if (wm.homeTeamShortName) teamShortNameById.set(wm.homeTeamId, wm.homeTeamShortName)
-            if (wm.awayTeamShortName) teamShortNameById.set(wm.awayTeamId, wm.awayTeamShortName)
-        }
-    }
-
-    const homeShort = teamShortNameById.get(upNext.homeTeamId) ?? null
-    const awayShort = teamShortNameById.get(upNext.awayTeamId) ?? null
+    const homeShort = upNext.homeTeamShortName
+    const awayShort = upNext.awayTeamShortName
     const upNextHomeLogo = homeShort ? teamLogoUrl(homeShort) : null
     const upNextAwayLogo = awayShort ? teamLogoUrl(awayShort) : null
 
