@@ -22,6 +22,7 @@ export interface SeasonEventNotificationsApi {
 
 export function useSeasonEventNotifications(
     seasonId: number | null | undefined,
+    options?: { onMatchCompleted?: () => void },
 ): SeasonEventNotificationsApi {
     const { user } = useAuth()
     const { t } = useTranslation()
@@ -29,10 +30,12 @@ export function useSeasonEventNotifications(
     const permissionRef = useRef<NotificationStatus>(permission)
     const userIdRef = useRef<string | null>(user?.id ?? null)
     const tRef = useRef(t)
+    const onMatchCompletedRef = useRef(options?.onMatchCompleted)
 
     useEffect(() => { permissionRef.current = permission }, [permission])
     useEffect(() => { userIdRef.current = user?.id ?? null }, [user?.id])
     useEffect(() => { tRef.current = t }, [t])
+    useEffect(() => { onMatchCompletedRef.current = options?.onMatchCompleted }, [options?.onMatchCompleted])
 
     const requestPermission = useCallback(async (): Promise<NotificationStatus> => {
         if (typeof Notification === 'undefined') return 'unsupported'
@@ -48,9 +51,13 @@ export function useSeasonEventNotifications(
 
         const handler = (evt: SeasonEvent) => {
             if (evt.seasonId !== seasonId) return
-            if (evt.actorUserId && userIdRef.current && evt.actorUserId === userIdRef.current) return
-            if (permissionRef.current !== 'granted') return
-            if (typeof Notification === 'undefined') return
+
+            if (evt.eventType === 'MatchCompleted') {
+                onMatchCompletedRef.current?.()
+            }
+
+            const isSelf = evt.actorUserId && userIdRef.current && evt.actorUserId === userIdRef.current
+            if (isSelf || permissionRef.current !== 'granted' || typeof Notification === 'undefined') return
 
             const translate = tRef.current
             let title = translate('notifications.pointNeutral')

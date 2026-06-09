@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PageLayout from '../components/PageLayout'
@@ -6,6 +6,8 @@ import ArchiveTab from '../components/betting/ArchiveTab'
 import BettingTab from '../components/betting/BettingTab'
 import TicketsTab from '../components/betting/TicketsTab'
 import { useAuth } from '../context/AuthContext'
+import { useSeasonEventNotifications } from '../hooks/useSeasonEventNotifications'
+import { cacheService } from '../services/cacheService'
 import type { BettingBalanceDto } from '../types/bet'
 
 type Tab = 'betting' | 'archive' | 'tickets'
@@ -16,6 +18,20 @@ export default function BettingPage() {
     const [searchParams, setSearchParams] = useSearchParams()
 
     const userId = user?.userId ?? null
+
+    const [activeSeasonId, setActiveSeasonId] = useState<number | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
+
+    useEffect(() => {
+        cacheService.getSeasons().then(seasons => {
+            const active = seasons.find(s => s.status === 'Active') ?? seasons.at(-1)
+            if (active) setActiveSeasonId(active.id)
+        }).catch(() => { /* ignore */ })
+    }, [])
+
+    useSeasonEventNotifications(activeSeasonId, {
+        onMatchCompleted: () => setRefreshKey(k => k + 1),
+    })
 
     const rawTab = searchParams.get('tab')
     const tab: Tab =
@@ -90,11 +106,11 @@ export default function BettingPage() {
                 </div>
 
                 {tab === 'betting' && userId ? (
-                    <BettingTab userId={userId} onBalanceChanged={setBalance} />
+                    <BettingTab userId={userId} onBalanceChanged={setBalance} refreshKey={refreshKey} />
                 ) : tab === 'archive' && userId ? (
-                    <ArchiveTab />
+                    <ArchiveTab refreshKey={refreshKey} />
                 ) : (
-                    <TicketsTab />
+                    <TicketsTab refreshKey={refreshKey} />
                 )}
             </div>
         </PageLayout>

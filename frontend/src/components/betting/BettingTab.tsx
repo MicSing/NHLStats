@@ -13,9 +13,10 @@ import UpcomingMatchesSection from './UpcomingMatchesSection'
 interface BettingTabProps {
     userId: number
     onBalanceChanged: (b: BettingBalanceDto) => void
+    refreshKey?: number
 }
 
-export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps) {
+export default function BettingTab({ userId, onBalanceChanged, refreshKey }: BettingTabProps) {
     const { t } = useTranslation()
     const { success, error } = useToast()
 
@@ -58,6 +59,22 @@ export default function BettingTab({ userId, onBalanceChanged }: BettingTabProps
         }
         void load()
     }, [userId, ensureOdds, error, t, onBalanceChanged])
+
+    useEffect(() => {
+        if (!refreshKey) return
+        const refresh = async () => {
+            try {
+                const [active, bal] = await Promise.all([
+                    bettingService.listActive(),
+                    bettingService.getBalance(),
+                ])
+                setActiveBets(active)
+                setBalance(bal)
+                onBalanceChanged(bal)
+            } catch { /* silent */ }
+        }
+        void refresh()
+    }, [refreshKey, onBalanceChanged])
 
     const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
     const selectedOdds = selectedMatchId != null ? oddsByMatch[selectedMatchId] ?? null : null

@@ -60,7 +60,11 @@ function potentialWin(bet: BetDto): number {
     return bet.stake * bet.totalOdds
 }
 
-export default function TicketsTab() {
+interface TicketsTabProps {
+    refreshKey?: number
+}
+
+export default function TicketsTab({ refreshKey }: TicketsTabProps) {
     const { t } = useTranslation()
     const { error } = useToast()
     const { user } = useAuth()
@@ -108,6 +112,11 @@ export default function TicketsTab() {
         }
         void load()
     }, [error, t])
+
+    useEffect(() => {
+        if (!refreshKey) return
+        bettingService.listAll().then(setBets).catch(() => { /* silent */ })
+    }, [refreshKey])
 
     const setParam = (key: string, val: string) => {
         setSearchParams(prev => {
