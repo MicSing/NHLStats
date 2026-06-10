@@ -154,6 +154,7 @@ export default function MatchPage() {
     }
 
     const EXCLUDED_NEG_REASON_IDS = [2, 3, 4, 5, 19, 20]
+    const NEUTRAL_TO_NEGATIVE_MAP: Record<number, number> = { 21: 19, 22: 20 }
 
     const handleNegativePointAdded = async (pointReasonId: number) => {
         if (!match || EXCLUDED_NEG_REASON_IDS.includes(pointReasonId)) return
@@ -161,6 +162,26 @@ export default function MatchPage() {
             await saveMatchScore(match.homeScore, match.awayScore + 1)
         } else {
             await saveMatchScore(match.homeScore + 1, match.awayScore)
+        }
+    }
+
+    const handleNeutralPointAdded = async (userMatchId: number, pointReasonId: number) => {
+        const negativeReasonId = NEUTRAL_TO_NEGATIVE_MAP[pointReasonId]
+        if (!negativeReasonId) return
+
+        const entry = userMatchData.find((d) => d.userMatch.id === userMatchId)
+        if (!entry) return
+
+        const currentCount =
+            entry.points
+                .filter((p) => p.pointReasonId === pointReasonId)
+                .reduce((sum, p) => sum + p.count, 0) + 1
+
+        if (currentCount % 3 === 0) {
+            await apiClient.post(`/api/usermatches/${userMatchId}/points`, {
+                pointReasonId: negativeReasonId,
+                count: 1,
+            })
         }
     }
 
@@ -251,6 +272,7 @@ export default function MatchPage() {
                             onChanged={() => void loadUserMatchData(userMatch.id)}
                             onGoalAdded={handleGoalAdded}
                             onNegativePointAdded={handleNegativePointAdded}
+                            onNeutralPointAdded={handleNeutralPointAdded}
                         />
                     ))}
 

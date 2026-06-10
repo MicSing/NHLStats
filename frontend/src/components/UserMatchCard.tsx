@@ -46,6 +46,7 @@ interface Props {
     onChanged: () => void
     onGoalAdded?: () => Promise<void>
     onNegativePointAdded?: (pointReasonId: number) => Promise<void>
+    onNeutralPointAdded?: (userMatchId: number, pointReasonId: number) => Promise<void>
 }
 
 export default function UserMatchCard({
@@ -60,6 +61,7 @@ export default function UserMatchCard({
     onChanged,
     onGoalAdded,
     onNegativePointAdded,
+    onNeutralPointAdded,
 }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
@@ -99,6 +101,9 @@ export default function UserMatchCard({
         const reason = pointReasons.find((r) => r.id === reasonId)
         if (reason?.pointType === 'Negative') {
             await onNegativePointAdded?.(reasonId)
+        }
+        if (reason?.pointType === 'Neutral') {
+            await onNeutralPointAdded?.(um.id, reasonId)
         }
         onChanged()
     }
@@ -273,7 +278,7 @@ export default function UserMatchCard({
 
     const NEGATIVE_ORDER = ['Penalty', 'Secondary penalty', 'Error in defense', 'Last minute action', 'Own goal']
     const POSITIVE_ORDER = ['Penalty', 'Secondary penalty', 'Last minute action']
-    const NEUTRAL_ORDER = ['Shorthanded goal', 'Secondary shorthanded goal']
+    const NEUTRAL_ORDER = ['Shorthanded goal', 'Secondary shorthanded goal', 'Offside', 'Icing']
 
     const sortByOrder = (reasons: PointReason[], order: string[]) =>
         order

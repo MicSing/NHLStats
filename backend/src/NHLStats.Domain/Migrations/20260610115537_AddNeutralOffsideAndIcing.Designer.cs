@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NHLStats.Domain;
 
@@ -10,9 +11,11 @@ using NHLStats.Domain;
 namespace NHLStats.Domain.Migrations
 {
     [DbContext(typeof(NhlStatsDbContext))]
-    partial class NhlStatsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260610115537_AddNeutralOffsideAndIcing")]
+    partial class AddNeutralOffsideAndIcing
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -454,20 +457,6 @@ namespace NHLStats.Domain.Migrations
                             IsActive = true,
                             Name = "Icing",
                             PointType = 0
-                        },
-                        new
-                        {
-                            Id = 21,
-                            IsActive = true,
-                            Name = "Offside",
-                            PointType = 2
-                        },
-                        new
-                        {
-                            Id = 22,
-                            IsActive = true,
-                            Name = "Icing",
-                            PointType = 2
                         });
                 });
 
