@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CaretDownIcon, KeyIcon, SignOutIcon } from '@phosphor-icons/react'
+import { CaretDownIcon, CaretLeftIcon, CaretRightIcon, KeyIcon, SignOutIcon } from '@phosphor-icons/react'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
@@ -68,16 +68,20 @@ export default function PublicLayout() {
     const { isAuthenticated, user, logout } = useAuth()
     const isAdmin = useIsAdmin()
     const { t } = useTranslation()
-    const location = useLocation()
     const [sidebarOpen, setSidebarOpen] = useState(false)
-    const [isAdminMode, setIsAdminMode] = useState(() =>
-        location.pathname.startsWith('/admin')
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(
+        () => localStorage.getItem('sidebarCollapsed') === 'true'
     )
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
         Object.fromEntries(adminNavGroups.map((g) => [g.labelKey, true]))
     )
 
     const closeSidebar = () => setSidebarOpen(false)
+    const toggleCollapsed = () =>
+        setSidebarCollapsed((prev) => {
+            localStorage.setItem('sidebarCollapsed', String(!prev))
+            return !prev
+        })
     const toggleGroup = (key: string) =>
         setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))
 
@@ -86,84 +90,88 @@ export default function PublicLayout() {
     const sidebarContent = (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between shrink-0">
-                <NavLink to="/" onClick={closeSidebar} className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                        <span className="text-white text-sm font-bold leading-none">N</span>
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-sm font-bold text-text leading-none truncate">NHL Stats</p>
-                        <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight mt-0.5">
-                            {t('layout.seasonTracker')}
-                        </p>
-                    </div>
-                </NavLink>
-                <button
-                    onClick={closeSidebar}
-                    className="lg:hidden text-text-muted hover:text-text text-2xl leading-none ml-2 shrink-0"
-                    aria-label={t('common.closeMenu')}
-                >
-                    ×
-                </button>
+            <div className="border-b border-border flex items-center shrink-0 px-3 pt-4 pb-3">
+                {sidebarCollapsed ? (
+                    <button
+                        onClick={toggleCollapsed}
+                        className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text hover:bg-border transition-all duration-200 mx-auto"
+                        aria-label="Expand sidebar"
+                    >
+                        <CaretRightIcon size={16} />
+                    </button>
+                ) : (
+                    <>
+                        <NavLink to="/" onClick={closeSidebar} className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                                <span className="text-white text-sm font-bold leading-none">N</span>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-text leading-none truncate">NHL Stats</p>
+                                <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight mt-0.5">
+                                    {t('layout.seasonTracker')}
+                                </p>
+                            </div>
+                        </NavLink>
+                        <button
+                            onClick={closeSidebar}
+                            className="lg:hidden text-text-muted hover:text-text text-2xl leading-none ml-2 shrink-0"
+                            aria-label={t('common.closeMenu')}
+                        >
+                            ×
+                        </button>
+                        <button
+                            onClick={toggleCollapsed}
+                            className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text hover:bg-border transition-all duration-200 shrink-0 ml-1"
+                            aria-label="Collapse sidebar"
+                        >
+                            <CaretLeftIcon size={16} />
+                        </button>
+                    </>
+                )}
             </div>
-
-            {/* Mode switcher — admin only */}
-            {isAdmin && (
-                <div className="px-3 pt-3 pb-1 shrink-0">
-                    <div className="grid grid-cols-2 p-1 bg-bg rounded-lg border border-border">
-                        <button
-                            onClick={() => setIsAdminMode(false)}
-                            className={`py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${
-                                !isAdminMode
-                                    ? 'bg-surface text-text shadow-sm'
-                                    : 'text-text-muted hover:text-text'
-                            }`}
-                        >
-                            {t('nav.client')}
-                        </button>
-                        <button
-                            onClick={() => setIsAdminMode(true)}
-                            className={`py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${
-                                isAdminMode
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-text-muted hover:text-text'
-                            }`}
-                        >
-                            {t('nav.admin')}
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Nav scroll area */}
             <nav className="flex-1 px-3 py-3 overflow-y-auto">
-                {!isAdminMode || !isAdmin ? (
-                    <div className="space-y-0.5">
-                        {publicNavItems
-                            .filter((item) => !item.requiresAuth || isAuthenticated)
-                            .map((item) => {
-                                const Icon = item.icon
-                                return (
-                                    <NavLink
-                                        key={item.to}
-                                        to={item.to}
-                                        onClick={closeSidebar}
-                                        className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                                isActive
-                                                    ? 'bg-primary text-white'
-                                                    : 'text-text-muted hover:bg-border hover:text-text'
-                                            }`
-                                        }
-                                    >
-                                        <Icon size={18} />
-                                        {t(item.labelKey)}
-                                    </NavLink>
-                                )
-                            })}
-                    </div>
-                ) : (
-                    <div className="space-y-2">
+                <div className="space-y-0.5">
+                    {publicNavItems
+                        .filter((item) => !item.requiresAuth || isAuthenticated)
+                        .map((item) => {
+                            const Icon = item.icon
+                            return (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    onClick={closeSidebar}
+                                    title={sidebarCollapsed ? t(item.labelKey) : undefined}
+                                    className={({ isActive }) =>
+                                        `flex items-center py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                            sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'
+                                        } ${
+                                            isActive
+                                                ? 'bg-primary text-white'
+                                                : 'text-text-muted hover:bg-border hover:text-text'
+                                        }`
+                                    }
+                                >
+                                    <Icon size={18} />
+                                    {!sidebarCollapsed && t(item.labelKey)}
+                                </NavLink>
+                            )
+                        })}
+                </div>
+
+                {isAdmin && (
+                    <div className="mt-4">
+                        <div className={`flex items-center gap-2 mb-1 ${sidebarCollapsed ? 'justify-center' : 'px-1'}`}>
+                            {!sidebarCollapsed && <div className="flex-1 h-px bg-border" />}
+                            {!sidebarCollapsed && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted shrink-0">
+                                    {t('nav.admin')}
+                                </span>
+                            )}
+                            {!sidebarCollapsed && <div className="flex-1 h-px bg-border" />}
+                            {sidebarCollapsed && <div className="w-4 h-px bg-border" />}
+                        </div>
                         <div className="space-y-0.5">
                             {adminTopNavItems.map((item) => {
                                 const Icon = item.icon
@@ -172,21 +180,24 @@ export default function PublicLayout() {
                                         key={item.to}
                                         to={item.to}
                                         onClick={closeSidebar}
+                                        title={sidebarCollapsed ? t(item.labelKey) : undefined}
                                         className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                            `flex items-center py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                                sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'
+                                            } ${
                                                 isActive
                                                     ? 'bg-primary text-white'
                                                     : 'text-text-muted hover:bg-border hover:text-text'
                                             }`
                                         }
                                     >
-                                        <Icon size={15} />
-                                        {t(item.labelKey)}
+                                        <Icon size={18} />
+                                        {!sidebarCollapsed && t(item.labelKey)}
                                     </NavLink>
                                 )
                             })}
                         </div>
-                        {adminNavGroups.map((group) => (
+                        {!sidebarCollapsed && adminNavGroups.map((group) => (
                             <AccordionGroup
                                 key={group.labelKey}
                                 group={group}
@@ -200,28 +211,23 @@ export default function PublicLayout() {
             </nav>
 
             {/* Footer */}
-            <div className="shrink-0 border-t border-border p-3 space-y-3 mt-auto">
-                <div className="flex items-center gap-2 px-1">
-                    <ThemeToggle />
-                    <LanguageSwitcher />
-                </div>
+            <div className={`shrink-0 border-t border-border mt-auto ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
+                {!sidebarCollapsed && (
+                    <div className="flex items-center gap-2 px-1 mb-3">
+                        <ThemeToggle />
+                        <LanguageSwitcher />
+                    </div>
+                )}
 
                 {isAuthenticated ? (
-                    <div className="bg-bg rounded-xl p-3 border border-border">
-                        <div className="flex items-center gap-2.5 mb-2.5">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0">
+                    sidebarCollapsed ? (
+                        <div className="flex flex-col items-center gap-2 py-1">
+                            <div
+                                className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 cursor-default"
+                                title={user?.email ?? undefined}
+                            >
                                 {initials}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-text truncate">{user?.email}</p>
-                                {isAdmin && (
-                                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">
-                                        {t('layout.adminPanel')}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
                             <NavLink
                                 to="/change-password"
                                 onClick={closeSidebar}
@@ -238,15 +244,59 @@ export default function PublicLayout() {
                                 <SignOutIcon size={14} />
                             </button>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="bg-bg rounded-xl p-3 border border-border">
+                            <div className="flex items-center gap-2.5 mb-2.5">
+                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0">
+                                    {initials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-text truncate">{user?.email}</p>
+                                    {isAdmin && (
+                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">
+                                            {t('layout.adminPanel')}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <NavLink
+                                    to="/change-password"
+                                    onClick={closeSidebar}
+                                    className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
+                                    title={t('common.changePassword')}
+                                >
+                                    <KeyIcon size={14} />
+                                </NavLink>
+                                <button
+                                    onClick={() => { logout(); closeSidebar() }}
+                                    className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                                    title={t('layout.logout')}
+                                >
+                                    <SignOutIcon size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    )
                 ) : (
-                    <NavLink
-                        to="/login"
-                        onClick={closeSidebar}
-                        className="block w-full text-center btn-primary text-sm"
-                    >
-                        {t('layout.signIn')}
-                    </NavLink>
+                    sidebarCollapsed ? (
+                        <NavLink
+                            to="/login"
+                            onClick={closeSidebar}
+                            className="flex items-center justify-center w-8 h-8 mx-auto rounded-lg bg-primary text-white hover:bg-primary/90 transition-all duration-200"
+                            title={t('layout.signIn')}
+                        >
+                            <SignOutIcon size={14} className="rotate-180" />
+                        </NavLink>
+                    ) : (
+                        <NavLink
+                            to="/login"
+                            onClick={closeSidebar}
+                            className="block w-full text-center btn-primary text-sm"
+                        >
+                            {t('layout.signIn')}
+                        </NavLink>
+                    )
                 )}
             </div>
         </div>
@@ -278,10 +328,12 @@ export default function PublicLayout() {
             {/* Sidebar */}
             <aside
                 className={`
+                    relative
                     fixed lg:static z-50 lg:z-auto
                     w-64 bg-surface border-r border-border shrink-0
-                    h-full lg:h-screen
-                    transition-transform lg:transform-none
+                    h-full lg:h-screen overflow-hidden
+                    transition-[width,transform] duration-200 ease-in-out
+                    ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}
                     ${sidebarOpen ? 'translate-x-0 animate-slide-from-left' : '-translate-x-full lg:translate-x-0'}
                 `}
             >
