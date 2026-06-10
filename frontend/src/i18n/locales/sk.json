@@ -567,7 +567,16 @@
         "count": "počet",
         "pointCount": "počet bodov",
         "deleteUserMatch": "Odstrániť",
-        "deleteConfirm": "Odstrániť {{userName}} z tohto zápasu? Tým sa vymažú všetky body, góly a tresty."
+        "deleteConfirm": "Odstrániť {{userName}} z tohto zápasu? Tým sa vymažú všetky body, góly a tresty.",
+        "goal": "Gól",
+        "penalty": "Trest",
+        "noEntries": "Žiadne zaznamenané udalosti",
+        "searchPlayer": "Hľadať hráča…",
+        "selectPlayerFirst": "Vyberte hráča pre povolenie gólov a faulov",
+        "playerActions": "Akcie na hráča",
+        "myScoring": "Moje Bodovanie",
+        "appliedToUser": "Pripíše sa operátorovi",
+        "loggedInAs": "Prihlásený"
     },
     "admin": {
         "users": {

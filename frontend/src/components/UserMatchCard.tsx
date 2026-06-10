@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { TrashIcon, XIcon, PlusIcon } from '@phosphor-icons/react'
+import {
+    TrashIcon,
+    XIcon,
+    MagnifyingGlassIcon,
+    UserIcon,
+    CheckIcon,
+    WarningIcon,
+    MinusCircleIcon,
+    PlusCircleIcon,
+    CircleIcon,
+} from '@phosphor-icons/react'
 import type {
     UserMatch,
     UserMatchPoint,
@@ -17,8 +27,6 @@ import SearchableSelect from './SearchableSelect'
 import Modal from './Modal'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../context/ToastContext'
-
-type Tab = 'goals' | 'penalties' | 'points'
 
 interface GoalModal {
     goalType: GoalType
@@ -55,21 +63,9 @@ export default function UserMatchCard({
 }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
-    const [activeTab, setActiveTab] = useState<Tab>('goals')
 
-    const [goalForm, setGoalForm] = useState<{ rosterPlayerId: number | ''; count: number }>({
-        rosterPlayerId: '',
-        count: 1,
-    })
-    const [penaltyForm, setPenaltyForm] = useState<{ rosterPlayerId: number | ''; count: number }>({
-        rosterPlayerId: '',
-        count: 1,
-    })
-    const [pointForm, setPointForm] = useState<{ pointType: PointType; pointReasonId: number | ''; count: number }>({
-        pointType: 'Positive',
-        pointReasonId: '',
-        count: 1,
-    })
+    const [selectedRosterId, setSelectedRosterId] = useState<number | ''>('')
+    const [playerSearch, setPlayerSearch] = useState('')
     const [goalModal, setGoalModal] = useState<GoalModal | null>(null)
 
     const positiveReasons = pointReasons.filter((r) => r.pointType === 'Positive')
@@ -80,25 +76,21 @@ export default function UserMatchCard({
     const totalMinus = points.filter((p) => p.pointType === 'Negative').reduce((sum, p) => sum + p.count, 0)
     const totalNeutral = points.filter((p) => p.pointType === 'Neutral').reduce((sum, p) => sum + p.count, 0)
 
-    const reasonsForType: Record<PointType, PointReason[]> = {
-        Positive: positiveReasons,
-        Negative: negativeReasons,
-        Neutral: neutralReasons,
-    }
+    const selectedPlayer = roster.find((r) => r.id === selectedRosterId)
+    const filteredRoster = playerSearch
+        ? roster.filter((r) =>
+              `${r.firstName} ${r.surname}`.toLowerCase().includes(playerSearch.toLowerCase()),
+          )
+        : []
 
-    const handlePointTypeChange = (type: PointType) => {
-        setPointForm({ pointType: type, pointReasonId: '', count: 1 })
-    }
-
-    const handleAddPoint = async (reasonId: number | '', count: number) => {
-        if (reasonId === '') return
+    const handleAddPoint = async (reasonId: number) => {
         await apiClient.post<UserMatchPoint>(`/api/usermatches/${um.id}/points`, {
             pointReasonId: reasonId,
-            count,
+            count: 1,
         } as CreateUserMatchPointDto)
         const reason = pointReasons.find((r) => r.id === reasonId)
         if (reason?.pointType === 'Negative') {
-            await onNegativePointAdded?.(reasonId as number)
+            await onNegativePointAdded?.(reasonId)
         }
         onChanged()
     }
@@ -111,10 +103,10 @@ export default function UserMatchCard({
     }
 
     const handleAddGoal = async (goalType: GoalType = 'Regular') => {
-        if (goalForm.rosterPlayerId === '') return
+        if (selectedRosterId === '') return
         await apiClient.post<UserMatchGoal>(`/api/usermatches/${um.id}/goals`, {
-            rosterPlayerId: goalForm.rosterPlayerId,
-            count: goalForm.count,
+            rosterPlayerId: selectedRosterId,
+            count: 1,
             goalType,
         } as CreateUserMatchGoalDto)
         await onGoalAdded?.()
@@ -135,14 +127,14 @@ export default function UserMatchCard({
 
     const handleGoalModalConfirm = async () => {
         if (!goalModal || goalModal.pointRecipientUserMatchId === '' || goalModal.pointReasonId === '') return
-        if (goalForm.rosterPlayerId === '') return
+        if (selectedRosterId === '') return
         try {
             await apiClient.post(`/api/usermatches/${goalModal.pointRecipientUserMatchId}/points`, {
                 pointReasonId: goalModal.pointReasonId,
                 count: 1,
             } as CreateUserMatchPointDto)
             await apiClient.post(`/api/usermatches/${um.id}/goals`, {
-                rosterPlayerId: goalForm.rosterPlayerId,
+                rosterPlayerId: selectedRosterId,
                 count: 1,
                 goalType: goalModal.goalType,
             } as CreateUserMatchGoalDto)
@@ -162,10 +154,10 @@ export default function UserMatchCard({
     }
 
     const handleAddPenalty = async () => {
-        if (penaltyForm.rosterPlayerId === '') return
+        if (selectedRosterId === '') return
         await apiClient.post<UserMatchPenalty>(`/api/usermatches/${um.id}/penalties`, {
-            rosterPlayerId: penaltyForm.rosterPlayerId,
-            count: penaltyForm.count,
+            rosterPlayerId: selectedRosterId,
+            count: 1,
         } as CreateUserMatchPenaltyDto)
         onChanged()
     }
@@ -187,13 +179,6 @@ export default function UserMatchCard({
             toast.error(t('toast.operationFailed'))
         }
     }
-
-    const tabClass = (tab: Tab) =>
-        `px-4 py-3 text-sm font-medium transition-colors border-b-2 capitalize ${
-            activeTab === tab
-                ? 'border-primary text-text'
-                : 'border-transparent text-text-muted hover:text-text'
-        }`
 
     // Aggregate goals by player+type
     type GoalGroup = {
@@ -276,53 +261,35 @@ export default function UserMatchCard({
         }, {}),
     )
 
-    const totalGoals = goals.reduce((s, g) => s + g.count, 0)
-    const totalPenalties = penalties.reduce((s, p) => s + p.count, 0)
-    const totalPoints = points.reduce((s, p) => s + p.count, 0)
+    const hasEntries = goalGroups.length > 0 || penaltyGroups.length > 0 || pointGroups.length > 0
 
-    const pointTypeButtonClass = (type: PointType) => {
-        const isActive = pointForm.pointType === type
-        if (type === 'Positive') {
-            return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
-                isActive
-                    ? 'bg-success/20 text-success border-success/50'
-                    : 'border-transparent text-text-muted hover:bg-border'
-            }`
-        }
-        if (type === 'Negative') {
-            return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
-                isActive
-                    ? 'bg-danger/20 text-danger border-danger/50'
-                    : 'border-transparent text-text-muted hover:bg-border'
-            }`
-        }
-        return `flex-1 py-1.5 text-sm rounded-md border transition-colors ${
-            isActive
-                ? 'bg-border text-text border-border'
-                : 'border-transparent text-text-muted hover:bg-border'
-        }`
-    }
-
-    const addPointButtonClass = () => {
-        if (pointForm.pointType === 'Positive') return 'btn-primary bg-success hover:bg-success/80 text-sm px-4 py-2'
-        if (pointForm.pointType === 'Negative') return 'btn-danger text-sm px-4 py-2'
-        return 'btn-ghost border border-border text-sm px-4 py-2'
+    const reasonChipClass = (type: PointType) => {
+        if (type === 'Negative') return 'bg-red-950/30 border-red-900/50 text-red-300 hover:bg-red-950/50'
+        if (type === 'Positive') return 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/50'
+        return 'bg-surface border-border text-text hover:bg-border/70'
     }
 
     return (
         <div id={`user-${um.id}`} className="card overflow-hidden scroll-mt-40">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <h2 className="text-lg font-semibold">{um.userName}</h2>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm bg-bg px-3 py-1 rounded-full border border-border">
-                        <span className="text-success font-semibold">+{totalPlus}</span>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                <h2 className="flex items-center gap-2 text-base font-semibold">
+                    <UserIcon size={16} className="text-text-muted" />
+                    {um.userName}
+                    <span className="h-2 w-2 bg-success rounded-full animate-pulse" />
+                </h2>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs font-mono bg-bg px-3 py-1 rounded-full border border-border">
+                        <span className="text-success font-bold">+{totalPlus}</span>
                         <span className="text-border">|</span>
-                        <span className="text-danger font-semibold">−{totalMinus}</span>
+                        <span className="text-danger font-bold">−{totalMinus}</span>
                         {totalNeutral > 0 && (
                             <>
                                 <span className="text-border">|</span>
-                                <span className="text-text-muted font-semibold">○{totalNeutral}</span>
+                                <span className="text-text-muted font-bold flex items-center gap-1">
+                                    <span className="h-1.5 w-1.5 rounded-full border border-text-muted inline-block" />
+                                    {totalNeutral}
+                                </span>
                             </>
                         )}
                     </div>
@@ -330,287 +297,269 @@ export default function UserMatchCard({
                         <button
                             onClick={() => void handleDeleteUserMatch()}
                             aria-label={t('userMatchCard.deleteUserMatch')}
-                            className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                            className="p-1.5 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
                         >
-                            <TrashIcon size={18} />
+                            <TrashIcon size={16} />
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex px-1 border-b border-border bg-surface/30">
-                <button className={tabClass('goals')} onClick={() => setActiveTab('goals')}>
-                    {t('userMatchCard.goals')} ({totalGoals})
-                </button>
-                <button className={tabClass('penalties')} onClick={() => setActiveTab('penalties')}>
-                    {t('userMatchCard.penalties')} ({totalPenalties})
-                </button>
-                <button className={tabClass('points')} onClick={() => setActiveTab('points')}>
-                    {t('userMatchCard.points')} ({totalPoints})
-                </button>
+            {/* Recorded entries — flat unified list, always visible */}
+            <div className="px-5 py-3 border-b border-border">
+                <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto">
+                    {hasEntries ? (
+                        <>
+                            {goalGroups.map((g) => (
+                                <span
+                                    key={`${g.rosterPlayerId}-${g.goalType}`}
+                                    className="flex items-center gap-1 bg-blue-900/30 border border-blue-800/50 text-blue-300 rounded-full px-2.5 py-0.5 text-xs"
+                                >
+                                    {g.firstName} {g.surname}
+                                    {g.goalType !== 'Regular' && (
+                                        <span className="font-bold ml-0.5">
+                                            {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
+                                        </span>
+                                    )}
+                                    <span className="opacity-60 mx-0.5">·</span>
+                                    <span>{g.totalCount}</span>
+                                    {isAuth && (
+                                        <button
+                                            aria-label={`delete goal for player ${g.rosterPlayerId}`}
+                                            onClick={() => void handleDeleteGoal(g.ids)}
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                        >
+                                            <XIcon size={11} />
+                                        </button>
+                                    )}
+                                </span>
+                            ))}
+                            {penaltyGroups.map((p) => (
+                                <span
+                                    key={p.rosterPlayerId}
+                                    className="flex items-center gap-1 bg-amber-900/30 border border-amber-700/50 text-amber-300 rounded-full px-2.5 py-0.5 text-xs"
+                                >
+                                    {p.firstName} {p.surname}
+                                    <span className="opacity-60 mx-0.5">·</span>
+                                    <span>{p.totalCount}</span>
+                                    {isAuth && (
+                                        <button
+                                            aria-label={`delete penalty for player ${p.rosterPlayerId}`}
+                                            onClick={() => void handleDeletePenalty(p.ids)}
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                        >
+                                            <XIcon size={11} />
+                                        </button>
+                                    )}
+                                </span>
+                            ))}
+                            {pointGroups.map((g) => (
+                                <span
+                                    key={g.pointReasonId}
+                                    className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs border ${
+                                        g.pointType === 'Positive'
+                                            ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
+                                            : g.pointType === 'Negative'
+                                              ? 'bg-red-950/30 border-red-900/50 text-red-300'
+                                              : 'bg-border border-transparent text-text'
+                                    }`}
+                                >
+                                    {g.pointReasonName}
+                                    <span className="opacity-60 mx-0.5">·</span>
+                                    <span>{g.totalCount}</span>
+                                    {isAuth && (
+                                        <button
+                                            aria-label={`delete point reason ${g.pointReasonId}`}
+                                            onClick={() => void handleDeletePointsByReason(g.ids)}
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                        >
+                                            <XIcon size={11} />
+                                        </button>
+                                    )}
+                                </span>
+                            ))}
+                        </>
+                    ) : (
+                        <span className="text-xs text-text-muted italic py-0.5">
+                            {t('userMatchCard.noEntries')}
+                        </span>
+                    )}
+                </div>
             </div>
 
-            {/* Tab content */}
-            <div className="p-5">
-                {/* Goals tab */}
-                {activeTab === 'goals' && (
-                    <div>
-                        {goalGroups.length === 0 ? (
-                            <p className="text-text-muted text-sm italic mb-4">
-                                No {t('userMatchCard.goals').toLowerCase()} recorded yet.
-                            </p>
-                        ) : (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {goalGroups.map((g) => (
-                                    <span
-                                        key={`${g.rosterPlayerId}-${g.goalType}`}
-                                        className="flex items-center gap-1.5 bg-border rounded-full px-3 py-1.5 text-sm"
-                                    >
-                                        {g.firstName} {g.surname}
-                                        {g.goalType !== 'Regular' && (
-                                            <span className="text-xs font-bold text-primary ml-0.5">
-                                                {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
-                                            </span>
-                                        )}
-                                        <span className="text-text-muted mx-0.5">·</span>
-                                        <span>{g.totalCount}</span>
-                                        {isAuth && (
-                                            <button
-                                                aria-label={`delete goal for player ${g.rosterPlayerId}`}
-                                                onClick={() => void handleDeleteGoal(g.ids)}
-                                                className="ml-0.5 text-text-muted hover:text-danger transition-colors"
-                                            >
-                                                <XIcon size={13} />
-                                            </button>
-                                        )}
+            {/* Auth input section */}
+            {isAuth && (
+                <>
+                    {/* Zone A: Player Actions */}
+                    <div className="px-5 py-4 border-b border-border space-y-3">
+                        <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+                            {t('userMatchCard.playerActions')}
+                        </h3>
+
+                        {/* Player search — combobox style */}
+                        <div className="relative">
+                            {selectedPlayer ? (
+                                <div className="input w-full text-sm py-2 flex items-center justify-between">
+                                    <span className="font-semibold text-sm">
+                                        {selectedPlayer.firstName} {selectedPlayer.surname}
                                     </span>
-                                ))}
-                            </div>
-                        )}
-                        {isAuth && (
-                            <div className="flex flex-wrap items-center gap-3 bg-bg/50 p-4 rounded-lg border border-border">
-                                <SearchableSelect
-                                    options={roster.map((r) => ({
-                                        value: r.id,
-                                        label: `${r.firstName} ${r.surname}`,
-                                    }))}
-                                    value={goalForm.rosterPlayerId}
-                                    onChange={(v) =>
-                                        setGoalForm((prev) => ({
-                                            ...prev,
-                                            rosterPlayerId: v === '' ? '' : Number(v),
-                                        }))
-                                    }
-                                    placeholder={t('userMatchCard.selectPlayer')}
-                                />
-                                <input
-                                    type="number"
-                                    aria-label={t('userMatchCard.goalCount')}
-                                    min={1}
-                                    value={goalForm.count}
-                                    onChange={(e) =>
-                                        setGoalForm((prev) => ({ ...prev, count: Number(e.target.value) }))
-                                    }
-                                    className="input w-16 text-center text-sm py-1"
-                                />
-                                <div className="flex gap-2">
                                     <button
-                                        type="button"
-                                        className="btn-primary text-sm px-3 py-1.5"
-                                        onClick={() => void handleAddGoal('Regular')}
+                                        onClick={() => setSelectedRosterId('')}
+                                        className="text-text-muted hover:text-text transition-colors"
+                                        aria-label="Clear player selection"
                                     >
-                                        {t('userMatchCard.addGoal')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="bg-border hover:bg-border/70 text-primary border border-border text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
-                                        onClick={() => handleOpenGoalModal('PowerPlay')}
-                                    >
-                                        {t('userMatchCard.addGoalPP')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="bg-border hover:bg-border/70 text-primary border border-border text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
-                                        onClick={() => handleOpenGoalModal('ShortHanded')}
-                                    >
-                                        {t('userMatchCard.addGoalSH')}
+                                        <XIcon size={15} />
                                     </button>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                )}
+                            ) : (
+                                <>
+                                    <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-text-muted pointer-events-none" />
+                                    <input
+                                        type="text"
+                                        placeholder={t('userMatchCard.searchPlayer')}
+                                        value={playerSearch}
+                                        onChange={(e) => setPlayerSearch(e.target.value)}
+                                        className="input w-full pl-9 text-sm py-2"
+                                    />
+                                    {playerSearch && (
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
+                                            {filteredRoster.length > 0 ? (
+                                                filteredRoster.map((p) => (
+                                                    <div
+                                                        key={p.id}
+                                                        onMouseDown={() => {
+                                                            setSelectedRosterId(p.id)
+                                                            setPlayerSearch('')
+                                                        }}
+                                                        className="px-4 py-2.5 hover:bg-bg cursor-pointer text-sm border-b border-border/50 last:border-0"
+                                                    >
+                                                        {p.firstName} {p.surname}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="px-4 py-2.5 text-sm text-text-muted italic">
+                                                    {t('userMatchCard.selectPlayer')}…
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
 
-                {/* Penalties tab */}
-                {activeTab === 'penalties' && (
-                    <div>
-                        {penaltyGroups.length === 0 ? (
-                            <p className="text-text-muted text-sm italic mb-4">
-                                No {t('userMatchCard.penalties').toLowerCase()} recorded yet.
-                            </p>
-                        ) : (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {penaltyGroups.map((p) => (
-                                    <span
-                                        key={p.rosterPlayerId}
-                                        className="flex items-center gap-1.5 bg-border rounded-full px-3 py-1.5 text-sm"
-                                    >
-                                        {p.firstName} {p.surname}
-                                        <span className="text-text-muted mx-0.5">·</span>
-                                        <span>{p.totalCount}</span>
-                                        {isAuth && (
-                                            <button
-                                                aria-label={`delete penalty for player ${p.rosterPlayerId}`}
-                                                onClick={() => void handleDeletePenalty(p.ids)}
-                                                className="ml-0.5 text-text-muted hover:text-danger transition-colors"
-                                            >
-                                                <XIcon size={13} />
-                                            </button>
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                        {isAuth && (
-                            <div className="flex flex-wrap items-center gap-3 bg-bg/50 p-4 rounded-lg border border-border">
-                                <SearchableSelect
-                                    options={roster.map((r) => ({
-                                        value: r.id,
-                                        label: `${r.firstName} ${r.surname}`,
-                                    }))}
-                                    value={penaltyForm.rosterPlayerId}
-                                    onChange={(v) =>
-                                        setPenaltyForm((prev) => ({
-                                            ...prev,
-                                            rosterPlayerId: v === '' ? '' : Number(v),
-                                        }))
-                                    }
-                                    placeholder={t('userMatchCard.selectPlayer')}
-                                />
-                                <input
-                                    type="number"
-                                    aria-label={t('userMatchCard.penaltyCount')}
-                                    min={1}
-                                    value={penaltyForm.count}
-                                    onChange={(e) =>
-                                        setPenaltyForm((prev) => ({
-                                            ...prev,
-                                            count: Number(e.target.value),
-                                        }))
-                                    }
-                                    className="input w-16 text-center text-sm py-1"
-                                />
-                                <button
-                                    type="button"
-                                    className="btn-warning text-sm px-3 py-1.5"
-                                    onClick={() => void handleAddPenalty()}
-                                >
-                                    {t('userMatchCard.addPenalty')}
-                                </button>
-                            </div>
-                        )}
+                        {/* Quick action buttons */}
+                        <div
+                            className={`grid grid-cols-4 gap-2 transition-opacity duration-200 ${
+                                !selectedRosterId ? 'opacity-30 pointer-events-none' : ''
+                            }`}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => void handleAddGoal('Regular')}
+                                className="btn-primary text-xs py-2 font-semibold flex items-center justify-center gap-1.5"
+                            >
+                                <CheckIcon size={13} weight="bold" />
+                                {t('userMatchCard.goal')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOpenGoalModal('PowerPlay')}
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-xs py-2 rounded-lg font-semibold transition-colors"
+                            >
+                                PP
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleOpenGoalModal('ShortHanded')}
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-xs py-2 rounded-lg font-semibold transition-colors"
+                            >
+                                SH
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleAddPenalty()}
+                                className="btn-warning text-xs py-2 font-semibold flex items-center justify-center gap-1.5"
+                            >
+                                <WarningIcon size={13} weight="bold" />
+                                {t('userMatchCard.penalty')}
+                            </button>
+                        </div>
                     </div>
-                )}
 
-                {/* Points tab */}
-                {activeTab === 'points' && (
-                    <div>
-                        {pointGroups.length === 0 ? (
-                            <p className="text-text-muted text-sm italic mb-4">
-                                No {t('userMatchCard.points').toLowerCase()} recorded yet.
-                            </p>
-                        ) : (
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                {pointGroups.map((g) => (
-                                    <span
-                                        key={g.pointReasonId}
-                                        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border ${
-                                            g.pointType === 'Positive'
-                                                ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
-                                                : g.pointType === 'Negative'
-                                                    ? 'bg-red-950/30 border-red-900/50 text-red-300'
-                                                    : 'bg-border border-transparent text-text'
-                                        }`}
-                                    >
-                                        {g.pointReasonName}
-                                        <span className="opacity-60 mx-0.5">·</span>
-                                        <span>{g.totalCount}</span>
-                                        {isAuth && (
-                                            <button
-                                                aria-label={`delete point reason ${g.pointReasonId}`}
-                                                onClick={() => void handleDeletePointsByReason(g.ids)}
-                                                className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
-                                            >
-                                                <XIcon size={13} />
-                                            </button>
-                                        )}
-                                    </span>
-                                ))}
+                    {/* Zone B: Points — three labeled rows, always active */}
+                    <div className="px-5 py-4 space-y-2">
+                        <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-3">
+                            {t('userMatchCard.points')}
+                        </h3>
+
+                        {/* Negative row */}
+                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-danger text-[10px] font-bold uppercase tracking-wider">
+                                <MinusCircleIcon size={13} />
+                                {t('common.negative')}
                             </div>
-                        )}
-                        {isAuth && (
-                            <div className="flex flex-col gap-3 bg-bg/50 p-4 rounded-lg border border-border">
-                                {/* Segmented control */}
-                                <div className="flex gap-2">
-                                    {(['Positive', 'Neutral', 'Negative'] as PointType[]).map((type) => (
+                            <div className="flex flex-wrap gap-1.5">
+                                {negativeReasons
+                                    .filter((r) => r.isActive)
+                                    .map((reason) => (
                                         <button
-                                            key={type}
+                                            key={reason.id}
                                             type="button"
-                                            onClick={() => handlePointTypeChange(type)}
-                                            className={pointTypeButtonClass(type)}
+                                            onClick={() => void handleAddPoint(reason.id)}
+                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Negative')}`}
                                         >
-                                            {t(`common.${type.toLowerCase()}`)}
+                                            {reason.name}
                                         </button>
                                     ))}
-                                </div>
-
-                                {/* Reason + count + add */}
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <select
-                                        value={pointForm.pointReasonId}
-                                        onChange={(e) =>
-                                            setPointForm((prev) => ({
-                                                ...prev,
-                                                pointReasonId: e.target.value === '' ? '' : Number(e.target.value),
-                                            }))
-                                        }
-                                        className="input flex-1 min-w-[180px] text-sm py-1.5"
-                                    >
-                                        <option value="">{t('common.select')}</option>
-                                        {reasonsForType[pointForm.pointType].map((r) => (
-                                            <option key={r.id} value={r.id}>
-                                                {r.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        type="number"
-                                        aria-label={t('userMatchCard.pointCount')}
-                                        min={1}
-                                        value={pointForm.count}
-                                        onChange={(e) =>
-                                            setPointForm((prev) => ({ ...prev, count: Number(e.target.value) }))
-                                        }
-                                        className="input w-16 text-center text-sm py-1"
-                                    />
-                                    <button
-                                        type="button"
-                                        className={`flex items-center gap-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 ${addPointButtonClass()}`}
-                                        disabled={pointForm.pointReasonId === ''}
-                                        onClick={() =>
-                                            void handleAddPoint(pointForm.pointReasonId, pointForm.count)
-                                        }
-                                    >
-                                        <PlusIcon size={15} weight="bold" />
-                                        {t(`common.${pointForm.pointType.toLowerCase()}`)}
-                                    </button>
-                                </div>
                             </div>
-                        )}
+                        </div>
+
+                        {/* Positive row */}
+                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-success text-[10px] font-bold uppercase tracking-wider">
+                                <PlusCircleIcon size={13} />
+                                {t('common.positive')}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {positiveReasons
+                                    .filter((r) => r.isActive)
+                                    .map((reason) => (
+                                        <button
+                                            key={reason.id}
+                                            type="button"
+                                            onClick={() => void handleAddPoint(reason.id)}
+                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Positive')}`}
+                                        >
+                                            {reason.name}
+                                        </button>
+                                    ))}
+                            </div>
+                        </div>
+
+                        {/* Neutral row */}
+                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-text-muted text-[10px] font-bold uppercase tracking-wider">
+                                <CircleIcon size={13} />
+                                {t('common.neutral')}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {neutralReasons
+                                    .filter((r) => r.isActive)
+                                    .map((reason) => (
+                                        <button
+                                            key={reason.id}
+                                            type="button"
+                                            onClick={() => void handleAddPoint(reason.id)}
+                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Neutral')}`}
+                                        >
+                                            {reason.name}
+                                        </button>
+                                    ))}
+                            </div>
+                        </div>
                     </div>
-                )}
-            </div>
+                </>
+            )}
 
             {/* PP/SH goal modal */}
             {goalModal && (
@@ -664,7 +613,7 @@ export default function UserMatchCard({
                                 disabled={
                                     goalModal.pointRecipientUserMatchId === '' ||
                                     goalModal.pointReasonId === '' ||
-                                    goalForm.rosterPlayerId === ''
+                                    selectedRosterId === ''
                                 }
                                 className="btn-primary text-sm disabled:opacity-50"
                             >

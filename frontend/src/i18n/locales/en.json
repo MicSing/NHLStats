@@ -565,7 +565,16 @@
         "count": "count",
         "pointCount": "point count",
         "deleteUserMatch": "Unassign",
-        "deleteConfirm": "Unassign {{userName}} from this match? This will delete all points, goals, and penalties."
+        "deleteConfirm": "Unassign {{userName}} from this match? This will delete all points, goals, and penalties.",
+        "goal": "Goal",
+        "penalty": "Penalty",
+        "noEntries": "No recorded events",
+        "searchPlayer": "Search player…",
+        "selectPlayerFirst": "Select a player to enable goals & penalties",
+        "playerActions": "Player Actions",
+        "myScoring": "My Scoring",
+        "appliedToUser": "Applied to operator",
+        "loggedInAs": "Logged in as"
     },
     "admin": {
         "users": {
