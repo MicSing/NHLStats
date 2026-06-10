@@ -43,7 +43,8 @@ interface Props {
     pointReasons: PointReason[]
     allUserMatches: UserMatch[]
     isAuth: boolean
-    onChanged: () => void
+    onChanged: (extraUserMatchId?: number) => void
+    onDeleted?: () => void
     onGoalAdded?: () => Promise<void>
     onNegativePointAdded?: (pointReasonId: number) => Promise<void>
     onNeutralPointAdded?: (userMatchId: number, pointReasonId: number) => Promise<void>
@@ -59,6 +60,7 @@ export default function UserMatchCard({
     allUserMatches,
     isAuth,
     onChanged,
+    onDeleted,
     onGoalAdded,
     onNegativePointAdded,
     onNeutralPointAdded,
@@ -153,7 +155,7 @@ export default function UserMatchCard({
             } as CreateUserMatchGoalDto)
             await onGoalAdded?.()
             setGoalModal(null)
-            onChanged()
+            onChanged(goalModal.pointRecipientUserMatchId as number)
         } catch {
             toast.error(t('toast.operationFailed'))
         }
@@ -187,7 +189,7 @@ export default function UserMatchCard({
         try {
             await apiClient.delete(`/api/usermatches/${um.id}`)
             toast.success(t('toast.deleteSuccess'))
-            onChanged()
+            onDeleted?.()
         } catch {
             toast.error(t('toast.operationFailed'))
         }

@@ -269,7 +269,11 @@ export default function MatchPage() {
                             pointReasons={pointReasons}
                             allUserMatches={userMatchData.map((d) => d.userMatch)}
                             isAuth={!!token}
-                            onChanged={() => void loadUserMatchData(userMatch.id)}
+                            onChanged={(extraId) => {
+                                void loadUserMatchData(userMatch.id)
+                                if (extraId !== undefined) void loadUserMatchData(extraId)
+                            }}
+                            onDeleted={() => void loadAll()}
                             onGoalAdded={handleGoalAdded}
                             onNegativePointAdded={handleNegativePointAdded}
                             onNeutralPointAdded={handleNeutralPointAdded}
