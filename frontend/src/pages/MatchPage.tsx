@@ -153,7 +153,7 @@ export default function MatchPage() {
         }
     }
 
-    const EXCLUDED_NEG_REASON_IDS = [3, 4]
+    const EXCLUDED_NEG_REASON_IDS = [2, 3, 4, 5, 19, 20]
 
     const handleNegativePointAdded = async (pointReasonId: number) => {
         if (!match || EXCLUDED_NEG_REASON_IDS.includes(pointReasonId)) return
