@@ -33,6 +33,8 @@
         "type": "Typ",
         "player": "Hráč",
         "select": "Vybrať…",
+        "showMore": "Zobraziť viac",
+        "showLess": "Zobraziť menej",
         "none": "Žiadny",
         "saving": "Ukladám…",
         "saved": "Uložené",

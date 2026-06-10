@@ -67,6 +67,14 @@ export default function UserMatchCard({
     const [selectedRosterId, setSelectedRosterId] = useState<number | ''>('')
     const [playerSearch, setPlayerSearch] = useState('')
     const [goalModal, setGoalModal] = useState<GoalModal | null>(null)
+    const [showMore, setShowMore] = useState<Record<PointType, boolean>>({
+        Negative: false,
+        Positive: false,
+        Neutral: false,
+    })
+
+    const toggleShowMore = (type: PointType) =>
+        setShowMore((prev) => ({ ...prev, [type]: !prev[type] }))
 
     const positiveReasons = pointReasons.filter((r) => r.pointType === 'Positive')
     const negativeReasons = pointReasons.filter((r) => r.pointType === 'Negative')
@@ -262,6 +270,15 @@ export default function UserMatchCard({
     )
 
     const hasEntries = goalGroups.length > 0 || penaltyGroups.length > 0 || pointGroups.length > 0
+
+    const NEGATIVE_ORDER = ['Penalty', 'Secondary penalty', 'Error in defense', 'Last minute action', 'Own goal']
+    const POSITIVE_ORDER = ['Penalty', 'Secondary penalty', 'Last minute action']
+    const NEUTRAL_ORDER = ['Shorthanded goal', 'Secondary shorthanded goal']
+
+    const sortByOrder = (reasons: PointReason[], order: string[]) =>
+        order
+            .map((name) => reasons.find((r) => r.name.toLowerCase() === name.toLowerCase() && r.isActive))
+            .filter((r): r is PointReason => r !== undefined)
 
     const reasonChipClass = (type: PointType) => {
         if (type === 'Negative') return 'bg-red-950/30 border-red-900/50 text-red-300 hover:bg-red-950/50'
@@ -499,8 +516,7 @@ export default function UserMatchCard({
                                 {t('common.negative')}
                             </div>
                             <div className="flex flex-wrap gap-1.5">
-                                {negativeReasons
-                                    .filter((r) => r.isActive)
+                                {(showMore.Negative ? negativeReasons.filter((r) => r.isActive) : sortByOrder(negativeReasons, NEGATIVE_ORDER))
                                     .map((reason) => (
                                         <button
                                             key={reason.id}
@@ -511,6 +527,15 @@ export default function UserMatchCard({
                                             {reason.name}
                                         </button>
                                     ))}
+                                {negativeReasons.filter((r) => r.isActive).length > NEGATIVE_ORDER.length && (
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleShowMore('Negative')}
+                                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                    >
+                                        {showMore.Negative ? t('common.showLess') : t('common.showMore')}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -521,8 +546,7 @@ export default function UserMatchCard({
                                 {t('common.positive')}
                             </div>
                             <div className="flex flex-wrap gap-1.5">
-                                {positiveReasons
-                                    .filter((r) => r.isActive)
+                                {(showMore.Positive ? positiveReasons.filter((r) => r.isActive) : sortByOrder(positiveReasons, POSITIVE_ORDER))
                                     .map((reason) => (
                                         <button
                                             key={reason.id}
@@ -533,6 +557,15 @@ export default function UserMatchCard({
                                             {reason.name}
                                         </button>
                                     ))}
+                                {positiveReasons.filter((r) => r.isActive).length > POSITIVE_ORDER.length && (
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleShowMore('Positive')}
+                                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                    >
+                                        {showMore.Positive ? t('common.showLess') : t('common.showMore')}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -543,8 +576,7 @@ export default function UserMatchCard({
                                 {t('common.neutral')}
                             </div>
                             <div className="flex flex-wrap gap-1.5">
-                                {neutralReasons
-                                    .filter((r) => r.isActive)
+                                {(showMore.Neutral ? neutralReasons.filter((r) => r.isActive) : sortByOrder(neutralReasons, NEUTRAL_ORDER))
                                     .map((reason) => (
                                         <button
                                             key={reason.id}
@@ -555,6 +587,15 @@ export default function UserMatchCard({
                                             {reason.name}
                                         </button>
                                     ))}
+                                {neutralReasons.filter((r) => r.isActive).length > NEUTRAL_ORDER.length && (
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleShowMore('Neutral')}
+                                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                    >
+                                        {showMore.Neutral ? t('common.showLess') : t('common.showMore')}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

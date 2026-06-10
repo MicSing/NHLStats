@@ -33,6 +33,8 @@
         "type": "Type",
         "player": "Player",
         "select": "Select…",
+        "showMore": "Show more",
+        "showLess": "Show less",
         "none": "None",
         "saving": "Saving…",
         "saved": "Saved",
