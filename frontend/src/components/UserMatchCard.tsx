@@ -277,8 +277,8 @@ export default function UserMatchCard({
     const hasEntries = goalGroups.length > 0 || penaltyGroups.length > 0 || pointGroups.length > 0
 
     const NEGATIVE_ORDER = ['Penalty', 'Secondary penalty', 'Error in defense', 'Last minute action', 'Own goal']
-    const POSITIVE_ORDER = ['Penalty', 'Secondary penalty', 'Last minute action']
-    const NEUTRAL_ORDER = ['Shorthanded goal', 'Secondary shorthanded goal', 'Offside', 'Icing']
+    const POSITIVE_ORDER = ['Secondary penalty', 'Last minute action']
+    const NEUTRAL_ORDER = ['Offside', 'Icing', 'Secondary shorthanded goal']
 
     const sortByOrder = (reasons: PointReason[], order: string[]) =>
         order
