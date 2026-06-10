@@ -20,6 +20,11 @@ interface Props {
     loading: boolean
 }
 
+function isRecent(date: string | null, days = 7): boolean {
+    if (!date) return false
+    return new Date(date) >= new Date(Date.now() - days * 86_400_000)
+}
+
 function formatOccurrence(occ: AchievementOccurrence, valueLabel: string): string {
     const parts: string[] = []
 
@@ -49,11 +54,13 @@ interface BadgeCardProps {
 }
 
 function BadgeCard({ def, result, onClick }: BadgeCardProps) {
+    const { t } = useTranslation()
     const level = result?.level ?? 0
     const earned = level > 0
     const idx = Math.max(0, level - 1)
     const icon = !earned && def.disabledIcon ? def.disabledIcon : def.levelIcons[idx]
     const name = def.levelNames[idx]
+    const hasNew = result?.occurrences.some(occ => isRecent(occ.occurredOn)) ?? false
 
     return (
         <button
@@ -63,6 +70,7 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
                 earned
                     ? 'bg-surface hover:scale-105'
                     : 'bg-surface opacity-35 grayscale',
+                hasNew ? 'ring-2 ring-amber-400/60' : '',
             ].join(' ')}
         >
             {!earned && (
@@ -71,6 +79,11 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
                     weight="bold"
                     className="absolute top-2 right-2 text-text-muted"
                 />
+            )}
+            {hasNew && (
+                <span className="absolute top-2 left-2 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1.5 py-0.5 font-medium">
+                    {t('achievements.new')}
+                </span>
             )}
             {earned && (
                 <span className="absolute top-2 right-2 text-[9px] bg-primary/20 text-primary rounded-full px-1.5 py-0.5 font-medium">
@@ -171,14 +184,27 @@ function AchievementModal({ def, result, onClose }: ModalProps) {
                     <p className="text-sm text-text-muted">{t('achievements.noOccurrences')}</p>
                 ) : (
                     <ul className="space-y-2">
-                        {result.occurrences.map((occ, i) => (
-                            <li
-                                key={i}
-                                className="text-sm text-text bg-bg rounded-lg px-4 py-2 border border-border"
-                            >
-                                {formatOccurrence(occ, def.valueLabel)}
-                            </li>
-                        ))}
+                        {result.occurrences.map((occ, i) => {
+                            const recent = isRecent(occ.occurredOn)
+                            return (
+                                <li
+                                    key={i}
+                                    className={[
+                                        'text-sm text-text rounded-lg px-4 py-2 border flex items-center justify-between gap-2',
+                                        recent
+                                            ? 'bg-amber-400/10 border-amber-400/40'
+                                            : 'bg-bg border-border',
+                                    ].join(' ')}
+                                >
+                                    <span>{formatOccurrence(occ, def.valueLabel)}</span>
+                                    {recent && (
+                                        <span className="shrink-0 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1.5 py-0.5 font-medium">
+                                            {t('achievements.new')}
+                                        </span>
+                                    )}
+                                </li>
+                            )
+                        })}
                     </ul>
                 )
             )}

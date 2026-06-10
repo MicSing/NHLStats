@@ -308,6 +308,7 @@
         "tabAchievements": "Úspechy"
     },
     "achievements": {
+        "new": "NOVÉ",
         "noOccurrences": "Žiadne výskyty.",
         "moreToNextLevel": "ešte {{count}} do ďalšej úrovne",
         "maxLevelReached": "Maximálna úroveň dosiahnutá",

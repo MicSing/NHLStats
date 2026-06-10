@@ -308,6 +308,7 @@
         "tabAchievements": "Achievements"
     },
     "achievements": {
+        "new": "NEW",
         "noOccurrences": "No occurrences recorded.",
         "moreToNextLevel": "{{count}} more to next level",
         "maxLevelReached": "Max level reached",
