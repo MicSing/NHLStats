@@ -341,7 +341,7 @@ export default function PublicLayout() {
             </aside>
 
             {/* Page content */}
-            <main className="flex-1 p-4 sm:p-6 overflow-auto bg-bg pt-16 lg:pt-6">
+            <main className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 overflow-auto bg-bg pt-16 lg:pt-6">
                 <Outlet />
             </main>
         </div>
