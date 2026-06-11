@@ -302,7 +302,8 @@ export default function SeasonPage() {
             const isOTGame = ct === CompletionType.Overtime || ct === CompletionType.Shootout
             if (isOTGame) OT++
             if (hs > os) {
-                if (!isOTGame) W++; else OTW++
+                W++
+                if (isOTGame) OTW++
                 if (isHome) winsHome++; else winsAway++
             } else if (hs < os) {
                 L++
