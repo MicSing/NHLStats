@@ -43,6 +43,7 @@ export interface BetLegDto {
     id: number
     matchId: number
     matchNumber: number
+    seasonId: number
     homeTeamName: string | null
     awayTeamName: string | null
     betType: ApiBetType

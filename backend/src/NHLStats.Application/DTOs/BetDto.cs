@@ -6,6 +6,7 @@ public record BetLegDto(
     int Id,
     int MatchId,
     int MatchNumber,
+    int SeasonId,
     string? HomeTeamName,
     string? AwayTeamName,
     BetType BetType,

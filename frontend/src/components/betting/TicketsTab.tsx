@@ -165,8 +165,8 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                 if (!b.legs.some(l => l.matchNumber === mn)) return false
             }
             if (filterSeasonId) {
-                // legs don't carry seasonId directly; filter by matching season via match number range is not available
-                // best effort: skip — seasonId filter requires server-side support or leg.seasonId
+                const sid = parseInt(filterSeasonId, 10)
+                if (!b.legs.some(l => l.seasonId === sid)) return false
             }
             if (filterStatus && b.status !== filterStatus) return false
             if (filterStructure === 'single' && b.legs.length !== 1) return false
