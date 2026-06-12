@@ -516,7 +516,16 @@
             "chipWinMax": "Výhra ≤ {{value}}€",
             "plus": "Plus",
             "minus": "Mínus",
-            "bet": "Tip"
+            "bet": "Tip",
+            "betTypes": {
+                "TeamWin": "Výhra tímu",
+                "TeamWinOrDraw": "Výhra alebo remíza",
+                "TeamDraw": "Remíza",
+                "UserGoal": "Góly",
+                "UserPenalty": "Trestné minúty",
+                "UserPlusPoint": "Plus body",
+                "UserMinusPoint": "Mínus body"
+            }
         }
     },
     "points": {

@@ -514,7 +514,16 @@
             "chipWinMax": "Win ≤ {{value}}€",
             "plus": "Plus",
             "minus": "Minus",
-            "bet": "Bet"
+            "bet": "Bet",
+            "betTypes": {
+                "TeamWin": "Team Win",
+                "TeamWinOrDraw": "Win or Draw",
+                "TeamDraw": "Draw",
+                "UserGoal": "Goals",
+                "UserPenalty": "Penalties",
+                "UserPlusPoint": "Plus Points",
+                "UserMinusPoint": "Minus Points"
+            }
         }
     },
     "points": {

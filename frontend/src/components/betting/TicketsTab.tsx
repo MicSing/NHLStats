@@ -17,9 +17,10 @@ const PAGE_SIZE = 10
 type SortBy = 'createdOn' | 'evaluatedOn' | 'stake' | 'odds' | 'win'
 type SortDir = 'asc' | 'desc'
 
+
 const ALL_BET_TYPES: ApiBetType[] = [
-    'TeamWin', 'UserGoal', 'UserPenalty', 'TeamWinOrDraw',
-    'UserPlusPoint', 'UserMinusPoint', 'TeamDraw',
+    'TeamWin', 'TeamWinOrDraw', 'TeamDraw',
+    'UserGoal', 'UserPenalty', 'UserPlusPoint', 'UserMinusPoint',
 ]
 
 const STATUS_BORDER: Record<BetStatus, string> = {
@@ -410,7 +411,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                             >
                                 <option value="">{t('betting.tickets.all')}</option>
                                 {ALL_BET_TYPES.map(bt => (
-                                    <option key={bt} value={bt}>{bt}</option>
+                                    <option key={bt} value={bt}>{t(`betting.tickets.betTypes.${bt}`)}</option>
                                 ))}
                             </select>
                         </label>
