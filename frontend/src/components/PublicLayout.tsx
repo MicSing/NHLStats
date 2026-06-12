@@ -328,7 +328,6 @@ export default function PublicLayout() {
             {/* Sidebar */}
             <aside
                 className={`
-                    relative
                     fixed lg:static z-50 lg:z-auto
                     w-64 bg-surface border-r border-border shrink-0
                     h-full lg:h-screen overflow-hidden
