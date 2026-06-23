@@ -362,6 +362,9 @@ public class BetService : IBetService
             : null;
 
         bool isDraw = matchCompleted && match.HomeScore == match.AwayScore;
+        bool isOtOrSo = matchCompleted &&
+            (match.CompletionType == CompletionType.Overtime ||
+             match.CompletionType == CompletionType.Shootout);
 
         var userGoalCounts = await _db.UserMatchGoals
             .Include(g => g.UserMatch)
@@ -406,7 +409,7 @@ public class BetService : IBetService
                 BetType.TeamWinOrDraw => !matchCompleted || !leg.TeamId.HasValue
                     ? (bool?)null
                     : (anyWinnerId.HasValue && anyWinnerId.Value == leg.TeamId.Value) || isDraw,
-                BetType.TeamDraw => !matchCompleted ? (bool?)null : isDraw,
+                BetType.TeamDraw => !matchCompleted ? (bool?)null : (isDraw || isOtOrSo),
                 BetType.UserGoal => leg.UserId.HasValue
                     ? userGoalCounts.GetValueOrDefault(leg.UserId.Value) >= leg.Occasions
                     : (bool?)null,
