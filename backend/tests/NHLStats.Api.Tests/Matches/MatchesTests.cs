@@ -218,6 +218,17 @@ public class MatchesTests : ApiTestBase
         var created = await CreateMatchAsync(client, seasonId, 1, 2);
         var matchId = created.GetProperty("id").GetInt32();
 
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 3,
+            awayTeamId = 4,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4  // InProgress
+        });
+        inProgressResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
         var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {
             homeTeamId = 3,

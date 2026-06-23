@@ -74,6 +74,17 @@ public abstract class ApiTestBase : IClassFixture<CustomWebApplicationFactory>
         var completedMatch = await completedMatchResp.Content.ReadFromJsonAsync<JsonElement>();
         var completedMatchId = completedMatch.GetProperty("id").GetInt32();
 
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}", new
+        {
+            homeTeamId = 5,
+            awayTeamId = 6,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp.EnsureSuccessStatusCode();
+
         var completeResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}", new
         {
             homeTeamId = 5,

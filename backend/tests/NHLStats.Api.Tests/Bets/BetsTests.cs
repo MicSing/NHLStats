@@ -88,6 +88,16 @@ public class BetsTests : ApiTestBase
         {
             homeTeamId = 3,
             awayTeamId = 4,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+
+        await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{completedMatchId}", new
+        {
+            homeTeamId = 3,
+            awayTeamId = 4,
             homeScore = 2,
             awayScore = 1,
             matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"),

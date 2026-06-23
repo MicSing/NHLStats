@@ -60,6 +60,17 @@ public class StatsTests : ApiTestBase
         var matchId = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
 
         // Step 2: set the date via update so stats/weekly tests can group by date
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp.EnsureSuccessStatusCode();
+
         var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {
             homeTeamId = 1,
@@ -586,6 +597,17 @@ public class StatsTests : ApiTestBase
 
     private async Task CompleteMatchAsync(HttpClient client, int seasonId, int matchId, string matchDate)
     {
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp.EnsureSuccessStatusCode();
+
         var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {
             homeTeamId = 1,
@@ -882,6 +904,17 @@ public class StatsTests : ApiTestBase
         });
         resp.EnsureSuccessStatusCode();
         var matchId = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId,
+            awayTeamId,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp.EnsureSuccessStatusCode();
 
         var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {
@@ -1487,6 +1520,17 @@ public class StatsTests : ApiTestBase
         betResp.EnsureSuccessStatusCode();
 
         // Complete match with no goals — auto-evaluates bet as Lost, no UserMatch created
+        var inProgressResp2 = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{betMatchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp2.EnsureSuccessStatusCode();
+
         var completeResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{betMatchId}", new
         {
             homeTeamId = 1,
