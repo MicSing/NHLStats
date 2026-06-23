@@ -104,30 +104,6 @@ export default function MatchPage() {
 
     const isHomeHosted = (m: Match) => m.homeTeamId === season?.hostedTeamId
 
-    const handleMatchFinished = async (homeScore: number, awayScore: number) => {
-        const hostedIsHome = match ? isHomeHosted(match) : true
-        const hostedScore = hostedIsHome ? homeScore : awayScore
-        const opponentScore = hostedIsHome ? awayScore : homeScore
-
-        const toAdd: number[] = []
-        if (hostedScore === 0) toAdd.push(3)
-        if (opponentScore === 0) toAdd.push(11)
-        if (hostedScore === 10) toAdd.push(12)
-        if (opponentScore === 10) toAdd.push(4)
-
-        for (const { userMatch, points } of userMatchData) {
-            for (const pointReasonId of toAdd) {
-                if (!points.some((p) => p.pointReasonId === pointReasonId)) {
-                    await apiClient.post(`/api/usermatches/${userMatch.id}/points`, {
-                        pointReasonId,
-                        count: 1,
-                    })
-                }
-            }
-        }
-        await loadAll()
-    }
-
     const saveMatchScore = async (homeScore: number, awayScore: number) => {
         if (!match || !seasonId || !matchId) return
         const updated = await apiClient.put<Match>(
@@ -222,7 +198,6 @@ export default function MatchPage() {
                     match={match}
                     isAuth={!!token}
                     onSaved={setMatch}
-                    onMatchFinished={(hs, awayS) => void handleMatchFinished(hs, awayS)}
                 />
 
                 {/* Action bar */}

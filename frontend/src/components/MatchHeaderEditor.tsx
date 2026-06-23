@@ -22,7 +22,6 @@ interface Props {
     match: Match
     isAuth: boolean
     onSaved: (updated: Match) => void
-    onMatchFinished?: (homeScore: number, awayScore: number) => void
 }
 
 function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
@@ -62,7 +61,7 @@ function completionTypeLabel(ct: CompletionType, t: (key: string) => string): st
     }
 }
 
-export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, onMatchFinished }: Props) {
+export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: Props) {
     const { t } = useTranslation()
     const [homeScore, setHomeScore] = useState(match.homeScore)
     const [awayScore, setAwayScore] = useState(match.awayScore)
@@ -121,13 +120,8 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved, on
                 `/api/seasons/${seasonId}/matches/${match.id}`,
                 dto,
             )
-            const wasFinished = isFinishedType(lastSavedCompletionTypeRef.current)
-            const nowFinished = isFinishedType(ct)
             lastSavedCompletionTypeRef.current = ct
             onSaved(updated)
-            if (!wasFinished && nowFinished) {
-                onMatchFinished?.(scores.home, scores.away)
-            }
             if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
             setSaved(true)
             savedTimerRef.current = setTimeout(() => setSaved(false), 2000)

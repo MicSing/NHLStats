@@ -28,6 +28,7 @@ public interface IUserMatchService
     Task<bool> DeleteAggregatedDataAsync(int userId, int seasonId);
 
     // ── Points ────────────────────────────────────────────────────────────────
+    Task ApplyMatchEndAutoPointsAsync(int matchId, int homeScore, int awayScore, int? hostedTeamId, int homeTeamId);
     Task<IEnumerable<UserMatchPointDto>> GetPointsAsync(int userMatchId);
     Task<(UserMatchPointDto? result, string? error)> AddPointAsync(int userMatchId, CreateUserMatchPointDto dto);
     Task<(UserMatchPointDto? result, string? error)> UpdatePointAsync(int userMatchId, int pointId, UpdateUserMatchPointDto dto);

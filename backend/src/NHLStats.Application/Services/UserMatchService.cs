@@ -394,6 +394,52 @@ public class UserMatchService : IUserMatchService
         return true;
     }
 
+    public async Task ApplyMatchEndAutoPointsAsync(int matchId, int homeScore, int awayScore, int? hostedTeamId, int homeTeamId)
+    {
+        bool hostedIsHome = homeTeamId == hostedTeamId;
+        int hostedScore = hostedIsHome ? homeScore : awayScore;
+        int opponentScore = hostedIsHome ? awayScore : homeScore;
+
+        var reasonIds = new List<int>();
+        if (hostedScore == 0) reasonIds.Add(3);
+        if (opponentScore == 0) reasonIds.Add(11);
+        if (hostedScore == 10) reasonIds.Add(12);
+        if (opponentScore == 10) reasonIds.Add(4);
+
+        if (reasonIds.Count == 0) return;
+
+        var reasons = await _db.PointReasons
+            .Where(r => reasonIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id);
+
+        var userMatches = await _db.UserMatches
+            .Include(um => um.Points)
+            .Include(um => um.Match)
+            .Where(um => um.MatchId == matchId)
+            .ToListAsync();
+
+        foreach (var um in userMatches)
+        {
+            var existingReasonIds = um.Points.Select(p => p.PointReasonId).ToHashSet();
+            foreach (var reasonId in reasonIds)
+            {
+                if (existingReasonIds.Contains(reasonId)) continue;
+                var reason = reasons[reasonId];
+                var amount = await ComputePointAmountAsync(um.Id, reason, 1);
+                _db.UserMatchPoints.Add(new UserMatchPoint
+                {
+                    UserMatchId = um.Id,
+                    PointReasonId = reasonId,
+                    Count = 1,
+                    Amount = amount,
+                    CreatedOn = um.Match?.MatchDate,
+                });
+            }
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
     // ─── Goals ────────────────────────────────────────────────────────────────
 
     public async Task<IEnumerable<UserMatchGoalDto>> GetGoalsAsync(int userMatchId) =>

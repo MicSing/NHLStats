@@ -11,17 +11,19 @@ public class MatchService : IMatchService
     private readonly NhlStatsDbContext _db;
     private readonly IBetService _betService;
     private readonly IBettingOddsService _oddsService;
+    private readonly IUserMatchService _userMatchService;
     private readonly ISeasonEventBroadcaster? _broadcaster;
 
-    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService)
+    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, IUserMatchService userMatchService)
     {
         _db = db;
         _betService = betService;
         _oddsService = oddsService;
+        _userMatchService = userMatchService;
     }
 
-    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, ISeasonEventBroadcaster broadcaster)
-        : this(db, betService, oddsService)
+    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, IUserMatchService userMatchService, ISeasonEventBroadcaster broadcaster)
+        : this(db, betService, oddsService, userMatchService)
     {
         _broadcaster = broadcaster;
     }
@@ -150,6 +152,11 @@ public class MatchService : IMatchService
 
         if (justCompleted)
         {
+            var season = await _db.Seasons.FindAsync(match.SeasonId);
+            await _userMatchService.ApplyMatchEndAutoPointsAsync(
+                id, dto.HomeScore, dto.AwayScore,
+                season?.HostedTeamId, match.HomeTeamId);
+
             await _betService.EvaluateMatchBetsAsync(id);
             await TryBroadcastAsync(new SeasonEventNotificationDto(
                 SeasonId: match.SeasonId,
