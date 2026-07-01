@@ -1,6 +1,8 @@
 export type BetStatus = 'Pending' | 'Won' | 'Lost' | 'Cancelled'
 export type LegStatus = BetStatus
-export type ApiBetType = 'TeamWin' | 'UserGoal' | 'UserPenalty' | 'TeamWinOrDraw' | 'UserPlusPoint' | 'UserMinusPoint' | 'TeamDraw'
+export type ApiBetType =
+    | 'TeamWin' | 'UserGoal' | 'UserPenalty' | 'TeamWinOrDraw' | 'UserPlusPoint' | 'UserMinusPoint' | 'TeamDraw'
+    | 'MatchTotalGoals' | 'HostedShutoutWin' | 'OpponentShutoutWin'
 
 export interface TeamWinOddsDto {
     homeTeamId: number
@@ -21,12 +23,20 @@ export interface UserOddsDto {
     maxOccasions: number
 }
 
+export interface MatchTotalGoalsOddsDto {
+    threshold: number
+    odds: number
+}
+
 export interface MatchOddsDto {
     teamWin: TeamWinOddsDto | null
     userGoal: UserOddsDto[]
     userPenalty: UserOddsDto[]
     userPlusPoint: UserOddsDto[]
     userMinusPoint: UserOddsDto[]
+    matchTotalGoals: MatchTotalGoalsOddsDto[]
+    hostedShutoutWinOdds: number | null
+    opponentShutoutWinOdds: number | null
     computedOn: string
 }
 

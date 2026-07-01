@@ -19,10 +19,15 @@ public record UserOddsDto(
 
 public record OccasionsOddsDto(int Occasions, decimal Odds, int MaxOccasions);
 
+public record MatchTotalGoalsOddsDto(int Threshold, decimal Odds);
+
 public record MatchOddsDto(
     TeamWinOddsDto? TeamWin,
     IReadOnlyList<UserOddsDto> UserGoal,
     IReadOnlyList<UserOddsDto> UserPenalty,
     IReadOnlyList<UserOddsDto> UserPlusPoint,
     IReadOnlyList<UserOddsDto> UserMinusPoint,
+    IReadOnlyList<MatchTotalGoalsOddsDto> MatchTotalGoals,
+    decimal? HostedShutoutWinOdds,
+    decimal? OpponentShutoutWinOdds,
     DateTime ComputedOn);

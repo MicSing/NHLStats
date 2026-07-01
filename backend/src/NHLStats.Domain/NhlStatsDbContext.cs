@@ -255,6 +255,9 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             // Negative-only reasons (no positive counterpart)
             new PointReason{ Id=19, Name="Offside", PointType=PointType.Negative, IsActive=true},
             new PointReason{ Id=20, Name="Icing",   PointType=PointType.Negative, IsActive=true},
+            // Neutral counterparts — every 3rd neutral Offside/Icing auto-creates the Negative one above (Id 19/20)
+            new PointReason{ Id=21, Name="Offside", PointType=PointType.Neutral, IsActive=true},
+            new PointReason{ Id=22, Name="Icing",   PointType=PointType.Neutral, IsActive=true},
         };
 
         modelBuilder.Entity<PointReason>().HasData(pointReasons);

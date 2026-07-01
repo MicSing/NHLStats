@@ -8,5 +8,8 @@ public enum BetType
     TeamWinOrDraw = 4,
     UserPlusPoint = 5,
     UserMinusPoint = 6,
-    TeamDraw = 7
+    TeamDraw = 7,
+    MatchTotalGoals = 8,
+    HostedShutoutWin = 9,
+    OpponentShutoutWin = 10
 }

@@ -111,6 +111,15 @@ public class BetsController : ControllerBase
         return Ok(new { message = "Bets re-evaluated." });
     }
 
+    // POST /api/admin/bets/recalculate-plus-minus-odds (admin only)
+    [HttpPost("api/admin/bets/recalculate-plus-minus-odds")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecalculatePlusMinusOdds()
+    {
+        var count = await _betService.RecalculatePlusMinusOddsAsync();
+        return Ok(new { message = "Plus/minus odds recalculated.", betsUpdated = count });
+    }
+
     private string? GetLoginId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier) ??
         User.FindFirstValue(JwtRegisteredClaimNames.Sub);

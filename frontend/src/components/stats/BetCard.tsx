@@ -10,6 +10,9 @@ const LEG_TYPE_LABEL: Record<BetLegDto['betType'], string> = {
     UserPenalty: 'Penalty',
     UserPlusPoint: '+Point',
     UserMinusPoint: '−Point',
+    MatchTotalGoals: 'Goals',
+    HostedShutoutWin: 'Shutout (Hosted)',
+    OpponentShutoutWin: 'Shutout (Opp)',
 }
 
 const LEG_STATUS_DOT: Record<BetLegDto['status'], string> = {

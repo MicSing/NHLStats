@@ -65,6 +65,33 @@ public class BettingOddsService : IBettingOddsService
             .CountAsync();
         bool goalBettingEnabled = completedMatchCount >= 10;
 
+        // ── Match Total Goals Odds ──────────────────────────────────────────────
+        if (goalBettingEnabled)
+        {
+            var goalsBuckets = await LoadLeagueGoalsBucketsAsync(match);
+            foreach (var n in PickGoalWindow(goalsBuckets))
+            {
+                var p = BlendTotalGoalsProbability(goalsBuckets, n);
+                oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.MatchTotalGoals, TargetId = n, Probability = p, Odds = ComputeOdds(p), ComputedOn = now });
+            }
+        }
+
+        // ── Shutout Win Odds ────────────────────────────────────────────────────
+        // Only the hosted team has a full tracked season of matches in this system — "opponent"
+        // teams only appear in the handful of games they've played against the hosted team, so
+        // there's no reliable independent history to draw an opponent-side season/last10/home-away
+        // rate from. Both markets are therefore computed entirely from the hosted team's own record:
+        // HostedShutoutWin = hosted team's shutout-WIN rate, OpponentShutoutWin = hosted team's
+        // shutout-LOSS rate (scored 0, lost) — same buckets, opposite outcome being measured.
+        if (teamWinProbs is { } shutoutTeams)
+        {
+            var hostedBuckets = await LoadTeamShutoutBucketsAsync(match, shutoutTeams.HostedTeamId, shutoutTeams.OpponentTeamId);
+            var pHostedShutout = BlendShutoutProbability(hostedBuckets, TeamWonWithShutout);
+            var pOpponentShutout = BlendShutoutProbability(hostedBuckets, TeamShutOut);
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.HostedShutoutWin, TargetId = null, Probability = pHostedShutout, Odds = ComputeOdds(pHostedShutout), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.OpponentShutoutWin, TargetId = null, Probability = pOpponentShutout, Odds = ComputeOdds(pOpponentShutout), ComputedOn = now });
+        }
+
         foreach (var userId in activeUserIds)
         {
             if (goalBettingEnabled)
@@ -87,11 +114,28 @@ public class BettingOddsService : IBettingOddsService
         if (!goalBettingEnabled)
         {
             var staleGoalOdds = await _db.MatchOdds
-                .Where(o => o.MatchId == matchId && o.BetType == OddsBetType.UserGoal)
+                .Where(o => o.MatchId == matchId && (o.BetType == OddsBetType.UserGoal || o.BetType == OddsBetType.MatchTotalGoals))
                 .ToListAsync();
             if (staleGoalOdds.Count > 0)
             {
                 _db.MatchOdds.RemoveRange(staleGoalOdds);
+                await _db.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // The 4-N goal window can shift between recalcs; drop rows for thresholds no longer in the window.
+            var keptThresholds = oddsToUpsert
+                .Where(o => o.BetType == OddsBetType.MatchTotalGoals)
+                .Select(o => o.TargetId)
+                .ToHashSet();
+            var staleThresholdOdds = await _db.MatchOdds
+                .Where(o => o.MatchId == matchId && o.BetType == OddsBetType.MatchTotalGoals)
+                .ToListAsync();
+            var toRemove = staleThresholdOdds.Where(o => !keptThresholds.Contains(o.TargetId)).ToList();
+            if (toRemove.Count > 0)
+            {
+                _db.MatchOdds.RemoveRange(toRemove);
                 await _db.SaveChangesAsync();
             }
         }
@@ -209,8 +253,20 @@ public class BettingOddsService : IBettingOddsService
         var userPlusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserPlusPoint, matchId, users);
         var userMinusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserMinusPoint, matchId, users);
 
+        var matchTotalGoals = matchOddsRows
+            .Where(o => o.BetType == OddsBetType.MatchTotalGoals && o.TargetId.HasValue && o.Odds >= 1.0m)
+            .OrderBy(o => o.TargetId)
+            .Select(o => new MatchTotalGoalsOddsDto(o.TargetId!.Value, o.Odds))
+            .ToList();
+
+        var hostedShutoutRow = matchOddsRows.FirstOrDefault(o => o.BetType == OddsBetType.HostedShutoutWin);
+        var opponentShutoutRow = matchOddsRows.FirstOrDefault(o => o.BetType == OddsBetType.OpponentShutoutWin);
+        decimal? hostedShutoutOdds = hostedShutoutRow != null && hostedShutoutRow.Probability >= BettingConstants.MinBettableProbability ? hostedShutoutRow.Odds : null;
+        decimal? opponentShutoutOdds = opponentShutoutRow != null && opponentShutoutRow.Probability >= BettingConstants.MinBettableProbability ? opponentShutoutRow.Odds : null;
+
         var computedOn = matchOddsRows.Max(o => o.ComputedOn);
-        return new MatchOddsDto(teamWin, userGoal, userPenalty, userPlusPoint, userMinusPoint, computedOn);
+        return new MatchOddsDto(teamWin, userGoal, userPenalty, userPlusPoint, userMinusPoint,
+            matchTotalGoals, hostedShutoutOdds, opponentShutoutOdds, computedOn);
     }
 
     // ── Probability helpers ─────────────────────────────────────────────────────
@@ -404,6 +460,129 @@ public class BettingOddsService : IBettingOddsService
             games, wins, losses, draws,
             l10Games, l10Wins, l10Losses,
             h2hGames, h2hWins, h2hDraws, h2hGoalsFor, h2hGoalsAgainst);
+    }
+
+    // ── Match Total Goals / Shutout Win shared bucket loading ──────────────────
+    // Odds Bucket weights (see CONTEXT.md): 65% season (league-wide), 15% last10 (league-wide),
+    // 10% head-to-head (these two teams, any season), 10% home/away (league-wide, side-matched).
+
+    private record LeagueGoalsBuckets(
+        List<Match> Season, List<Match> Last10, List<Match> H2h, List<Match> HomeAwaySide);
+
+    private async Task<LeagueGoalsBuckets> LoadLeagueGoalsBucketsAsync(Match match)
+    {
+        var seasonMatches = await _db.Matches
+            .AsNoTracking()
+            .Where(m => m.SeasonId == match.SeasonId
+                        && m.CompletionType != CompletionType.None
+                        && m.CompletionType != CompletionType.InProgress)
+            .OrderByDescending(m => m.MatchDate)
+            .ToListAsync();
+
+        var last10 = seasonMatches.Take(10).ToList();
+
+        var h2h = await LoadHeadToHeadMatchesAsync(match.HomeTeamId, match.AwayTeamId, match.SeasonId);
+
+        // Bucket 4: this match's home team's own home-match history this season (total-goals rate when THEY play at home).
+        var homeTeamAtHome = seasonMatches.Where(m => m.HomeTeamId == match.HomeTeamId).ToList();
+
+        return new LeagueGoalsBuckets(seasonMatches, last10, h2h, homeTeamAtHome);
+    }
+
+    private async Task<List<Match>> LoadHeadToHeadMatchesAsync(int homeTeamId, int awayTeamId, int excludeAboveSeasonId)
+    {
+        return await _db.Matches
+            .AsNoTracking()
+            .Where(m => m.SeasonId <= excludeAboveSeasonId
+                        && m.CompletionType != CompletionType.None
+                        && m.CompletionType != CompletionType.InProgress
+                        && ((m.HomeTeamId == homeTeamId && m.AwayTeamId == awayTeamId)
+                            || (m.HomeTeamId == awayTeamId && m.AwayTeamId == homeTeamId)))
+            .ToListAsync();
+    }
+
+    private static bool TotalGoalsAtLeast(Match m, int n) => m.HomeScore + m.AwayScore >= n;
+
+    private static decimal Rate(List<Match> matches, Func<Match, bool> predicate) =>
+        matches.Count == 0 ? 0m : (decimal)matches.Count(predicate) / matches.Count;
+
+    private static decimal BlendTotalGoalsProbability(LeagueGoalsBuckets b, int n)
+    {
+        decimal pSeason = Rate(b.Season, m => TotalGoalsAtLeast(m, n));
+        decimal pLast10 = b.Last10.Count == 0 ? pSeason : Rate(b.Last10, m => TotalGoalsAtLeast(m, n));
+        decimal pH2h = b.H2h.Count == 0 ? pSeason : Rate(b.H2h, m => TotalGoalsAtLeast(m, n));
+        decimal pHomeAway = b.HomeAwaySide.Count == 0 ? pSeason : Rate(b.HomeAwaySide, m => TotalGoalsAtLeast(m, n));
+        return 0.65m * pSeason + 0.15m * pLast10 + 0.10m * pH2h + 0.10m * pHomeAway;
+    }
+
+    private static IEnumerable<int> PickGoalWindow(LeagueGoalsBuckets b)
+    {
+        // Slide a 4-wide window of N-thresholds up until its bottom edge is bettable (odds >= 1.0).
+        // Floor is fixed at BettingConstants.MinGoalThreshold — the window never drops below 3+.
+        for (int start = BettingConstants.MinGoalThreshold; start <= BettingConstants.MinGoalThreshold + 30; start++)
+        {
+            var window = Enumerable.Range(start, BettingConstants.GoalWindowSize).ToList();
+            var bottomOdds = ComputeOdds(BlendTotalGoalsProbability(b, window[0]));
+            if (bottomOdds < 1.0m) continue;
+
+            var topProb = BlendTotalGoalsProbability(b, window[^1]);
+            if (topProb < BettingConstants.MinBettableProbability)
+            {
+                // Top of window is unbettable — trim the window down to only the bettable thresholds.
+                return window.Where(n => BlendTotalGoalsProbability(b, n) >= BettingConstants.MinBettableProbability);
+            }
+
+            return window;
+        }
+        return [];
+    }
+
+    private record ShutoutBuckets(
+        List<Match> Season, List<Match> Last10, List<Match> H2h, List<Match> SameSide, int TeamId);
+
+    // Loads the buckets for "teamId wins by shutout" (any-time win, opponentTeamId held to 0),
+    // all scoped to teamId's own match history — see CONTEXT.md Odds Bucket entry.
+    private async Task<ShutoutBuckets> LoadTeamShutoutBucketsAsync(Match match, int teamId, int opponentTeamId)
+    {
+        var seasonMatches = await _db.Matches
+            .AsNoTracking()
+            .Where(m => m.SeasonId == match.SeasonId
+                        && (m.HomeTeamId == teamId || m.AwayTeamId == teamId)
+                        && m.CompletionType != CompletionType.None
+                        && m.CompletionType != CompletionType.InProgress)
+            .OrderByDescending(m => m.MatchDate)
+            .ToListAsync();
+
+        var last10 = seasonMatches.Take(10).ToList();
+        var h2h = await LoadHeadToHeadMatchesAsync(teamId, opponentTeamId, match.SeasonId);
+
+        bool teamIsHome = teamId == match.HomeTeamId;
+        var sameSide = seasonMatches.Where(m => (m.HomeTeamId == teamId) == teamIsHome).ToList();
+
+        return new ShutoutBuckets(seasonMatches, last10, h2h, sameSide, teamId);
+    }
+
+    // teamId wins by shutout: teamId scores more, opponent scores 0.
+    private static bool TeamWonWithShutout(Match m, int teamId) =>
+        m.HomeTeamId == teamId
+            ? (m.HomeScore > m.AwayScore && m.AwayScore == 0)
+            : (m.AwayScore > m.HomeScore && m.HomeScore == 0);
+
+    // teamId is shut out and loses: opponent scores more, teamId scores 0.
+    private static bool TeamShutOut(Match m, int teamId) =>
+        m.HomeTeamId == teamId
+            ? (m.AwayScore > m.HomeScore && m.HomeScore == 0)
+            : (m.HomeScore > m.AwayScore && m.AwayScore == 0);
+
+    private static decimal BlendShutoutProbability(ShutoutBuckets b, Func<Match, int, bool> predicate)
+    {
+        Func<Match, bool> matches = m => predicate(m, b.TeamId);
+        decimal pSeason = Rate(b.Season, matches);
+        decimal pLast10 = b.Last10.Count == 0 ? pSeason : Rate(b.Last10, matches);
+        decimal pH2h = b.H2h.Count == 0 ? pSeason : Rate(b.H2h, matches);
+        decimal pSameSide = b.SameSide.Count == 0 ? pSeason : Rate(b.SameSide, matches);
+
+        return 0.65m * pSeason + 0.15m * pLast10 + 0.10m * pH2h + 0.10m * pSameSide;
     }
 
     private enum UserEventKind { Goal, Penalty, PlusPoint, MinusPoint }

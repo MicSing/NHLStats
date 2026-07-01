@@ -347,10 +347,12 @@ public class BettingOddsServiceTeamWinTests : IDisposable
             .Where(o => o.MatchId == upcoming.Id)
             .ToListAsync();
 
-        rows.Should().HaveCount(5);
+        rows.Should().HaveCount(7, "TeamWin(2) + Draw(1) + TeamWinOrDraw(2) + HostedShutoutWin(1) + OpponentShutoutWin(1)");
         rows.Count(r => r.BetType == OddsBetType.TeamWin).Should().Be(2);
         rows.Count(r => r.BetType == OddsBetType.Draw).Should().Be(1);
         rows.Count(r => r.BetType == OddsBetType.TeamWinOrDraw).Should().Be(2);
+        rows.Count(r => r.BetType == OddsBetType.HostedShutoutWin).Should().Be(1);
+        rows.Count(r => r.BetType == OddsBetType.OpponentShutoutWin).Should().Be(1);
 
         var hosted1X = rows.First(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == hosted.Id);
         var opp2X = rows.First(r => r.BetType == OddsBetType.TeamWinOrDraw && r.TargetId == opp.Id);

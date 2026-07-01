@@ -8,7 +8,10 @@ public enum OddsBetType
     Draw = 3,
     TeamWinOrDraw = 4,
     UserPlusPoint = 5,
-    UserMinusPoint = 6
+    UserMinusPoint = 6,
+    MatchTotalGoals = 7,
+    HostedShutoutWin = 8,
+    OpponentShutoutWin = 9
 }
 
 public class MatchOdds

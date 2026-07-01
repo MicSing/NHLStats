@@ -120,6 +120,92 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Place_hosted_shutout_bet_returns_201()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "HostedShutoutWin" } }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs")[0].GetProperty("betType").GetString().Should().Be("HostedShutoutWin");
+    }
+
+    [Fact]
+    public async Task Place_both_shutout_legs_on_same_match_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout Exclusivity Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "HostedShutoutWin" },
+                new { matchId, betType = "OpponentShutoutWin" }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Place_two_plus_point_legs_on_same_match_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "PlusPoint Cap Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var usersResp = await client.GetAsync($"/api/seasons/{seasonId}/users");
+        usersResp.EnsureSuccessStatusCode();
+
+        var createUser2Resp = await client.PostAsJsonAsync("/api/users", new { name = "Second Better Target" });
+        createUser2Resp.EnsureSuccessStatusCode();
+        var user2 = await createUser2Resp.Content.ReadFromJsonAsync<JsonElement>();
+        var user2Id = user2.GetProperty("id").GetInt32();
+        await client.PostAsync($"/api/seasons/{seasonId}/users/{user2Id}", null);
+
+        var createUser3Resp = await client.PostAsJsonAsync("/api/users", new { name = "Third Better Target" });
+        createUser3Resp.EnsureSuccessStatusCode();
+        var user3 = await createUser3Resp.Content.ReadFromJsonAsync<JsonElement>();
+        var user3Id = user3.GetProperty("id").GetInt32();
+        await client.PostAsync($"/api/seasons/{seasonId}/users/{user3Id}", null);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[]
+            {
+                new { matchId, betType = "UserPlusPoint", userId = user2Id },
+                new { matchId, betType = "UserPlusPoint", userId = user3Id }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Recalculate_plus_minus_odds_requires_admin_role_and_returns_200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/admin/bets/recalculate-plus-minus-odds", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task Place_single_leg_ticket_returns_201_with_short_id_and_one_leg()
     {
         var client = await CreateAuthenticatedClientAsync();

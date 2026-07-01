@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Gear, Receipt, CurrencyDollar, Hash } from '@phosphor-icons/react'
+import { Gear, Receipt, CurrencyDollar, Hash, DiceFive } from '@phosphor-icons/react'
 import MoneyConfigTab from '../../components/finance/MoneyConfigTab'
 import ExpensesTab from '../../components/finance/ExpensesTab'
 import CollectingTab from '../../components/finance/CollectingTab'
 import PointsManagementTab from '../../components/finance/PointsManagementTab'
+import BettingAdminTab from '../../components/finance/BettingAdminTab'
 import AdminPageHeader from '../../components/AdminPageHeader'
 
-type Tab = 'rates' | 'expenses' | 'collecting' | 'points'
+type Tab = 'rates' | 'expenses' | 'collecting' | 'points' | 'betting'
 
 const tabs: { key: Tab; labelKey: string; Icon: React.ElementType }[] = [
     { key: 'rates', labelKey: 'admin.finance.tabRates', Icon: Gear },
     { key: 'expenses', labelKey: 'admin.finance.tabExpenses', Icon: Receipt },
     { key: 'collecting', labelKey: 'admin.finance.tabCollecting', Icon: CurrencyDollar },
     { key: 'points', labelKey: 'admin.finance.tabPoints', Icon: Hash },
+    { key: 'betting', labelKey: 'admin.finance.tabBetting', Icon: DiceFive },
 ]
 
 const addLabelKeys: Partial<Record<Tab, string>> = {
@@ -63,6 +65,7 @@ export default function FinancePage() {
                 <CollectingTab addOpen={addOpen} onAddClose={() => setAddOpen(false)} />
             )}
             {activeTab === 'points' && <PointsManagementTab />}
+            {activeTab === 'betting' && <BettingAdminTab />}
         </div>
     )
 }

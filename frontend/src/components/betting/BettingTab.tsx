@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext'
 import { bettingService } from '../../services/bettingService'
 import type { BettingBalanceDto, BetDto, CreateBetLegDto, MatchOddsDto } from '../../types/bet'
 import type { FutureMatch } from '../../types/match'
-import { type DraftLeg, legKey, teamOutcomeTypes } from './bettingTypes'
+import { type DraftLeg, legKey, matchHasLegOfType, shutoutWinTypes, teamOutcomeTypes } from './bettingTypes'
 import LiveTicketsSection from './LiveTicketsSection'
 import MarketsSection from './MarketsSection'
 import TicketDraftSection from './TicketDraftSection'
@@ -105,6 +105,25 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
             error(t('betting.oneMatchResultPerMatch'))
             return
         }
+        if (leg.betType === 'MatchTotalGoals' && matchHasLegOfType(draftLegs, leg.matchId, 'MatchTotalGoals')) {
+            error(t('betting.oneGoalTotalPerMatch'))
+            return
+        }
+        if (
+            shutoutWinTypes.includes(leg.betType) &&
+            draftLegs.some((l) => l.matchId === leg.matchId && shutoutWinTypes.includes(l.betType))
+        ) {
+            error(t('betting.oneShutoutPerMatch'))
+            return
+        }
+        if (leg.betType === 'UserPlusPoint' && matchHasLegOfType(draftLegs, leg.matchId, 'UserPlusPoint')) {
+            error(t('betting.onePlusPointPerMatch'))
+            return
+        }
+        if (leg.betType === 'UserMinusPoint' && matchHasLegOfType(draftLegs, leg.matchId, 'UserMinusPoint')) {
+            error(t('betting.oneMinusPointPerMatch'))
+            return
+        }
         setDraftLegs((prev) => [...prev, { ...leg, occasions, maxOccasions, key }])
     }
 
@@ -196,6 +215,13 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
                             l.matchId === selectedMatchId &&
                             teamOutcomeTypes.includes(l.betType),
                     )
+                }
+                matchHasGoalTotalLeg={selectedMatchId != null && matchHasLegOfType(draftLegs, selectedMatchId, 'MatchTotalGoals')}
+                matchHasPlusPointLeg={selectedMatchId != null && matchHasLegOfType(draftLegs, selectedMatchId, 'UserPlusPoint')}
+                matchHasMinusPointLeg={selectedMatchId != null && matchHasLegOfType(draftLegs, selectedMatchId, 'UserMinusPoint')}
+                matchHasShutoutLeg={
+                    selectedMatchId != null &&
+                    draftLegs.some((l) => l.matchId === selectedMatchId && shutoutWinTypes.includes(l.betType))
                 }
                 onAddLeg={addLeg}
             />

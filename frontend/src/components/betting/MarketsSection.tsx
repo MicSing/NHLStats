@@ -12,10 +12,16 @@ interface MarketsSectionProps {
     odds: MatchOddsDto | null
     currentUserId: number | null
     matchHasTeamOutcome: boolean
+    matchHasGoalTotalLeg: boolean
+    matchHasPlusPointLeg: boolean
+    matchHasMinusPointLeg: boolean
+    matchHasShutoutLeg: boolean
     onAddLeg: (leg: Omit<DraftLeg, 'key' | 'maxOccasions'> & { maxOccasions?: number }) => void
 }
 
-export default function MarketsSection({ match, odds, currentUserId, matchHasTeamOutcome, onAddLeg }: MarketsSectionProps) {
+export default function MarketsSection({
+    match, odds, currentUserId, matchHasTeamOutcome, matchHasGoalTotalLeg, matchHasPlusPointLeg, matchHasMinusPointLeg, matchHasShutoutLeg, onAddLeg,
+}: MarketsSectionProps) {
     const { t } = useTranslation()
     const [showUnavailable, setShowUnavailable] = useState(false)
 
@@ -43,13 +49,32 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
     const home1XLabel = `${t('betting.home1X')} (${match.homeTeamName ?? '?'})`
     const away1XLabel = `${t('betting.away1X')} (${match.awayTeamName ?? '?'})`
 
-    const homeDisabled = (isUserInMatch && !isHostingHome) || homeOdds == null || matchHasTeamOutcome || (homeOdds != null && homeOdds < 1)
-    const drawDisabled = isUserInMatch || drawOdds == null || drawOdds < 1
-    const awayDisabled = (isUserInMatch && !isHostingAway) || awayOdds == null || matchHasTeamOutcome || (awayOdds != null && awayOdds < 1)
-    const home1XDisabled = (isUserInMatch && !isHostingHome) || home1XOdds == null || matchHasTeamOutcome || (home1XOdds != null && home1XOdds < 1)
-    const away1XDisabled = (isUserInMatch && !isHostingAway) || away1XOdds == null || matchHasTeamOutcome || (away1XOdds != null && away1XOdds < 1)
-    const show1X2Section = showUnavailable || !homeDisabled || !drawDisabled || !awayDisabled
-    const show1XSection = showUnavailable || !home1XDisabled || !away1XDisabled
+    const hostedTeamName = isHostingHome ? match.homeTeamName : isHostingAway ? match.awayTeamName : null
+    const opponentTeamName = isHostingHome ? match.awayTeamName : isHostingAway ? match.homeTeamName : null
+    const hostedShutoutLabel = hostedTeamName != null && opponentTeamName != null
+        ? t('betting.hostedShutoutWinNamed', { team: hostedTeamName, opponent: opponentTeamName })
+        : t('betting.hostedShutoutWin')
+    const opponentShutoutLabel = hostedTeamName != null && opponentTeamName != null
+        ? t('betting.opponentShutoutWinNamed', { team: opponentTeamName, opponent: hostedTeamName })
+        : t('betting.opponentShutoutWin')
+
+    // "Unavailable" (no odds data / below-threshold probability) drives visibility — hidden unless
+    // Show Unavailable is on. "Already picked elsewhere in this match" (matchHasX) never hides a
+    // button; it only disables it, so the user can see why an option isn't selectable.
+    const homeUnavailable = (isUserInMatch && !isHostingHome) || homeOdds == null || (homeOdds != null && homeOdds < 1)
+    const drawUnavailable = isUserInMatch || drawOdds == null || drawOdds < 1
+    const awayUnavailable = (isUserInMatch && !isHostingAway) || awayOdds == null || (awayOdds != null && awayOdds < 1)
+    const home1XUnavailable = (isUserInMatch && !isHostingHome) || home1XOdds == null || (home1XOdds != null && home1XOdds < 1)
+    const away1XUnavailable = (isUserInMatch && !isHostingAway) || away1XOdds == null || (away1XOdds != null && away1XOdds < 1)
+
+    const homeDisabled = homeUnavailable || matchHasTeamOutcome
+    const drawDisabled = drawUnavailable || matchHasTeamOutcome
+    const awayDisabled = awayUnavailable || matchHasTeamOutcome
+    const home1XDisabled = home1XUnavailable || matchHasTeamOutcome
+    const away1XDisabled = away1XUnavailable || matchHasTeamOutcome
+
+    const show1X2Section = showUnavailable || !homeUnavailable || !drawUnavailable || !awayUnavailable
+    const show1XSection = showUnavailable || !home1XUnavailable || !away1XUnavailable
 
     return (
         <section className="card p-4 space-y-4">
@@ -79,7 +104,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
             {/* 1 X 2 */}
             {show1X2Section && (
             <div className="flex gap-2">
-                {(showUnavailable || !homeDisabled) && (
+                {(showUnavailable || !homeUnavailable) && (
                     <OddsButton
                         label={t('betting.betOnHomeShort')}
                         subLabel={homeLabel}
@@ -101,7 +126,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                         }
                     />
                 )}
-                {(showUnavailable || !drawDisabled) && (
+                {(showUnavailable || !drawUnavailable) && (
                     <OddsButton
                         label={t('betting.betOnDrawShort')}
                         subLabel={t('betting.drawLabel')}
@@ -123,7 +148,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                         }
                     />
                 )}
-                {(showUnavailable || !awayDisabled) && (
+                {(showUnavailable || !awayUnavailable) && (
                     <OddsButton
                         label={t('betting.betOnAwayShort')}
                         subLabel={awayLabel}
@@ -151,7 +176,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
             {/* 1X / 2X (double chance) */}
             {show1XSection && (
             <div className="flex gap-2">
-                {(showUnavailable || !home1XDisabled) && (
+                {(showUnavailable || !home1XUnavailable) && (
                     <OddsButton
                         label={t('betting.betOnHome1XShort')}
                         subLabel={home1XLabel}
@@ -173,7 +198,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                         }
                     />
                 )}
-                {(showUnavailable || !away1XDisabled) && (
+                {(showUnavailable || !away1XUnavailable) && (
                     <OddsButton
                         label={t('betting.betOnAway1XShort')}
                         subLabel={away1XLabel}
@@ -197,6 +222,101 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                 )}
             </div>
             )}
+
+            {/* Match Total Goals */}
+            {odds != null && odds.matchTotalGoals.length > 0 && (
+            <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                    {t('betting.totalGoals')}
+                </h3>
+                <div className="flex gap-2">
+                    {odds.matchTotalGoals.map((g) => {
+                        const disabled = matchHasGoalTotalLeg || g.odds < 1
+                        if (!showUnavailable && g.odds < 1) return null
+                        const label = `${g.threshold}+`
+                        return (
+                            <OddsButton
+                                key={`goals-${g.threshold}`}
+                                label={label}
+                                subLabel={t('betting.totalGoals')}
+                                odds={g.odds}
+                                disabled={disabled}
+                                onClick={() =>
+                                    onAddLeg({
+                                        matchId: match.id,
+                                        matchNumber: match.matchNumber,
+                                        betType: 'MatchTotalGoals',
+                                        userId: null,
+                                        teamId: null,
+                                        label: `${t('betting.totalGoals')}: ${label}`,
+                                        odds: g.odds,
+                                        occasions: g.threshold,
+                                        minOccasions: g.threshold,
+                                    })
+                                }
+                            />
+                        )
+                    })}
+                </div>
+            </div>
+            )}
+
+            {/* Shutout Win */}
+            {(() => {
+                const hostedShutoutUnavailable = (odds?.hostedShutoutWinOdds ?? 0) < 1
+                // Match participants are not eligible to bet OpponentShutoutWin at all — treat that
+                // as unavailable (hidden) rather than merely disabled, same as home/away eligibility.
+                const opponentShutoutUnavailable = isUserInMatch || (odds?.opponentShutoutWinOdds ?? 0) < 1
+                const showShutoutSection = showUnavailable || !hostedShutoutUnavailable || !opponentShutoutUnavailable
+                return showShutoutSection && (
+                    <div className="flex gap-2">
+                        {(showUnavailable || !hostedShutoutUnavailable) && (
+                            <OddsButton
+                                label={isHostingHome ? t('betting.betOnHomeShort') : t('betting.betOnAwayShort')}
+                                subLabel={hostedShutoutLabel}
+                                odds={odds?.hostedShutoutWinOdds ?? null}
+                                disabled={matchHasShutoutLeg || hostedShutoutUnavailable}
+                                onClick={() =>
+                                    odds?.hostedShutoutWinOdds != null &&
+                                    onAddLeg({
+                                        matchId: match.id,
+                                        matchNumber: match.matchNumber,
+                                        betType: 'HostedShutoutWin',
+                                        userId: null,
+                                        teamId: null,
+                                        label: hostedShutoutLabel,
+                                        odds: odds.hostedShutoutWinOdds,
+                                        occasions: 1,
+                                        minOccasions: 1,
+                                    })
+                                }
+                            />
+                        )}
+                        {(showUnavailable || !opponentShutoutUnavailable) && (
+                            <OddsButton
+                                label={isHostingHome ? t('betting.betOnAwayShort') : t('betting.betOnHomeShort')}
+                                subLabel={opponentShutoutLabel}
+                                odds={odds?.opponentShutoutWinOdds ?? null}
+                                disabled={matchHasShutoutLeg || opponentShutoutUnavailable}
+                                onClick={() =>
+                                    odds?.opponentShutoutWinOdds != null &&
+                                    onAddLeg({
+                                        matchId: match.id,
+                                        matchNumber: match.matchNumber,
+                                        betType: 'OpponentShutoutWin',
+                                        userId: null,
+                                        teamId: null,
+                                        label: opponentShutoutLabel,
+                                        odds: odds.opponentShutoutWinOdds,
+                                        occasions: 1,
+                                        minOccasions: 1,
+                                    })
+                                }
+                            />
+                        )}
+                    </div>
+                )
+            })()}
 
             {/* User markets */}
             <div className={`grid grid-cols-1 gap-4 ${isUserInMatch && !showUnavailable ? 'md:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-4'}`}>
@@ -303,7 +423,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
-                                        forceDisabled={isUserInMatch}
+                                        forceDisabled={isUserInMatch || matchHasPlusPointLeg}
                                         onAdd={() =>
                                             displayOdds != null &&
                                             onAddLeg({
@@ -347,7 +467,7 @@ export default function MarketsSection({ match, odds, currentUserId, matchHasTea
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
-                                        forceDisabled={isUserInMatch}
+                                        forceDisabled={isUserInMatch || matchHasMinusPointLeg}
                                         onAdd={() =>
                                             displayOdds != null &&
                                             onAddLeg({
