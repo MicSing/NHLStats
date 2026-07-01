@@ -18,6 +18,7 @@ import MatchPage from './pages/MatchPage'
 import DashboardPage from './pages/DashboardPage'
 import FinancePage from './pages/FinancePage'
 import UserStatsPage from './pages/UserStatsPage'
+import TeamStatsPage from './pages/TeamStatsPage'
 import RulesPage from './pages/RulesPage'
 import BettingPage from './pages/BettingPage'
 
@@ -40,6 +41,7 @@ function App() {
                   <Route path="/seasons/:seasonId" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />
                   <Route path="/user-stats" element={<UserStatsPage />} />
+                  <Route path="/team-stats" element={<TeamStatsPage />} />
                   <Route path="/rules" element={<RulesPage />} />
                 </Route>
 

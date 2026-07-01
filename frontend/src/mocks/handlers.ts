@@ -985,6 +985,53 @@ export const handlers = [
         ]))
     }),
 
+    rest.get(`${BASE}/api/team-stats/hosted-teams`, (_req, res, ctx) => {
+        return res(ctx.json([
+            { id: 1, name: 'Boston Bruins', shortName: 'BOS' },
+        ]))
+    }),
+
+    rest.get(`${BASE}/api/team-stats/opponents`, (_req, res, ctx) => {
+        return res(ctx.json([
+            { id: 2, name: 'Edmonton Oilers', shortName: 'EDM' },
+        ]))
+    }),
+
+    rest.get(`${BASE}/api/team-stats/summary`, (_req, res, ctx) => {
+        return res(ctx.json({
+            hostedTeamId: 1,
+            opponentTeamId: 2,
+            matchesPlayed: 2,
+            topScoringUser: { name: 'Player One', count: 3, pairedContributors: [{ name: 'John Scorer', count: 3 }] },
+            topScoringPlayer: { name: 'John Scorer', count: 5, pairedContributors: [{ name: 'Player One', count: 3 }, { name: 'Player Two', count: 2 }] },
+            topPenalizedUser: null,
+            topPenalizedPlayer: null,
+            topPlusUser: { name: 'Player One', count: 5, pairedContributors: [] },
+            topMinusUser: { name: 'Player Two', count: 1, pairedContributors: [] },
+            totalPlusPoints: 5,
+            totalMinusPoints: 1,
+            avgPlusPerMatch: 2.5,
+            avgMinusPerMatch: 0.5,
+            avgGoalsPerMatch: 1.5,
+            avgPenaltiesPerMatch: 0,
+        }))
+    }),
+
+    rest.get(`${BASE}/api/team-stats/matches`, (_req, res, ctx) => {
+        return res(ctx.json([
+            {
+                matchId: 1,
+                seasonId: 1,
+                seasonName: '2023-24',
+                matchDate: '2023-10-15T00:00:00',
+                isHome: true,
+                homeScore: 3,
+                awayScore: 2,
+                completionType: 'RegularTime',
+            },
+        ]))
+    }),
+
     rest.get(`${BASE}/api/seasons/:seasonId/users`, (_req, res, ctx) => {
         return res(ctx.json([
             { id: 1, name: 'Player One', isActive: true },

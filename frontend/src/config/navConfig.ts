@@ -1,7 +1,7 @@
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import {
     HouseIcon, TrophyIcon, ChartLineIcon, TargetIcon, CurrencyDollarIcon, BookOpenIcon,
-    UsersIcon, ShieldIcon,
+    UsersIcon, ShieldIcon, FlagBannerIcon,
     TagIcon, WalletIcon,
 } from '@phosphor-icons/react'
 
@@ -22,6 +22,7 @@ export const publicNavItems: NavItem[] = [
     { to: '/dashboard', labelKey: 'nav.dashboard', icon: HouseIcon },
     { to: '/seasons', labelKey: 'nav.seasons', icon: TrophyIcon },
     { to: '/user-stats', labelKey: 'nav.playerStats', icon: ChartLineIcon },
+    { to: '/team-stats', labelKey: 'nav.teamStats', icon: FlagBannerIcon },
     { to: '/betting', labelKey: 'nav.betting', icon: TargetIcon },
     { to: '/earnings', labelKey: 'nav.finances', icon: CurrencyDollarIcon },
     { to: '/rules', labelKey: 'nav.rules', icon: BookOpenIcon },
