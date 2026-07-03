@@ -1,20 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { teamStatsService } from '../services/teamStatsService'
 import type { TeamOption, TeamStatsMatch, TeamStatsSummary } from '../types/teamStats'
 import TeamStatsSummaryTable from '../components/teamStats/TeamStatsSummaryTable'
 import TeamStatsMatchList from '../components/teamStats/TeamStatsMatchList'
 
+function parseTeamIdParam(value: string | null): number | null {
+    if (!value) return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+}
+
 export default function TeamStatsPage() {
     const { t } = useTranslation()
+    const [searchParams, setSearchParams] = useSearchParams()
 
     const [hostedTeams, setHostedTeams] = useState<TeamOption[]>([])
-    const [selectedHostedTeamId, setSelectedHostedTeamId] = useState<number | null>(null)
+    const [selectedHostedTeamId, setSelectedHostedTeamId] = useState<number | null>(
+        () => parseTeamIdParam(searchParams.get('hostedTeamId')),
+    )
     const [loadingHostedTeams, setLoadingHostedTeams] = useState(true)
 
     const [opponents, setOpponents] = useState<TeamOption[]>([])
-    const [selectedOpponentTeamId, setSelectedOpponentTeamId] = useState<number | null>(null)
+    const [selectedOpponentTeamId, setSelectedOpponentTeamId] = useState<number | null>(
+        () => parseTeamIdParam(searchParams.get('opponentTeamId')),
+    )
     const [loadingOpponents, setLoadingOpponents] = useState(false)
+    const pendingInitialOpponentId = useRef(selectedOpponentTeamId)
 
     const [summary, setSummary] = useState<TeamStatsSummary | null>(null)
     const [matches, setMatches] = useState<TeamStatsMatch[]>([])
@@ -22,11 +35,31 @@ export default function TeamStatsPage() {
 
     const selectClass = 'bg-surface border border-border text-text text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary transition-colors appearance-none disabled:opacity-60 disabled:cursor-not-allowed'
 
+    function handleHostedTeamChange(id: number | null) {
+        setSelectedHostedTeamId(id)
+        setSearchParams((p) => {
+            if (id != null) p.set('hostedTeamId', String(id)); else p.delete('hostedTeamId')
+            p.delete('opponentTeamId')
+            return p
+        }, { replace: true })
+    }
+
+    function handleOpponentTeamChange(id: number | null) {
+        setSelectedOpponentTeamId(id)
+        setSearchParams((p) => {
+            if (id != null) p.set('opponentTeamId', String(id)); else p.delete('opponentTeamId')
+            return p
+        }, { replace: true })
+    }
+
     useEffect(() => {
         teamStatsService.getHostedTeams()
             .then((teams) => {
                 setHostedTeams(teams)
-                if (teams.length > 0) setSelectedHostedTeamId(teams[0].id)
+                setSelectedHostedTeamId((current) => {
+                    if (current != null && teams.some((t) => t.id === current)) return current
+                    return teams.length > 0 ? teams[0].id : null
+                })
             })
             .catch(() => setHostedTeams([]))
             .finally(() => setLoadingHostedTeams(false))
@@ -44,7 +77,13 @@ export default function TeamStatsPage() {
             .then((teams) => {
                 const sorted = [...teams].sort((a, b) => a.name.localeCompare(b.name))
                 setOpponents(sorted)
-                setSelectedOpponentTeamId(sorted.length > 0 ? sorted[0].id : null)
+                const pendingId = pendingInitialOpponentId.current
+                pendingInitialOpponentId.current = null
+                if (pendingId != null && sorted.some((t) => t.id === pendingId)) {
+                    setSelectedOpponentTeamId(pendingId)
+                } else {
+                    setSelectedOpponentTeamId(sorted.length > 0 ? sorted[0].id : null)
+                }
             })
             .catch(() => {
                 setOpponents([])
@@ -92,7 +131,7 @@ export default function TeamStatsPage() {
                                 aria-label={t('teamStats.selectHostedTeam')}
                                 value={selectedHostedTeamId ?? ''}
                                 disabled={hostedTeams.length <= 1}
-                                onChange={(e) => setSelectedHostedTeamId(e.target.value ? Number(e.target.value) : null)}
+                                onChange={(e) => handleHostedTeamChange(e.target.value ? Number(e.target.value) : null)}
                                 className={selectClass}
                             >
                                 {hostedTeams.length === 0 && <option value="">{t('teamStats.noHostedTeams')}</option>}
@@ -108,7 +147,7 @@ export default function TeamStatsPage() {
                                 aria-label={t('teamStats.selectOpponent')}
                                 value={selectedOpponentTeamId ?? ''}
                                 disabled={opponents.length === 0}
-                                onChange={(e) => setSelectedOpponentTeamId(e.target.value ? Number(e.target.value) : null)}
+                                onChange={(e) => handleOpponentTeamChange(e.target.value ? Number(e.target.value) : null)}
                                 className={selectClass}
                             >
                                 {opponents.length === 0 && <option value="">{t('teamStats.noOpponents')}</option>}

@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BellRinging } from '@phosphor-icons/react'
 import type { Season } from '../types/season'
-import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, HeadToHeadMatch, SeasonTotals } from '../types/stats'
+import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, SeasonTotals } from '../types/stats'
 import { CompletionType } from '../types/match'
 import type { Match } from '../types/match'
 import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../types/userMatch'
 import type { BetDto } from '../types/bet'
 import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
-import { statsService } from '../services/statsService'
 import { bettingService } from '../services/bettingService'
 import SeasonSelector from '../components/SeasonSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -57,9 +56,6 @@ export default function SeasonPage() {
     const [reEvaluatingMatchId, setReEvaluatingMatchId] = useState<number | null>(null)
     const [aggregatedEntries, setAggregatedEntries] = useState<AggEntry[]>([])
     const [allBets, setAllBets] = useState<BetDto[]>([])
-    const [h2hMatches, setH2hMatches] = useState<HeadToHeadMatch[]>([])
-    const [loadingH2H, setLoadingH2H] = useState(false)
-    const [h2hExpanded, setH2hExpanded] = useState(false)
     const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
         useSeasonEventNotifications(seasonId)
     const isDesktop = useIsDesktop()
@@ -92,9 +88,6 @@ export default function SeasonPage() {
         if (!seasonId || !seasonTotals) return
 
         setLoadingData(true)
-        setH2hMatches([])
-        setH2hExpanded(false)
-        setLoadingH2H(false)
         setExpandedMatchId(null)
         setMatchDetailCache(new Map())
         const seasonUserData = seasonTotals.usersData.find(s => s.seasonId === seasonId)
@@ -182,29 +175,6 @@ export default function SeasonPage() {
             })
             .finally(() => setLoadingData(false))
     }, [seasonId, seasonTotals])
-
-    useEffect(() => {
-        if (!seasonId || allMatches.length === 0) return
-
-        const season = seasons.find((s) => s.id === seasonId)
-        if (!season?.hostedTeamId) return
-
-        const unplayed = allMatches
-            .filter((m) => m.matchDate === null)
-            .sort((a, b) => a.matchNumber - b.matchNumber)
-        if (unplayed.length === 0) return
-
-        const upNext = unplayed[0]
-        const opponentTeamId =
-            upNext.homeTeamId === season.hostedTeamId ? upNext.awayTeamId : upNext.homeTeamId
-
-        setLoadingH2H(true)
-        statsService
-            .getHeadToHead(opponentTeamId, season.hostedTeamId)
-            .then((matches) => setH2hMatches(matches))
-            .catch(() => setH2hMatches([]))
-            .finally(() => setLoadingH2H(false))
-    }, [allMatches]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchMatchDetail = async (matchId: number) => {
         if (!seasonId || matchDetailCache.has(matchId)) return
@@ -405,10 +375,6 @@ export default function SeasonPage() {
                                     allMatches={allMatches}
                                     seasonId={seasonId}
                                     seasons={seasons}
-                                    loadingH2H={loadingH2H}
-                                    h2hMatches={h2hMatches}
-                                    h2hExpanded={h2hExpanded}
-                                    onToggleH2H={() => setH2hExpanded((prev) => !prev)}
                                 />
                             </div>
                         </div>

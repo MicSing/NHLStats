@@ -15,6 +15,22 @@ Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
     configurable: true,
 })
 
+// jsdom doesn't implement matchMedia; useIsDesktop and similar hooks need it
+Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => { },
+        removeListener: () => { },
+        addEventListener: () => { },
+        removeEventListener: () => { },
+        dispatchEvent: () => false,
+    }),
+})
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())

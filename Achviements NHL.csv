@@ -1,0 +1,28 @@
+Type,Period,Condition,Name
+Goals,In match,>=3 with 1 player,Sniper
+Goals,In match,">=4 with all players, 2 different players",Domination
+Goals,In match,>=3 Shorthanded,Shorty
+Goals,In week,>=10 All forwards,God mode
+Goals,In week,>=5 All defenders,Blue line snipers
+Goals,In season,>=140 All forwards,Massive attack
+Goals,In season,>=45 All defenders,Offensive defenseman
+Goals,In season,>=70 with 1 player,Player lover
+Goals,In season,Most goals among all users,Golden stick
+Penalty,In match,>=3  with 1 player,Sin Bin VIP
+Penalty,In match,>=3 with all players,Broad street bully
+Penalty,In week,>=5,Disciplinary Hearing
+Penalty,In season,>=15 with one player,The Enforcer
+Penalty,In season,>=40 Total,Goon Squad
+Penalty,In season,Most penalties among all users,Jailbird
+Negative points,In match,>=3,Unlucky
+Negative points,In week,>=6,Deep pockets
+Negative points,In season,>=36,VIP Sponzor
+Negative points,In season,Most points among all users,The ATM
+Positive points,In match,>=3,Ice general
+Positive points,In week,>=5,Good week
+Positive points,In season,>=25,Happy season
+Positive points,In season,Most points among all users,King of the Rnk
+Bets,In season,Best bet among all users,Oracle
+Bets,In season,Most won bets among all users,The bookie
+Bets,In season,>=3 stake,Nostradamus
+"Goal, Penalty, Bet",In match,"1 of each, bet must be won",Swiss Army Knife

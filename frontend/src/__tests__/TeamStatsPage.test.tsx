@@ -8,11 +8,11 @@ import { server } from '../mocks/server'
 
 const BASE = 'http://localhost:5000'
 
-function renderPage() {
+function renderPage(initialPath = '/team-stats') {
     return render(
         <ThemeProvider>
             <AuthProvider>
-                <MemoryRouter initialEntries={['/team-stats']}>
+                <MemoryRouter initialEntries={[initialPath]}>
                     <Routes>
                         <Route path="/team-stats" element={<TeamStatsPage />} />
                     </Routes>
@@ -68,6 +68,38 @@ describe('TeamStatsPage', () => {
         renderPage()
         await waitFor(() => {
             expect(screen.getByText(/3 – 2/)).toBeInTheDocument()
+        })
+    })
+
+    test('preselects opponent from URL query params instead of alphabetical default', async () => {
+        server.use(
+            rest.get(`${BASE}/api/team-stats/opponents`, (_req, res, ctx) => {
+                return res(ctx.json([
+                    { id: 2, name: 'Edmonton Oilers', shortName: 'EDM' },
+                    { id: 4, name: 'Anaheim Ducks', shortName: 'ANA' },
+                ]))
+            }),
+        )
+        renderPage('/team-stats?hostedTeamId=1&opponentTeamId=2')
+        const select = await screen.findByRole('combobox', { name: /select opponent/i }) as HTMLSelectElement
+        await waitFor(() => {
+            expect(select.value).toBe('2')
+        })
+    })
+
+    test('falls back to alphabetical default when URL opponentTeamId does not exist for hosted team', async () => {
+        server.use(
+            rest.get(`${BASE}/api/team-stats/opponents`, (_req, res, ctx) => {
+                return res(ctx.json([
+                    { id: 2, name: 'Edmonton Oilers', shortName: 'EDM' },
+                    { id: 4, name: 'Anaheim Ducks', shortName: 'ANA' },
+                ]))
+            }),
+        )
+        renderPage('/team-stats?hostedTeamId=1&opponentTeamId=999')
+        const select = await screen.findByRole('combobox', { name: /select opponent/i }) as HTMLSelectElement
+        await waitFor(() => {
+            expect(select.value).toBe('4')
         })
     })
 })
