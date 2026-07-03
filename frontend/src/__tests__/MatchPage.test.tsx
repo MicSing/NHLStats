@@ -54,60 +54,50 @@ describe('MatchPage', () => {
         expect(screen.getByText('−1')).toBeInTheDocument()
     })
 
-    test('shows existing goal entries on Goals tab (default)', async () => {
+    test('shows existing goal entry in the flat entries row', async () => {
         renderMatchPage()
-        // Goals tab is the default — goal chip shows "Connor McDavid × 1"
-        expect(await screen.findByText(/connor mcdavid × 1/i)).toBeInTheDocument()
+        // mockGoals: Connor McDavid × 1 (always visible, no tab needed)
+        expect(await screen.findByText(/connor mcdavid/i)).toBeInTheDocument()
     })
 
-    test('shows existing point entries after switching to Points tab', async () => {
-        const user = userEvent.setup()
+    test('shows existing point entries in the flat entries row', async () => {
         renderMatchPage()
-        // Points are only shown when the Points tab is active
-        const pointsTab = await screen.findByRole('button', { name: /^points/i })
-        await user.click(pointsTab)
-        // mockPoints: Penalty × 1
-        expect(await screen.findByText(/penalty × 1/i)).toBeInTheDocument()
+        // mockPoints: Penalty × 1 and Scoring 10 Goals × 2 (always visible, no tab needed)
+        expect(await screen.findByText(/scoring 10 goals/i)).toBeInTheDocument()
+        expect(screen.getAllByText(/penalty/i).length).toBeGreaterThan(0)
     })
 
-    test('goal form is visible in Goals tab when authenticated', async () => {
+    test('goal quick-action button is visible when authenticated', async () => {
         renderMatchPage()
-        // Goals tab is default — form should be present once data loads
-        const form = await screen.findByRole('form', { name: /add goal for player one/i })
-        expect(form).toBeInTheDocument()
+        expect(await screen.findByText('Player One')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /^goal$/i })).toBeInTheDocument()
     })
 
-    test('penalty form is visible in Penalties tab when authenticated', async () => {
-        const user = userEvent.setup()
+    test('penalty quick-action button is visible when authenticated', async () => {
         renderMatchPage()
-        // Navigate to Penalties tab
-        const penaltiesTab = await screen.findByRole('button', { name: /^penalties/i })
-        await user.click(penaltiesTab)
-        const form = await screen.findByRole('form', { name: /add penalty for player one/i })
-        expect(form).toBeInTheDocument()
+        expect(await screen.findByText('Player One')).toBeInTheDocument()
+        expect(screen.getAllByRole('button', { name: /^penalty$/i }).length).toBeGreaterThan(0)
     })
 
-    test('Points tab shows + Positive, + Negative, and + Neutral action buttons when authenticated', async () => {
-        const user = userEvent.setup()
+    test('Negative, Positive, and Neutral point rows shown when authenticated', async () => {
         renderMatchPage()
-        const pointsTab = await screen.findByRole('button', { name: /^points/i })
-        await user.click(pointsTab)
-        expect(await screen.findByRole('button', { name: /\+ positive/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /\+ negative/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /\+ neutral/i })).toBeInTheDocument()
+        expect(await screen.findByText('Player One')).toBeInTheDocument()
+        expect(screen.getByText('Negative')).toBeInTheDocument()
+        expect(screen.getByText('Positive')).toBeInTheDocument()
+        expect(screen.getByText('Neutral')).toBeInTheDocument()
+        // Reason chip button, e.g. "Penalty" under the Negative row
+        expect(screen.getAllByRole('button', { name: /^penalty$/i }).length).toBeGreaterThan(0)
     })
 
     test('edit controls hidden when not authenticated', async () => {
         renderMatchPage({ authenticated: false })
         // Wait for page to fully load
         expect(await screen.findByText('Player One')).toBeInTheDocument()
-        // No goal form in default Goals tab when not authenticated
-        expect(
-            screen.queryByRole('form', { name: /add goal for/i }),
-        ).not.toBeInTheDocument()
+        // No player-actions section in read-only mode
+        expect(screen.queryByText('Player Actions')).not.toBeInTheDocument()
         // No initialize button
         expect(
-            screen.queryByRole('button', { name: /initialize users/i }),
+            screen.queryByRole('button', { name: /add all users/i }),
         ).not.toBeInTheDocument()
     })
 
@@ -115,13 +105,11 @@ describe('MatchPage', () => {
         renderMatchPage({ authenticated: true })
         // Wait for page to fully load
         expect(await screen.findByText('Player One')).toBeInTheDocument()
-        // Goal form is present in the default Goals tab
-        expect(
-            screen.getByRole('form', { name: /add goal for player one/i }),
-        ).toBeInTheDocument()
+        // Player Actions zone is present
+        expect(screen.getByText('Player Actions')).toBeInTheDocument()
         // Initialize button
         expect(
-            screen.getByRole('button', { name: /initialize users/i }),
+            await screen.findByRole('button', { name: /add all users/i }),
         ).toBeInTheDocument()
     })
 
@@ -136,9 +124,9 @@ describe('MatchPage', () => {
     test('PP button opens Add Power Play Goal modal', async () => {
         const user = userEvent.setup()
         renderMatchPage()
-        // Wait for goals tab to load
+        // Wait for entries to load
         await screen.findByText(/connor mcdavid/i)
-        const ppBtn = screen.getByRole('button', { name: /\+ pp/i })
+        const ppBtn = screen.getByRole('button', { name: /^pp$/i })
         await user.click(ppBtn)
         expect(await screen.findByText('Add Power Play Goal')).toBeInTheDocument()
     })
@@ -147,17 +135,8 @@ describe('MatchPage', () => {
         const user = userEvent.setup()
         renderMatchPage()
         await screen.findByText(/connor mcdavid/i)
-        const shBtn = screen.getByRole('button', { name: /\+ sh/i })
+        const shBtn = screen.getByRole('button', { name: /^sh$/i })
         await user.click(shBtn)
         expect(await screen.findByText('Add Shorthanded Goal')).toBeInTheDocument()
-    })
-
-    test('neutral point badge displayed with gray style on Points tab', async () => {
-        const user = userEvent.setup()
-        renderMatchPage()
-        const pointsTab = await screen.findByRole('button', { name: /^points/i })
-        await user.click(pointsTab)
-        // Mock returns Penalty with pointType 'Negative' — badge should be visible
-        expect(await screen.findByText(/penalty × 1/i)).toBeInTheDocument()
     })
 })

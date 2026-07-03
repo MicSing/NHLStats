@@ -9,6 +9,10 @@ const mockUsers = [
     { id: 2, name: 'Player Two', isActive: false },
 ]
 
+const mockLoginUsers = [
+    { id: 'login-1', email: 'player.one@test.com', alias: null, userId: 1, roles: ['User'] },
+]
+
 const mockTeams = [
     { id: 1, name: 'Boston Bruins', shortName: 'BOS', leagueType: 'NHL' },
     { id: 2, name: 'Edmonton Oilers', shortName: 'EDM', leagueType: 'NHL' },
@@ -304,6 +308,32 @@ export const handlers = [
 
     rest.delete(`${BASE}/api/users/:id`, (_req, res, ctx) => {
         return res(ctx.status(204))
+    }),
+
+    // Auth: login/identity management (LoginUser)
+    rest.get(`${BASE}/api/auth/users`, (_req, res, ctx) => {
+        return res(ctx.json(mockLoginUsers))
+    }),
+
+    rest.post(`${BASE}/api/auth/users`, async (req, res, ctx) => {
+        const body = await req.json() as { email?: string; alias?: string; userId?: number }
+        return res(
+            ctx.status(201),
+            ctx.json({ id: 'login-99', email: body.email ?? null, alias: body.alias ?? null, userId: body.userId ?? null, roles: [] }),
+        )
+    }),
+
+    rest.post(`${BASE}/api/auth/users/:loginId/change-password`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    rest.delete(`${BASE}/api/auth/users/:loginId`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    rest.put(`${BASE}/api/auth/users/:loginId/roles`, async (req, res, ctx) => {
+        const body = await req.json() as { roles: string[] }
+        return res(ctx.json({ id: req.params.loginId, roles: body.roles }))
     }),
 
     // Teams

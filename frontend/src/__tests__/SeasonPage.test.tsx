@@ -108,8 +108,8 @@ describe('SeasonPage', () => {
             // Click the expand button on the match card
             const expandBtn = await screen.findByRole('button', { name: /▼/ })
             await user.click(expandBtn)
-            // Expanded section shows the bet column header
-            expect(await screen.findAllByText(/bet/i)).not.toHaveLength(0)
+            // Expanded section shows the tickets column header (bet column was replaced by a tickets link)
+            expect(await screen.findAllByText(/tickets/i)).not.toHaveLength(0)
         })
     })
 

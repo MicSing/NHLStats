@@ -46,43 +46,34 @@ describe('UsersPage', () => {
         })
     })
 
-    test('edit button opens modal pre-populated with user data', async () => {
+    test('clicking a user row opens the drawer with their details', async () => {
         const user = userEvent.setup()
         renderWithProviders(<UsersPage />)
-        const editButtons = await screen.findAllByRole('button', { name: /^edit$/i })
-        await user.click(editButtons[0])
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
-        expect(screen.getByDisplayValue('Player One')).toBeInTheDocument()
-    })
-
-    test('edit form saves and closes modal', async () => {
-        const user = userEvent.setup()
-        renderWithProviders(<UsersPage />)
-        const editButtons = await screen.findAllByRole('button', { name: /^edit$/i })
-        await user.click(editButtons[0])
-        const nameInput = screen.getByDisplayValue('Player One')
-        await user.clear(nameInput)
-        await user.type(nameInput, 'Updated Player')
-        await user.click(screen.getByRole('button', { name: /^save$/i }))
-        await waitFor(() => {
-            expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        })
+        await user.click(await screen.findByText('Player One'))
+        // Drawer renders the user name as a heading and their login email
+        expect(await screen.findByRole('heading', { name: 'Player One' })).toBeInTheDocument()
+        expect(screen.getAllByText('player.one@test.com').length).toBeGreaterThan(0)
     })
 
     test('deactivate button is shown only for active users', async () => {
+        const user = userEvent.setup()
         renderWithProviders(<UsersPage />)
-        await screen.findByText('Player One')
-        // Player One is active → has deactivate button; Player Two is inactive → no deactivate
-        const deactivateBtns = screen.getAllByRole('button', { name: /deactivate/i })
-        expect(deactivateBtns).toHaveLength(1)
+        // Player One is active — drawer shows the deactivate control
+        await user.click(await screen.findByText('Player One'))
+        expect(await screen.findByRole('button', { name: /deactivate/i })).toBeInTheDocument()
+
+        // Player Two is inactive — no deactivate control, just a disabled-state message
+        await user.click(screen.getByText('Player Two'))
+        expect(screen.queryByRole('button', { name: /deactivate/i })).not.toBeInTheDocument()
     })
 
     test('clicking deactivate calls API and refreshes list', async () => {
         const user = userEvent.setup()
         renderWithProviders(<UsersPage />)
+        await user.click(await screen.findByText('Player One'))
         const btn = await screen.findByRole('button', { name: /deactivate/i })
         await user.click(btn)
         // List re-loads without error
-        await screen.findByText('Player One')
+        await screen.findAllByText('Player One')
     })
 })
