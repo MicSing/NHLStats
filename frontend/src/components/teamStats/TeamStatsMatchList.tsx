@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { TeamStatsMatch } from '../../types/teamStats'
 import type { TeamOption } from '../../types/teamStats'
+import { deriveMatchResults } from '../../utils/teamStatsRecord'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 
 interface Props {
@@ -31,13 +32,23 @@ export default function TeamStatsMatchList({ matches, hostedTeam, opponentTeam }
                 {t('teamStats.matchesTitle')}
             </h2>
             <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-card divide-y divide-border">
-                {matches.map((m) => {
+                {[...deriveMatchResults(matches)]
+                    .sort((a, b) => {
+                        const timeDiff = new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime()
+                        if (timeDiff !== 0) return timeDiff
+                        return b.matchId - a.matchId
+                    })
+                    .map((m, index, arr) => {
+                    const matchIndex = arr.length - index // #10, #9, #8...
                     const homeTeam = m.isHome ? hostedTeam : opponentTeam
                     const awayTeam = m.isHome ? opponentTeam : hostedTeam
                     return (
                         <div key={m.matchId} className="flex items-center justify-between px-4 py-3 gap-3">
-                            <div className="flex flex-col">
-                                <span className="text-xs text-text-muted">{m.seasonName}</span>
+                            <div className="flex flex-col w-20">
+                                <span className="text-xs text-text-muted font-semibold">Match #{matchIndex}</span>
+                                <span className="text-xs text-text-muted opacity-80">{m.seasonName}</span>
+                            </div>
+                            <div className="flex flex-col w-20 items-end">
                                 <span className="text-xs text-text-muted">
                                     {new Date(m.matchDate).toLocaleDateString()}
                                 </span>
@@ -63,9 +74,18 @@ export default function TeamStatsMatchList({ matches, hostedTeam, opponentTeam }
                                     />
                                 )}
                             </div>
-                            <span className="text-xs text-text-muted uppercase">
-                                {m.isHome ? t('teamStats.home') : t('teamStats.away')}
-                            </span>
+                            <div className="flex flex-col items-end gap-1 w-20">
+                                <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                                    {m.isHome ? t('teamStats.home') : t('teamStats.away')}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    m.result === 'W' || m.result === 'OTW' ? 'bg-success/10 text-success' :
+                                    m.result === 'L' || m.result === 'OTL' ? 'bg-danger/10 text-danger' :
+                                    'bg-text-muted/10 text-text-muted'
+                                }`}>
+                                    {t(`teamStats.result${m.result}`, m.result)}
+                                </span>
+                            </div>
                         </div>
                     )
                 })}

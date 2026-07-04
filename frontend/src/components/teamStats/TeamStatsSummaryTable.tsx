@@ -11,15 +11,18 @@ export default function TeamStatsSummaryTable({ summary }: Props) {
     function renderLeader(leader: TeamStatsLeader | null, pairedLabel: string) {
         if (!leader) return <span className="text-text-muted">—</span>
         return (
-            <>
-                <span className="font-semibold">{leader.name}</span>{' '}
-                <span className="text-text-muted tabular-nums">({leader.count})</span>
+            <div className="flex flex-col h-full justify-end">
+                <div>
+                    <span className="font-bold text-lg text-text">{leader.name}</span>{' '}
+                    <span className="text-text-muted tabular-nums font-semibold">({leader.count})</span>
+                </div>
                 {leader.pairedContributors.length > 0 && (
-                    <span className="block text-xs text-text-muted mt-0.5">
-                        {pairedLabel}: {leader.pairedContributors.map((c) => `${c.name} (${c.count})`).join(', ')}
-                    </span>
+                    <div className="text-[11px] text-text-muted mt-2 border-t border-border/50 pt-2 leading-tight">
+                        <span className="uppercase tracking-wider opacity-70 block mb-0.5">{pairedLabel}</span>
+                        {leader.pairedContributors.map((c) => `${c.name} (${c.count})`).join(', ')}
+                    </div>
                 )}
-            </>
+            </div>
         )
     }
 
@@ -34,30 +37,6 @@ export default function TeamStatsSummaryTable({ summary }: Props) {
         { label: t('teamStats.topPenalizedPlayer'), value: renderLeader(summary.topPenalizedPlayer, t('teamStats.withUser')) },
         { label: t('teamStats.topPlusUser'), value: renderLeader(summary.topPlusUser, t('teamStats.withPlayer')) },
         { label: t('teamStats.topMinusUser'), value: renderLeader(summary.topMinusUser, t('teamStats.withPlayer')) },
-        {
-            label: t('teamStats.totalPlusPoints'),
-            value: <span className="text-success font-bold tabular-nums">+{summary.totalPlusPoints}</span>,
-        },
-        {
-            label: t('teamStats.totalMinusPoints'),
-            value: <span className="text-danger font-bold tabular-nums">−{summary.totalMinusPoints}</span>,
-        },
-        {
-            label: t('teamStats.avgPlusPerMatch'),
-            value: <span className="text-success font-bold tabular-nums">{formatAvg(summary.avgPlusPerMatch)}</span>,
-        },
-        {
-            label: t('teamStats.avgMinusPerMatch'),
-            value: <span className="text-danger font-bold tabular-nums">{formatAvg(summary.avgMinusPerMatch)}</span>,
-        },
-        {
-            label: t('teamStats.avgGoalsPerMatch'),
-            value: <span className="font-bold tabular-nums text-text">{formatAvg(summary.avgGoalsPerMatch)}</span>,
-        },
-        {
-            label: t('teamStats.avgPenaltiesPerMatch'),
-            value: <span className="font-bold tabular-nums text-text-muted">{formatAvg(summary.avgPenaltiesPerMatch)}</span>,
-        },
     ]
 
     return (
@@ -65,23 +44,17 @@ export default function TeamStatsSummaryTable({ summary }: Props) {
             <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3">
                 {t('teamStats.summaryTitle')}
             </h2>
-            <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-card">
-                <table className="w-full text-sm">
-                    <thead className="bg-bg border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
-                        <tr>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-left">{t('teamStats.statLabel')}</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-left">{t('teamStats.statValue')}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {rows.map((row) => (
-                            <tr key={row.label} className="hover:bg-bg/60 transition-colors">
-                                <td className="py-2.5 px-3 sm:py-3 sm:px-5 font-medium text-text-muted">{row.label}</td>
-                                <td className="py-2.5 px-3 sm:py-3 sm:px-5">{row.value}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                {rows.map((row) => (
+                    <div key={row.label} className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col h-full">
+                        <span className="text-[11px] text-text-muted uppercase tracking-wider mb-2 font-bold leading-tight">
+                            {row.label}
+                        </span>
+                        <div className="flex-1 flex flex-col justify-end">
+                            {row.value}
+                        </div>
+                    </div>
+                ))}
             </div>
         </section>
     )

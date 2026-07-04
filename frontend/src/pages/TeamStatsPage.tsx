@@ -5,6 +5,8 @@ import { teamStatsService } from '../services/teamStatsService'
 import type { TeamOption, TeamStatsMatch, TeamStatsSummary } from '../types/teamStats'
 import TeamStatsSummaryTable from '../components/teamStats/TeamStatsSummaryTable'
 import TeamStatsMatchList from '../components/teamStats/TeamStatsMatchList'
+import TeamStatsCharts from '../components/teamStats/TeamStatsCharts'
+import { deriveMatchResults, tallyRecord } from '../utils/teamStatsRecord'
 
 function parseTeamIdParam(value: string | null): number | null {
     if (!value) return null
@@ -117,6 +119,7 @@ export default function TeamStatsPage() {
 
     const hostedTeam = hostedTeams.find((t) => t.id === selectedHostedTeamId) ?? null
     const opponentTeam = opponents.find((t) => t.id === selectedOpponentTeamId) ?? null
+    const record = tallyRecord(deriveMatchResults(matches))
 
     return (
         <div>
@@ -170,10 +173,32 @@ export default function TeamStatsPage() {
                     </div>
                 )}
 
-                {summary && <TeamStatsSummaryTable summary={summary} />}
+                {summary && selectedHostedTeamId != null && selectedOpponentTeamId != null && hostedTeam && opponentTeam && (
+                    <>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.matchesTitle')}</span>
+                                        <span className="text-2xl font-bold text-text tabular-nums">{summary.matchesPlayed}</span>
+                                    </div>
+                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalPlusPoints')}</span>
+                                        <span className="text-2xl font-bold text-success tabular-nums">+{summary.totalPlusPoints}</span>
+                                    </div>
+                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalMinusPoints')}</span>
+                                        <span className="text-2xl font-bold text-danger tabular-nums">−{summary.totalMinusPoints}</span>
+                                    </div>
+                                </div>
 
-                {selectedHostedTeamId != null && selectedOpponentTeamId != null && (
-                    <TeamStatsMatchList matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
+                                <TeamStatsCharts matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
+
+                                <div className="mb-8">
+                                    <TeamStatsSummaryTable summary={summary} />
+                                </div>
+                                <div className="mt-8">
+                                    <TeamStatsMatchList matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
+                                </div>
+                    </>
                 )}
             </main>
         </div>

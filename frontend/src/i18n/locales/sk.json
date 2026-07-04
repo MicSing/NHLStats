@@ -333,10 +333,22 @@
         "avgMinusPerMatch": "Priem. mínus / zápas",
         "avgGoalsPerMatch": "Priem. gólov / zápas",
         "avgPenaltiesPerMatch": "Priem. trestov / zápas",
+        "goalDifferentialTitle": "Skóre za a proti",
+        "goalDifferentialDesc": "Gólový rozdiel v jednotlivých zápasoch proti tomuto súperovi, od najstaršieho po najnovší.",
+        "goalsFor": "Góly za",
+        "goalsAgainst": "Góly proti",
+        "resultW": "Výhra",
+        "resultL": "Prehra",
+        "resultOTL": "Prehra po predĺžení",
         "matchesTitle": "Zápasy",
         "noMatches": "Proti tomuto tímu sa zatiaľ nehralo.",
         "home": "Doma",
-        "away": "Vonku"
+        "away": "Vonku",
+        "wins": "Výhry",
+        "losses": "Prehry",
+        "ties": "Remízy",
+        "winRatio": "Pomer výhier",
+        "goalsTrend": "Trend gólov"
     },
     "achievements": {
         "new": "NOVÉ",

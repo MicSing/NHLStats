@@ -102,4 +102,30 @@ describe('TeamStatsPage', () => {
             expect(select.value).toBe('4')
         })
     })
+
+    test('renders goal differential chart with correct W-L-OTL record', async () => {
+        server.use(
+            rest.get(`${BASE}/api/team-stats/matches`, (_req, res, ctx) => {
+                return res(ctx.json([
+                    { matchId: 1, seasonId: 1, seasonName: '2023-24', matchDate: '2023-10-15T00:00:00', isHome: true, homeScore: 3, awayScore: 2, completionType: 'RegularTime' },
+                    { matchId: 2, seasonId: 1, seasonName: '2023-24', matchDate: '2023-11-01T00:00:00', isHome: false, homeScore: 4, awayScore: 1, completionType: 'RegularTime' },
+                    { matchId: 3, seasonId: 1, seasonName: '2023-24', matchDate: '2023-12-01T00:00:00', isHome: true, homeScore: 2, awayScore: 3, completionType: 'Overtime' },
+                ]))
+            }),
+        )
+        renderPage()
+        expect(await screen.findByRole('img', { name: /goals for vs against/i })).toBeInTheDocument()
+        expect(await screen.findByText('1W')).toBeInTheDocument()
+        expect(screen.getByText('1L')).toBeInTheDocument()
+        expect(screen.getByText('1OTL')).toBeInTheDocument()
+    })
+
+    test('does not render goal differential chart when there are no matches', async () => {
+        server.use(
+            rest.get(`${BASE}/api/team-stats/matches`, (_req, res, ctx) => res(ctx.json([]))),
+        )
+        renderPage()
+        await screen.findByRole('heading', { name: /team stats/i })
+        expect(screen.queryByRole('img', { name: /goals for vs against/i })).not.toBeInTheDocument()
+    })
 })
