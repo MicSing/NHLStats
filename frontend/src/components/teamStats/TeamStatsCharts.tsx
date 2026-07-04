@@ -1,10 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
     Tooltip,
     Legend,
     ResponsiveContainer,
@@ -22,7 +17,7 @@ interface Props {
     opponentTeam: TeamOption
 }
 
-export default function TeamStatsCharts({ matches, hostedTeam, opponentTeam }: Props) {
+export default function TeamStatsCharts({ matches }: Props) {
     const { t } = useTranslation()
 
     if (matches.length === 0) return null
@@ -35,7 +30,6 @@ export default function TeamStatsCharts({ matches, hostedTeam, opponentTeam }: P
     if (record.otWins > 0) pieData.push({ name: t('teamStats.otWins', 'OT Wins'), value: record.otWins, color: '#34D399' })
     if (record.losses > 0) pieData.push({ name: t('teamStats.losses', 'Losses'), value: record.losses, color: '#EF4444' })
     if (record.otLosses > 0) pieData.push({ name: t('teamStats.otLosses', 'OT Losses'), value: record.otLosses, color: '#F87171' })
-    if (record.ties > 0) pieData.push({ name: t('teamStats.ties', 'Ties'), value: record.ties, color: '#6B7280' })
 
 
 

@@ -6,7 +6,6 @@ import type { TeamOption, TeamStatsMatch, TeamStatsSummary } from '../types/team
 import TeamStatsSummaryTable from '../components/teamStats/TeamStatsSummaryTable'
 import TeamStatsMatchList from '../components/teamStats/TeamStatsMatchList'
 import TeamStatsCharts from '../components/teamStats/TeamStatsCharts'
-import { deriveMatchResults, tallyRecord } from '../utils/teamStatsRecord'
 
 function parseTeamIdParam(value: string | null): number | null {
     if (!value) return null
@@ -119,7 +118,6 @@ export default function TeamStatsPage() {
 
     const hostedTeam = hostedTeams.find((t) => t.id === selectedHostedTeamId) ?? null
     const opponentTeam = opponents.find((t) => t.id === selectedOpponentTeamId) ?? null
-    const record = tallyRecord(deriveMatchResults(matches))
 
     return (
         <div>

@@ -338,6 +338,7 @@
         "goalsFor": "Goals For",
         "goalsAgainst": "Goals Against",
         "resultW": "Win",
+        "resultOTW": "OT Win",
         "resultL": "Loss",
         "resultOTL": "OT Loss",
         "matchesTitle": "Matches",
@@ -345,8 +346,9 @@
         "home": "Home",
         "away": "Away",
         "wins": "Wins",
+        "otWins": "OT Wins",
         "losses": "Losses",
-        "ties": "Ties",
+        "otLosses": "OT Losses",
         "winRatio": "Win Ratio",
         "goalsTrend": "Goals Trend"
     },

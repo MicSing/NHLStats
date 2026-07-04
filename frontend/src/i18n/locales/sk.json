@@ -338,6 +338,7 @@
         "goalsFor": "Góly za",
         "goalsAgainst": "Góly proti",
         "resultW": "Výhra",
+        "resultOTW": "Výhra po predĺžení",
         "resultL": "Prehra",
         "resultOTL": "Prehra po predĺžení",
         "matchesTitle": "Zápasy",
@@ -345,8 +346,9 @@
         "home": "Doma",
         "away": "Vonku",
         "wins": "Výhry",
+        "otWins": "Výhry po predĺžení",
         "losses": "Prehry",
-        "ties": "Remízy",
+        "otLosses": "Prehry po predĺžení",
         "winRatio": "Pomer výhier",
         "goalsTrend": "Trend gólov"
     },

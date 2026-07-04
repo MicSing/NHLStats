@@ -1,6 +1,6 @@
 import type { TeamStatsMatch } from '../types/teamStats'
 
-export type MatchResult = 'W' | 'L' | 'OTL' | 'T'
+export type MatchResult = 'W' | 'OTW' | 'L' | 'OTL'
 
 export interface MatchWithResult extends TeamStatsMatch {
     goalsFor: number
@@ -14,24 +14,23 @@ export function deriveMatchResults(matches: TeamStatsMatch[]): MatchWithResult[]
         .map((m) => {
             const goalsFor = m.isHome ? m.homeScore : m.awayScore
             const goalsAgainst = m.isHome ? m.awayScore : m.homeScore
+            const decidedInRegulation = m.completionType === 'RegularTime'
             const result: MatchResult = goalsFor > goalsAgainst
-                ? 'W'
-                : goalsFor === goalsAgainst
-                ? 'T'
-                : m.completionType !== 'RegularTime' ? 'OTL' : 'L'
+                ? (decidedInRegulation ? 'W' : 'OTW')
+                : (decidedInRegulation ? 'L' : 'OTL')
             return { ...m, goalsFor, goalsAgainst, result }
         })
 }
 
-export function tallyRecord(results: MatchWithResult[]): { wins: number; losses: number; otLosses: number; ties: number } {
+export function tallyRecord(results: MatchWithResult[]): { wins: number; otWins: number; losses: number; otLosses: number } {
     return results.reduce(
         (acc, r) => {
             if (r.result === 'W') acc.wins += 1
+            else if (r.result === 'OTW') acc.otWins += 1
             else if (r.result === 'OTL') acc.otLosses += 1
-            else if (r.result === 'T') acc.ties += 1
             else acc.losses += 1
             return acc
         },
-        { wins: 0, losses: 0, otLosses: 0, ties: 0 },
+        { wins: 0, otWins: 0, losses: 0, otLosses: 0 },
     )
 }

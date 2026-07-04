@@ -26,10 +26,6 @@ export default function TeamStatsSummaryTable({ summary }: Props) {
         )
     }
 
-    function formatAvg(value: number) {
-        return value.toFixed(2)
-    }
-
     const rows: { label: string; value: React.ReactNode }[] = [
         { label: t('teamStats.topScoringUser'), value: renderLeader(summary.topScoringUser, t('teamStats.withPlayer')) },
         { label: t('teamStats.topScoringPlayer'), value: renderLeader(summary.topScoringPlayer, t('teamStats.withUser')) },

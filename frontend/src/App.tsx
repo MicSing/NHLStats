@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
@@ -22,6 +22,11 @@ import TeamStatsPage from './pages/TeamStatsPage'
 import RulesPage from './pages/RulesPage'
 import BettingPage from './pages/BettingPage'
 
+function TeamStatsRoute() {
+  const location = useLocation()
+  return <TeamStatsPage key={location.search} />
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -41,7 +46,7 @@ function App() {
                   <Route path="/seasons/:seasonId" element={<SeasonPage />} />
                   <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />
                   <Route path="/user-stats" element={<UserStatsPage />} />
-                  <Route path="/team-stats" element={<TeamStatsPage />} />
+                  <Route path="/team-stats" element={<TeamStatsRoute />} />
                   <Route path="/rules" element={<RulesPage />} />
                 </Route>
 
