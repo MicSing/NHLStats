@@ -102,9 +102,7 @@ export default function PublicLayout() {
                 ) : (
                     <>
                         <NavLink to="/" onClick={closeSidebar} className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                                <span className="text-white text-sm font-bold leading-none">N</span>
-                            </div>
+                            <img src="/favicon.png" alt="NHL Stats" className="w-8 h-8 rounded-lg shrink-0 object-cover" />
                             <div className="min-w-0">
                                 <p className="text-sm font-bold text-text leading-none truncate">NHL Stats</p>
                                 <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight mt-0.5">
@@ -313,7 +311,10 @@ export default function PublicLayout() {
                 >
                     ☰
                 </button>
-                <span className="text-sm font-bold text-primary">NHL Stats</span>
+                <span className="flex items-center gap-2 text-sm font-bold text-primary">
+                    <img src="/favicon.png" alt="NHL Stats" className="w-6 h-6 rounded-md object-cover" />
+                    NHL Stats
+                </span>
                 <div className="w-8" />
             </div>
 
