@@ -29,7 +29,11 @@ function formatOccurrence(occ: AchievementOccurrence, valueLabel: string): strin
     const parts: string[] = []
 
     if (occ.occurredOn) {
-        parts.push(new Date(occ.occurredOn).toLocaleDateString())
+        parts.push(new Date(occ.occurredOn).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+        }).replace(/\//g, '.'))
     }
     if (occ.weekNumber != null) {
         parts.push(`Week ${occ.weekNumber}`)
