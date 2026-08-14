@@ -21,26 +21,14 @@ namespace NHLStats.Domain
             var configuration = configBuilder.Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<NhlStatsDbContext>();
-            var sqliteConn = configuration.GetConnectionString("DefaultConnection")
+            var sqlConn = configuration.GetConnectionString("DefaultConnection")
                              ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
-            if (string.IsNullOrWhiteSpace(sqliteConn))
+            if (string.IsNullOrWhiteSpace(sqlConn))
             {
-                var home = Environment.GetEnvironmentVariable("HOME") ?? ".";
-                var dbPath = Path.Combine(home, "data", "nhlstats.db");
-                var dbDir = Path.GetDirectoryName(dbPath) ?? Path.Combine(home, "data");
-                try
-                {
-                    Directory.CreateDirectory(dbDir);
-                }
-                catch
-                {
-                    dbPath = Path.Combine(Directory.GetCurrentDirectory(), "nhlstats.db");
-                }
-
-                sqliteConn = $"Data Source={dbPath}";
+                sqlConn = "Server=(localdb)\\mssqllocaldb;Database=nhlstats;Trusted_Connection=True;MultipleActiveResultSets=true";
             }
 
-            optionsBuilder.UseSqlite(sqliteConn);
+            optionsBuilder.UseSqlServer(sqlConn);
 
             return new NhlStatsDbContext(optionsBuilder.Options);
         }

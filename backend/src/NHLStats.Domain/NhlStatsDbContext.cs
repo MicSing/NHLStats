@@ -81,7 +81,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         {
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.SeasonId, x.UserId }).IsUnique();
-            b.HasOne(x => x.Season).WithMany(s => s.SeasonUsers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany(s => s.SeasonUsers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.User).WithMany(u => u.SeasonUsers).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -113,14 +113,14 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.HasOne(x => x.User).WithMany(u => u.UserMatches).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Match).WithMany(m => m.UserMatches).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserSeasonAggregatedData>(b =>
         {
             b.HasKey(x => x.Id);
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(x => new { x.UserId, x.SeasonId }).IsUnique();
         });
 
@@ -159,7 +159,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         {
             b.HasKey(x => x.Id);
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Bet>(b =>

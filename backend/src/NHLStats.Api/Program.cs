@@ -131,22 +131,9 @@ builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 builder.Services.AddScoped<ISeasonEventBroadcaster, SignalRSeasonEventBroadcaster>();
 builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvider>();
 
-// Configure EF Core to always use SQLite and place DB under HOME/data/nhlstats.db
-var home = Environment.GetEnvironmentVariable("HOME") ?? ".";
-var dbDir = Path.Combine(home, "data");
-try
-{
-    Directory.CreateDirectory(dbDir);
-}
-catch
-{
-    // best-effort, fall back to app base directory
-    dbDir = AppContext.BaseDirectory;
-}
-
-var dbPath = Path.Combine(dbDir, "nhlstats.db");
-var sqliteConn = $"Data Source={dbPath}";
-builder.Services.AddDbContext<NhlStatsDbContext>(options => options.UseSqlite(sqliteConn));
+var sqlConn = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+builder.Services.AddDbContext<NhlStatsDbContext>(options => options.UseSqlServer(sqlConn));
 
 var app = builder.Build();
 
