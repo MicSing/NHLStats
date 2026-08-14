@@ -389,9 +389,15 @@ public class BetService : IBetService
 
     public async Task CancelBetsForPlayerInMatchAsync(int matchId, int userId)
     {
+        // Fetch all non-cancelled legs for this player in this match.
+        // We intentionally do NOT filter by Pending only: if EvaluateMatchBetsAsync ran
+        // first (e.g. match was completed before the player was removed), the leg may
+        // already be Lost — but it should still be Cancelled and the ticket re-evaluated.
         var legs = await _db.BetLegs
             .Include(l => l.Bet)
-            .Where(l => l.MatchId == matchId && l.UserId == userId && l.Status == BetLegStatus.Pending)
+                .ThenInclude(b => b!.Legs)
+            .Where(l => l.MatchId == matchId && l.UserId == userId
+                        && l.Status != BetLegStatus.Cancelled)
             .ToListAsync();
 
         if (legs.Count == 0) return;
@@ -401,13 +407,28 @@ public class BetService : IBetService
         {
             leg.Status = BetLegStatus.Cancelled;
             leg.EvaluatedOn = now;
-            if (leg.Bet != null && leg.Bet.Status == BetStatus.Pending)
+        }
+
+        // Re-evaluate every affected ticket using the authoritative RollupStatus helper.
+        // This handles all combinations: (Pending→Cancelled), (Lost→Cancelled),
+        // (Won→Cancelled) and multi-leg tickets where only some legs are cancelled.
+        var affectedBets = legs
+            .Where(l => l.Bet != null)
+            .Select(l => l.Bet!)
+            .DistinctBy(b => b.Id)
+            .ToList();
+
+        foreach (var bet in affectedBets)
+        {
+            var newStatus = RollupStatus(bet.Legs);
+            if (newStatus != bet.Status)
             {
-                leg.Bet.Status = BetStatus.Cancelled;
-                leg.Bet.UpdatedOn = now;
-                leg.Bet.EvaluatedOn = now;
+                bet.Status = newStatus;
+                bet.UpdatedOn = now;
+                bet.EvaluatedOn = now;
             }
         }
+
         await _db.SaveChangesAsync();
     }
 
@@ -463,6 +484,13 @@ public class BetService : IBetService
 
         int totalGoals = match.HomeScore + match.AwayScore;
 
+        // Current roster for this match — used to detect legs whose player
+        // was removed from the match and should therefore be cancelled.
+        var participantUserIds = (await _db.UserMatches
+            .Where(um => um.MatchId == matchId)
+            .Select(um => um.UserId)
+            .ToListAsync()).ToHashSet();
+
         var userGoalCounts = await _db.UserMatchGoals
             .Include(g => g.UserMatch)
             .Where(g => g.UserMatch!.MatchId == matchId)
@@ -498,6 +526,20 @@ public class BetService : IBetService
 
         foreach (var leg in legs)
         {
+            // If this leg targets a specific player and that player is no longer
+            // registered for this match, the leg must be cancelled regardless of
+            // the match result. This makes re-evaluation a full truth-check that
+            // self-heals without needing a separate manual storno step.
+            if (IsUserEventBetType(leg.BetType)
+                && leg.UserId.HasValue
+                && !participantUserIds.Contains(leg.UserId.Value))
+            {
+                leg.Status = BetLegStatus.Cancelled;
+                leg.EvaluatedOn = now;
+                if (leg.Bet != null) affectedBets.Add(leg.Bet);
+                continue;
+            }
+
             bool? won = leg.BetType switch
             {
                 BetType.TeamWin => !matchCompleted || !leg.TeamId.HasValue
