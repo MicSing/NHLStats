@@ -5,7 +5,7 @@ export function Tab({ label, active, onClick }: { label: string; active: boolean
     return (
         <button
             onClick={onClick}
-            className={`py-4 px-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`py-2.5 sm:py-4 px-3 sm:px-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
                 active
                     ? 'border-primary text-primary'
                     : 'border-transparent text-text-muted hover:text-text hover:border-border'
@@ -54,7 +54,7 @@ export function ActionCell({
 }) {
     return (
         <td className="px-4 py-3">
-            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 {onEdit && (
                     <button
                         onClick={onEdit}

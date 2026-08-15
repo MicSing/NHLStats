@@ -42,48 +42,48 @@ export default function HostedTeamRecord({ currentSeason, hostedTeamShortName, h
                     </div>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
-                    <div className="p-5 flex justify-around items-center">
+                    <div className="p-3 sm:p-5 flex justify-around items-center">
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">W</div>
-                            <div className="text-3xl font-bold text-success tabular-nums">{hostedStats.W}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">W</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-success tabular-nums">{hostedStats.W}</div>
                         </div>
-                        <div className="w-px h-10 bg-border" />
+                        <div className="w-px h-8 sm:h-10 bg-border" />
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">L</div>
-                            <div className="text-3xl font-bold text-danger tabular-nums">{hostedStats.L}</div>
-                        </div>
-                    </div>
-                    <div className="p-5 flex justify-around items-center">
-                        <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">OTW</div>
-                            <div className="text-2xl font-bold text-success tabular-nums">{hostedStats.OTW}</div>
-                        </div>
-                        <div className="w-px h-8 bg-border" />
-                        <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">OT/SO</div>
-                            <div className="text-2xl font-bold text-primary tabular-nums">{hostedStats.OT}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">L</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-danger tabular-nums">{hostedStats.L}</div>
                         </div>
                     </div>
-                    <div className="p-5 flex justify-around items-center">
+                    <div className="p-3 sm:p-5 flex justify-around items-center">
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('season.winsHome')}</div>
-                            <div className="text-xl font-bold text-success tabular-nums">{hostedStats.winsHome}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">OTW</div>
+                            <div className="text-xl sm:text-2xl font-bold text-success tabular-nums">{hostedStats.OTW}</div>
                         </div>
-                        <div className="w-px h-8 bg-border" />
+                        <div className="w-px h-6 sm:h-8 bg-border" />
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('season.winsAway')}</div>
-                            <div className="text-xl font-bold text-success tabular-nums">{hostedStats.winsAway}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">OT/SO</div>
+                            <div className="text-xl sm:text-2xl font-bold text-primary tabular-nums">{hostedStats.OT}</div>
                         </div>
                     </div>
-                    <div className="p-5 flex justify-around items-center">
+                    <div className="p-3 sm:p-5 flex justify-around items-center">
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('season.lossesHome')}</div>
-                            <div className="text-xl font-bold text-danger tabular-nums">{hostedStats.lossesHome}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">{t('season.winsHome')}</div>
+                            <div className="text-lg sm:text-xl font-bold text-success tabular-nums">{hostedStats.winsHome}</div>
                         </div>
-                        <div className="w-px h-8 bg-border" />
+                        <div className="w-px h-6 sm:h-8 bg-border" />
                         <div className="text-center">
-                            <div className="text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('season.lossesAway')}</div>
-                            <div className="text-xl font-bold text-danger tabular-nums">{hostedStats.lossesAway}</div>
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">{t('season.winsAway')}</div>
+                            <div className="text-lg sm:text-xl font-bold text-success tabular-nums">{hostedStats.winsAway}</div>
+                        </div>
+                    </div>
+                    <div className="p-3 sm:p-5 flex justify-around items-center">
+                        <div className="text-center">
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">{t('season.lossesHome')}</div>
+                            <div className="text-lg sm:text-xl font-bold text-danger tabular-nums">{hostedStats.lossesHome}</div>
+                        </div>
+                        <div className="w-px h-6 sm:h-8 bg-border" />
+                        <div className="text-center">
+                            <div className="text-[10px] sm:text-[11px] font-bold text-text-muted uppercase tracking-widest mb-0.5 sm:mb-1">{t('season.lossesAway')}</div>
+                            <div className="text-lg sm:text-xl font-bold text-danger tabular-nums">{hostedStats.lossesAway}</div>
                         </div>
                     </div>
                 </div>

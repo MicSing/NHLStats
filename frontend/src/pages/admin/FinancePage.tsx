@@ -38,12 +38,12 @@ export default function FinancePage() {
                 action={addLabelKey ? { label: t(addLabelKey), onClick: () => setAddOpen(true) } : undefined}
             />
 
-            <div className="flex border-b border-border mb-6">
+            <div className="flex border-b border-border mb-6 overflow-x-auto no-scrollbar">
                 {tabs.map(({ key, labelKey, Icon }) => (
                     <button
                         key={key}
                         onClick={() => setActiveTab(key)}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                             activeTab === key
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-text-muted hover:text-text'

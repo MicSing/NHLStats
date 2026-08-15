@@ -159,31 +159,31 @@ export default function WeeklyMatches({
                                         <button
                                             type="button"
                                             onClick={() => onToggleExpand(m.matchId)}
-                                            className="p-3 flex items-center justify-between w-full text-left hover:bg-bg/40 transition-colors group"
+                                            className="p-2.5 sm:p-3 flex items-center justify-between w-full text-left hover:bg-bg/40 transition-colors group gap-1"
                                         >
                                             {/* Home team */}
-                                            <div className={`flex items-center gap-3 w-[30%] ${!homeWins && isCompleted ? 'opacity-60' : ''}`}>
-                                                <span className="hidden sm:block text-xs font-bold text-text-muted tabular-nums w-8 flex-shrink-0">
+                                            <div className={`flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0 ${!homeWins && isCompleted ? 'opacity-60' : ''}`}>
+                                                <span className="hidden md:block text-xs font-bold text-text-muted tabular-nums w-7 flex-shrink-0">
                                                     {matchNumber != null ? `#${matchNumber}` : ''}
                                                 </span>
                                                 <img
                                                     src={homeLogo}
                                                     alt={m.homeTeamShortName ?? ''}
-                                                    className="w-7 h-7 object-contain flex-shrink-0"
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 object-contain flex-shrink-0"
                                                     onError={(e) => { ; (e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
-                                                <span className={`font-bold text-sm ${homeWins ? 'text-text' : 'text-text-muted'}`}>
+                                                <span className={`font-bold text-xs sm:text-sm truncate ${homeWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.homeTeamShortName}
                                                 </span>
                                             </div>
 
                                             {/* Score */}
-                                            <div className="flex items-center justify-center gap-3 w-[40%]">
-                                                <span className={`text-xl sm:text-2xl font-bold tabular-nums ${homeWins ? 'text-text' : 'text-text-muted'}`}>
+                                            <div className="flex items-center justify-center gap-1 sm:gap-2.5 shrink-0 px-1">
+                                                <span className={`text-base sm:text-2xl font-bold tabular-nums ${homeWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.homeScore}
                                                 </span>
-                                                <span className="text-text-muted/50">—</span>
-                                                <span className={`text-xl sm:text-2xl font-bold tabular-nums ${awayWins ? 'text-text' : 'text-text-muted'}`}>
+                                                <span className="text-text-muted/50 text-xs sm:text-base">—</span>
+                                                <span className={`text-base sm:text-2xl font-bold tabular-nums ${awayWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.awayScore}
                                                 </span>
                                                 {completionType !== CompletionType.None && (
@@ -192,20 +192,20 @@ export default function WeeklyMatches({
                                             </div>
 
                                             {/* Away team */}
-                                            <div className={`flex items-center justify-end gap-2 w-[30%] ${!awayWins && isCompleted ? 'opacity-60' : ''}`}>
-                                                <span className={`font-bold text-sm ${awayWins ? 'text-text' : 'text-text-muted'}`}>
+                                            <div className={`flex items-center justify-end gap-1.5 sm:gap-2 flex-1 min-w-0 ${!awayWins && isCompleted ? 'opacity-60' : ''}`}>
+                                                <span className={`font-bold text-xs sm:text-sm truncate text-right ${awayWins ? 'text-text' : 'text-text-muted'}`}>
                                                     {m.awayTeamShortName}
                                                 </span>
                                                 <img
                                                     src={awayLogo}
                                                     alt={m.awayTeamShortName ?? ''}
-                                                    className="w-7 h-7 object-contain flex-shrink-0"
+                                                    className="w-6 h-6 sm:w-7 sm:h-7 object-contain flex-shrink-0"
                                                     onError={(e) => { ; (e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
                                                 <CaretDownIcon
                                                     size={16}
                                                     aria-hidden="true"
-                                                    className={`text-text-muted group-hover:text-text transition-all flex-shrink-0 duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                                    className={`text-text-muted group-hover:text-text transition-all flex-shrink-0 duration-200 ml-0.5 ${isExpanded ? 'rotate-180' : ''}`}
                                                 />
                                                 <span className="sr-only">{isExpanded ? '▲' : '▼'}</span>
                                             </div>
@@ -218,27 +218,27 @@ export default function WeeklyMatches({
                                                     detail={detail}
                                                     ticketCounts={allBets.reduce<Record<string, number>>((acc, bet) => {
                                                         if (bet.legs.some(l => l.matchId === m.matchId)) {
-                                                            acc[bet.createdByName] = (acc[bet.createdByName] ?? 0) + 1
+                                                             acc[bet.createdByName] = (acc[bet.createdByName] ?? 0) + 1
                                                         }
                                                         return acc
                                                     }, {})}
                                                 />
-                                                <div className="flex items-center justify-between gap-3 p-3 border-t border-border/50 bg-bg/30">
+                                                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 border-t border-border/50 bg-bg/30">
                                                     <Link
                                                         to={`/betting?tab=tickets&seasonId=${seasonId}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
+                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                     >
                                                         <TicketIcon size={12} />
                                                         <span>{t('season.viewTickets')}</span>
                                                     </Link>
                                                     {isAdmin && (
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="flex flex-wrap items-center gap-2">
                                                             {isCompleted && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => onReEvaluateBets(m.matchId)}
                                                                     disabled={reEvaluatingMatchId === m.matchId}
-                                                                    className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
+                                                                    className="group flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
                                                                 >
                                                                     <ArrowsClockwiseIcon size={12} />
                                                                     <span>{reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}</span>
@@ -246,7 +246,7 @@ export default function WeeklyMatches({
                                                             )}
                                                             <Link
                                                                 to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                                className="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
+                                                                className="group flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                             >
                                                                 <PencilSimpleIcon size={12} />
                                                                 <span>{t('season.editMatch')}</span>

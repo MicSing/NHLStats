@@ -260,9 +260,9 @@ export default function RosterTab({ seasonId, teams, seasons }: RosterTabProps) 
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">{t('admin.roster.title')}</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <SecondaryButton
                         label={t('admin.roster.importCsv')}
                         onClick={() => setShowCsvModal(true)}

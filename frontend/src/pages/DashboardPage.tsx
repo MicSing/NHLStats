@@ -153,8 +153,8 @@ export default function DashboardPage() {
         <PageLayout>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-2xl font-bold text-primary">{t('dashboard.title')}</h1>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-6">
+                    <h1 className="text-xl sm:text-2xl font-bold text-primary">{t('dashboard.title')}</h1>
                     {seasons.length > 0 && (
                         <SeasonSelector
                             seasons={seasons}

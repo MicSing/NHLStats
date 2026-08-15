@@ -182,7 +182,7 @@ export default function SeasonManagementPage() {
 
                 <button
                     onClick={() => setActiveTab('info')}
-                    className="p-1.5 text-text-muted hover:bg-border hover:text-text rounded-md transition-colors"
+                    className="p-1.5 text-text-muted hover:bg-border hover:text-text rounded-md transition-colors shrink-0"
                     title={t('admin.seasons.basicInformation')}
                 >
                     <GearSix size={16} />
@@ -192,7 +192,7 @@ export default function SeasonManagementPage() {
                         resetAddForm()
                         setShowAddModal(true)
                     }}
-                    className="p-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md transition-colors"
+                    className="p-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-md transition-colors shrink-0"
                     title={t('admin.seasons.addSeason')}
                 >
                     <Plus size={16} />
@@ -200,7 +200,7 @@ export default function SeasonManagementPage() {
             </div>
 
             {/* Tab bar */}
-            <div className="flex gap-6 border-b border-border mb-6">
+            <div className="flex gap-2 sm:gap-6 border-b border-border mb-6 overflow-x-auto no-scrollbar">
                 <Tab
                     label={t('admin.seasons.basicInformation')}
                     active={activeTab === 'info'}

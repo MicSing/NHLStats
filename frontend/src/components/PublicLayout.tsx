@@ -303,10 +303,10 @@ export default function PublicLayout() {
     return (
         <div className="h-screen bg-bg text-text flex overflow-hidden">
             {/* Mobile top bar */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
+            <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border px-3 py-2.5 flex items-center justify-between">
                 <button
                     onClick={() => setSidebarOpen(true)}
-                    className="text-text-muted hover:text-text text-2xl leading-none"
+                    className="text-text-muted hover:text-text text-2xl leading-none p-1 -ml-1"
                     aria-label={t('common.openMenu')}
                 >
                     ☰
@@ -315,7 +315,10 @@ export default function PublicLayout() {
                     <img src="/favicon.png" alt="NHL Stats" className="w-6 h-6 rounded-md object-cover" />
                     NHL Stats
                 </span>
-                <div className="w-8" />
+                <div className="flex items-center gap-1.5">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                </div>
             </div>
 
             {/* Mobile overlay */}
@@ -330,7 +333,7 @@ export default function PublicLayout() {
             <aside
                 className={`
                     fixed lg:static z-50 lg:z-auto
-                    w-64 bg-surface border-r border-border shrink-0
+                    w-72 sm:w-64 bg-surface border-r border-border shrink-0
                     h-full lg:h-screen overflow-hidden
                     transition-[width,transform] duration-200 ease-in-out
                     ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}
@@ -341,7 +344,7 @@ export default function PublicLayout() {
             </aside>
 
             {/* Page content */}
-            <main className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 overflow-auto bg-bg pt-16 lg:pt-6">
+            <main className="flex-1 px-3 sm:px-6 pb-4 sm:pb-6 overflow-auto bg-bg pt-16 lg:pt-6">
                 <Outlet />
             </main>
         </div>

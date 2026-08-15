@@ -296,14 +296,14 @@ export default function UserMatchCard({
     return (
         <div id={`user-${um.id}`} className="card overflow-hidden scroll-mt-40">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-                <h2 className="flex items-center gap-2 text-base font-semibold">
-                    <UserIcon size={16} className="text-text-muted" />
-                    {um.userName}
-                    <span className="h-2 w-2 bg-success rounded-full animate-pulse" />
+            <div className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border">
+                <h2 className="flex items-center gap-2 text-sm sm:text-base font-semibold">
+                    <UserIcon size={16} className="text-text-muted shrink-0" />
+                    <span className="truncate">{um.userName}</span>
+                    <span className="h-2 w-2 bg-success rounded-full animate-pulse shrink-0" />
                 </h2>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-xs font-mono bg-bg px-3 py-1 rounded-full border border-border">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-mono bg-bg px-2.5 sm:px-3 py-1 rounded-full border border-border">
                         <span className="text-success font-bold">+{totalPlus}</span>
                         <span className="text-border">|</span>
                         <span className="text-danger font-bold">−{totalMinus}</span>
@@ -330,14 +330,14 @@ export default function UserMatchCard({
             </div>
 
             {/* Recorded entries — flat unified list, always visible */}
-            <div className="px-5 py-3 border-b border-border">
+            <div className="px-3.5 sm:px-5 py-3 border-b border-border">
                 <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto">
                     {hasEntries ? (
                         <>
                             {goalGroups.map((g) => (
                                 <span
                                     key={`${g.rosterPlayerId}-${g.goalType}`}
-                                    className="flex items-center gap-1 bg-blue-900/30 border border-blue-800/50 text-blue-300 rounded-full px-2.5 py-0.5 text-xs"
+                                    className="flex items-center gap-1 bg-blue-900/30 border border-blue-800/50 text-blue-300 rounded-full px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs"
                                 >
                                     {g.firstName} {g.surname}
                                     {g.goalType !== 'Regular' && (
@@ -361,7 +361,7 @@ export default function UserMatchCard({
                             {penaltyGroups.map((p) => (
                                 <span
                                     key={p.rosterPlayerId}
-                                    className="flex items-center gap-1 bg-amber-900/30 border border-amber-700/50 text-amber-300 rounded-full px-2.5 py-0.5 text-xs"
+                                    className="flex items-center gap-1 bg-amber-900/30 border border-amber-700/50 text-amber-300 rounded-full px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs"
                                 >
                                     {p.firstName} {p.surname}
                                     <span className="opacity-60 mx-0.5">·</span>
@@ -380,7 +380,7 @@ export default function UserMatchCard({
                             {pointGroups.map((g) => (
                                 <span
                                     key={g.pointReasonId}
-                                    className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs border ${
+                                    className={`flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs border ${
                                         g.pointType === 'Positive'
                                             ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
                                             : g.pointType === 'Negative'
@@ -415,7 +415,7 @@ export default function UserMatchCard({
             {isAuth && (
                 <>
                     {/* Zone A: Player Actions */}
-                    <div className="px-5 py-4 border-b border-border space-y-3">
+                    <div className="px-3.5 sm:px-5 py-3.5 sm:py-4 border-b border-border space-y-3">
                         <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                             {t('userMatchCard.playerActions')}
                         </h3>
@@ -424,12 +424,12 @@ export default function UserMatchCard({
                         <div className="relative">
                             {selectedPlayer ? (
                                 <div className="input w-full text-sm py-2 flex items-center justify-between">
-                                    <span className="font-semibold text-sm">
+                                    <span className="font-semibold text-sm truncate">
                                         {selectedPlayer.firstName} {selectedPlayer.surname}
                                     </span>
                                     <button
                                         onClick={() => setSelectedRosterId('')}
-                                        className="text-text-muted hover:text-text transition-colors"
+                                        className="text-text-muted hover:text-text transition-colors p-1"
                                         aria-label="Clear player selection"
                                     >
                                         <XIcon size={15} />
@@ -448,21 +448,23 @@ export default function UserMatchCard({
                                     {playerSearch && (
                                         <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
                                             {filteredRoster.length > 0 ? (
-                                                filteredRoster.map((p) => (
-                                                    <div
-                                                        key={p.id}
-                                                        onMouseDown={() => {
-                                                            setSelectedRosterId(p.id)
+                                                filteredRoster.map((player) => (
+                                                    <button
+                                                        key={player.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedRosterId(player.id)
                                                             setPlayerSearch('')
                                                         }}
-                                                        className="px-4 py-2.5 hover:bg-bg cursor-pointer text-sm border-b border-border/50 last:border-0"
+                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-bg transition-colors flex items-center justify-between"
                                                     >
-                                                        {p.firstName} {p.surname}
-                                                    </div>
+                                                        <span>{player.firstName} {player.surname}</span>
+                                                        <span className="text-xs text-text-muted font-mono uppercase">{player.position ?? ''}</span>
+                                                    </button>
                                                 ))
                                             ) : (
-                                                <div className="px-4 py-2.5 text-sm text-text-muted italic">
-                                                    {t('userMatchCard.selectPlayer')}…
+                                                <div className="px-3 py-2 text-xs text-text-muted">
+                                                    {t('common.noResults')}
                                                 </div>
                                             )}
                                         </div>
@@ -473,63 +475,63 @@ export default function UserMatchCard({
 
                         {/* Quick action buttons */}
                         <div
-                            className={`grid grid-cols-4 gap-2 transition-opacity duration-200 ${
+                            className={`grid grid-cols-4 gap-1.5 sm:gap-2 transition-opacity duration-200 ${
                                 !selectedRosterId ? 'opacity-30 pointer-events-none' : ''
                             }`}
                         >
                             <button
                                 type="button"
                                 onClick={() => void handleAddGoal('Regular')}
-                                className="btn-primary text-xs py-2 font-semibold flex items-center justify-center gap-1.5"
+                                className="btn-primary text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5"
                             >
-                                <CheckIcon size={13} weight="bold" />
-                                {t('userMatchCard.goal')}
+                                <CheckIcon size={12} weight="bold" />
+                                <span>{t('userMatchCard.goal')}</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => handleOpenGoalModal('PowerPlay')}
-                                className="bg-border hover:bg-border/70 text-primary border border-border text-xs py-2 rounded-lg font-semibold transition-colors"
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors"
                             >
                                 PP
                             </button>
                             <button
                                 type="button"
                                 onClick={() => handleOpenGoalModal('ShortHanded')}
-                                className="bg-border hover:bg-border/70 text-primary border border-border text-xs py-2 rounded-lg font-semibold transition-colors"
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors"
                             >
                                 SH
                             </button>
                             <button
                                 type="button"
                                 onClick={() => void handleAddPenalty()}
-                                className="btn-warning text-xs py-2 font-semibold flex items-center justify-center gap-1.5"
+                                className="btn-warning text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5"
                             >
-                                <WarningIcon size={13} weight="bold" />
-                                {t('userMatchCard.penalty')}
+                                <WarningIcon size={12} weight="bold" />
+                                <span>{t('userMatchCard.penalty')}</span>
                             </button>
                         </div>
                     </div>
 
                     {/* Zone B: Points — three labeled rows, always active */}
-                    <div className="px-5 py-4 space-y-2">
-                        <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-3">
+                    <div className="px-3.5 sm:px-5 py-3.5 sm:py-4 space-y-2">
+                        <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2 sm:mb-3">
                             {t('userMatchCard.points')}
                         </h3>
 
                         {/* Negative row */}
-                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
                             <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-danger text-[10px] font-bold uppercase tracking-wider">
                                 <MinusCircleIcon size={13} />
                                 {t('common.negative')}
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
                                 {(showMore.Negative ? negativeReasons.filter((r) => r.isActive) : sortByOrder(negativeReasons, NEGATIVE_ORDER))
                                     .map((reason) => (
                                         <button
                                             key={reason.id}
                                             type="button"
                                             onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Negative')}`}
+                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Negative')}`}
                                         >
                                             {reason.name}
                                         </button>
@@ -538,7 +540,7 @@ export default function UserMatchCard({
                                     <button
                                         type="button"
                                         onClick={() => toggleShowMore('Negative')}
-                                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
                                     >
                                         {showMore.Negative ? t('common.showLess') : t('common.showMore')}
                                     </button>
@@ -547,19 +549,19 @@ export default function UserMatchCard({
                         </div>
 
                         {/* Positive row */}
-                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
                             <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-success text-[10px] font-bold uppercase tracking-wider">
                                 <PlusCircleIcon size={13} />
                                 {t('common.positive')}
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
                                 {(showMore.Positive ? positiveReasons.filter((r) => r.isActive) : sortByOrder(positiveReasons, POSITIVE_ORDER))
                                     .map((reason) => (
                                         <button
                                             key={reason.id}
                                             type="button"
                                             onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Positive')}`}
+                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Positive')}`}
                                         >
                                             {reason.name}
                                         </button>
@@ -568,7 +570,7 @@ export default function UserMatchCard({
                                     <button
                                         type="button"
                                         onClick={() => toggleShowMore('Positive')}
-                                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
                                     >
                                         {showMore.Positive ? t('common.showLess') : t('common.showMore')}
                                     </button>
@@ -577,7 +579,7 @@ export default function UserMatchCard({
                         </div>
 
                         {/* Neutral row */}
-                        <div className="bg-surface/50 px-3 py-2.5 rounded-lg flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
                             <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-text-muted text-[10px] font-bold uppercase tracking-wider">
                                 <CircleIcon size={13} />
                                 {t('common.neutral')}

@@ -73,12 +73,12 @@ export default function UserDrawer({
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
                 onClick={onClose}
             />
-            <div className="fixed inset-y-0 right-0 w-full max-w-md bg-surface border-l border-border z-40 shadow-2xl flex flex-col">
-                <div className="p-6 border-b border-border/50 flex items-start justify-between flex-shrink-0">
-                    <div className="flex items-center gap-4">
+            <div className="fixed inset-y-0 right-0 w-full sm:max-w-md bg-surface border-l border-border z-40 shadow-2xl flex flex-col">
+                <div className="p-4 sm:p-6 border-b border-border/50 flex items-start justify-between flex-shrink-0">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         <UserAvatar name={user.name} size="lg" />
-                        <div>
-                            <h2 className="text-xl font-medium text-text">{user.name}</h2>
+                        <div className="min-w-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-text truncate">{user.name}</h2>
                             <div className="mt-1">
                                 <StatusBadge variant={user.isActive ? 'success' : 'muted'}>
                                     {user.isActive ? t('common.active') : t('common.inactive')}
@@ -88,13 +88,13 @@ export default function UserDrawer({
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-text-muted hover:text-text hover:bg-border/50 p-2 rounded-lg transition-colors"
+                        className="text-text-muted hover:text-text hover:bg-border/50 p-2 rounded-lg transition-colors shrink-0"
                     >
                         <XIcon size={20} />
                     </button>
                 </div>
 
-                <div className="p-6 flex-1 overflow-y-auto">
+                <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-semibold text-text">
                             Prístupové identity (Loginy)

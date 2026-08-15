@@ -18,15 +18,15 @@ export default function SeasonStatsTable({ stats, userTotals }: Props) {
             </h2>
             <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-card">
                 <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] text-sm">
-                    <thead className="bg-bg border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
+                <table className="w-full min-w-[380px] text-xs sm:text-sm">
+                    <thead className="bg-bg border-b border-border text-[10px] sm:text-[11px] uppercase tracking-wider text-text-muted">
                         <tr>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-left">{t('season.player')}</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-center">+</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-center">−</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-center">{t('season.goals')}</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-center">{t('season.penalties')}</th>
-                            <th className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold text-center">{t('season.earnings', { defaultValue: 'Earnings' })}</th>
+                            <th className="py-2 px-2.5 sm:py-3 sm:px-5 font-semibold text-left">{t('season.player')}</th>
+                            <th className="py-2 px-2 sm:py-3 sm:px-4 font-semibold text-center">+</th>
+                            <th className="py-2 px-2 sm:py-3 sm:px-4 font-semibold text-center">−</th>
+                            <th className="py-2 px-2 sm:py-3 sm:px-4 font-semibold text-center">{t('season.goals')}</th>
+                            <th className="py-2 px-2 sm:py-3 sm:px-4 font-semibold text-center">{t('season.penalties')}</th>
+                            <th className="py-2 px-2.5 sm:py-3 sm:px-5 font-semibold text-center">{t('season.earnings', { defaultValue: 'Earnings' })}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -34,12 +34,12 @@ export default function SeasonStatsTable({ stats, userTotals }: Props) {
                             const totals = userTotals.find((t) => t.userId === s.userId)
                             return (
                                 <tr key={s.userId} className="hover:bg-bg/60 transition-colors group">
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 font-semibold">{s.userName}</td>
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 text-center text-success font-bold tabular-nums">{s.totalPlus}</td>
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 text-center text-danger font-bold tabular-nums">{s.totalMinus}</td>
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums">{totals?.totalGoals ?? 0}</td>
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums">{totals?.totalPenalties ?? 0}</td>
-                                    <td className="py-2.5 px-3 sm:py-3 sm:px-5 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums">{s.earnings.toFixed(2)} €</td>
+                                    <td className="py-2 px-2.5 sm:py-3 sm:px-5 font-semibold whitespace-nowrap">{s.userName}</td>
+                                    <td className="py-2 px-2 sm:py-3 sm:px-4 text-center text-success font-bold tabular-nums">{s.totalPlus}</td>
+                                    <td className="py-2 px-2 sm:py-3 sm:px-4 text-center text-danger font-bold tabular-nums">{s.totalMinus}</td>
+                                    <td className="py-2 px-2 sm:py-3 sm:px-4 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums">{totals?.totalGoals ?? 0}</td>
+                                    <td className="py-2 px-2 sm:py-3 sm:px-4 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums">{totals?.totalPenalties ?? 0}</td>
+                                    <td className="py-2 px-2.5 sm:py-3 sm:px-5 text-center text-text-muted group-hover:text-text transition-colors font-medium tabular-nums whitespace-nowrap">{s.earnings.toFixed(2)} €</td>
                                 </tr>
                             )
                         })}

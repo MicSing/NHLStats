@@ -121,19 +121,19 @@ export default function TeamStatsPage() {
 
     return (
         <div>
-            <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-6 py-3">
-                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h1 className="text-lg font-semibold tracking-tight text-text">{t('teamStats.title')}</h1>
-                    <div className="flex gap-3 flex-wrap">
+            <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-2.5 sm:py-3">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-3">
+                    <h1 className="text-base sm:text-lg font-semibold tracking-tight text-text">{t('teamStats.title')}</h1>
+                    <div className="flex gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
                         {loadingHostedTeams ? (
-                            <span className="text-text-muted text-sm">{t('teamStats.loadingTeams')}</span>
+                            <span className="text-text-muted text-xs sm:text-sm">{t('teamStats.loadingTeams')}</span>
                         ) : (
                             <select
                                 aria-label={t('teamStats.selectHostedTeam')}
                                 value={selectedHostedTeamId ?? ''}
                                 disabled={hostedTeams.length <= 1}
                                 onChange={(e) => handleHostedTeamChange(e.target.value ? Number(e.target.value) : null)}
-                                className={selectClass}
+                                className={`${selectClass} flex-1 sm:flex-initial text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2`}
                             >
                                 {hostedTeams.length === 0 && <option value="">{t('teamStats.noHostedTeams')}</option>}
                                 {hostedTeams.map((team) => (
@@ -142,14 +142,14 @@ export default function TeamStatsPage() {
                             </select>
                         )}
                         {loadingOpponents ? (
-                            <span className="text-text-muted text-sm">{t('teamStats.loadingOpponents')}</span>
+                            <span className="text-text-muted text-xs sm:text-sm">{t('teamStats.loadingOpponents')}</span>
                         ) : (
                             <select
                                 aria-label={t('teamStats.selectOpponent')}
                                 value={selectedOpponentTeamId ?? ''}
                                 disabled={opponents.length === 0}
                                 onChange={(e) => handleOpponentTeamChange(e.target.value ? Number(e.target.value) : null)}
-                                className={selectClass}
+                                className={`${selectClass} flex-1 sm:flex-initial text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2`}
                             >
                                 {opponents.length === 0 && <option value="">{t('teamStats.noOpponents')}</option>}
                                 {opponents.map((team) => (
@@ -158,13 +158,13 @@ export default function TeamStatsPage() {
                             </select>
                         )}
                         {loadingStats && (
-                            <span className="text-text-muted text-sm self-center">{t('teamStats.loadingStats')}</span>
+                            <span className="text-text-muted text-xs self-center">{t('teamStats.loadingStats')}</span>
                         )}
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+            <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
                 {!loadingHostedTeams && hostedTeams.length === 0 && (
                     <div className="bg-surface border border-border rounded-lg p-6 text-center text-text-muted text-sm">
                         {t('teamStats.noHostedTeams')}
@@ -173,29 +173,29 @@ export default function TeamStatsPage() {
 
                 {summary && selectedHostedTeamId != null && selectedOpponentTeamId != null && hostedTeam && opponentTeam && (
                     <>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
-                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.matchesTitle')}</span>
-                                        <span className="text-2xl font-bold text-text tabular-nums">{summary.matchesPlayed}</span>
-                                    </div>
-                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
-                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalPlusPoints')}</span>
-                                        <span className="text-2xl font-bold text-success tabular-nums">+{summary.totalPlusPoints}</span>
-                                    </div>
-                                    <div className="bg-surface border border-border rounded-lg p-4 shadow-card flex flex-col items-center justify-center text-center">
-                                        <span className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalMinusPoints')}</span>
-                                        <span className="text-2xl font-bold text-danger tabular-nums">−{summary.totalMinusPoints}</span>
-                                    </div>
-                                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+                            <div className="bg-surface border border-border rounded-lg p-3.5 sm:p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.matchesTitle')}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-text tabular-nums">{summary.matchesPlayed}</span>
+                            </div>
+                            <div className="bg-surface border border-border rounded-lg p-3.5 sm:p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalPlusPoints')}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-success tabular-nums">+{summary.totalPlusPoints}</span>
+                            </div>
+                            <div className="bg-surface border border-border rounded-lg p-3.5 sm:p-4 shadow-card flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold">{t('teamStats.totalMinusPoints')}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-danger tabular-nums">−{summary.totalMinusPoints}</span>
+                            </div>
+                        </div>
 
-                                <TeamStatsCharts matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
+                        <TeamStatsCharts matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
 
-                                <div className="mb-8">
-                                    <TeamStatsSummaryTable summary={summary} />
-                                </div>
-                                <div className="mt-8">
-                                    <TeamStatsMatchList matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
-                                </div>
+                        <div className="mb-6 sm:mb-8">
+                            <TeamStatsSummaryTable summary={summary} />
+                        </div>
+                        <div className="mt-6 sm:mt-8">
+                            <TeamStatsMatchList matches={matches} hostedTeam={hostedTeam} opponentTeam={opponentTeam} />
+                        </div>
                     </>
                 )}
             </main>

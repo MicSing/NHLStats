@@ -287,9 +287,9 @@ export default function SeasonPage() {
         <PageLayout>
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <header className="flex items-center justify-between pb-4 border-b border-border mb-6">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-2xl font-bold tracking-tight">{t('season.title')}</h1>
+                <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-border mb-6 gap-3">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('season.title')}</h1>
                         {!loadingSeasons && (
                             <SeasonSelector
                                 seasons={filteredSeasons}
@@ -301,7 +301,7 @@ export default function SeasonPage() {
                 </header>
 
                 {showLeagueTabs && (
-                    <div className="flex gap-6 border-b border-border mb-6">
+                    <div className="flex gap-2 sm:gap-6 border-b border-border mb-6 overflow-x-auto no-scrollbar">
                         <Tab label="NHL" active={activeLeague === 'NHL'} onClick={() => handleLeagueTabClick('NHL')} />
                         <Tab label="IIHF" active={activeLeague === 'IIHF'} onClick={() => handleLeagueTabClick('IIHF')} />
                     </div>

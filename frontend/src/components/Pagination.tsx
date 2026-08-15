@@ -36,29 +36,29 @@ export default function Pagination({
     }
 
     return (
-        <div className="flex items-center justify-between mt-4 text-sm flex-wrap gap-2">
-            <span className="text-text-muted text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 text-sm gap-2 sm:gap-4">
+            <span className="text-text-muted text-xs text-center sm:text-left">
                 {t('pagination.showing', { from, to, total: totalItems })}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap justify-center">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="px-2 py-1 rounded text-text-muted hover:text-text hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="px-2 py-1 rounded text-text-muted hover:text-text hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
                     aria-label={t('pagination.previous')}
                 >
                     ‹
                 </button>
                 {pages.map((page, i) =>
                     page === '...' ? (
-                        <span key={`ellipsis-${i}`} className="px-1 text-text-muted">
+                        <span key={`ellipsis-${i}`} className="px-1 text-text-muted text-xs">
                             …
                         </span>
                     ) : (
                         <button
                             key={page}
                             onClick={() => onPageChange(page)}
-                            className={`min-w-[2rem] px-2 py-1 rounded text-center transition-colors ${page === currentPage
+                            className={`min-w-[1.75rem] sm:min-w-[2rem] px-1.5 sm:px-2 py-1 rounded text-xs sm:text-sm text-center transition-colors ${page === currentPage
                                     ? 'bg-primary text-white font-semibold'
                                     : 'text-text-muted hover:text-text hover:bg-border'
                                 }`}
@@ -70,7 +70,7 @@ export default function Pagination({
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage >= totalPages}
-                    className="px-2 py-1 rounded text-text-muted hover:text-text hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="px-2 py-1 rounded text-text-muted hover:text-text hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
                     aria-label={t('pagination.next')}
                 >
                     ›

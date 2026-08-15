@@ -58,13 +58,13 @@ export default function BettingPage() {
     return (
         <PageLayout>
             <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
-                    <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-border pb-3">
+                    <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border overflow-x-auto no-scrollbar">
                         {userId && (
                             <>
                                 <button
                                     onClick={() => setTab('betting')}
-                                    className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${
                                         tab === 'betting' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
                                     }`}
                                 >
@@ -72,7 +72,7 @@ export default function BettingPage() {
                                 </button>
                                 <button
                                     onClick={() => setTab('archive')}
-                                    className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${
                                         tab === 'archive' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
                                     }`}
                                 >
@@ -82,7 +82,7 @@ export default function BettingPage() {
                         )}
                         <button
                             onClick={() => setTab('tickets')}
-                            className={`px-4 py-1.5 text-sm font-semibold rounded transition-colors ${
+                            className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${
                                 tab === 'tickets' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
                             }`}
                         >
@@ -90,15 +90,15 @@ export default function BettingPage() {
                         </button>
                     </div>
                     {balance && (
-                        <div className="flex gap-3 text-sm">
-                            <div className="card px-4 py-2 text-center">
-                                <p className="text-text-muted text-xs mb-0.5">{t('betting.availableBalance')}</p>
-                                <p className="font-bold text-success text-lg">{balance.availableBalance.toFixed(2)} €</p>
+                        <div className="flex gap-2 sm:gap-3 text-sm">
+                            <div className="card px-3 py-1.5 sm:px-4 sm:py-2 text-center flex-1 sm:flex-initial">
+                                <p className="text-text-muted text-[10px] sm:text-xs mb-0.5">{t('betting.availableBalance')}</p>
+                                <p className="font-bold text-success text-base sm:text-lg">{balance.availableBalance.toFixed(2)} €</p>
                             </div>
                             {balance.maxWinCap > 0 && (
-                                <div className="card px-4 py-2 text-center">
-                                    <p className="text-text-muted text-xs mb-0.5">{t('betting.maxWinCap')}</p>
-                                    <p className="font-bold text-warning text-lg">{balance.maxWinCap.toFixed(2)} €</p>
+                                <div className="card px-3 py-1.5 sm:px-4 sm:py-2 text-center flex-1 sm:flex-initial">
+                                    <p className="text-text-muted text-[10px] sm:text-xs mb-0.5">{t('betting.maxWinCap')}</p>
+                                    <p className="font-bold text-warning text-base sm:text-lg">{balance.maxWinCap.toFixed(2)} €</p>
                                 </div>
                             )}
                         </div>

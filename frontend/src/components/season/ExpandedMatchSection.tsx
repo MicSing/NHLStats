@@ -27,16 +27,16 @@ export default function ExpandedMatchSection({ users, detail, ticketCounts }: Pr
     return (
         <div className="border-t border-border bg-bg/50">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] text-xs">
+            <table className="w-full min-w-[360px] text-xs">
                 <thead className="text-[10px] uppercase tracking-wider text-text-muted border-b border-border bg-bg/80">
                     <tr>
                         <th className="py-2 px-2 sm:py-2.5 sm:px-4 font-bold text-left">{t('season.player')}</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-3 font-bold text-center w-12">+</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-3 font-bold text-center w-12">−</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-3 font-bold text-center w-12">○</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-4 font-bold text-center w-16">{t('season.goals')}</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-4 font-bold text-center w-20">{t('season.penalties')}</th>
-                        <th className="py-2 px-2 sm:py-2.5 sm:px-4 font-bold text-center w-16">{t('season.tickets')}</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-3 font-bold text-center w-10 sm:w-12">+</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-3 font-bold text-center w-10 sm:w-12">−</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-3 font-bold text-center w-10 sm:w-12">○</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-4 font-bold text-center w-12 sm:w-16">{t('season.goals')}</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-4 font-bold text-center w-14 sm:w-20">{t('season.penalties')}</th>
+                        <th className="py-2 px-1.5 sm:py-2.5 sm:px-4 font-bold text-center w-12 sm:w-16">{t('season.tickets')}</th>
                     </tr>
                 </thead>
                 <tbody>

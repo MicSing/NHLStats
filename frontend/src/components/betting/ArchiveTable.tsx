@@ -28,14 +28,14 @@ export default function ArchiveTable({ bets }: ArchiveTableProps) {
 
     return (
         <section className="card overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead className="bg-surface text-text-muted uppercase text-xs tracking-wider">
+            <table className="w-full min-w-[420px] text-xs sm:text-sm">
+                <thead className="bg-surface text-text-muted uppercase text-[10px] sm:text-xs tracking-wider">
                     <tr>
-                        <th className="text-left px-4 py-3">{t('betting.id')}</th>
-                        <th className="text-left px-4 py-3">{t('betting.date')}</th>
-                        <th className="text-left px-4 py-3">{t('betting.ticketDescription')}</th>
-                        <th className="text-right px-4 py-3">{t('betting.rate')}</th>
-                        <th className="text-right px-4 py-3">{t('betting.profit')}</th>
+                        <th className="text-left px-2.5 sm:px-4 py-2.5 sm:py-3">{t('betting.id')}</th>
+                        <th className="text-left px-2.5 sm:px-4 py-2.5 sm:py-3">{t('betting.date')}</th>
+                        <th className="text-left px-2.5 sm:px-4 py-2.5 sm:py-3">{t('betting.ticketDescription')}</th>
+                        <th className="text-right px-2.5 sm:px-4 py-2.5 sm:py-3">{t('betting.rate')}</th>
+                        <th className="text-right px-2.5 sm:px-4 py-2.5 sm:py-3">{t('betting.profit')}</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -48,11 +48,11 @@ export default function ArchiveTable({ bets }: ArchiveTableProps) {
                                     : null
                         return (
                             <tr key={b.id} className="bg-bg">
-                                <td className="px-4 py-3 font-mono font-bold text-primary">{b.shortId}</td>
-                                <td className="px-4 py-3 text-text-muted text-xs">
-                                    {new Date(b.createdOn).toLocaleString()}
+                                <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 font-mono font-bold text-primary whitespace-nowrap">{b.shortId}</td>
+                                <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-text-muted text-[11px] sm:text-xs whitespace-nowrap">
+                                    {new Date(b.createdOn).toLocaleDateString()}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-2.5 sm:px-4 py-2.5 sm:py-3">
                                     <p className="text-xs leading-relaxed">
                                         {b.legs.map((l, i) => (
                                             <span key={l.id}>
@@ -62,8 +62,8 @@ export default function ArchiveTable({ bets }: ArchiveTableProps) {
                                         ))}
                                     </p>
                                 </td>
-                                <td className="px-4 py-3 text-right">×{b.totalOdds.toFixed(2)}</td>
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-right whitespace-nowrap">×{b.totalOdds.toFixed(2)}</td>
+                                <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-right whitespace-nowrap">
                                     {profit == null ? (
                                         <span className="text-text-muted">
                                             {b.status === 'Cancelled'

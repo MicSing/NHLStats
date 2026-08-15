@@ -17,20 +17,20 @@ export default function Modal({ title, onClose, children }: ModalProps) {
             aria-labelledby="modal-title"
             className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
         >
-            <div className="card w-full max-w-2xl shadow-card-hover flex flex-col max-h-[90vh] mx-4">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-                    <h2 id="modal-title" className="text-lg font-semibold text-text">
+            <div className="card w-full max-w-2xl shadow-card-hover flex flex-col max-h-[92vh] mx-3 sm:mx-4">
+                <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border shrink-0">
+                    <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-text">
                         {title}
                     </h2>
                     <button
                         onClick={onClose}
                         aria-label={t('common.close')}
-                        className="text-text-muted hover:text-text text-2xl leading-none transition-colors"
+                        className="text-text-muted hover:text-text text-2xl leading-none transition-colors p-1"
                     >
                         ×
                     </button>
                 </div>
-                <div className="overflow-y-auto px-6 py-4 flex-1">
+                <div className="overflow-y-auto px-4 py-3 sm:px-6 sm:py-4 flex-1">
                     {children}
                 </div>
             </div>

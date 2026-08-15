@@ -237,34 +237,35 @@ export default function UserStatsPage() {
     return (
         <div>
             {/* ── Sticky header ──────────────────────────────────────────── */}
-            <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-6 py-3">
-                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-lg font-semibold tracking-tight text-text">{t('userStats.title')}</h1>
-                        <div className="flex rounded-lg overflow-hidden border border-border text-sm">
+            {/* ── Sticky header ──────────────────────────────────────────── */}
+            <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-3 sm:px-6 py-2.5 sm:py-3">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                        <h1 className="text-base sm:text-lg font-semibold tracking-tight text-text">{t('userStats.title')}</h1>
+                        <div className="flex rounded-lg overflow-hidden border border-border text-xs sm:text-sm">
                             <button
                                 onClick={() => setTab('stats')}
-                                className={['px-3 py-1.5 transition-colors', tab === 'stats' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
+                                className={['px-2.5 sm:px-3 py-1 sm:py-1.5 transition-colors', tab === 'stats' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
                             >
                                 {t('userStats.tabStats')}
                             </button>
                             <button
                                 onClick={() => setTab('achievements')}
-                                className={['px-3 py-1.5 transition-colors', tab === 'achievements' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
+                                className={['px-2.5 sm:px-3 py-1 sm:py-1.5 transition-colors', tab === 'achievements' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'].join(' ')}
                             >
                                 {t('userStats.tabAchievements')}
                             </button>
                         </div>
                     </div>
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
                         {loadingSeasons ? (
-                            <span className="text-text-muted text-sm">{t('userStats.loadingSeasons')}</span>
+                            <span className="text-text-muted text-xs sm:text-sm">{t('userStats.loadingSeasons')}</span>
                         ) : (
                             <select
                                 aria-label={t('seasonSelector.selectSeason')}
                                 value={selectedSeasonId ?? ''}
                                 onChange={(e) => setSelectedSeasonId(e.target.value ? Number(e.target.value) : null)}
-                                className={selectClass}
+                                className={`${selectClass} flex-1 sm:flex-initial text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2`}
                             >
                                 <option value="">{t('seasonSelector.allSeasons')}</option>
                                 {seasons.map((s) => (
@@ -273,13 +274,13 @@ export default function UserStatsPage() {
                             </select>
                         )}
                         {loadingUsers ? (
-                            <span className="text-text-muted text-sm">{t('userStats.loadingPlayers')}</span>
+                            <span className="text-text-muted text-xs sm:text-sm">{t('userStats.loadingPlayers')}</span>
                         ) : (
                             <select
                                 aria-label={t('userStats.selectPlayer')}
                                 value={selectedUserId ?? ''}
                                 onChange={(e) => setSelectedUserId(e.target.value ? Number(e.target.value) : null)}
-                                className={selectClass}
+                                className={`${selectClass} flex-1 sm:flex-initial text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2`}
                             >
                                 {users.length === 0 && <option value="">{t('userStats.noPlayers')}</option>}
                                 {users.map((u) => (
@@ -288,13 +289,13 @@ export default function UserStatsPage() {
                             </select>
                         )}
                         {loadingData && (
-                            <span className="text-text-muted text-sm self-center">{t('userStats.loadingStats')}</span>
+                            <span className="text-text-muted text-xs self-center">{t('userStats.loadingStats')}</span>
                         )}
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+            <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
 
                 {tab === 'achievements' && (
                     <AchievementsTab
@@ -308,55 +309,55 @@ export default function UserStatsPage() {
                 {/* ── KPI cards ──────────────────────────────────────────── */}
                 {matchData.length > 0 && (
                     <section>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.matchesPlayed')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-text">{overallMatchCount}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-text">{overallMatchCount}</div>
                             </div>
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.totalPlus')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-success">+{overallTotalPlus}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-success">+{overallTotalPlus}</div>
                             </div>
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.totalMinus')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-danger">−{overallTotalMinus}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-danger">−{overallTotalMinus}</div>
                             </div>
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.goals')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-text">{overallGoalCount}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-text">{overallGoalCount}</div>
                             </div>
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.penalties')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-text-muted">{overallPenaltyCount}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-text-muted">{overallPenaltyCount}</div>
                             </div>
-                            <div className="bg-surface rounded-xl p-5 border border-border">
-                                <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium block">
+                            <div className="bg-surface rounded-xl p-3.5 sm:p-5 border border-border">
+                                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-text-muted font-medium block">
                                     {t('userStats.tickets')}
                                 </span>
-                                <div className="text-3xl font-bold mt-1 text-text">{userTicketCount}</div>
+                                <div className="text-2xl sm:text-3xl font-bold mt-1 text-text">{userTicketCount}</div>
                             </div>
                         </div>
                     </section>
                 )}
 
                 {/* ── Charts: 2/3 + 1/3 ─────────────────────────────────── */}
-                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-surface rounded-xl p-6 border border-border">
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="lg:col-span-2 bg-surface rounded-xl p-4 sm:p-6 border border-border">
                         <h3 className="text-sm font-semibold text-text">{t('userStats.penalties')}</h3>
-                        <p className="text-xs text-text-muted mt-1 mb-5">{t('userStats.penaltiesDesc')}</p>
+                        <p className="text-xs text-text-muted mt-1 mb-4 sm:mb-5">{t('userStats.penaltiesDesc')}</p>
                         <PenaltyPointedChart items={breakdownItems} rosterPenaltyCount={overallPenaltyCount} />
                     </div>
-                    <div className="bg-surface rounded-xl p-6 border border-border">
+                    <div className="bg-surface rounded-xl p-4 sm:p-6 border border-border">
                         <h3 className="text-sm font-semibold text-text">{t('userStats.minusBreakdown')}</h3>
                         <p className="text-xs text-text-muted mt-1 mb-5">{t('userStats.minusBreakdownDesc')}</p>
                         <MinusPointsPieChart items={breakdownItems} />

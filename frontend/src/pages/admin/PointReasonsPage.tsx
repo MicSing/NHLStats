@@ -113,13 +113,12 @@ export default function PointReasonsPage() {
 
     return (
         <div className="flex flex-col h-full">
-            <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-8 shrink-0">
-                <h1 className="text-lg font-semibold">{t('admin.pointReasons.title')}</h1>
-                <div className="flex items-center gap-4">
-                    <SearchInput value={search} onChange={setSearch} placeholder={t('common.search')} />
+            <header className="border-b border-border px-3 sm:px-8 py-3.5 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/30">
+                <h1 className="text-xl sm:text-2xl font-bold">{t('admin.pointReasons.title')}</h1>
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover rounded-md text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center gap-2 px-3.5 sm:px-4 py-2 bg-primary hover:bg-primary-hover rounded-md text-sm font-medium transition-colors shadow-sm"
                     >
                         <Plus size={16} />
                         {t('admin.pointReasons.addReason')}
@@ -127,7 +126,12 @@ export default function PointReasonsPage() {
                 </div>
             </header>
 
-            <div className="flex-1 p-8 overflow-y-auto">
+            <div className="flex-1 p-3 sm:p-8 overflow-y-auto space-y-4">
+                <SearchInput
+                    value={search}
+                    onChange={setSearch}
+                    placeholder={t('common.search')}
+                />
                 <div className="overflow-x-auto rounded-xl border border-border overflow-hidden">
                     <table className="w-full text-sm">
                         <thead className="bg-surface">
@@ -152,7 +156,7 @@ export default function PointReasonsPage() {
                                         <StatusBadge status={reason.isActive ? 'Active' : 'Inactive'} />
                                     </td>
                                     <td className="px-4 py-3 text-right w-24">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => openEdit(reason)}
                                                 className="p-1.5 text-text-muted hover:text-text hover:bg-border rounded transition-colors"

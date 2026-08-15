@@ -209,4 +209,13 @@ a:hover {
   .table-cell {
     @apply px-4 py-3 text-sm text-text;
   }
+
+  /* Utility to hide scrollbars while preserving scrollability */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

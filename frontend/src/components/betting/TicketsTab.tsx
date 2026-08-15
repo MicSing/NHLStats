@@ -495,50 +495,70 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                         const isAnon = bet.legs.some(l => l.isAnonymized)
                         return (
                             <div key={bet.id} className={`card border-l-2 ${STATUS_BORDER[bet.status]} hover:shadow-card-hover transition-shadow`}>
-                                {/* Header row */}
-                                <div className="flex items-center gap-3 px-4 py-3">
-                                    <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-black text-[11px] shrink-0">
-                                        {avatarText}
+                                {/* Header */}
+                                <div className="p-3 sm:p-4 border-b border-border flex flex-col gap-2.5">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-black text-[10px] sm:text-[11px] shrink-0">
+                                                {avatarText}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                                    <span className="font-bold text-text text-xs sm:text-sm truncate">{bet.createdByName}</span>
+                                                    <span className="font-mono text-[9px] sm:text-[10px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                                        {bet.shortId}
+                                                    </span>
+                                                </div>
+                                                <div className="text-[9px] sm:text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5 truncate">
+                                                    {structure} • {new Date(bet.createdOn).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <div className="text-right hidden sm:block">
+                                                <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">{t('betting.tickets.stakeOdds')}</div>
+                                                <div className="font-black text-text text-sm whitespace-nowrap">
+                                                    {bet.stake.toFixed(2)}€ <span className="text-text-muted font-normal text-xs">×</span>{' '}
+                                                    {isAnon
+                                                        ? <span className="blur-sm select-none">?.??</span>
+                                                        : bet.totalOdds.toFixed(2)
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right hidden sm:block ml-2">
+                                                <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">
+                                                    {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}
+                                                </div>
+                                                <div className={`font-black text-sm ${winClass}`}>
+                                                    {isAnon
+                                                        ? <span className="blur-sm select-none">?.??€</span>
+                                                        : `${winAmount.toFixed(2)}€`
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <StatusBadge status={bet.status} />
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-bold text-text text-sm">{bet.createdByName}</span>
-                                            <span className="font-mono text-[10px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                                                {bet.shortId}
+
+                                    {/* Mobile-only stats row */}
+                                    <div className="flex sm:hidden items-center justify-between bg-bg/60 border border-border/50 rounded-lg px-2.5 py-1.5 text-xs">
+                                        <div>
+                                            <span className="text-[10px] text-text-muted uppercase font-bold mr-1.5">{t('betting.tickets.stakeOdds')}:</span>
+                                            <span className="font-bold text-text">
+                                                {bet.stake.toFixed(2)}€ × {isAnon ? <span className="blur-sm select-none">?.??</span> : bet.totalOdds.toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mt-0.5">
-                                            {structure} • {new Date(bet.createdOn).toLocaleDateString()}
+                                        <div>
+                                            <span className="text-[10px] text-text-muted uppercase font-bold mr-1.5">
+                                                {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}:
+                                            </span>
+                                            <span className={`font-bold ${winClass}`}>
+                                                {isAnon ? <span className="blur-sm select-none">?.??€</span> : `${winAmount.toFixed(2)}€`}
+                                            </span>
                                         </div>
-                                    </div>
-
-                                    <div className="flex-1" />
-
-                                    <div className="text-right hidden sm:block">
-                                        <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">{t('betting.tickets.stakeOdds')}</div>
-                                        <div className="font-black text-text text-sm whitespace-nowrap">
-                                            {bet.stake.toFixed(2)}€ <span className="text-text-muted font-normal text-xs">×</span>{' '}
-                                            {isAnon
-                                                ? <span className="blur-sm select-none">?.??</span>
-                                                : bet.totalOdds.toFixed(2)
-                                            }
-                                        </div>
-                                    </div>
-
-                                    <div className="text-right hidden sm:block ml-5">
-                                        <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest mb-0.5">
-                                            {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}
-                                        </div>
-                                        <div className={`font-black text-sm ${winClass}`}>
-                                            {isAnon
-                                                ? <span className="blur-sm select-none">?.??€</span>
-                                                : `${winAmount.toFixed(2)}€`
-                                            }
-                                        </div>
-                                    </div>
-
-                                    <div className="ml-5 shrink-0">
-                                        <StatusBadge status={bet.status} />
                                     </div>
                                 </div>
 

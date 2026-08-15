@@ -200,7 +200,7 @@ export default function CollectingTab({ addOpen, onAddClose }: Props) {
                                                 {p.paidOn.split('T')[0]}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => openEdit(p)}
                                                         className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded transition-colors"

@@ -181,49 +181,49 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
     }
 
     const scoreButtonClass =
-        'w-8 h-8 rounded-lg bg-border hover:bg-surface-alt flex items-center justify-center ' +
-        'text-xl font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+        'w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-border hover:bg-surface-alt active:bg-primary active:text-white flex items-center justify-center ' +
+        'text-xl font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation'
 
     return (
-        <div className="card p-6 md:p-8 mb-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="card p-4 sm:p-6 md:p-8 mb-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
                 {/* Home team */}
-                <div className="flex-1 flex justify-end">
-                    <h1 className="text-xl md:text-2xl font-semibold text-right">{match.homeTeamName}</h1>
+                <div className="w-full md:flex-1 flex justify-center md:justify-end text-center md:text-right">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold">{match.homeTeamName}</h1>
                 </div>
 
                 {/* Central score / controls */}
-                <div className="flex flex-col items-center flex-shrink-0 min-w-[200px] gap-3">
-                    <span className="text-xs text-text-muted font-medium uppercase tracking-wider">
+                <div className="flex flex-col items-center flex-shrink-0 min-w-[200px] gap-2.5 sm:gap-3 w-full sm:w-auto">
+                    <span className="text-[10px] sm:text-xs text-text-muted font-bold uppercase tracking-wider bg-bg px-2.5 py-0.5 rounded border border-border">
                         {t('match.matchNumber', { number: match.matchNumber })}
                     </span>
 
                     {isAuth ? (
                         <>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 sm:gap-4">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     <button
                                         aria-label={t('match.decrementHomeScore')}
                                         onClick={() => handleScoreChange('home', -1)}
                                         disabled={homeScore === 0}
                                         className={scoreButtonClass}
                                     >−</button>
-                                    <span className="w-10 text-center text-4xl font-bold tabular-nums">{homeScore}</span>
+                                    <span className="w-9 sm:w-10 text-center text-3xl sm:text-4xl font-bold tabular-nums">{homeScore}</span>
                                     <button
                                         aria-label={t('match.incrementHomeScore')}
                                         onClick={() => handleScoreChange('home', 1)}
                                         className={scoreButtonClass}
                                     >+</button>
                                 </div>
-                                <span className="text-3xl text-text-muted font-light select-none">—</span>
-                                <div className="flex items-center gap-2">
+                                <span className="text-2xl sm:text-3xl text-text-muted font-light select-none">—</span>
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     <button
                                         aria-label={t('match.decrementAwayScore')}
                                         onClick={() => handleScoreChange('away', -1)}
                                         disabled={awayScore === 0}
                                         className={scoreButtonClass}
                                     >−</button>
-                                    <span className="w-10 text-center text-4xl font-bold tabular-nums">{awayScore}</span>
+                                    <span className="w-9 sm:w-10 text-center text-3xl sm:text-4xl font-bold tabular-nums">{awayScore}</span>
                                     <button
                                         aria-label={t('match.incrementAwayScore')}
                                         onClick={() => handleScoreChange('away', 1)}
@@ -232,9 +232,9 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
                                 {isFinishedType(completionType) ? (
-                                    <span className="text-xs px-2 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
+                                    <span className="text-xs px-2.5 py-1 rounded font-semibold uppercase bg-border text-text-muted">
                                         {completionTypeLabel(completionType, t)}
                                     </span>
                                 ) : (
@@ -273,18 +273,18 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                     {t('common.saving')}
                                 </span>
                             ) : saved ? (
-                                <span className="text-xs text-green-500">
+                                <span className="text-xs text-green-500 font-medium">
                                     {t('common.saved')}
                                 </span>
                             ) : null}
                         </>
                     ) : (
                         <>
-                            <p className="text-4xl font-mono font-bold">
+                            <p className="text-3xl sm:text-4xl font-mono font-bold">
                                 {match.homeScore} — {match.awayScore}
                             </p>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs px-2 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <span className="text-xs px-2.5 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
                                     {completionTypeLabel(normalizeCompletionType(match.completionType), t)}
                                 </span>
                                 {match.matchDate && (
@@ -298,8 +298,8 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                 </div>
 
                 {/* Away team */}
-                <div className="flex-1 flex justify-start">
-                    <h1 className="text-xl md:text-2xl font-semibold">{match.awayTeamName}</h1>
+                <div className="w-full md:flex-1 flex justify-center md:justify-start text-center md:text-left">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold">{match.awayTeamName}</h1>
                 </div>
             </div>
         </div>
