@@ -224,4 +224,34 @@ describe('useSeasonEventNotifications', () => {
         expect(title).toMatch(/match completed/i)
         expect((opts as NotificationOptions).body).toBe('TeamA 3:0 TeamB')
     })
+
+    test('calls onMatchCompleted callback when MatchCompleted event is received', async () => {
+        const onMatchCompleted = vi.fn()
+        renderHook(() => useSeasonEventNotifications(42, { onMatchCompleted }), { wrapper })
+
+        await waitFor(() => {
+            expect(invokeCalls.some(c => c.method === 'JoinSeason')).toBe(true)
+        })
+
+        act(() => {
+            emit({
+                seasonId: 42,
+                matchId: 5,
+                userMatchId: 0,
+                actorUserId: null,
+                actorUserName: null,
+                eventType: 'MatchCompleted',
+                eventSubType: 'RegularTime',
+                playerName: null,
+                count: 0,
+                targetUserName: null,
+                homeTeamName: 'TeamA',
+                awayTeamName: 'TeamB',
+                homeScore: 3,
+                awayScore: 0,
+            })
+        })
+
+        expect(onMatchCompleted).toHaveBeenCalledTimes(1)
+    })
 })

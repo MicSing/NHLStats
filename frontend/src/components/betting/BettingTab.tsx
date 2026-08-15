@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../context/ToastContext'
 import { bettingService } from '../../services/bettingService'
@@ -16,9 +16,88 @@ interface BettingTabProps {
     refreshKey?: number
 }
 
+async function resolveUpdatedLeg(
+    leg: DraftLeg,
+    match: FutureMatch | undefined,
+    odds: MatchOddsDto | null,
+): Promise<{ valid: boolean; updatedLeg?: DraftLeg }> {
+    if (!match || !odds) {
+        return { valid: false }
+    }
+
+    let newOdds: number | null = null
+    let maxOccasions = leg.maxOccasions
+    let minOccasions = leg.minOccasions
+
+    if (leg.betType === 'TeamWin') {
+        if (leg.teamId === match.homeTeamId) newOdds = odds.teamWin?.homeOdds ?? null
+        else if (leg.teamId === match.awayTeamId) newOdds = odds.teamWin?.awayOdds ?? null
+    } else if (leg.betType === 'TeamWinOrDraw') {
+        if (leg.teamId === match.homeTeamId) newOdds = odds.teamWin?.home1XOdds ?? null
+        else if (leg.teamId === match.awayTeamId) newOdds = odds.teamWin?.away1XOdds ?? null
+    } else if (leg.betType === 'TeamDraw') {
+        newOdds = odds.teamWin?.drawOdds ?? null
+    } else if (leg.betType === 'HostedShutoutWin') {
+        newOdds = odds.hostedShutoutWinOdds
+    } else if (leg.betType === 'OpponentShutoutWin') {
+        newOdds = odds.opponentShutoutWinOdds
+    } else if (leg.betType === 'MatchTotalGoals') {
+        const row = odds.matchTotalGoals.find((g) => g.threshold === leg.occasions)
+        newOdds = row?.odds ?? null
+    } else if (
+        leg.betType === 'UserGoal' ||
+        leg.betType === 'UserPenalty' ||
+        leg.betType === 'UserPlusPoint' ||
+        leg.betType === 'UserMinusPoint'
+    ) {
+        const pool =
+            leg.betType === 'UserGoal'
+                ? odds.userGoal
+                : leg.betType === 'UserPenalty'
+                  ? odds.userPenalty
+                  : leg.betType === 'UserPlusPoint'
+                    ? odds.userPlusPoint
+                    : odds.userMinusPoint
+        const userOddsItem = pool.find((u) => u.userId === leg.userId)
+        if (userOddsItem) {
+            maxOccasions = userOddsItem.maxOccasions
+            minOccasions = userOddsItem.minOccasions
+            if (leg.occasions <= 1) {
+                newOdds = userOddsItem.effectiveOdds
+            } else {
+                try {
+                    const occ = await bettingService.getUserEventOddsForOccasions(
+                        leg.matchId,
+                        leg.betType,
+                        leg.userId!,
+                        leg.occasions,
+                    )
+                    newOdds = occ?.odds ?? null
+                } catch {
+                    newOdds = null
+                }
+            }
+        }
+    }
+
+    if (newOdds == null || newOdds < 1) {
+        return { valid: false }
+    }
+
+    return {
+        valid: true,
+        updatedLeg: {
+            ...leg,
+            odds: newOdds,
+            minOccasions,
+            maxOccasions,
+        },
+    }
+}
+
 export default function BettingTab({ userId, onBalanceChanged, refreshKey }: BettingTabProps) {
     const { t } = useTranslation()
-    const { success, error } = useToast()
+    const { success, error, warning, info } = useToast()
 
     const [matches, setMatches] = useState<FutureMatch[]>([])
     const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null)
@@ -27,6 +106,11 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
     const [stakeInput, setStakeInput] = useState<string>('0')
     const [activeBets, setActiveBets] = useState<BetDto[]>([])
     const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
+
+    const draftLegsRef = useRef(draftLegs)
+    const selectedMatchIdRef = useRef(selectedMatchId)
+    useEffect(() => { draftLegsRef.current = draftLegs }, [draftLegs])
+    useEffect(() => { selectedMatchIdRef.current = selectedMatchId }, [selectedMatchId])
 
     const ensureOdds = useCallback(async (matchId: number) => {
         setOddsByMatch((prev) => {
@@ -64,17 +148,79 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
         if (!refreshKey) return
         const refresh = async () => {
             try {
-                const [active, bal] = await Promise.all([
+                const [upcoming, active, bal] = await Promise.all([
+                    bettingService.getUpcoming(7),
                     bettingService.listActive(),
                     bettingService.getBalance(),
                 ])
+                setMatches(upcoming)
                 setActiveBets(active)
                 setBalance(bal)
                 onBalanceChanged(bal)
-            } catch { /* silent */ }
+
+                let currentSelectedId = selectedMatchIdRef.current
+                if (currentSelectedId == null || !upcoming.some((m) => m.id === currentSelectedId)) {
+                    currentSelectedId = upcoming.length > 0 ? upcoming[0].id : null
+                    setSelectedMatchId(currentSelectedId)
+                }
+
+                const currentDraft = draftLegsRef.current
+                const relevantMatchIds = new Set<number>()
+                if (currentSelectedId != null) relevantMatchIds.add(currentSelectedId)
+                currentDraft.forEach((l) => relevantMatchIds.add(l.matchId))
+                upcoming.forEach((m) => relevantMatchIds.add(m.id))
+
+                const freshOddsEntries = await Promise.all(
+                    Array.from(relevantMatchIds).map(async (mId) => {
+                        try {
+                            const o = await bettingService.getMatchOdds(mId)
+                            return [mId, o] as const
+                        } catch {
+                            return [mId, null] as const
+                        }
+                    }),
+                )
+                const freshOddsMap: Record<number, MatchOddsDto | null> = Object.fromEntries(freshOddsEntries)
+                setOddsByMatch((prev) => ({ ...prev, ...freshOddsMap }))
+
+                if (currentDraft.length > 0) {
+                    let legsRemoved = false
+                    let oddsChanged = false
+                    const nextDraftLegs: DraftLeg[] = []
+
+                    for (const leg of currentDraft) {
+                        const match = upcoming.find((m) => m.id === leg.matchId)
+                        const odds = freshOddsMap[leg.matchId] ?? null
+                        const evaluated = await resolveUpdatedLeg(leg, match, odds)
+
+                        if (!evaluated.valid || !evaluated.updatedLeg) {
+                            legsRemoved = true
+                        } else {
+                            if (evaluated.updatedLeg.odds !== leg.odds) {
+                                oddsChanged = true
+                            }
+                            nextDraftLegs.push(evaluated.updatedLeg)
+                        }
+                    }
+
+                    setDraftLegs(nextDraftLegs)
+
+                    if (legsRemoved) {
+                        warning(t('betting.draftMatchClosed'))
+                    } else if (oddsChanged) {
+                        info(t('betting.draftOddsUpdated'))
+                    } else {
+                        info(t('betting.oddsAutoRefreshed'))
+                    }
+                } else {
+                    info(t('betting.oddsAutoRefreshed'))
+                }
+            } catch {
+                /* silent */
+            }
         }
         void refresh()
-    }, [refreshKey, onBalanceChanged])
+    }, [refreshKey, onBalanceChanged, t, warning, info])
 
     const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
     const selectedOdds = selectedMatchId != null ? oddsByMatch[selectedMatchId] ?? null : null

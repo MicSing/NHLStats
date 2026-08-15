@@ -1514,7 +1514,7 @@ public class StatsTests : ApiTestBase
             stake = 1.0,
             legs = new[]
             {
-                new { matchId = betMatchId, betType = "UserGoal", userId = targetUserId }
+                new { matchId = betMatchId, betType = "TeamWin", teamId = 2 }
             }
         });
         betResp.EnsureSuccessStatusCode();

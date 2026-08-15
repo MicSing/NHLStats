@@ -158,6 +158,7 @@ public class MatchService : IMatchService
                 season?.HostedTeamId, match.HomeTeamId);
 
             await _betService.EvaluateMatchBetsAsync(id);
+            await _oddsService.RecalculateAllUpcomingAsync();
             await TryBroadcastAsync(new SeasonEventNotificationDto(
                 SeasonId: match.SeasonId,
                 MatchId: match.Id,

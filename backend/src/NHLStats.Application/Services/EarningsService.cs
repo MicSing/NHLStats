@@ -241,10 +241,9 @@ public class EarningsService : IEarningsService
                 minus = g.Sum(x => x.minus)
             });
 
-        var allMatchIds = await _db.UserMatches
+        var allMatchIds = await _db.Matches
             .AsNoTracking()
-            .Select(um => um.MatchId)
-            .Distinct()
+            .Select(m => m.Id)
             .ToListAsync();
 
         var aggregatedPlusCounts = aggregatedData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.plus);

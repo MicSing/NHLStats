@@ -2,6 +2,18 @@ import '@testing-library/jest-dom'
 import './i18n'
 import { server } from './mocks/server'
 
+// Node 22+/24+ localStorage polyfill for jsdom environment
+const storage: Record<string, string> = {}
+const mockLocalStorage = {
+    getItem: (key: string) => storage[key] ?? null,
+    setItem: (key: string, value: string) => { storage[key] = String(value) },
+    removeItem: (key: string) => { delete storage[key] },
+    clear: () => { Object.keys(storage).forEach(k => delete storage[k]) },
+    key: (i: number) => Object.keys(storage)[i] ?? null,
+    get length() { return Object.keys(storage).length },
+}
+Object.defineProperty(globalThis, 'localStorage', { value: mockLocalStorage, writable: true, configurable: true })
+
 // Recharts uses ResizeObserver which is not available in jsdom
 global.ResizeObserver = class ResizeObserver {
     observe() { }

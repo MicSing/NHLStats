@@ -166,4 +166,43 @@ public class SeasonEventBroadcastTests : IClassFixture<CustomWebApplicationFacto
         resp.IsSuccessStatusCode.Should().BeFalse();
         recorder.Events.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task UpdateMatch_to_completed_broadcasts_MatchCompleted_event()
+    {
+        var recorder = new RecordingBroadcaster();
+        using var factory = CreateFactoryWith(recorder);
+        var client = await AuthClient(factory);
+        var (seasonId, matchId, _, _) = await SeedAsync(client, "Broadcast MatchCompleted");
+
+        // Transition to InProgress first
+        var inProgressResp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}",
+            new
+            {
+                homeTeamId = 1,
+                awayTeamId = 2,
+                homeScore = 0,
+                awayScore = 0,
+                matchDate = (string?)null,
+                completionType = 4 // InProgress
+            });
+        inProgressResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var resp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}",
+            new
+            {
+                homeTeamId = 1,
+                awayTeamId = 2,
+                homeScore = 3,
+                awayScore = 2,
+                matchDate = "2024-01-01T20:00:00",
+                completionType = 1 // RegularTime
+            });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        recorder.Events.Should().ContainSingle(e => e.EventType == "MatchCompleted" && e.MatchId == matchId && e.HomeScore == 3 && e.AwayScore == 2);
+    }
 }
+
