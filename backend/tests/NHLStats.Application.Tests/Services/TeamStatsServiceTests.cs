@@ -77,8 +77,10 @@ public class TeamStatsServiceTests : IDisposable
 
     private RosterPlayer AddRosterPlayer(int teamId, int seasonId, string firstName, string surname)
     {
-        var player = new RosterPlayer { TeamId = teamId, SeasonId = seasonId, FirstName = firstName, Surname = surname };
+        var player = new RosterPlayer { TeamId = teamId, FirstName = firstName, Surname = surname };
         _db.RosterPlayers.Add(player);
+        _db.SaveChanges();
+        _db.SeasonRosterPlayers.Add(new SeasonRosterPlayer { SeasonId = seasonId, RosterPlayerId = player.Id, TeamId = teamId });
         _db.SaveChanges();
         return player;
     }

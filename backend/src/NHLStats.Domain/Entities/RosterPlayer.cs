@@ -10,9 +10,7 @@ public class RosterPlayer
     public string Surname { get; set; } = null!;
     public string? Position { get; set; }
     public int TeamId { get; set; }
-    public int SeasonId { get; set; }
-    public bool IsActive { get; set; } = true;
 
     public Team? Team { get; set; }
-    public Season? Season { get; set; }
+    public ICollection<SeasonRosterPlayer> SeasonRosterPlayers { get; set; } = [];
 }

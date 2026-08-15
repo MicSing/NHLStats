@@ -20,6 +20,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<SeasonUser> SeasonUsers => Set<SeasonUser>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<RosterPlayer> RosterPlayers => Set<RosterPlayer>();
+    public DbSet<SeasonRosterPlayer> SeasonRosterPlayers => Set<SeasonRosterPlayer>();
     public DbSet<PointReason> PointReasons => Set<PointReason>();
     public DbSet<UserMatch> UserMatches => Set<UserMatch>();
     public DbSet<UserMatchPoint> UserMatchPoints => Set<UserMatchPoint>();
@@ -97,8 +98,18 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         modelBuilder.Entity<RosterPlayer>(b =>
         {
             b.HasKey(x => x.Id);
-            b.HasOne(x => x.Team).WithMany(t => t.RosterPlayers).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.Season).WithMany(s => s.RosterPlayers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
+            b.Property(x => x.FirstName).IsRequired();
+            b.Property(x => x.Surname).IsRequired();
+            b.HasOne(x => x.Team).WithMany(t => t.RosterPlayers).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SeasonRosterPlayer>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.SeasonId, x.RosterPlayerId }).IsUnique();
+            b.HasOne(x => x.Season).WithMany(s => s.SeasonRosterPlayers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(x => x.RosterPlayer).WithMany(p => p.SeasonRosterPlayers).HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(x => x.Team).WithMany(t => t.SeasonRosterPlayers).HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<PointReason>(b =>

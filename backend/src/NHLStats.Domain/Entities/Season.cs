@@ -16,5 +16,5 @@ public class Season
     public Season? ParentSeason { get; set; }
     public ICollection<SeasonUser> SeasonUsers { get; set; } = [];
     public ICollection<Match> Matches { get; set; } = [];
-    public ICollection<RosterPlayer> RosterPlayers { get; set; } = [];
+    public ICollection<SeasonRosterPlayer> SeasonRosterPlayers { get; set; } = [];
 }

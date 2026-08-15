@@ -22,8 +22,8 @@ public class RosterController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int seasonId, int id)
     {
-        var player = await _service.GetByIdAsync(id);
-        if (player == null || player.SeasonId != seasonId) return NotFound();
+        var player = await _service.GetBySeasonAndPlayerIdAsync(seasonId, id);
+        if (player == null) return NotFound();
         return Ok(player);
     }
 
@@ -41,8 +41,8 @@ public class RosterController : ControllerBase
     public async Task<IActionResult> Update(int seasonId, int id, UpdateRosterPlayerDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        var updated = await _service.UpdateAsync(id, dto);
-        if (updated == null || updated.SeasonId != seasonId) return NotFound();
+        var updated = await _service.UpdateAsync(seasonId, id, dto);
+        if (updated == null) return NotFound();
         return Ok(updated);
     }
 
@@ -50,9 +50,8 @@ public class RosterController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int seasonId, int id)
     {
-        var player = await _service.GetByIdAsync(id);
-        if (player == null || player.SeasonId != seasonId) return NotFound();
-        await _service.DeleteAsync(id);
+        var deleted = await _service.DeleteAsync(seasonId, id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 

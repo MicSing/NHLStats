@@ -11,6 +11,7 @@ public class Team
     public LeagueType LeagueType { get; set; } = LeagueType.NHL;
 
     public ICollection<RosterPlayer>? RosterPlayers { get; set; }
+    public ICollection<SeasonRosterPlayer>? SeasonRosterPlayers { get; set; }
     public ICollection<Match>? HomeMatches { get; set; }
     public ICollection<Match>? AwayMatches { get; set; }
     public ICollection<BetLeg>? BetLegs { get; set; }

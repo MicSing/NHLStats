@@ -462,7 +462,9 @@ public class UserMatchService : IUserMatchService
         if (player == null)
             return (null, $"RosterPlayer {dto.RosterPlayerId} not found.");
 
-        if (player.SeasonId != userMatch.SeasonId)
+        var belongsToSeason = await _db.SeasonRosterPlayers
+            .AnyAsync(srp => srp.RosterPlayerId == dto.RosterPlayerId && srp.SeasonId == userMatch.SeasonId);
+        if (!belongsToSeason)
             return (null, $"RosterPlayer {dto.RosterPlayerId} does not belong to season {userMatch.SeasonId}.");
 
         var goal = new UserMatchGoal
@@ -510,7 +512,9 @@ public class UserMatchService : IUserMatchService
         if (player == null)
             return (null, $"RosterPlayer {dto.RosterPlayerId} not found.");
 
-        if (player.SeasonId != userMatch.SeasonId)
+        var belongsToSeason = await _db.SeasonRosterPlayers
+            .AnyAsync(srp => srp.RosterPlayerId == dto.RosterPlayerId && srp.SeasonId == userMatch.SeasonId);
+        if (!belongsToSeason)
             return (null, $"RosterPlayer {dto.RosterPlayerId} does not belong to season {userMatch.SeasonId}.");
 
         goal.RosterPlayerId = dto.RosterPlayerId;
@@ -557,7 +561,9 @@ public class UserMatchService : IUserMatchService
         if (player == null)
             return (null, $"RosterPlayer {dto.RosterPlayerId} not found.");
 
-        if (player.SeasonId != userMatch.SeasonId)
+        var belongsToSeason = await _db.SeasonRosterPlayers
+            .AnyAsync(srp => srp.RosterPlayerId == dto.RosterPlayerId && srp.SeasonId == userMatch.SeasonId);
+        if (!belongsToSeason)
             return (null, $"RosterPlayer {dto.RosterPlayerId} does not belong to season {userMatch.SeasonId}.");
 
         var penalty = new UserMatchPenalty
@@ -604,7 +610,9 @@ public class UserMatchService : IUserMatchService
         if (player == null)
             return (null, $"RosterPlayer {dto.RosterPlayerId} not found.");
 
-        if (player.SeasonId != userMatch.SeasonId)
+        var belongsToSeason = await _db.SeasonRosterPlayers
+            .AnyAsync(srp => srp.RosterPlayerId == dto.RosterPlayerId && srp.SeasonId == userMatch.SeasonId);
+        if (!belongsToSeason)
             return (null, $"RosterPlayer {dto.RosterPlayerId} does not belong to season {userMatch.SeasonId}.");
 
         penalty.RosterPlayerId = dto.RosterPlayerId;
