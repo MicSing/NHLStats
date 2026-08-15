@@ -552,6 +552,7 @@
             "stakeOdds": "Vklad / Kurz",
             "win": "Výhra",
             "won": "Výhra",
+            "profit": "zisk",
             "revealedOnEval": "🔒 Odhalené pri vyhodnotení",
             "evaluated": "Vyhodnotené: {{date}}",
             "chipId": "ID: {{value}}",

@@ -550,6 +550,7 @@
             "stakeOdds": "Stake / Odds",
             "win": "Win",
             "won": "Won",
+            "profit": "profit",
             "revealedOnEval": "🔒 Revealed on evaluation",
             "evaluated": "Evaluated: {{date}}",
             "chipId": "ID: {{value}}",

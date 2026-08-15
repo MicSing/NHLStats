@@ -123,7 +123,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
         setSearchParams(prev => {
             const next = new URLSearchParams(prev)
             if (val) next.set(key, val); else next.delete(key)
-            next.set('page', '1')
+            if (key !== 'page') next.set('page', '1')
             return next
         })
     }
@@ -206,7 +206,9 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
     }, [filtered, sortBy, sortDir])
 
     const totalItems = sorted.length
-    const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+    const safePage = Math.min(Math.max(1, page), totalPages)
+    const pageItems = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
     const activeFilters = [
         filterId && { key: 'id', label: t('betting.tickets.chipId', { value: filterId }) },
@@ -425,7 +427,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                                     onChange={e => setParam('stakeMin', e.target.value)}
                                     placeholder={t('betting.tickets.min')}
                                     className="w-full text-sm bg-bg border border-border rounded px-2 py-1.5 text-text placeholder-text-muted"
-                                />
+                                    />
                                 <input
                                     type="number"
                                     value={filterStakeMax}
@@ -493,6 +495,13 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                         const winAmount = bet.status === 'Won' && bet.wonAmount != null ? bet.wonAmount : win
                         const winClass = bet.status === 'Won' ? 'text-green-400' : bet.status === 'Lost' ? 'text-text-muted line-through' : 'text-text'
                         const isAnon = bet.legs.some(l => l.isAnonymized)
+                        const netProfit = bet.status === 'Won'
+                            ? (bet.wonAmount != null ? bet.wonAmount : win) - bet.stake
+                            : bet.status === 'Lost'
+                                ? -bet.stake
+                                : bet.status === 'Cancelled'
+                                    ? 0
+                                    : win - bet.stake
                         return (
                             <div key={bet.id} className={`card border-l-2 ${STATUS_BORDER[bet.status]} hover:shadow-card-hover transition-shadow`}>
                                 {/* Header */}
@@ -537,6 +546,19 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                                                         : `${winAmount.toFixed(2)}€`
                                                     }
                                                 </div>
+                                                <div className="text-[10px] text-text-muted font-medium mt-0.5 whitespace-nowrap">
+                                                    {isAnon ? (
+                                                        <span className="blur-sm select-none">({t('betting.tickets.profit')}: +?.??€)</span>
+                                                    ) : bet.status === 'Won' ? (
+                                                        <span>({t('betting.tickets.profit')}: <span className="text-green-400 font-semibold">+{netProfit.toFixed(2)}€</span>)</span>
+                                                    ) : bet.status === 'Lost' ? (
+                                                        <span>({t('betting.tickets.profit')}: <span className="text-danger font-semibold">−{bet.stake.toFixed(2)}€</span>)</span>
+                                                    ) : bet.status === 'Cancelled' ? (
+                                                        <span>({t('betting.tickets.profit')}: <span>0.00€</span>)</span>
+                                                    ) : (
+                                                        <span>({t('betting.tickets.profit')}: <span>+{Math.max(0, netProfit).toFixed(2)}€</span>)</span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <StatusBadge status={bet.status} />
@@ -551,13 +573,28 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                                                 {bet.stake.toFixed(2)}€ × {isAnon ? <span className="blur-sm select-none">?.??</span> : bet.totalOdds.toFixed(2)}
                                             </span>
                                         </div>
-                                        <div>
-                                            <span className="text-[10px] text-text-muted uppercase font-bold mr-1.5">
-                                                {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}:
-                                            </span>
-                                            <span className={`font-bold ${winClass}`}>
-                                                {isAnon ? <span className="blur-sm select-none">?.??€</span> : `${winAmount.toFixed(2)}€`}
-                                            </span>
+                                        <div className="text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span className="text-[10px] text-text-muted uppercase font-bold">
+                                                    {bet.status === 'Won' ? t('betting.tickets.won') : t('betting.tickets.win')}:
+                                                </span>
+                                                <span className={`font-bold ${winClass}`}>
+                                                    {isAnon ? <span className="blur-sm select-none">?.??€</span> : `${winAmount.toFixed(2)}€`}
+                                                </span>
+                                            </div>
+                                            <div className="text-[10px] text-text-muted font-medium mt-0.5">
+                                                {isAnon ? (
+                                                    <span className="blur-sm select-none">({t('betting.tickets.profit')}: +?.??€)</span>
+                                                ) : bet.status === 'Won' ? (
+                                                    <span>({t('betting.tickets.profit')}: <span className="text-green-400 font-semibold">+{netProfit.toFixed(2)}€</span>)</span>
+                                                ) : bet.status === 'Lost' ? (
+                                                    <span>({t('betting.tickets.profit')}: <span className="text-danger font-semibold">−{bet.stake.toFixed(2)}€</span>)</span>
+                                                ) : bet.status === 'Cancelled' ? (
+                                                    <span>({t('betting.tickets.profit')}: <span>0.00€</span>)</span>
+                                                ) : (
+                                                    <span>({t('betting.tickets.profit')}: <span>+{Math.max(0, netProfit).toFixed(2)}€</span>)</span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -618,7 +655,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
             )}
 
             <Pagination
-                currentPage={page}
+                currentPage={safePage}
                 totalItems={totalItems}
                 pageSize={PAGE_SIZE}
                 onPageChange={n => setParam('page', String(n))}
