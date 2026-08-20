@@ -12,18 +12,7 @@ import type { PeriodPlusMinus } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
 import { useTranslation } from 'react-i18next'
 
-const USER_COLORS = [
-    '#3B82F6', // blue
-    '#8B5CF6', // violet
-    '#F59E0B', // amber
-    '#EC4899', // pink
-    '#06B6D4', // cyan
-    '#10B981', // emerald
-    '#64748B', // slate
-    '#F97316', // orange
-    '#EF4444', // red
-    '#22C55E', // green
-]
+import { getUserColor } from '../../utils/userColors'
 
 type Mode = 'plus' | 'minus'
 
@@ -113,10 +102,12 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
             }
         }
     }
-    const allUsers = Array.from(userMap.entries()).map(([userId, userName]) => ({
-        userId,
-        userName,
-    }))
+    const allUsers = Array.from(userMap.entries())
+        .map(([userId, userName]) => ({
+            userId,
+            userName,
+        }))
+        .sort((a, b) => a.userId - b.userId)
 
     // Extract the value for the chosen mode (always >= 0)
     const getValue = (u: { totalPlus: number; totalMinus: number }) =>
@@ -234,12 +225,12 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                         />
                         <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
 
-                        {allUsers.map((user, i) => (
+                        {allUsers.map((user) => (
                             <Line
                                 key={user.userId}
                                 type="monotone"
                                 dataKey={user.userName}
-                                stroke={USER_COLORS[i % USER_COLORS.length]}
+                                stroke={getUserColor(user.userId)}
                                 strokeWidth={2}
                                 dot={(props: Record<string, unknown>) => {
                                     const { cx, cy, index } = props as {
@@ -255,7 +246,7 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                                                 cy={cy}
                                                 r={4}
                                                 fill="none"
-                                                stroke={USER_COLORS[i % USER_COLORS.length]}
+                                                stroke={getUserColor(user.userId)}
                                                 strokeWidth={2}
                                                 strokeDasharray="3 2"
                                             />

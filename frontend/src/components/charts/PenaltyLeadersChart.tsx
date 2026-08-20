@@ -12,7 +12,8 @@ import {
 import type { RosterPenalizedByUser } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
 
-const USER_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#10B981', '#64748B', '#F97316']
+import { getUserColor } from '../../utils/userColors'
+
 const TOP_N = 5
 
 interface Props {
@@ -25,15 +26,16 @@ export default function PenaltyLeadersChart({ data, hideLegend = false }: Props)
     const [selectedUserNames, setSelectedUserNames] = useState<Set<string> | null>(null)
     const ct = useChartTheme()
 
-    // Collect all unique users in a stable order (highest total penalty scorer first)
+    // Collect all unique users in deterministic order by userId
     const allUsers = Array.from(
         new Map(
             data
                 .flatMap((p) => p.userCounts)
-                .sort((a, b) => b.count - a.count)
                 .map((uc) => [uc.userId, uc.userName] as [number, string]),
         ).entries(),
-    ).map(([userId, userName]) => ({ userId, userName }))
+    )
+        .map(([userId, userName]) => ({ userId, userName }))
+        .sort((a, b) => a.userId - b.userId)
 
     function toggleUser(userName: string) {
         setSelectedUserNames((prev) => {
@@ -118,7 +120,7 @@ export default function PenaltyLeadersChart({ data, hideLegend = false }: Props)
                                     key={u.userId}
                                     dataKey={u.userName}
                                     stackId="penalties"
-                                    fill={USER_COLORS[i % USER_COLORS.length]}
+                                    fill={getUserColor(u.userId)}
                                     hide={selectedUserNames !== null && !selectedUserNames.has(u.userName)}
                                     radius={i === allUsers.length - 1 ? [0, 4, 4, 0] : undefined}
                                 />

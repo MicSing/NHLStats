@@ -13,18 +13,7 @@ import type { WeeklyBetDeltaPeriod } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
 import { useTranslation } from 'react-i18next'
 
-const USER_COLORS = [
-    '#3B82F6',
-    '#8B5CF6',
-    '#F59E0B',
-    '#EC4899',
-    '#06B6D4',
-    '#10B981',
-    '#64748B',
-    '#F97316',
-    '#EF4444',
-    '#22C55E',
-]
+import { getUserColor } from '../../utils/userColors'
 
 interface Props {
     data: WeeklyBetDeltaPeriod[]
@@ -48,7 +37,9 @@ export default function BetDeltaTrendChart({ data }: Props) {
             if (!userMap.has(u.userId)) userMap.set(u.userId, u.userName)
         }
     }
-    const allUsers = Array.from(userMap.entries()).map(([userId, userName]) => ({ userId, userName }))
+    const allUsers = Array.from(userMap.entries())
+        .map(([userId, userName]) => ({ userId, userName }))
+        .sort((a, b) => a.userId - b.userId)
 
     const chartData = data.map((period) => {
         const entry: Record<string, unknown> = { label: period.label }
@@ -88,12 +79,12 @@ export default function BetDeltaTrendChart({ data }: Props) {
                         />
                         <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
                         <ReferenceLine y={0} stroke={ct.grid} strokeDasharray="4 4" />
-                        {allUsers.map((user, i) => (
+                        {allUsers.map((user) => (
                             <Line
                                 key={user.userId}
                                 type="monotone"
                                 dataKey={user.userName}
-                                stroke={USER_COLORS[i % USER_COLORS.length]}
+                                stroke={getUserColor(user.userId)}
                                 strokeWidth={2}
                                 dot={false}
                                 activeDot={{ r: 6 }}
