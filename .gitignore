@@ -20,3 +20,6 @@ yarn-error.log*
 pnpm-debug.log*
 dist/
 *.lscache
+*.tfstate
+*.tfstate.*
+*.local.json

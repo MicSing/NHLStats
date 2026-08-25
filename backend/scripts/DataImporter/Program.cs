@@ -29,6 +29,7 @@ namespace DataImporter
                 "Seasons",
                 "SeasonUsers",
                 "RosterPlayers",
+                "SeasonRosterPlayers",
                 "Matches",
                 "PointReasons",
                 "MoneyConfigs",
@@ -48,7 +49,21 @@ namespace DataImporter
             };
 
             using var conn = new SqlConnection(connectionString);
-            conn.Open();
+            int retries = 5;
+            while (retries > 0)
+            {
+                try
+                {
+                    conn.Open();
+                    break;
+                }
+                catch (SqlException) when (retries > 1)
+                {
+                    Console.WriteLine("Database waking up, retrying in 5 seconds...");
+                    System.Threading.Thread.Sleep(5000);
+                    retries--;
+                }
+            }
 
             // Disable all foreign key constraints
             foreach (var table in tables)
@@ -87,6 +102,11 @@ namespace DataImporter
                 {
                     using var cmdOn = new SqlCommand($"SET IDENTITY_INSERT [{table}] ON", conn);
                     cmdOn.ExecuteNonQuery();
+                }
+
+                using (var cmdDel = new SqlCommand($"DELETE FROM [{table}]", conn))
+                {
+                    try { cmdDel.ExecuteNonQuery(); } catch { }
                 }
 
                 foreach (var row in rows)
@@ -152,6 +172,13 @@ namespace DataImporter
                 }
 
                 Console.WriteLine($"Finished {table}. Imported {rows.Count} rows.");
+            }
+
+            // Re-enable all foreign key constraints
+            foreach (var table in tables)
+            {
+                using var cmdEnableFK = new SqlCommand($"ALTER TABLE [{table}] WITH CHECK CHECK CONSTRAINT ALL", conn);
+                try { cmdEnableFK.ExecuteNonQuery(); } catch { }
             }
         }
     }
