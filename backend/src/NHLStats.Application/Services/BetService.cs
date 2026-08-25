@@ -716,7 +716,7 @@ public class BetService : IBetService
             : userId;
 
         return await _db.MatchOdds
-            .FirstOrDefaultAsync(o => o.MatchId == matchId && o.BetType == oddsBetType && o.TargetId == targetId);
+            .FirstOrDefaultAsync(o => o.MatchId == matchId && o.BetType == oddsBetType && (targetId == null ? o.TargetId == null : o.TargetId == targetId));
     }
 
     private static bool IsUserEventBetType(BetType betType) =>

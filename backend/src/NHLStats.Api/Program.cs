@@ -202,14 +202,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Recalculate betting odds for all upcoming matches on startup
+// Recalculate betting odds for upcoming matches on startup
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var oddsScope = app.Services.CreateScope();
     try
     {
         var oddsService = oddsScope.ServiceProvider.GetRequiredService<IBettingOddsService>();
-        await oddsService.RecalculateAllUpcomingAsync();
+        await oddsService.RecalculateUpcomingAsync(7);
     }
     catch (Exception ex)
     {

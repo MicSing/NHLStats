@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
 using NHLStats.Domain;
@@ -13,6 +14,7 @@ public class MatchService : IMatchService
     private readonly IBettingOddsService _oddsService;
     private readonly IUserMatchService _userMatchService;
     private readonly ISeasonEventBroadcaster? _broadcaster;
+    private readonly IServiceScopeFactory? _scopeFactory;
 
     public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, IUserMatchService userMatchService)
     {
@@ -26,6 +28,12 @@ public class MatchService : IMatchService
         : this(db, betService, oddsService, userMatchService)
     {
         _broadcaster = broadcaster;
+    }
+
+    public MatchService(NhlStatsDbContext db, IBetService betService, IBettingOddsService oddsService, IUserMatchService userMatchService, ISeasonEventBroadcaster broadcaster, IServiceScopeFactory scopeFactory)
+        : this(db, betService, oddsService, userMatchService, broadcaster)
+    {
+        _scopeFactory = scopeFactory;
     }
 
     private async Task TryBroadcastAsync(SeasonEventNotificationDto evt)
@@ -158,7 +166,7 @@ public class MatchService : IMatchService
                 season?.HostedTeamId, match.HomeTeamId);
 
             await _betService.EvaluateMatchBetsAsync(id);
-            await _oddsService.RecalculateAllUpcomingAsync();
+            await RecalculateUpcomingOddsAsync(7);
             await TryBroadcastAsync(new SeasonEventNotificationDto(
                 SeasonId: match.SeasonId,
                 MatchId: match.Id,
@@ -179,6 +187,31 @@ public class MatchService : IMatchService
             await _oddsService.RecalculateForMatchAsync(id);
 
         return await GetByIdAsync(id);
+    }
+
+    private async Task RecalculateUpcomingOddsAsync(int count = 7)
+    {
+        if (_scopeFactory != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var oddsService = scope.ServiceProvider.GetRequiredService<IBettingOddsService>();
+                    await oddsService.RecalculateUpcomingAsync(count);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Failed to recalculate upcoming odds in background: {ex}");
+                }
+            });
+            await Task.CompletedTask;
+        }
+        else
+        {
+            await _oddsService.RecalculateUpcomingAsync(count);
+        }
     }
 
     public async Task<bool> DeleteAsync(int id)

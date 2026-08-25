@@ -109,7 +109,7 @@ public class BettingOddsService : IBettingOddsService
             oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserMinusPoint, TargetId = userId, Probability = minusP, Odds = ComputeOdds(minusP), ComputedOn = now });
         }
 
-        await UpsertMatchOddsAsync(oddsToUpsert);
+        await UpsertMatchOddsAsync(matchId, oddsToUpsert);
 
         if (!goalBettingEnabled)
         {
@@ -145,6 +145,26 @@ public class BettingOddsService : IBettingOddsService
     {
         var upcomingMatchIds = await _db.Matches
             .Where(m => m.CompletionType == CompletionType.None)
+            .Select(m => m.Id)
+            .ToListAsync();
+
+        foreach (var matchId in upcomingMatchIds)
+            await RecalculateForMatchAsync(matchId);
+    }
+
+    public async Task RecalculateUpcomingAsync(int count = 7)
+    {
+        var normalizedCount = count <= 0 ? 7 : count;
+        var now = DateTime.UtcNow;
+
+        var upcomingMatchIds = await _db.Matches
+            .Where(m => m.CompletionType == CompletionType.None)
+            .Where(m => !m.MatchDate.HasValue || m.MatchDate.Value > now)
+            .OrderBy(m => m.MatchDate == null)
+            .ThenBy(m => m.MatchDate)
+            .ThenByDescending(m => m.Season!.StartedOn)
+            .ThenBy(m => m.MatchNumber)
+            .Take(normalizedCount)
             .Select(m => m.Id)
             .ToListAsync();
 
@@ -213,6 +233,14 @@ public class BettingOddsService : IBettingOddsService
         var matchOddsRows = await _db.MatchOdds
             .Where(o => o.MatchId == matchId)
             .ToListAsync();
+
+        if (!matchOddsRows.Any())
+        {
+            await RecalculateForMatchAsync(matchId);
+            matchOddsRows = await _db.MatchOdds
+                .Where(o => o.MatchId == matchId)
+                .ToListAsync();
+        }
 
         if (!matchOddsRows.Any()) return null;
 
@@ -863,16 +891,29 @@ public class BettingOddsService : IBettingOddsService
             : match.AwayScore > match.HomeScore;
     }
 
-    private async Task UpsertMatchOddsAsync(List<MatchOdds> newOdds)
+    private async Task UpsertMatchOddsAsync(int matchId, List<MatchOdds> newOdds)
     {
-        foreach (var odds in newOdds)
+        var distinctOdds = newOdds
+            .GroupBy(o => (o.MatchId, o.BetType, o.TargetId))
+            .Select(g => g.Last())
+            .ToList();
+
+        var existingOdds = await _db.MatchOdds
+            .Where(o => o.MatchId == matchId)
+            .ToListAsync();
+
+        var trackedOdds = _db.MatchOdds.Local.Where(o => o.MatchId == matchId).ToList();
+        var allKnownOdds = existingOdds.Union(trackedOdds).ToList();
+
+        foreach (var odds in distinctOdds)
         {
-            var existing = await _db.MatchOdds
-                .FirstOrDefaultAsync(o => o.MatchId == odds.MatchId
-                                          && o.BetType == odds.BetType
-                                          && o.TargetId == odds.TargetId);
+            var existing = allKnownOdds.FirstOrDefault(o =>
+                o.BetType == odds.BetType && o.TargetId == odds.TargetId);
             if (existing == null)
+            {
                 _db.MatchOdds.Add(odds);
+                allKnownOdds.Add(odds);
+            }
             else
             {
                 existing.Probability = odds.Probability;
