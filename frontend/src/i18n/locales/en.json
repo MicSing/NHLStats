@@ -526,6 +526,11 @@
         "legs": "legs",
         "showUnavailable": "Show unavailable",
         "drawLabel": "Draw",
+        "matchResult": "Match Result",
+        "doubleChance": "Double Chance",
+        "shutoutWinHeader": "Shutout Win",
+        "goalsShort": "goals",
+        "shutoutShort": "shutout",
         "tickets": {
             "sort": "Sort",
             "sortNewest": "Newest created",

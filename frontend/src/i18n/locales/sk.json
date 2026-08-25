@@ -526,6 +526,11 @@
         "legs": "legov",
         "showUnavailable": "Zobraziť nedostupné",
         "drawLabel": "Remíza",
+        "matchResult": "Výsledok zápasu",
+        "doubleChance": "Dvojitá šanca",
+        "shutoutWinHeader": "Výhra s čistým kontom",
+        "goalsShort": "gólov",
+        "shutoutShort": "na nulu",
         "tickets": {
             "sort": "Zoradiť",
             "sortNewest": "Najnovšie vytvorené",
