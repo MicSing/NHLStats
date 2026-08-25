@@ -21,6 +21,7 @@ type SortDir = 'asc' | 'desc'
 const ALL_BET_TYPES: ApiBetType[] = [
     'TeamWin', 'TeamWinOrDraw', 'TeamDraw',
     'UserGoal', 'UserPenalty', 'UserPlusPoint', 'UserMinusPoint',
+    'MatchTotalGoals', 'HostedShutoutWin', 'OpponentShutoutWin',
 ]
 
 const STATUS_BORDER: Record<BetStatus, string> = {
@@ -38,6 +39,7 @@ const LEG_STATUS_DOT: Record<LegStatus, string> = {
 }
 
 function getLegDisplay(leg: BetLegDto): { marketKey: string; marketColor: string; selection: string } {
+    const occSuffix = leg.occasions > 1 ? ` (${leg.occasions}+)` : ''
     switch (leg.betType) {
         case 'TeamWin':
         case 'TeamWinOrDraw':
@@ -45,13 +47,18 @@ function getLegDisplay(leg: BetLegDto): { marketKey: string; marketColor: string
         case 'TeamDraw':
             return { marketKey: 'betting.drawLabel', marketColor: 'text-text-muted', selection: 'X' }
         case 'UserGoal':
-            return { marketKey: 'betting.goals', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.goals', marketColor: 'text-green-400', selection: `${leg.targetName ?? '?'}${occSuffix}` }
         case 'UserPenalty':
-            return { marketKey: 'betting.penalties', marketColor: 'text-red-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.penalties', marketColor: 'text-red-400', selection: `${leg.targetName ?? '?'}${occSuffix}` }
         case 'UserPlusPoint':
-            return { marketKey: 'betting.tickets.plus', marketColor: 'text-green-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.tickets.plus', marketColor: 'text-green-400', selection: `${leg.targetName ?? '?'}${occSuffix}` }
         case 'UserMinusPoint':
-            return { marketKey: 'betting.tickets.minus', marketColor: 'text-orange-400', selection: leg.targetName ?? '?' }
+            return { marketKey: 'betting.tickets.minus', marketColor: 'text-orange-400', selection: `${leg.targetName ?? '?'}${occSuffix}` }
+        case 'MatchTotalGoals':
+            return { marketKey: 'betting.totalGoals', marketColor: 'text-purple-400', selection: `${leg.occasions}+` }
+        case 'HostedShutoutWin':
+        case 'OpponentShutoutWin':
+            return { marketKey: 'betting.tickets.bet', marketColor: 'text-cyan-400', selection: leg.targetName ?? '?' }
         default:
             return { marketKey: 'betting.tickets.bet', marketColor: 'text-text-muted', selection: leg.targetName ?? '?' }
     }

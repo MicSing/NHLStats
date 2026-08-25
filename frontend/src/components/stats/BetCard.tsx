@@ -77,6 +77,9 @@ export default function BetCard({ variant, bet }: { variant: 'best' | 'worst'; b
                         ? `${leg.homeTeamName} vs ${leg.awayTeamName}`
                         : `Match #${leg.matchNumber}`
                     const typeLabel = LEG_TYPE_LABEL[leg.betType] ?? leg.betType
+                    const isPlayerEvent = leg.betType === 'UserGoal' || leg.betType === 'UserPenalty' || leg.betType === 'UserPlusPoint' || leg.betType === 'UserMinusPoint'
+                    const occSuffix = isPlayerEvent && leg.occasions > 1 ? ` (${leg.occasions}+)` : ''
+                    const displayTarget = leg.targetName ? `${leg.targetName}${occSuffix}` : '—'
                     return (
                         <div key={leg.id} className="bg-bg rounded-lg px-3 py-2 flex items-center gap-2">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${LEG_STATUS_DOT[leg.status]}`} />
@@ -84,7 +87,7 @@ export default function BetCard({ variant, bet }: { variant: 'best' | 'worst'; b
                                 <p className="text-[10px] text-text-muted truncate">{matchName}</p>
                                 <p className="text-xs text-text font-medium truncate">
                                     <span className="text-text-muted">{typeLabel}:</span>{' '}
-                                    {leg.targetName ?? '—'}
+                                    {displayTarget}
                                 </p>
                             </div>
                             <span className="text-xs font-mono text-text-muted shrink-0">{leg.odds.toFixed(2)}</span>

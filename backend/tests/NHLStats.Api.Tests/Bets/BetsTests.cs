@@ -160,6 +160,27 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Place_team_win_and_shutout_on_same_match_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "TeamWin And Shutout Conflict Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "TeamWin", teamId = 1 },
+                new { matchId, betType = "HostedShutoutWin" }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Place_two_plus_point_legs_on_same_match_returns_400()
     {
         var client = await CreateAuthenticatedClientAsync();

@@ -115,9 +115,9 @@ describe('TeamStatsPage', () => {
         )
         renderPage()
         expect(await screen.findByRole('img', { name: /goals for vs against/i })).toBeInTheDocument()
-        expect(await screen.findByText('1W')).toBeInTheDocument()
-        expect(screen.getByText('1L')).toBeInTheDocument()
-        expect(screen.getByText('1OTL')).toBeInTheDocument()
+        expect(await screen.findByText('Win')).toBeInTheDocument()
+        expect(screen.getByText('Loss')).toBeInTheDocument()
+        expect(screen.getByText('OT Loss')).toBeInTheDocument()
     })
 
     test('does not render goal differential chart when there are no matches', async () => {

@@ -248,6 +248,8 @@ public class BetService : IBetService
             {
                 if (!matchesWithTeamOutcomeLeg.Add(legDto.MatchId))
                     return (null, $"Only one match-result bet (1, X, 1X) is allowed per match in a single ticket.");
+                if (matchesWithShutoutLeg.Contains(legDto.MatchId))
+                    return (null, "Cannot combine match result and shutout win for the same match in a single ticket.");
             }
 
             if (legDto.BetType == BetType.MatchTotalGoals)
@@ -260,6 +262,8 @@ public class BetService : IBetService
             {
                 if (!matchesWithShutoutLeg.Add(legDto.MatchId))
                     return (null, "Only one shutout-win bet is allowed per match in a single ticket.");
+                if (matchesWithTeamOutcomeLeg.Contains(legDto.MatchId))
+                    return (null, "Cannot combine match result and shutout win for the same match in a single ticket.");
             }
 
             if (legDto.BetType == BetType.UserPlusPoint)

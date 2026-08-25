@@ -459,6 +459,7 @@
         "onePlusPointPerMatch": "Pre jeden zápas je povolený iba jeden tip na plusový bod.",
         "oneMinusPointPerMatch": "Pre jeden zápas je povolený iba jeden tip na mínusový bod.",
         "oneShutoutPerMatch": "Pre jeden zápas je povolený iba jeden tip na výhru bez inkasovaného gólu.",
+        "cannotCombineTeamWinAndShutout": "Nie je možné kombinovať výsledok zápasu a výhru na nulu v jednom zápase.",
         "betPlaced": "Tipy boli úspešne uložené!",
         "draftMatchClosed": "Niektoré zápasy na vašom rozpísanom tikete sa už začali alebo skončili a boli odstránené.",
         "draftOddsUpdated": "Kurzy na vašom rozpísanom tikete boli aktualizované podľa najnovších výsledkov.",
@@ -580,7 +581,10 @@
                 "UserGoal": "Góly",
                 "UserPenalty": "Trestné minúty",
                 "UserPlusPoint": "Plus body",
-                "UserMinusPoint": "Mínus body"
+                "UserMinusPoint": "Mínus body",
+                "MatchTotalGoals": "Počet gólov",
+                "HostedShutoutWin": "Výhra na nulu (tím)",
+                "OpponentShutoutWin": "Výhra na nulu (súper)"
             }
         }
     },

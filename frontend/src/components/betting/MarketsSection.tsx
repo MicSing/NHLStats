@@ -67,11 +67,11 @@ export default function MarketsSection({
     const home1XUnavailable = (isUserInMatch && !isHostingHome) || home1XOdds == null || (home1XOdds != null && home1XOdds < 1)
     const away1XUnavailable = (isUserInMatch && !isHostingAway) || away1XOdds == null || (away1XOdds != null && away1XOdds < 1)
 
-    const homeDisabled = homeUnavailable || matchHasTeamOutcome
-    const drawDisabled = drawUnavailable || matchHasTeamOutcome
-    const awayDisabled = awayUnavailable || matchHasTeamOutcome
-    const home1XDisabled = home1XUnavailable || matchHasTeamOutcome
-    const away1XDisabled = away1XUnavailable || matchHasTeamOutcome
+    const homeDisabled = homeUnavailable || matchHasTeamOutcome || matchHasShutoutLeg
+    const drawDisabled = drawUnavailable || matchHasTeamOutcome || matchHasShutoutLeg
+    const awayDisabled = awayUnavailable || matchHasTeamOutcome || matchHasShutoutLeg
+    const home1XDisabled = home1XUnavailable || matchHasTeamOutcome || matchHasShutoutLeg
+    const away1XDisabled = away1XUnavailable || matchHasTeamOutcome || matchHasShutoutLeg
 
     const show1X2Section = showUnavailable || !homeUnavailable || !drawUnavailable || !awayUnavailable
     const show1XSection = showUnavailable || !home1XUnavailable || !away1XUnavailable
@@ -275,7 +275,7 @@ export default function MarketsSection({
                                 label={isHostingHome ? t('betting.betOnHomeShort') : t('betting.betOnAwayShort')}
                                 subLabel={hostedShutoutLabel}
                                 odds={odds?.hostedShutoutWinOdds ?? null}
-                                disabled={matchHasShutoutLeg || hostedShutoutUnavailable}
+                                disabled={matchHasShutoutLeg || matchHasTeamOutcome || hostedShutoutUnavailable}
                                 onClick={() =>
                                     odds?.hostedShutoutWinOdds != null &&
                                     onAddLeg({
@@ -297,7 +297,7 @@ export default function MarketsSection({
                                 label={isHostingHome ? t('betting.betOnAwayShort') : t('betting.betOnHomeShort')}
                                 subLabel={opponentShutoutLabel}
                                 odds={odds?.opponentShutoutWinOdds ?? null}
-                                disabled={matchHasShutoutLeg || opponentShutoutUnavailable}
+                                disabled={matchHasShutoutLeg || matchHasTeamOutcome || opponentShutoutUnavailable}
                                 onClick={() =>
                                     odds?.opponentShutoutWinOdds != null &&
                                     onAddLeg({

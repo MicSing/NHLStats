@@ -459,6 +459,7 @@
         "onePlusPointPerMatch": "Only one plus-point bet is allowed per match.",
         "oneMinusPointPerMatch": "Only one minus-point bet is allowed per match.",
         "oneShutoutPerMatch": "Only one shutout-win bet is allowed per match.",
+        "cannotCombineTeamWinAndShutout": "Cannot combine match result and shutout win for the same match.",
         "betPlaced": "Bets placed successfully!",
         "draftMatchClosed": "Some matches on your ticket draft have closed and were removed.",
         "draftOddsUpdated": "Odds on your ticket draft have been updated according to latest results.",
@@ -578,7 +579,10 @@
                 "UserGoal": "Goals",
                 "UserPenalty": "Penalties",
                 "UserPlusPoint": "Plus Points",
-                "UserMinusPoint": "Minus Points"
+                "UserMinusPoint": "Minus Points",
+                "MatchTotalGoals": "Total Goals",
+                "HostedShutoutWin": "Hosted Shutout Win",
+                "OpponentShutoutWin": "Opponent Shutout Win"
             }
         }
     },

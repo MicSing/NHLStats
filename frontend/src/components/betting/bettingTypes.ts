@@ -37,19 +37,20 @@ export function describeLeg(leg: DraftLeg, t: TFn): string {
 
 export function describeApiLeg(leg: BetDto['legs'][number], t: TFn): string {
     const tag = t('betting.matchNumber', { number: leg.matchNumber })
+    const occSuffix = leg.occasions > 1 ? ` (${leg.occasions}+)` : ''
     const kind =
         leg.betType === 'TeamDraw'
             ? t('betting.drawLabel')
             : leg.betType === 'TeamWin' || leg.betType === 'TeamWinOrDraw'
                 ? leg.targetName ?? t('betting.unknownTeam')
                 : leg.betType === 'UserGoal'
-                    ? `${t('betting.goals')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                    ? `${t('betting.goals')}: ${leg.targetName ?? t('betting.unknownUser')}${occSuffix}`
                     : leg.betType === 'UserPenalty'
-                        ? `${t('betting.penalties')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                        ? `${t('betting.penalties')}: ${leg.targetName ?? t('betting.unknownUser')}${occSuffix}`
                         : leg.betType === 'UserPlusPoint'
-                            ? `${t('betting.plusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                            ? `${t('betting.plusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}${occSuffix}`
                             : leg.betType === 'UserMinusPoint'
-                                ? `${t('betting.minusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}`
+                                ? `${t('betting.minusPoints')}: ${leg.targetName ?? t('betting.unknownUser')}${occSuffix}`
                                 : leg.betType === 'MatchTotalGoals'
                                     ? `${t('betting.totalGoals')}: ${leg.occasions}+`
                                     : leg.targetName ?? (leg.betType === 'HostedShutoutWin'

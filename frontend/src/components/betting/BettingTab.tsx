@@ -244,23 +244,29 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
         const maxOccasions = leg.maxOccasions ?? occasions
         const key = legKey(leg.matchId, leg.betType, leg.userId ?? leg.teamId ?? null, occasions)
         if (draftLegs.some((l) => l.key === key)) return
-        if (
-            teamOutcomeTypes.includes(leg.betType) &&
-            draftLegs.some((l) => l.matchId === leg.matchId && teamOutcomeTypes.includes(l.betType))
-        ) {
-            error(t('betting.oneMatchResultPerMatch'))
-            return
+        if (teamOutcomeTypes.includes(leg.betType)) {
+            if (draftLegs.some((l) => l.matchId === leg.matchId && teamOutcomeTypes.includes(l.betType))) {
+                error(t('betting.oneMatchResultPerMatch'))
+                return
+            }
+            if (draftLegs.some((l) => l.matchId === leg.matchId && shutoutWinTypes.includes(l.betType))) {
+                error(t('betting.cannotCombineTeamWinAndShutout'))
+                return
+            }
         }
         if (leg.betType === 'MatchTotalGoals' && matchHasLegOfType(draftLegs, leg.matchId, 'MatchTotalGoals')) {
             error(t('betting.oneGoalTotalPerMatch'))
             return
         }
-        if (
-            shutoutWinTypes.includes(leg.betType) &&
-            draftLegs.some((l) => l.matchId === leg.matchId && shutoutWinTypes.includes(l.betType))
-        ) {
-            error(t('betting.oneShutoutPerMatch'))
-            return
+        if (shutoutWinTypes.includes(leg.betType)) {
+            if (draftLegs.some((l) => l.matchId === leg.matchId && shutoutWinTypes.includes(l.betType))) {
+                error(t('betting.oneShutoutPerMatch'))
+                return
+            }
+            if (draftLegs.some((l) => l.matchId === leg.matchId && teamOutcomeTypes.includes(l.betType))) {
+                error(t('betting.cannotCombineTeamWinAndShutout'))
+                return
+            }
         }
         if (leg.betType === 'UserPlusPoint' && matchHasLegOfType(draftLegs, leg.matchId, 'UserPlusPoint')) {
             error(t('betting.onePlusPointPerMatch'))
