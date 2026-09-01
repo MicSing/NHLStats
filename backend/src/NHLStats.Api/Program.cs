@@ -133,7 +133,8 @@ builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvide
 
 var sqlConn = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<NhlStatsDbContext>(options => options.UseSqlServer(sqlConn));
+builder.Services.AddDbContext<NhlStatsDbContext>(options =>
+    options.UseSqlServer(sqlConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
 var app = builder.Build();
 
