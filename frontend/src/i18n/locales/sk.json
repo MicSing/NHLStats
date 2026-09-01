@@ -64,7 +64,8 @@
         "operationFailed": "Operácia zlyhala. Skúste to znova."
     },
     "confirm": {
-        "deleteUser": "Ste si istí, že chcete odstrániť tohto používateľa?"
+        "deleteUser": "Ste si istí, že chcete odstrániť tohto používateľa?",
+        "deactivateUser": "Naozaj chcete deaktivovať používateľa {{name}}? Nebude sa môcť prihlásiť."
     },
     "nav": {
         "dashboard": "Prehľad",
@@ -125,7 +126,8 @@
         "passwordPlaceholder": "••••••••",
         "signingIn": "Prihlasovanie…",
         "signIn": "Prihlásiť sa",
-        "invalidCredentials": "Neplatné prihlasovacie údaje"
+        "invalidCredentials": "Neplatné prihlasovacie údaje",
+        "accountDeactivated": "Tento účet bol deaktivovaný. Kontaktujte administrátora."
     },
     "changePassword": {
         "title": "Zmeniť heslo",

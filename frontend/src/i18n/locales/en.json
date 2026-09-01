@@ -64,7 +64,8 @@
         "operationFailed": "Operation failed. Please try again."
     },
     "confirm": {
-        "deleteUser": "Are you sure you want to delete this user?"
+        "deleteUser": "Are you sure you want to delete this user?",
+        "deactivateUser": "Are you sure you want to deactivate {{name}}? They will no longer be able to log in."
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -125,7 +126,8 @@
         "passwordPlaceholder": "••••••••",
         "signingIn": "Signing in…",
         "signIn": "Sign In",
-        "invalidCredentials": "Invalid credentials"
+        "invalidCredentials": "Invalid credentials",
+        "accountDeactivated": "This account has been deactivated. Contact an administrator."
     },
     "changePassword": {
         "title": "Change Password",

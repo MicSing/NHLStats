@@ -3,6 +3,7 @@ export interface LoginUser {
     email: string | null
     alias: string | null
     userId: number | null
+    isActive: boolean
     roles: string[]
 }
 

@@ -62,18 +62,60 @@ describe('UsersPage', () => {
         await user.click(await screen.findByText('Player One'))
         expect(await screen.findByRole('button', { name: /deactivate/i })).toBeInTheDocument()
 
-        // Player Two is inactive — no deactivate control, just a disabled-state message
+        // Player Two is inactive — no deactivate control, an activate control instead
         await user.click(screen.getByText('Player Two'))
         expect(screen.queryByRole('button', { name: /deactivate/i })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /activate/i })).toBeInTheDocument()
     })
 
-    test('clicking deactivate calls API and refreshes list', async () => {
+    test('clicking deactivate asks for confirmation before calling the API', async () => {
         const user = userEvent.setup()
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+        renderWithProviders(<UsersPage />)
+        await user.click(await screen.findByText('Player One'))
+        const btn = await screen.findByRole('button', { name: /deactivate/i })
+        await user.click(btn)
+
+        expect(confirmSpy).toHaveBeenCalled()
+        // Declined confirmation — the drawer still shows the deactivate control (nothing changed)
+        expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument()
+        confirmSpy.mockRestore()
+    })
+
+    test('confirming deactivate calls API and refreshes list', async () => {
+        const user = userEvent.setup()
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
         renderWithProviders(<UsersPage />)
         await user.click(await screen.findByText('Player One'))
         const btn = await screen.findByRole('button', { name: /deactivate/i })
         await user.click(btn)
         // List re-loads without error
         await screen.findAllByText('Player One')
+        vi.restoreAllMocks()
+    })
+
+    test('reactivate button calls API and refreshes list', async () => {
+        const user = userEvent.setup()
+        renderWithProviders(<UsersPage />)
+        await user.click(await screen.findByText('Player Two'))
+        const btn = await screen.findByRole('button', { name: /activate/i })
+        await user.click(btn)
+        // List re-loads without error
+        await screen.findAllByText('Player Two')
+    })
+
+    test('login management is locked down while the owning user is inactive', async () => {
+        const user = userEvent.setup()
+        renderWithProviders(<UsersPage />)
+
+        // Player One is active — can add an identity and delete an existing login
+        await user.click(await screen.findByText('Player One'))
+        expect(await screen.findByText(/pridať identitu/i)).toBeInTheDocument()
+        expect(screen.getByTitle(/delete/i)).toBeInTheDocument()
+
+        // Player Two is inactive — neither action is available
+        await user.click(screen.getByText('Player Two'))
+        expect(screen.queryByText(/pridať identitu/i)).not.toBeInTheDocument()
+        expect(screen.queryByTitle(/delete/i)).not.toBeInTheDocument()
     })
 })

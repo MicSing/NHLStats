@@ -10,7 +10,8 @@ const mockUsers = [
 ]
 
 const mockLoginUsers = [
-    { id: 'login-1', email: 'player.one@test.com', alias: null, userId: 1, roles: ['User'] },
+    { id: 'login-1', email: 'player.one@test.com', alias: null, userId: 1, isActive: true, roles: ['User'] },
+    { id: 'login-2', email: 'player.two@test.com', alias: null, userId: 2, isActive: false, roles: ['User'] },
 ]
 
 const mockTeams = [
@@ -279,6 +280,9 @@ export const handlers = [
         if (id === 'admin@test.com' && body.password === 'Admin123!') {
             return res(ctx.json({ token: 'fake-jwt-token' }))
         }
+        if (id === 'deactivated@test.com') {
+            return res(ctx.status(403), ctx.json({ error: 'AccountDeactivated' }))
+        }
         return res(ctx.status(401))
     }),
 
@@ -310,6 +314,10 @@ export const handlers = [
         return res(ctx.status(204))
     }),
 
+    rest.put(`${BASE}/api/users/:id/reactivate`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
     // Auth: login/identity management (LoginUser)
     rest.get(`${BASE}/api/auth/users`, (_req, res, ctx) => {
         return res(ctx.json(mockLoginUsers))
@@ -319,7 +327,7 @@ export const handlers = [
         const body = await req.json() as { email?: string; alias?: string; userId?: number }
         return res(
             ctx.status(201),
-            ctx.json({ id: 'login-99', email: body.email ?? null, alias: body.alias ?? null, userId: body.userId ?? null, roles: [] }),
+            ctx.json({ id: 'login-99', email: body.email ?? null, alias: body.alias ?? null, userId: body.userId ?? null, isActive: true, roles: [] }),
         )
     }),
 
