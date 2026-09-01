@@ -9,4 +9,5 @@ public interface IUserService
     Task<UserDto> CreateAsync(CreateUserDto dto);
     Task<UserDto?> UpdateAsync(int id, UpdateUserDto dto);
     Task<bool> DeactivateAsync(int id);
+    Task<bool> ReactivateAsync(int id);
 }

@@ -63,6 +63,8 @@ public class AuthController : ControllerBase
         var user = await ResolveLoginUser(identifier);
         if (user == null) return Unauthorized();
 
+        if (!user.IsActive) return StatusCode(403, new { error = "AccountDeactivated" });
+
         var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
         if (!passwordValid) return Unauthorized();
 
@@ -87,6 +89,7 @@ public class AuthController : ControllerBase
     {
         var user = await GetCurrentUser();
         if (user == null) return Unauthorized();
+        if (!user.IsActive) return Unauthorized();
         var token = await GenerateJwtToken(user);
         return Ok(new { token });
     }
@@ -125,6 +128,7 @@ public class AuthController : ControllerBase
                 user.Email,
                 user.Alias,
                 user.UserId,
+                user.IsActive,
                 roles,
                 isAdmin = roles.Contains(RoleNames.Admin)
             });
@@ -187,7 +191,7 @@ public class AuthController : ControllerBase
         await _userManager.AddToRoleAsync(user, RoleNames.Participient);
 
         var roles = await _userManager.GetRolesAsync(user);
-        return StatusCode(201, new { id = user.Id, email = user.Email, alias = user.Alias, userId = user.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return StatusCode(201, new { id = user.Id, email = user.Email, alias = user.Alias, userId = user.UserId, isActive = user.IsActive, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -210,7 +214,7 @@ public class AuthController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(login);
-        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, isActive = login.IsActive, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]
@@ -258,7 +262,7 @@ public class AuthController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(login);
-        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, roles, isAdmin = roles.Contains(RoleNames.Admin) });
+        return Ok(new { id = login.Id, email = login.Email, alias = login.Alias, userId = login.UserId, isActive = login.IsActive, roles, isAdmin = roles.Contains(RoleNames.Admin) });
     }
 
     [Authorize(Roles = RoleNames.Admin)]

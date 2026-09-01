@@ -52,6 +52,8 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasIndex(u => u.Alias)
                 .IsUnique()
                 .HasFilter("\"Alias\" IS NOT NULL");
+
+            b.Property(u => u.IsActive).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<User>(b =>

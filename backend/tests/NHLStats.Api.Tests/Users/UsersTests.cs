@@ -109,4 +109,34 @@ public class UsersTests : ApiTestBase
         var resp = await client.DeleteAsync("/api/users/99999");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // ── PUT /api/users/{id}/reactivate ──────────────────────────────────────
+
+    [Fact]
+    public async Task Reactivate_returns_204_and_user_becomes_active()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var createResp = await client.PostAsJsonAsync("/api/users", new { name = "ToReactivate" });
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+
+        (await client.DeleteAsync($"/api/users/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var reactivateResp = await client.PutAsync($"/api/users/{id}/reactivate", null);
+        reactivateResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResp = await client.GetAsync($"/api/users/{id}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var user = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        user.GetProperty("isActive").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reactivate_unknown_returns_404()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PutAsync("/api/users/99999/reactivate", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

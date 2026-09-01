@@ -228,4 +228,70 @@ public class AuthTests : IClassFixture<CustomWebApplicationFactory>
             .GetProperty("token").GetString()
             .Should().NotBeNullOrWhiteSpace();
     }
+
+    // -----------------------------------------------------------------------
+    // Deactivated user login
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Login_for_deactivated_user_is_blocked_and_reactivation_restores_it()
+    {
+        var adminClient = _factory.CreateClient();
+        var adminLoginResp = await adminClient.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = AdminEmail,
+            password = AdminPassword
+        });
+        adminLoginResp.EnsureSuccessStatusCode();
+        var adminToken = (await adminLoginResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("token").GetString()!;
+        adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Create a domain user and attach a login identity to it
+        var createUserResp = await adminClient.PostAsJsonAsync("/api/users", new { name = "DeactivatedLoginUser" });
+        createUserResp.EnsureSuccessStatusCode();
+        var userId = (await createUserResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var createLoginResp = await adminClient.PostAsJsonAsync("/api/auth/users", new
+        {
+            email = "deactivated-login@test.com",
+            password = "Passw0rd!",
+            userId
+        });
+        createLoginResp.EnsureSuccessStatusCode();
+
+        // Sanity check: login works before deactivation
+        var preLoginResp = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "deactivated-login@test.com",
+            password = "Passw0rd!"
+        });
+        preLoginResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Deactivate the domain user
+        var deactivateResp = await adminClient.DeleteAsync($"/api/users/{userId}");
+        deactivateResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Login is now blocked with a distinct, stable error code
+        var blockedResp = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "deactivated-login@test.com",
+            password = "Passw0rd!"
+        });
+        blockedResp.StatusCode.Should().Be((HttpStatusCode)403);
+        var blockedBody = await blockedResp.Content.ReadFromJsonAsync<JsonElement>();
+        blockedBody.GetProperty("error").GetString().Should().Be("AccountDeactivated");
+
+        // Reactivate the user
+        var reactivateResp = await adminClient.PutAsync($"/api/users/{userId}/reactivate", null);
+        reactivateResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Login succeeds again
+        var afterReactivateResp = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "deactivated-login@test.com",
+            password = "Passw0rd!"
+        });
+        afterReactivateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }

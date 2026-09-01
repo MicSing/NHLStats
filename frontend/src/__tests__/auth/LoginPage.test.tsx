@@ -62,6 +62,20 @@ describe('LoginPage', () => {
         expect(screen.getByRole('alert')).toHaveTextContent(/invalid/i)
     })
 
+    test('shows deactivated-account message for a deactivated user', async () => {
+        const user = userEvent.setup()
+        renderLoginPage()
+
+        await user.type(screen.getByLabelText(/email/i), 'deactivated@test.com')
+        await user.type(screen.getByLabelText(/password/i), 'whatever')
+        await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toBeInTheDocument()
+        })
+        expect(screen.getByRole('alert')).toHaveTextContent(/deactivated/i)
+    })
+
     test('disables button while submitting', async () => {
         const user = userEvent.setup()
         renderLoginPage()

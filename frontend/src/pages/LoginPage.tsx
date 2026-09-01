@@ -20,8 +20,9 @@ function LoginPage() {
         try {
             await login({ identifier, password })
             navigate('/admin')
-        } catch {
-            setError(t('login.invalidCredentials'))
+        } catch (err) {
+            const deactivated = err instanceof Error && err.message === 'AccountDeactivated'
+            setError(deactivated ? t('login.accountDeactivated') : t('login.invalidCredentials'))
         } finally {
             setLoading(false)
         }

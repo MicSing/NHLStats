@@ -49,4 +49,12 @@ public class UsersController : ControllerBase
         var success = await _service.DeactivateAsync(id);
         return success ? NoContent() : NotFound();
     }
+
+    [Authorize]
+    [HttpPut("{id:int}/reactivate")]
+    public async Task<IActionResult> Reactivate(int id)
+    {
+        var success = await _service.ReactivateAsync(id);
+        return success ? NoContent() : NotFound();
+    }
 }

@@ -7,6 +7,7 @@ interface LoginCardProps {
     login: LoginUser
     editedRoles: string[]
     isSaving: boolean
+    canDelete: boolean
     onRolesChange: (roles: string[]) => void
     onSaveRoles: () => void
     onChangePassword: () => void
@@ -17,6 +18,7 @@ export default function LoginCard({
     login,
     editedRoles,
     isSaving,
+    canDelete,
     onRolesChange,
     onSaveRoles,
     onChangePassword,
@@ -38,6 +40,7 @@ export default function LoginCard({
                         {isEmail ? <EnvelopeIcon size={13} /> : <UserIcon size={13} />}
                     </div>
                     <span className="text-sm font-medium text-text truncate">{identifier}</span>
+                    <StatusBadge status={login.isActive ? 'Active' : 'Inactive'} />
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                     <button
@@ -47,13 +50,15 @@ export default function LoginCard({
                     >
                         <KeyIcon size={14} />
                     </button>
-                    <button
-                        onClick={onDelete}
-                        className="p-1.5 text-text-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all"
-                        title={t('common.delete')}
-                    >
-                        <TrashIcon size={14} />
-                    </button>
+                    {canDelete && (
+                        <button
+                            onClick={onDelete}
+                            className="p-1.5 text-text-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all"
+                            title={t('common.delete')}
+                        >
+                            <TrashIcon size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 

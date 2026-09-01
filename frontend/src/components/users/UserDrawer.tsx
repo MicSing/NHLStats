@@ -17,6 +17,7 @@ interface UserDrawerProps {
     onDeleteLogin: (loginId: string) => Promise<void>
     onSaveRoles: (login: LoginUser, roles: string[]) => Promise<void>
     onDeactivate: (user: MergedUser) => Promise<void>
+    onReactivate: (user: MergedUser) => Promise<void>
 }
 
 export default function UserDrawer({
@@ -27,6 +28,7 @@ export default function UserDrawer({
     onDeleteLogin,
     onSaveRoles,
     onDeactivate,
+    onReactivate,
 }: UserDrawerProps) {
     const { t } = useTranslation()
 
@@ -99,12 +101,18 @@ export default function UserDrawer({
                         <h3 className="text-sm font-semibold text-text">
                             Prístupové identity (Loginy)
                         </h3>
-                        <button
-                            onClick={() => setShowAddIdentityModal(true)}
-                            className="text-xs font-medium text-primary hover:text-primary-hover transition-colors"
-                        >
-                            + Pridať identitu
-                        </button>
+                        {user.isActive ? (
+                            <button
+                                onClick={() => setShowAddIdentityModal(true)}
+                                className="text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+                            >
+                                + Pridať identitu
+                            </button>
+                        ) : (
+                            <span className="text-xs text-text-muted/70 italic">
+                                Používateľ je deaktivovaný — najprv ho aktivujte.
+                            </span>
+                        )}
                     </div>
 
                     {user.logins.length === 0 ? (
@@ -121,6 +129,7 @@ export default function UserDrawer({
                                     login={login}
                                     editedRoles={editedRolesById[login.id] ?? login.roles}
                                     isSaving={roleSavingById[login.id] ?? false}
+                                    canDelete={user.isActive}
                                     onRolesChange={(roles) =>
                                         setEditedRolesById((prev) => ({ ...prev, [login.id]: roles }))
                                     }
@@ -145,9 +154,12 @@ export default function UserDrawer({
                                 {t('common.deactivate')} používateľa
                             </button>
                         ) : (
-                            <p className="text-xs text-text-muted/50 italic">
-                                Používateľ je deaktivovaný.
-                            </p>
+                            <button
+                                onClick={() => void onReactivate(user)}
+                                className="w-full bg-success/10 hover:bg-success/20 text-success text-sm font-medium py-2.5 px-4 rounded-lg transition-colors ring-1 ring-inset ring-success/20"
+                            >
+                                {t('common.activate')} používateľa
+                            </button>
                         )}
                     </div>
                 </div>

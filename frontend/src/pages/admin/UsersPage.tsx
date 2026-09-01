@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { User, CreateUserDto, UpdateUserDto } from '../../types/user'
+import type { User, CreateUserDto } from '../../types/user'
 import type { LoginUser, CreateLoginDto } from '../../types/loginManagement'
 import apiClient from '../../services/apiClient'
 import { cacheService } from '../../services/cacheService'
@@ -72,11 +72,20 @@ export default function UsersPage() {
     }
 
     const handleDeactivate = async (user: MergedUser) => {
+        if (!window.confirm(t('confirm.deactivateUser', { name: user.name }))) return
         try {
-            await apiClient.put<User>(`/api/users/${user.id}`, {
-                name: user.name,
-                isActive: false,
-            } satisfies UpdateUserDto)
+            await apiClient.delete(`/api/users/${user.id}`)
+            cacheService.invalidateUsers()
+            toast.success(t('toast.saveSuccess'))
+            await load()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
+    const handleReactivate = async (user: MergedUser) => {
+        try {
+            await apiClient.put(`/api/users/${user.id}/reactivate`, {})
             cacheService.invalidateUsers()
             toast.success(t('toast.saveSuccess'))
             await load()
@@ -142,6 +151,7 @@ export default function UsersPage() {
                     onDeleteLogin={handleDeleteLogin}
                     onSaveRoles={handleSaveRoles}
                     onDeactivate={handleDeactivate}
+                    onReactivate={handleReactivate}
                 />
             )}
 
