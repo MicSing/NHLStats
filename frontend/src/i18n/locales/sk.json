@@ -226,7 +226,11 @@
         "decrementHomeScore": "znížiť skóre domáci",
         "incrementHomeScore": "zvýšiť skóre domáci",
         "decrementAwayScore": "znížiť skóre hostia",
-        "incrementAwayScore": "zvýšiť skóre hostia"
+        "incrementAwayScore": "zvýšiť skóre hostia",
+        "resetMatch": "Resetovať zápas",
+        "resetMatchConfirm": "Resetovať tento zápas? Vymaže sa skóre, všetky štatistiky hráčov (body, góly, tresty) a všetky stávkové tikety na tento zápas sa vrátia do stavu Čaká sa. Túto akciu nie je možné vrátiť späť.",
+        "resetMatchSuccess": "Zápas bol úspešne resetovaný",
+        "resetMatchError": "Resetovanie zápasu zlyhalo"
     },
     "earnings": {
         "title": "Financie",

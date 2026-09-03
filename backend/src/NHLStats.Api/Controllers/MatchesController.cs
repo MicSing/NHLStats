@@ -78,6 +78,16 @@ public class MatchesController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/reset")]
+    public async Task<IActionResult> Reset(int seasonId, int id)
+    {
+        var existing = await _service.GetByIdAsync(id);
+        if (existing == null || existing.SeasonId != seasonId) return NotFound();
+        var reset = await _service.ResetAsync(id);
+        return Ok(reset);
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int seasonId, int id)
     {

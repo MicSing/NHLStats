@@ -328,6 +328,139 @@ public class MatchesTests : ApiTestBase
         body[2].GetProperty("matchNumber").GetInt32().Should().Be(3);
     }
 
+    // ── POST /api/seasons/{seasonId}/matches/{id}/reset ─────────────────────
+
+    [Fact]
+    public async Task Reset_match_clears_score_completion_date_and_stats_but_keeps_roster()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Reset Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = "Reset Test Player" });
+        userResp.EnsureSuccessStatusCode();
+        var userId = (await userResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        (await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null)).EnsureSuccessStatusCode();
+
+        var umResp = await client.PostAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}/usermatches", new { userId });
+        umResp.EnsureSuccessStatusCode();
+        var userMatchId = (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var pointResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{userMatchId}/points", new { pointReasonId = 9, count = 1 });
+        pointResp.EnsureSuccessStatusCode();
+
+        await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        var finishResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 4,
+            awayScore = 2,
+            matchDate = "2024-02-01T20:00:00",
+            completionType = 1 // RegularTime
+        });
+        finishResp.EnsureSuccessStatusCode();
+
+        var resetResp = await client.PostAsync($"/api/seasons/{seasonId}/matches/{matchId}/reset", null);
+        resetResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reset = await resetResp.Content.ReadFromJsonAsync<JsonElement>();
+        reset.GetProperty("homeScore").GetInt32().Should().Be(0);
+        reset.GetProperty("awayScore").GetInt32().Should().Be(0);
+        reset.GetProperty("completionType").GetString().Should().Be("None");
+        reset.GetProperty("matchDate").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var pointsResp = await client.GetAsync($"/api/usermatches/{userMatchId}/points");
+        pointsResp.EnsureSuccessStatusCode();
+        (await pointsResp.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength().Should().Be(0);
+
+        // The player's roster entry for the match must survive the reset.
+        var umsResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches");
+        umsResp.EnsureSuccessStatusCode();
+        var ums = await umsResp.Content.ReadFromJsonAsync<JsonElement>();
+        ums.EnumerateArray().Should().Contain(um => um.GetProperty("id").GetInt32() == userMatchId);
+    }
+
+    [Fact]
+    public async Task Reset_match_reverts_pending_bet_ticket_to_pending()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Reset Bet Season");
+        await SeedBettingBalanceAsync(client, seasonId);
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1 } }
+        });
+        betResp.EnsureSuccessStatusCode();
+        var betId = (await betResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        // Team 1 (home) loses in regulation → the TeamWin(1) leg (and ticket) settles as Lost.
+        var finishResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 1,
+            awayScore = 3,
+            matchDate = "2024-02-02T20:00:00",
+            completionType = 1 // RegularTime
+        });
+        finishResp.EnsureSuccessStatusCode();
+
+        var historyResp = await client.GetAsync("/api/betting/bets/history");
+        historyResp.EnsureSuccessStatusCode();
+        var history = await historyResp.Content.ReadFromJsonAsync<JsonElement>();
+        history.EnumerateArray().First(b => b.GetProperty("id").GetString() == betId)
+            .GetProperty("status").GetString().Should().Be("Lost");
+
+        var resetResp = await client.PostAsync($"/api/seasons/{seasonId}/matches/{matchId}/reset", null);
+        resetResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var activeResp = await client.GetAsync("/api/betting/bets/active");
+        activeResp.EnsureSuccessStatusCode();
+        var active = await activeResp.Content.ReadFromJsonAsync<JsonElement>();
+        active.EnumerateArray().Should().Contain(b => b.GetProperty("id").GetString() == betId);
+        active.EnumerateArray().First(b => b.GetProperty("id").GetString() == betId)
+            .GetProperty("status").GetString().Should().Be("Pending");
+    }
+
+    [Fact]
+    public async Task Reset_match_wrong_season_returns_404()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Reset 404 Season A");
+        var otherSeasonId = await CreateSeasonAsync(client, "Match Reset 404 Season B");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var resp = await client.PostAsync($"/api/seasons/{otherSeasonId}/matches/{matchId}/reset", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Reset_match_unauthenticated_returns_401()
+    {
+        var client = Factory.CreateClient();
+        var resp = await client.PostAsync("/api/seasons/1/matches/1/reset", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     [Fact]
     public async Task BatchCreate_rolls_back_entirely_on_invalid_team_id()
     {

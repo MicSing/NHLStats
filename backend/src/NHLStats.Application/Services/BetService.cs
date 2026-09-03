@@ -594,6 +594,44 @@ public class BetService : IBetService
     }
 
     /// <summary>
+    /// Resets every bet leg tied to this match back to Pending (clearing its evaluated outcome),
+    /// then re-rolls up every affected ticket via the authoritative RollupStatus helper — a bet
+    /// only reverts to Pending if none of its other legs (from other matches) are Lost/Cancelled.
+    /// Used when an admin resets a match's stats/score back to not-played.
+    /// </summary>
+    public async Task ResetMatchBetsAsync(int matchId)
+    {
+        var legs = await _db.BetLegs
+            .Include(l => l.Bet)
+                .ThenInclude(b => b!.Legs)
+            .Where(l => l.MatchId == matchId)
+            .ToListAsync();
+        if (legs.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        var affectedBets = new HashSet<Bet>();
+        foreach (var leg in legs)
+        {
+            leg.Status = BetLegStatus.Pending;
+            leg.EvaluatedOn = null;
+            if (leg.Bet != null) affectedBets.Add(leg.Bet);
+        }
+
+        foreach (var bet in affectedBets)
+        {
+            var newStatus = RollupStatus(bet.Legs);
+            if (newStatus != bet.Status)
+            {
+                bet.Status = newStatus;
+                bet.UpdatedOn = now;
+                bet.EvaluatedOn = newStatus == BetStatus.Pending ? null : now;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Recalculates TotalOdds for Won bets that stacked 2+ same-type plus/minus-point legs on
     /// the same match (now capped at 1 per match per type). Each offending match's plus/minus
     /// legs of one type collapse to their single highest odds; all other legs are untouched.

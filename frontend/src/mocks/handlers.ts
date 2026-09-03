@@ -591,6 +591,12 @@ export const handlers = [
         return res(ctx.status(204))
     }),
 
+    rest.post(`${BASE}/api/seasons/:seasonId/matches/:id/reset`, (req, res, ctx) => {
+        const match = mockMatches.find((m) => m.id === Number(req.params.id))
+        if (!match) return res(ctx.status(404))
+        return res(ctx.json({ ...match, homeScore: 0, awayScore: 0, matchDate: null, completionType: 0 }))
+    }),
+
     // ── Season Stats ──────────────────────────────────────────────────────────
     // NOTE: more-specific paths first so they don't get swallowed by the generic :id handler
 

@@ -121,6 +121,43 @@ describe('MatchPage', () => {
         expect(screen.getByText('Season Page')).toBeInTheDocument()
     })
 
+    test('reset match button is visible when authenticated', async () => {
+        renderMatchPage()
+        expect(await screen.findByText('Player One')).toBeInTheDocument()
+        expect(
+            await screen.findByRole('button', { name: /reset match/i }),
+        ).toBeInTheDocument()
+    })
+
+    test('reset match button hidden when not authenticated', async () => {
+        renderMatchPage({ authenticated: false })
+        expect(await screen.findByText('Player One')).toBeInTheDocument()
+        expect(
+            screen.queryByRole('button', { name: /reset match/i }),
+        ).not.toBeInTheDocument()
+    })
+
+    test('reset match does nothing when confirm dialog is dismissed', async () => {
+        const user = userEvent.setup()
+        vi.spyOn(window, 'confirm').mockReturnValue(false)
+        renderMatchPage()
+        const resetBtn = await screen.findByRole('button', { name: /reset match/i })
+        await user.click(resetBtn)
+        expect(window.confirm).toHaveBeenCalled()
+        vi.restoreAllMocks()
+    })
+
+    test('reset match resets score after confirming', async () => {
+        const user = userEvent.setup()
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        renderMatchPage()
+        expect(await screen.findByText('Boston Bruins')).toBeInTheDocument()
+        const resetBtn = await screen.findByRole('button', { name: /reset match/i })
+        await user.click(resetBtn)
+        expect(await screen.findByText('Match reset successfully')).toBeInTheDocument()
+        vi.restoreAllMocks()
+    })
+
     test('PP button opens Add Power Play Goal modal', async () => {
         const user = userEvent.setup()
         renderMatchPage()
