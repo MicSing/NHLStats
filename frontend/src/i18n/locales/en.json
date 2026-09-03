@@ -226,7 +226,11 @@
         "decrementHomeScore": "decrease home score",
         "incrementHomeScore": "increase home score",
         "decrementAwayScore": "decrease away score",
-        "incrementAwayScore": "increase away score"
+        "incrementAwayScore": "increase away score",
+        "resetMatch": "Reset Match",
+        "resetMatchConfirm": "Reset this match? This clears the score, all player stats (points, goals, penalties), and reverts any betting tickets on this match back to Pending. This cannot be undone.",
+        "resetMatchSuccess": "Match reset successfully",
+        "resetMatchError": "Failed to reset match"
     },
     "earnings": {
         "title": "Finances",

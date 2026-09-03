@@ -20,6 +20,9 @@ public interface IUserMatchService
     /// <summary>Creates missing UserMatches for every SeasonUser across all unplayed matches in the season.</summary>
     Task<(int created, string? error)> InitializeUsersForAllUnplayedMatchesAsync(int seasonId);
 
+    /// <summary>Clears all points, goals, and penalties for every player in the match, keeping the UserMatch roster entries intact.</summary>
+    Task ResetStatsForMatchAsync(int matchId);
+
     // ── Aggregated data ────────────────────────────────────────────────────────────────
     Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(int userId, int seasonId, CreateAggregatedSeasonDataDto dto);
     Task<IEnumerable<AggregatedSeasonDataDto>> GetAggregatedDataAsync(int userId, int seasonId);

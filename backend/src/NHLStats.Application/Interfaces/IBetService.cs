@@ -11,5 +11,6 @@ public interface IBetService
     Task<(bool Success, string? Error)> CancelBetAsync(Guid betId, string loginId);
     Task CancelBetsForPlayerInMatchAsync(int matchId, int userId);
     Task EvaluateMatchBetsAsync(int matchId);
+    Task ResetMatchBetsAsync(int matchId);
     Task<int> RecalculatePlusMinusOddsAsync();
 }

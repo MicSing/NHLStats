@@ -214,6 +214,28 @@ public class MatchService : IMatchService
         }
     }
 
+    public async Task<MatchDto?> ResetAsync(int id)
+    {
+        var match = await _db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .FirstOrDefaultAsync(m => m.Id == id);
+        if (match == null) return null;
+
+        await _userMatchService.ResetStatsForMatchAsync(id);
+        await _betService.ResetMatchBetsAsync(id);
+
+        match.HomeScore = 0;
+        match.AwayScore = 0;
+        match.CompletionType = CompletionType.None;
+        match.MatchDate = null;
+        await _db.SaveChangesAsync();
+
+        await _oddsService.RecalculateForMatchAsync(id);
+
+        return await GetByIdAsync(id);
+    }
+
     public async Task<bool> DeleteAsync(int id)
     {
         var match = await _db.Matches.FindAsync(id);

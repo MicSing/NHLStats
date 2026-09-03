@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { UserPlus } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, UserPlus } from '@phosphor-icons/react'
 import type { Match } from '../types/match'
 import type {
     UserMatch,
@@ -13,6 +13,7 @@ import type { PointReason } from '../types/pointReason'
 import type { Season } from '../types/season'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +31,7 @@ export default function MatchPage() {
     const { seasonId, matchId } = useParams<{ seasonId: string; matchId: string }>()
     const { token } = useAuth()
     const { t } = useTranslation()
+    const toast = useToast()
 
     const [match, setMatch] = useState<Match | null>(null)
     const [season, setSeason] = useState<Season | null>(null)
@@ -37,6 +39,7 @@ export default function MatchPage() {
     const [roster, setRoster] = useState<RosterPlayer[]>([])
     const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
+    const [resetting, setResetting] = useState(false)
 
 
     const loadUserMatchData = async (userMatchId: number) => {
@@ -100,6 +103,21 @@ export default function MatchPage() {
             {},
         )
         await loadAll()
+    }
+
+    const handleResetMatch = async () => {
+        if (!seasonId || !matchId) return
+        if (!window.confirm(t('match.resetMatchConfirm'))) return
+        setResetting(true)
+        try {
+            await apiClient.post(`/api/seasons/${seasonId}/matches/${matchId}/reset`, {})
+            await loadAll()
+            toast.success(t('match.resetMatchSuccess'))
+        } catch {
+            toast.error(t('match.resetMatchError'))
+        } finally {
+            setResetting(false)
+        }
     }
 
     const isHomeHosted = (m: Match) => m.homeTeamId === season?.hostedTeamId
@@ -211,6 +229,14 @@ export default function MatchPage() {
                             {t('match.initializeUsers')}
                         </button>
 
+                        <button
+                            onClick={() => void handleResetMatch()}
+                            disabled={resetting}
+                            className="flex items-center gap-2 border border-red-500 text-red-500 hover:bg-red-500/10 font-semibold rounded-lg px-4 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <ArrowCounterClockwise size={16} />
+                            {t('match.resetMatch')}
+                        </button>
                     </div>
                 )}
 

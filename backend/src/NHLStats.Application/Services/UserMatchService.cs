@@ -201,6 +201,26 @@ public class UserMatchService : IUserMatchService
         return (toCreate.Count, null);
     }
 
+    public async Task ResetStatsForMatchAsync(int matchId)
+    {
+        var userMatchIds = await _db.UserMatches
+            .Where(um => um.MatchId == matchId)
+            .Select(um => um.Id)
+            .ToListAsync();
+
+        if (userMatchIds.Count == 0) return;
+
+        var points = await _db.UserMatchPoints.Where(p => userMatchIds.Contains(p.UserMatchId)).ToListAsync();
+        var goals = await _db.UserMatchGoals.Where(g => userMatchIds.Contains(g.UserMatchId)).ToListAsync();
+        var penalties = await _db.UserMatchPenalties.Where(p => userMatchIds.Contains(p.UserMatchId)).ToListAsync();
+
+        _db.UserMatchPoints.RemoveRange(points);
+        _db.UserMatchGoals.RemoveRange(goals);
+        _db.UserMatchPenalties.RemoveRange(penalties);
+
+        await _db.SaveChangesAsync();
+    }
+
     // --- Aggregated data ────────────────────────────────────────────────────────────────
 
     public async Task<(AggregatedSeasonDataDto? result, string? error)> CreateAggregatedDataAsync(
