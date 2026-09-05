@@ -203,21 +203,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Recalculate betting odds for upcoming matches on startup
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    using var oddsScope = app.Services.CreateScope();
-    try
-    {
-        var oddsService = oddsScope.ServiceProvider.GetRequiredService<IBettingOddsService>();
-        await oddsService.RecalculateUpcomingAsync(7);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"Failed to recalculate odds on startup: {ex}");
-    }
-}
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

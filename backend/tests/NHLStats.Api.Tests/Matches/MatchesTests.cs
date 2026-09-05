@@ -410,6 +410,19 @@ public class MatchesTests : ApiTestBase
         betResp.EnsureSuccessStatusCode();
         var betId = (await betResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
 
+        // Status transitions are one-directional (None → InProgress → Completed), so step
+        // through InProgress before completing the match.
+        var inProgressResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        inProgressResp.EnsureSuccessStatusCode();
+
         // Team 1 (home) loses in regulation → the TeamWin(1) leg (and ticket) settles as Lost.
         var finishResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
         {

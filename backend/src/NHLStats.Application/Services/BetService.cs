@@ -282,17 +282,14 @@ public class BetService : IBetService
                 : IsUserEventBetType(legDto.BetType) ? Math.Max(1, legDto.Occasions)
                 : 1;
 
+            // Odds are only (re)computed by the background job when a match finishes —
+            // placing a bet never triggers recalculation. If nothing has been computed yet
+            // for this leg, it's simply not available for betting.
             decimal lockedOdds;
             if (legDto.BetType == BetType.MatchTotalGoals)
             {
                 var oddsRow = await _db.MatchOdds.FirstOrDefaultAsync(o =>
                     o.MatchId == legDto.MatchId && o.BetType == OddsBetType.MatchTotalGoals && o.TargetId == occasions);
-                if (oddsRow == null)
-                {
-                    await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
-                    oddsRow = await _db.MatchOdds.FirstOrDefaultAsync(o =>
-                        o.MatchId == legDto.MatchId && o.BetType == OddsBetType.MatchTotalGoals && o.TargetId == occasions);
-                }
                 if (oddsRow == null || oddsRow.Probability < BettingConstants.MinBettableProbability)
                     return (null, "This total-goals threshold is not available for betting.");
                 lockedOdds = oddsRow.Odds;
@@ -302,22 +299,12 @@ public class BetService : IBetService
                 var oddsBetType = BetTypeToOddsBetType(legDto.BetType);
                 var occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
                 if (occasionsResult == null)
-                {
-                    await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
-                    occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
-                }
-                if (occasionsResult == null)
                     return (null, "This selection is not available for betting.");
                 lockedOdds = occasionsResult.Odds;
             }
             else
             {
                 var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
-                if (oddsRow == null)
-                {
-                    await _oddsService.RecalculateForMatchAsync(legDto.MatchId);
-                    oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
-                }
                 if (oddsRow != null && oddsRow.Probability < BettingConstants.MinBettableProbability)
                     return (null, "Probability too low — this selection is not available for betting.");
                 lockedOdds = oddsRow?.Odds ?? 1.0m;

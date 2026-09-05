@@ -898,30 +898,54 @@ public class BettingOddsService : IBettingOddsService
             .Select(g => g.Last())
             .ToList();
 
-        var existingOdds = await _db.MatchOdds
-            .Where(o => o.MatchId == matchId)
-            .ToListAsync();
-
-        var trackedOdds = _db.MatchOdds.Local.Where(o => o.MatchId == matchId).ToList();
-        var allKnownOdds = existingOdds.Union(trackedOdds).ToList();
-
-        foreach (var odds in distinctOdds)
+        // Odds recalculation can run concurrently for the same match — e.g. placing a bet
+        // recalculates one match in the foreground while the background "recalculate
+        // upcoming odds" pass (fired from MatchService) touches it too. Each path uses its
+        // own DbContext, so a plain read-then-write upsert can lose that race: both see no
+        // existing row for a (MatchType, BetType, TargetId) triple and both try to INSERT,
+        // and the loser hits the unique index. Retry against the latest state rather than
+        // letting that surface as a hard failure.
+        const int maxAttempts = 3;
+        for (var attempt = 1; ; attempt++)
         {
-            var existing = allKnownOdds.FirstOrDefault(o =>
-                o.BetType == odds.BetType && o.TargetId == odds.TargetId);
-            if (existing == null)
+            var existingOdds = await _db.MatchOdds
+                .Where(o => o.MatchId == matchId)
+                .ToListAsync();
+
+            var trackedOdds = _db.MatchOdds.Local.Where(o => o.MatchId == matchId).ToList();
+            var allKnownOdds = existingOdds.Union(trackedOdds).ToList();
+
+            var added = new List<MatchOdds>();
+            foreach (var odds in distinctOdds)
             {
-                _db.MatchOdds.Add(odds);
-                allKnownOdds.Add(odds);
+                var existing = allKnownOdds.FirstOrDefault(o =>
+                    o.BetType == odds.BetType && o.TargetId == odds.TargetId);
+                if (existing == null)
+                {
+                    _db.MatchOdds.Add(odds);
+                    allKnownOdds.Add(odds);
+                    added.Add(odds);
+                }
+                else
+                {
+                    existing.Probability = odds.Probability;
+                    existing.Odds = odds.Odds;
+                    existing.ComputedOn = odds.ComputedOn;
+                }
             }
-            else
+
+            try
             {
-                existing.Probability = odds.Probability;
-                existing.Odds = odds.Odds;
-                existing.ComputedOn = odds.ComputedOn;
+                await _db.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateException) when (attempt < maxAttempts)
+            {
+                // A concurrent writer beat us to it. Undo our pending additions so the
+                // next attempt re-reads the now-current rows and updates them instead.
+                foreach (var odds in added)
+                    _db.Entry(odds).State = EntityState.Detached;
             }
         }
-
-        await _db.SaveChangesAsync();
     }
 }
