@@ -183,9 +183,6 @@ public class MatchService : IMatchService
                 AwayScore: match.AwayScore));
         }
 
-        if (dto.CompletionType == CompletionType.None)
-            await _oddsService.RecalculateForMatchAsync(id);
-
         return await GetByIdAsync(id);
     }
 
@@ -230,8 +227,6 @@ public class MatchService : IMatchService
         match.CompletionType = CompletionType.None;
         match.MatchDate = null;
         await _db.SaveChangesAsync();
-
-        await _oddsService.RecalculateForMatchAsync(id);
 
         return await GetByIdAsync(id);
     }
