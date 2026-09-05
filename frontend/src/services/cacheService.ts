@@ -1,7 +1,7 @@
 import apiClient from './apiClient'
 import type { User } from '../types/user'
 import type { Season } from '../types/season'
-import type { DashboardData, SeasonMatchHistory, UserPointReasonBreakdown } from '../types/stats'
+import type { DashboardData, SeasonMatchHistory, UserPointReasonBreakdown, WeekGroup } from '../types/stats'
 import type { UserAchievements } from '../types/achievement'
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 day
@@ -28,6 +28,10 @@ function userBreakdownKey(userId: number, seasonId?: number): string {
 
 function userAchievementsKey(userId: number): string {
     return `nhl-stats-user-achievements-${userId}`
+}
+
+function seasonWeeklyKey(seasonId: number): string {
+    return `nhl-stats-season-weekly-${seasonId}`
 }
 
 function isCacheValid<T>(entry: CacheEntry<T> | null, duration = CACHE_DURATION_MS): entry is CacheEntry<T> {
@@ -192,6 +196,21 @@ export const cacheService = {
             if (cached) return cached
         }
         const data = await apiClient.get<UserAchievements>(`/api/stats/users/${userId}/achievements`)
+        setInCache(key, data)
+        return data
+    },
+
+    /**
+     * Get the week-grouped matches for a season from cache or fetch from API.
+     * Cache is valid for 5 minutes, keyed per season.
+     */
+    async getSeasonWeeklyGroups(seasonId: number, force = false): Promise<WeekGroup[]> {
+        const key = seasonWeeklyKey(seasonId)
+        if (!force) {
+            const cached = getFromCache<WeekGroup[]>(key, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+        const data = await apiClient.get<WeekGroup[]>(`/api/seasons/${seasonId}/stats/weekly`)
         setInCache(key, data)
         return data
     },

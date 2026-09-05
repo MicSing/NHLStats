@@ -225,7 +225,7 @@ export default function WeeklyMatches({
                                                 />
                                                 <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 border-t border-border/50 bg-bg/30">
                                                     <Link
-                                                        to={`/betting?tab=tickets&seasonId=${seasonId}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
+                                                        to={`/betting?tab=tickets&seasonId=${seasonId}&week=${seasonId}:${group.weekNumber}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
                                                         className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
                                                     >
                                                         <TicketIcon size={12} />

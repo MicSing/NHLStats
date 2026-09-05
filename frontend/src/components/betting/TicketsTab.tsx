@@ -11,6 +11,13 @@ import StatusBadge from '../StatusBadge'
 import type { BetDto, BetLegDto, BetStatus, LegStatus, ApiBetType } from '../../types/bet'
 import type { Season } from '../../types/season'
 import type { User } from '../../types/user'
+import type { WeekGroup } from '../../types/stats'
+
+interface WeekInfo {
+    seasonId: number
+    weekNumber: number
+    date: string
+}
 
 const PAGE_SIZE = 10
 
@@ -68,6 +75,10 @@ function potentialWin(bet: BetDto): number {
     return bet.stake * bet.totalOdds
 }
 
+function weekKey(seasonId: number, weekNumber: number): string {
+    return `${seasonId}:${weekNumber}`
+}
+
 interface TicketsTabProps {
     refreshKey?: number
 }
@@ -82,6 +93,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
     const [bets, setBets] = useState<BetDto[] | null>(null)
     const [seasons, setSeasons] = useState<Season[]>([])
     const [users, setUsers] = useState<User[]>([])
+    const [matchWeekMap, setMatchWeekMap] = useState<Map<number, WeekInfo>>(new Map())
     const [filterOpen, setFilterOpen] = useState(false)
 
     // Read all filter state from URL
@@ -90,6 +102,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
     const filterUserId = p.get('userId') ?? ''
     const filterMatchNumber = p.get('matchNumber') ?? ''
     const filterSeasonId = p.get('seasonId') ?? ''
+    const filterWeek = p.get('week') ?? ''
     const filterStatus = p.get('status') ?? ''
     const filterStructure = p.get('structure') ?? ''
     const filterBetType = (p.get('betType') ?? '') as ApiBetType | ''
@@ -114,6 +127,20 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                 setBets(allBets)
                 setSeasons(allSeasons)
                 setUsers(allUsers)
+
+                const seasonIds = [...new Set(allBets.flatMap(b => b.legs.map(l => l.seasonId)))]
+                const weekGroupsBySeason = await Promise.all(
+                    seasonIds.map(id => cacheService.getSeasonWeeklyGroups(id).catch(() => [] as WeekGroup[])),
+                )
+                const weekMap = new Map<number, WeekInfo>()
+                seasonIds.forEach((seasonId, i) => {
+                    weekGroupsBySeason[i].forEach(group => {
+                        group.matches.forEach(m => {
+                            weekMap.set(m.matchId, { seasonId, weekNumber: group.weekNumber, date: m.matchDate })
+                        })
+                    })
+                })
+                setMatchWeekMap(weekMap)
             } catch {
                 error(t('betting.loadError'))
             }
@@ -176,6 +203,12 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                 const sid = parseInt(filterSeasonId, 10)
                 if (!b.legs.some(l => l.seasonId === sid)) return false
             }
+            if (filterWeek) {
+                if (!b.legs.some(l => {
+                    const info = matchWeekMap.get(l.matchId)
+                    return info != null && weekKey(info.seasonId, info.weekNumber) === filterWeek
+                })) return false
+            }
             if (filterStatus && b.status !== filterStatus) return false
             if (filterStructure === 'single' && b.legs.length !== 1) return false
             if (filterStructure === 'combo' && b.legs.length < 2) return false
@@ -189,9 +222,9 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
             if (filterWinMax && win > parseFloat(filterWinMax)) return false
             return true
         })
-    }, [bets, filterId, filterUserId, filterMatchNumber, filterSeasonId, filterStatus,
+    }, [bets, filterId, filterUserId, filterMatchNumber, filterSeasonId, filterWeek, filterStatus,
         filterStructure, filterBetType, filterStakeMin, filterStakeMax,
-        filterOddsMin, filterOddsMax, filterWinMin, filterWinMax, users, currentLoginId])
+        filterOddsMin, filterOddsMax, filterWinMin, filterWinMax, users, currentLoginId, matchWeekMap])
 
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
@@ -212,6 +245,15 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
         })
     }, [filtered, sortBy, sortDir])
 
+    const weekOptions = useMemo(() => {
+        const byKey = new Map<string, WeekInfo>()
+        bets?.forEach(b => b.legs.forEach(l => {
+            const info = matchWeekMap.get(l.matchId)
+            if (info) byKey.set(weekKey(info.seasonId, info.weekNumber), info)
+        }))
+        return [...byKey.entries()].sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
+    }, [bets, matchWeekMap])
+
     const totalItems = sorted.length
     const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
     const safePage = Math.min(Math.max(1, page), totalPages)
@@ -222,6 +264,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
         filterUserId && { key: 'userId', label: t('betting.tickets.chipUser', { value: users.find(u => String(u.id) === filterUserId)?.name ?? filterUserId }) },
         filterMatchNumber && { key: 'matchNumber', label: t('betting.tickets.chipMatch', { value: filterMatchNumber }) },
         filterSeasonId && { key: 'seasonId', label: t('betting.tickets.chipSeason', { value: seasons.find(s => String(s.id) === filterSeasonId)?.name ?? filterSeasonId }) },
+        filterWeek && { key: 'week', label: t('betting.tickets.chipWeek', { value: weekOptions.find(([k]) => k === filterWeek)?.[1].weekNumber ?? filterWeek }) },
         filterStatus && { key: 'status', label: t('betting.tickets.chipStatus', { value: filterStatus }) },
         filterStructure && { key: 'structure', label: filterStructure === 'single' ? t('betting.tickets.single') : t('betting.tickets.combo') },
         filterBetType && { key: 'betType', label: t('betting.tickets.chipType', { value: filterBetType }) },
@@ -312,7 +355,7 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                         onClick={() => {
                             setSearchParams(prev => {
                                 const next = new URLSearchParams(prev)
-                                ;['id','userId','matchNumber','seasonId','status','structure','betType',
+                                ;['id','userId','matchNumber','seasonId','week','status','structure','betType',
                                   'stakeMin','stakeMax','oddsMin','oddsMax','winMin','winMax'].forEach(k => next.delete(k))
                                 next.set('page', '1')
                                 return next
@@ -379,6 +422,22 @@ export default function TicketsTab({ refreshKey }: TicketsTabProps) {
                                 <option value="">{t('betting.tickets.allSeasons')}</option>
                                 {seasons.map(s => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-xs text-text-muted">{t('betting.tickets.week')}</span>
+                            <select
+                                value={filterWeek}
+                                onChange={e => setParam('week', e.target.value)}
+                                className="text-sm bg-bg border border-border rounded px-2 py-1.5 text-text"
+                            >
+                                <option value="">{t('betting.tickets.allWeeks')}</option>
+                                {weekOptions.map(([key, info]) => (
+                                    <option key={key} value={key}>
+                                        {t('betting.tickets.weekLabel', { week: info.weekNumber, date: new Date(info.date).toLocaleDateString() })}
+                                    </option>
                                 ))}
                             </select>
                         </label>
