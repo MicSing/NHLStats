@@ -1,5 +1,8 @@
+export type AchievementCategory = 'goals' | 'penalties' | 'points' | 'bets'
+
 export interface AchievementDef {
     id:           string
+    category:     AchievementCategory
     levelIcons:   readonly [string, string, string, string, string, string, string]
     levelNames:   readonly [string, string, string, string, string, string, string]
     descKey:      string
@@ -11,6 +14,7 @@ export interface AchievementDef {
 export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     {
         id: 'sniper',
+        category: 'goals',
         levelIcons: [
             '/achievements/sniper/sniper-stone.png',
             '/achievements/sniper/sniper-bronze.png',
@@ -27,6 +31,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'domination',
+        category: 'goals',
         levelIcons: [
             '/achievements/domination/domination-stone.png',
             '/achievements/domination/domination-bronze.png',
@@ -43,6 +48,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'shorty',
+        category: 'goals',
         levelIcons: [
             '/achievements/shorty/shorty-stone.png',
             '/achievements/shorty/shorty-bronze.png',
@@ -59,6 +65,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'god_mode',
+        category: 'goals',
         levelIcons: [
             '/achievements/godmode/god-stone.png',
             '/achievements/godmode/god-bronze.png',
@@ -75,6 +82,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'blue_line_snipers',
+        category: 'goals',
         levelIcons: [
             '/achievements/bluelinesniper/blue-stone.png',
             '/achievements/bluelinesniper/blue-bronze.png',
@@ -91,6 +99,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'massive_attack',
+        category: 'goals',
         levelIcons: [
             '/achievements/massiveattack/massive-stone.png',
             '/achievements/massiveattack/massive-bronze.png',
@@ -107,6 +116,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'offensive_defenseman',
+        category: 'goals',
         levelIcons: [
             '/achievements/offensivedefenseman/defenseman-stone.png',
             '/achievements/offensivedefenseman/defenseman-bronze.png',
@@ -123,6 +133,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'player_lover',
+        category: 'goals',
         levelIcons: [
             '/achievements/playerlover/lover-stone.png',
             '/achievements/playerlover/lover-bronze.png',
@@ -139,6 +150,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'golden_stick',
+        category: 'goals',
         levelIcons: [
             '/achievements/goldenstick/stick-stone.png',
             '/achievements/goldenstick/stick-bronze.png',
@@ -155,6 +167,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'sin_bin_vip',
+        category: 'penalties',
         levelIcons: [
             '/achievements/sinbinvip/sinbin-stone.png',
             '/achievements/sinbinvip/sinbin-bronze.png',
@@ -171,6 +184,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'broad_street_bully',
+        category: 'penalties',
         levelIcons: [
             '/achievements/broadstreetbully/bully-stone.png',
             '/achievements/broadstreetbully/bully-bronze.png',
@@ -187,6 +201,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'disciplinary_hearing',
+        category: 'penalties',
         levelIcons: [
             '/achievements/disciplinaryhearing/disciplinary-stone.png',
             '/achievements/disciplinaryhearing/disciplinary-bronze.png',
@@ -203,6 +218,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'the_enforcer',
+        category: 'penalties',
         levelIcons: [
             '/achievements/theenforcer/enforcer-stone.png',
             '/achievements/theenforcer/enforcer-bronze.png',
@@ -219,6 +235,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'goon_squad',
+        category: 'penalties',
         levelIcons: [
             '/achievements/goonsquad/goon-stone.png',
             '/achievements/goonsquad/goon-bronze.png',
@@ -235,6 +252,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'jailbird',
+        category: 'penalties',
         levelIcons: [
             '/achievements/jailbird/jailbird-stone.png',
             '/achievements/jailbird/jailbird-bronze.png',
@@ -251,6 +269,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'unlucky',
+        category: 'points',
         levelIcons: [
             '/achievements/unlucky/unlucky-stone.png',
             '/achievements/unlucky/unlucky-bronze.png',
@@ -267,6 +286,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'deep_pockets',
+        category: 'points',
         levelIcons: [
             '/achievements/deeppockets/pocket-stone.png',
             '/achievements/deeppockets/pocket-bronze.png',
@@ -283,6 +303,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'vip_sponzor',
+        category: 'points',
         levelIcons: [
             '/achievements/vipsponsor/sponsor-stone.png',
             '/achievements/vipsponsor/sponsor-bronze.png',
@@ -299,6 +320,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'the_atm',
+        category: 'points',
         levelIcons: [
             '/achievements/theatm/atm-stone.png',
             '/achievements/theatm/atm-bronze.png',
@@ -315,6 +337,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'ice_general',
+        category: 'points',
         levelIcons: [
             '/achievements/icegeneral/general-stone.png',
             '/achievements/icegeneral/general-bronze.png',
@@ -331,6 +354,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'good_week',
+        category: 'points',
         levelIcons: [
             '/achievements/goodweek/week-stone.png',
             '/achievements/goodweek/week-bronze.png',
@@ -347,6 +371,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'happy_season',
+        category: 'points',
         levelIcons: [
             '/achievements/happyseason/happyseason-stone.png',
             '/achievements/happyseason/happyseason-bronze.png',
@@ -363,6 +388,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'king_of_the_rink',
+        category: 'points',
         levelIcons: [
             '/achievements/kingoftherink/rink-stone.png',
             '/achievements/kingoftherink/rink-bronze.png',
@@ -379,6 +405,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'oracle',
+        category: 'bets',
         levelIcons: [
             '/achievements/oracle/oracle-stone.png',
             '/achievements/oracle/oracle-bronze.png',
@@ -395,6 +422,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'the_bookie',
+        category: 'bets',
         levelIcons: [
             '/achievements/bookie/bookie-stone.png',
             '/achievements/bookie/bookie-bronze.png',
@@ -411,6 +439,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'nostradamus',
+        category: 'bets',
         levelIcons: [
             '/achievements/nostradamus/nostradamus-stone.png',
             '/achievements/nostradamus/nostradamus-bronze.png',
@@ -427,6 +456,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     },
     {
         id: 'swiss_army_knife',
+        category: 'bets',
         levelIcons: [
             '/achievements/swissarmyknife/knife-stone.png',
             '/achievements/swissarmyknife/knife-bronze.png',

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     SparkleIcon,
@@ -13,6 +14,7 @@ import {
 import type { User } from '../../types/auth'
 import type { AchievementResult, AchievementOccurrence } from '../../types/achievement'
 import type { BettingBalanceDto } from '../../types/bet'
+import { cacheService } from '../../services/cacheService'
 import { ACHIEVEMENT_DEFS, type AchievementDef } from '../stats/achievementDefs'
 
 interface ProfileOverviewTabProps {
@@ -23,6 +25,12 @@ interface ProfileOverviewTabProps {
     activeBetsCount: number
     onSelectTab: (tab: 'overview' | 'bets' | 'achievements' | 'settings') => void
     onOpenAchievementModal: (def: AchievementDef, result: AchievementResult) => void
+}
+
+interface LastPlayedWeekInfo {
+    seasonId: number | null
+    seasonName: string | null
+    weekNumber: number
 }
 
 function isRecent(date: string | null, days = 7): boolean {
@@ -62,14 +70,93 @@ export default function ProfileOverviewTab({
 
     const displayName = playerName || user?.alias || user?.email?.split('@')[0] || t('common.user')
 
-    // Find achievements earned or leveled up in the last 7 days
+    // Find the currently last played week from the active/most recent season
+    const [lastPlayedWeek, setLastPlayedWeek] = useState<LastPlayedWeekInfo | null>(null)
+
+    useEffect(() => {
+        let isMounted = true
+        cacheService
+            .getSeasons()
+            .then(async (seasons) => {
+                if (!isMounted || !seasons || seasons.length === 0) return
+                const sorted = [...seasons].sort(
+                    (a, b) => new Date(b.startedOn).getTime() - new Date(a.startedOn).getTime()
+                )
+                const active = sorted.find((s) => s.status === 'Active') || sorted[0]
+                try {
+                    const weeks = await cacheService.getSeasonWeeklyGroups(active.id)
+                    if (!isMounted) return
+                    if (weeks && weeks.length > 0) {
+                        setLastPlayedWeek({
+                            seasonId: active.id,
+                            seasonName: active.name,
+                            weekNumber: weeks[0].weekNumber,
+                        })
+                    }
+                } catch {
+                    // Fallback to occurrences
+                }
+            })
+            .catch(() => {
+                // Ignore failure and fallback
+            })
+
+        return () => {
+            isMounted = false
+        }
+    }, [])
+
+    // Effective last played week: from API or inferred from highest occurrence week
+    const effectiveLastPlayedWeek = useMemo(() => {
+        if (lastPlayedWeek) return lastPlayedWeek
+
+        let maxWeek: number | null = null
+        let maxSeasonId: number | null = null
+        let maxSeasonName: string | null = null
+        let latestTime = 0
+
+        for (const a of achievements) {
+            for (const occ of a.occurrences) {
+                if (occ.weekNumber != null) {
+                    const time = occ.occurredOn ? new Date(occ.occurredOn).getTime() : 0
+                    if (time >= latestTime) {
+                        latestTime = time
+                        maxWeek = occ.weekNumber
+                        maxSeasonId = occ.seasonId
+                        maxSeasonName = occ.seasonName
+                    }
+                }
+            }
+        }
+
+        if (maxWeek != null) {
+            return {
+                seasonId: maxSeasonId,
+                seasonName: maxSeasonName,
+                weekNumber: maxWeek,
+            }
+        }
+        return null
+    }, [lastPlayedWeek, achievements])
+
+    // Find achievements earned or leveled up in the currently last played week (or fallback to last 7 days)
     const recentAchievements = achievements
         .map((result) => {
             const def = ACHIEVEMENT_DEFS.find((d) => d.id === result.id)
             if (!def || !result.earned) return null
 
-            // Find occurrences in the last 7 days
-            const recentOccurrences = result.occurrences.filter((occ) => isRecent(occ.occurredOn, 7))
+            // Find occurrences in the last played week
+            const recentOccurrences = result.occurrences.filter((occ) => {
+                if (effectiveLastPlayedWeek) {
+                    const matchesWeek = occ.weekNumber === effectiveLastPlayedWeek.weekNumber
+                    const matchesSeason =
+                        !effectiveLastPlayedWeek.seasonId ||
+                        !occ.seasonId ||
+                        occ.seasonId === effectiveLastPlayedWeek.seasonId
+                    return matchesWeek && matchesSeason
+                }
+                return isRecent(occ.occurredOn, 7)
+            })
             if (recentOccurrences.length === 0) return null
 
             // Get the most recent occurrence date
@@ -181,7 +268,7 @@ export default function ProfileOverviewTab({
             <div className="card p-5 border-amber-500/30 bg-gradient-to-br from-surface to-amber-950/10 relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <SparkleIcon size={20} weight="fill" className="text-amber-400 animate-pulse" />
                             <h3 className="text-base font-bold text-text">
                                 {t('profile.overview.recentAchievementsTitle')}
@@ -191,9 +278,17 @@ export default function ProfileOverviewTab({
                                     +{recentAchievements.length}
                                 </span>
                             )}
+                            {effectiveLastPlayedWeek && (
+                                <span className="bg-surface border border-border text-text-muted text-xs font-semibold px-2 py-0.5 rounded-full">
+                                    {t('profile.overview.lastPlayedWeekBadge', {
+                                        week: effectiveLastPlayedWeek.weekNumber,
+                                    })}
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-text-muted mt-0.5">
                             {t('profile.overview.recentAchievementsSubtitle')}
+                            {effectiveLastPlayedWeek?.seasonName ? ` (${effectiveLastPlayedWeek.seasonName})` : ''}
                         </p>
                     </div>
 

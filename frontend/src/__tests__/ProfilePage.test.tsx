@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ProfilePage from '../pages/ProfilePage'
 import { AuthProvider } from '../context/AuthContext'
@@ -10,6 +10,12 @@ vi.mock('../services/cacheService', () => ({
     cacheService: {
         getUsers: vi.fn().mockResolvedValue([
             { id: 1, name: 'Michal Hráč', isActive: true },
+        ]),
+        getSeasons: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Season 1', startedOn: '2025-10-01', status: 'Active' },
+        ]),
+        getSeasonWeeklyGroups: vi.fn().mockResolvedValue([
+            { weekNumber: 1, matches: [{ matchId: 101, matchNumber: 1, matchDate: '2025-10-05' }] },
         ]),
         getAchievements: vi.fn().mockResolvedValue({
             achievements: [
@@ -168,6 +174,53 @@ describe('ProfilePage', () => {
         })
     })
 
+    test('overview tab renders betting balance labels without raw translation keys', async () => {
+        renderProfilePage('overview')
+
+        await waitFor(() => {
+            expect(screen.queryByText('betting.balanceWonProfit')).toBeNull()
+            expect(screen.queryByText('betting.balanceLostStake')).toBeNull()
+        })
+    })
+
+    test('opens filter modal in bets tab and displays filter inputs', async () => {
+        renderProfilePage('bets')
+
+        await waitFor(() => {
+            expect(screen.getByText('#T101')).toBeDefined()
+        })
+
+        // Find the filter button (title "Filtre" or "Filters")
+        const filterBtn = screen.getByRole('button', { name: /filtre|filters/i })
+        fireEvent.click(filterBtn)
+
+        await waitFor(() => {
+            // Check modal inputs appear
+            expect(screen.getByPlaceholderText('B-ABC123')).toBeDefined()
+            expect(screen.getByPlaceholderText('e.g. 12')).toBeDefined()
+        })
+    })
+
+    test('opens filter modal in achievements tab and displays category filters', async () => {
+        renderProfilePage('achievements')
+
+        await waitFor(() => {
+            expect(screen.getByText('Marksman')).toBeDefined()
+        })
+
+        // Find filter button
+        const filterBtn = screen.getByRole('button', { name: /filtre|filters/i })
+        fireEvent.click(filterBtn)
+
+        await waitFor(() => {
+            // Modal dialog opens and category options are visible
+            expect(screen.getByRole('dialog')).toBeInTheDocument()
+            expect(screen.getAllByText(/Góly|Goals/i).length).toBeGreaterThanOrEqual(1)
+            expect(screen.getAllByText(/Fauly|Penalties/i).length).toBeGreaterThanOrEqual(1)
+            expect(screen.getAllByText(/Stávk|Betting/i).length).toBeGreaterThanOrEqual(1)
+        })
+    })
+
     test('unauthenticated guest sees only settings tab with theme and language, without password form', async () => {
         renderProfilePage('overview', false)
 
@@ -182,3 +235,4 @@ describe('ProfilePage', () => {
         expect(screen.queryByText('Michal Hráč')).toBeNull()
     })
 })
+

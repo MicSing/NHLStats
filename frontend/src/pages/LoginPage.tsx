@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 
 function LoginPage() {
     const { login } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
     const { t } = useTranslation()
     const [identifier, setIdentifier] = useState('')
     const [password, setPassword] = useState('')
@@ -19,7 +20,8 @@ function LoginPage() {
         setLoading(true)
         try {
             await login({ identifier, password })
-            navigate('/admin')
+            const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/profile'
+            navigate(from, { replace: true })
         } catch (err) {
             const deactivated = err instanceof Error && err.message === 'AccountDeactivated'
             setError(deactivated ? t('login.accountDeactivated') : t('login.invalidCredentials'))
