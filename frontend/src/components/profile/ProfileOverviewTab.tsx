@@ -6,6 +6,9 @@ import {
     ArrowRightIcon,
     UserCircleIcon,
     CalendarCheckIcon,
+    CrownIcon,
+    EnvelopeIcon,
+    CheckCircleIcon,
 } from '@phosphor-icons/react'
 import type { User } from '../../types/auth'
 import type { AchievementResult, AchievementOccurrence } from '../../types/achievement'
@@ -36,6 +39,16 @@ function formatRecentDate(date: string | null): string {
     })
 }
 
+function getInitials(name: string): string {
+    const clean = name.trim()
+    if (!clean) return 'U'
+    const parts = clean.split(/\s+/)
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+    return clean.slice(0, 2).toUpperCase()
+}
+
 export default function ProfileOverviewTab({
     user,
     playerName,
@@ -46,6 +59,8 @@ export default function ProfileOverviewTab({
     onOpenAchievementModal,
 }: ProfileOverviewTabProps) {
     const { t } = useTranslation()
+
+    const displayName = playerName || user?.alias || user?.email?.split('@')[0] || t('common.user')
 
     // Find achievements earned or leveled up in the last 7 days
     const recentAchievements = achievements
@@ -82,45 +97,82 @@ export default function ProfileOverviewTab({
 
     return (
         <div className="space-y-6">
-            {/* Quick user highlight bar */}
-            <div className="card p-5 bg-gradient-to-r from-surface via-surface to-primary/10 border-border">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                        <div className="w-12 h-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-lg border border-primary/30 shrink-0">
-                            {user?.alias ? user.alias.slice(0, 2).toUpperCase() : user?.email?.slice(0, 2).toUpperCase() ?? 'U'}
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-bold text-text">
-                                    {user?.alias || user?.email || t('common.user')}
-                                </h2>
-                                {user?.roles?.map((role) => (
-                                    <span
-                                        key={role}
-                                        className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30"
-                                    >
-                                        {role}
-                                    </span>
-                                ))}
-                            </div>
-                            <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5">
-                                <UserCircleIcon size={14} className="text-text-muted" />
-                                {playerName ? (
-                                    <span className="text-primary font-medium">{playerName}</span>
-                                ) : (
-                                    <span className="italic">{t('profile.overview.accountNotLinked')}</span>
-                                )}
-                            </p>
-                        </div>
-                    </div>
+            {/* User Identity Hero Banner */}
+            <div className="card relative overflow-hidden p-5 sm:p-6 bg-gradient-to-r from-surface via-surface to-primary/10 border-border shadow-sm">
+                {/* Ambient background glow accents */}
+                <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-radial-gradient pointer-events-none opacity-25" />
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => onSelectTab('settings')}
-                            className="btn-ghost text-xs border border-border"
-                        >
-                            {t('profile.tabs.settings')}
-                        </button>
+                <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-surface border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/5 ring-1 ring-white/10 text-primary font-black text-xl sm:text-2xl tracking-wider select-none">
+                                {getInitials(displayName)}
+                            </div>
+                            {playerName && (
+                                <div
+                                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-bg flex items-center justify-center shadow-sm border-2 border-surface"
+                                    title={t('profile.overview.accountLinked')}
+                                >
+                                    <CheckCircleIcon size={12} weight="bold" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Information */}
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <h2 className="text-xl sm:text-2xl font-black text-text tracking-tight truncate">
+                                    {displayName}
+                                </h2>
+                                {user?.roles?.map((role) => {
+                                    const normalized = role.toLowerCase()
+                                    const isAdmin = normalized === 'admin'
+                                    return (
+                                        <span
+                                            key={role}
+                                            className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm ${
+                                                isAdmin
+                                                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                                                    : 'bg-primary/15 border-primary/30 text-primary'
+                                            }`}
+                                        >
+                                            {isAdmin && <CrownIcon size={11} weight="fill" />}
+                                            {role}
+                                        </span>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-text-muted mt-2">
+                                {user?.email && (
+                                    <span className="flex items-center gap-1.5 truncate">
+                                        <EnvelopeIcon size={14} className="opacity-60 shrink-0" />
+                                        <span className="truncate">{user.email}</span>
+                                    </span>
+                                )}
+
+                                {user?.alias && playerName && user.alias !== playerName && (
+                                    <span className="flex items-center gap-1 text-text-muted">
+                                        <span className="opacity-60">Alias:</span>
+                                        <span className="text-text font-medium">{user.alias}</span>
+                                    </span>
+                                )}
+
+                                {playerName ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                        <CheckCircleIcon size={12} weight="fill" />
+                                        <span>{t('profile.overview.accountLinked')}</span>
+                                    </span>
+                                ) : (
+                                    <span className="italic text-text-muted/70 flex items-center gap-1 text-[11px]">
+                                        <UserCircleIcon size={13} />
+                                        {t('profile.overview.accountNotLinked')}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
