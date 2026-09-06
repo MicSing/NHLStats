@@ -887,5 +887,80 @@
             "match": "Match (Short Names)",
             "details": "Details (Score, Type & Date)"
         }
+    },
+    "profile": {
+        "title": "My Profile",
+        "subtitle": "Account management, bet history, achievements and preferences",
+        "tabs": {
+            "overview": "Overview",
+            "bets": "My Bets",
+            "achievements": "Achievements",
+            "settings": "Settings"
+        },
+        "overview": {
+            "recentAchievementsTitle": "New Achievements This Week",
+            "recentAchievementsSubtitle": "Your milestones unlocked in the last 7 days",
+            "noRecentAchievements": "You haven't unlocked any new achievements in the past 7 days.",
+            "keepPlaying": "Keep playing matches to unlock new badges!",
+            "viewAllAchievements": "View all achievements",
+            "latestEarned": "Recently Earned Badges",
+            "bettingStats": "Betting Overview",
+            "availableBalance": "Available Balance",
+            "activeBets": "Active Tickets",
+            "viewBetsArchive": "Open Bets Archive",
+            "accountLinked": "Linked League Player",
+            "accountNotLinked": "This account is not yet linked to a specific league player."
+        },
+        "bets": {
+            "title": "My Bets Archive",
+            "subtitle": "History and status of all your betting tickets",
+            "filterAll": "All",
+            "filterWon": "Won",
+            "filterLost": "Lost",
+            "filterPending": "Pending",
+            "filterCancelled": "Cancelled",
+            "legsCount": "{{count}} legs",
+            "legsCount_1": "1 leg",
+            "legsCount_other": "{{count}} legs",
+            "totalOdds": "Total Odds",
+            "stake": "Stake",
+            "profit": "Profit / Loss",
+            "placedOn": "Placed on",
+            "noBetsFound": "No bets found matching the filter."
+        },
+        "achievements": {
+            "title": "My Achievements",
+            "subtitle": "Complete list and progression of your badges",
+            "searchPlaceholder": "Search achievement...",
+            "filterAll": "All",
+            "filterEarned": "Unlocked",
+            "filterRecent": "New (last 7 days)",
+            "filterLocked": "Locked",
+            "level": "Level {{level}}",
+            "progress": "Progress",
+            "completed": "Maximum level reached",
+            "history": "Unlock History",
+            "noMatches": "No achievements match your search."
+        },
+        "settings": {
+            "appearanceTitle": "Appearance",
+            "appearanceSubtitle": "Choose your preferred visual theme",
+            "themeDark": "Dark Theme",
+            "themeDarkDesc": "Sleek dark interface that is easy on the eyes",
+            "themeLight": "Light Theme",
+            "themeLightDesc": "Clean and bright daytime appearance",
+            "languageTitle": "Language",
+            "languageSubtitle": "Select your interface language",
+            "securityTitle": "Change Password",
+            "securitySubtitle": "Update your login password",
+            "newPasswordLength": "New password must be at least 6 characters",
+            "passwordsDoNotMatch": "New passwords do not match",
+            "passwordChangedSuccess": "Password changed successfully",
+            "sessionTitle": "Session",
+            "sessionSubtitle": "Sign out from this device",
+            "logoutButton": "Sign Out",
+            "confirmLogoutTitle": "Confirm Sign Out",
+            "confirmLogoutText": "Are you sure you want to sign out of your account?"
+        }
     }
 }

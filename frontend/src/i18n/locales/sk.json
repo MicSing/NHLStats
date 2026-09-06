@@ -889,5 +889,82 @@
             "match": "Zápas (skrátený názov)",
             "details": "Detaily (skóre, typ a dátum)"
         }
+    },
+    "profile": {
+        "title": "Môj profil",
+        "subtitle": "Správa účtu, história stávok, odznaky a nastavenia",
+        "tabs": {
+            "overview": "Prehľad",
+            "bets": "Moje stávky",
+            "achievements": "Achievementy",
+            "settings": "Nastavenia"
+        },
+        "overview": {
+            "recentAchievementsTitle": "Nové achievementy za posledný týždeň",
+            "recentAchievementsSubtitle": "Tvoje herné úspechy odomknuté za posledných 7 dní",
+            "noRecentAchievements": "Za posledných 7 dní si neodomkol žiadny nový achievement.",
+            "keepPlaying": "Pokračuj v zápasoch a získavaj ďalšie odznaky!",
+            "viewAllAchievements": "Zobraziť všetky achievementy",
+            "latestEarned": "Posledné získané achievementy",
+            "bettingStats": "Prehľad stávkovania",
+            "availableBalance": "Dostupný zostatok",
+            "activeBets": "Aktívne tikety",
+            "viewBetsArchive": "Otvoriť archív stávok",
+            "accountLinked": "Prepojený hráč v lige",
+            "accountNotLinked": "Tento účet zatiaľ nie je priradený ku konkrétnemu hráčovi v lige."
+        },
+        "bets": {
+            "title": "Archív mojich stávok",
+            "subtitle": "História a stav všetkých tvojich tiketov",
+            "filterAll": "Všetky",
+            "filterWon": "Výherné",
+            "filterLost": "Prehraté",
+            "filterPending": "Nevyhodnotené",
+            "filterCancelled": "Zrušené",
+            "legsCount": "{{count}} tipov",
+            "legsCount_1": "1 tip",
+            "legsCount_2": "{{count}} tipy",
+            "legsCount_3": "{{count}} tipy",
+            "legsCount_4": "{{count}} tipy",
+            "totalOdds": "Celkový kurz",
+            "stake": "Vklad",
+            "profit": "Zisk / Strata",
+            "placedOn": "Podané",
+            "noBetsFound": "Nenašli sa žiadne stávky zodpovedajúce filtru."
+        },
+        "achievements": {
+            "title": "Moje achievementy",
+            "subtitle": "Kompletný zoznam a progres tvojich odznakov",
+            "searchPlaceholder": "Hľadať achievement...",
+            "filterAll": "Všetky",
+            "filterEarned": "Odomknuté",
+            "filterRecent": "Nové (posledných 7 dní)",
+            "filterLocked": "Zamknuté",
+            "level": "Úroveň {{level}}",
+            "progress": "Progres",
+            "completed": "Dosiahnutá maximálna úroveň",
+            "history": "História získaní",
+            "noMatches": "Nenašli sa žiadne vyhovujúce achievementy."
+        },
+        "settings": {
+            "appearanceTitle": "Vzhľad aplikácie",
+            "appearanceSubtitle": "Vyber si preferovaný farebný motív",
+            "themeDark": "Tmavý režim",
+            "themeDarkDesc": "Elegantný tmavý štýl šetrný k očiam",
+            "themeLight": "Svetlý režim",
+            "themeLightDesc": "Jasný a kontrastný denný štýl",
+            "languageTitle": "Jazyk aplikácie",
+            "languageSubtitle": "Zvoľ si jazyk rozhrania",
+            "securityTitle": "Zmena hesla",
+            "securitySubtitle": "Aktualizuj svoje prihlasovacie heslo",
+            "newPasswordLength": "Nové heslo musí mať aspoň 6 znakov",
+            "passwordsDoNotMatch": "Nové heslá sa nezhodujú",
+            "passwordChangedSuccess": "Heslo bolo úspešne zmenené",
+            "sessionTitle": "Prihlásená relácia",
+            "sessionSubtitle": "Odhlásenie z tohto zariadenia",
+            "logoutButton": "Odhlásiť sa z účtu",
+            "confirmLogoutTitle": "Potvrdenie odhlásenia",
+            "confirmLogoutText": "Naozaj sa chceš odhlásiť zo svojho účtu?"
+        }
     }
 }

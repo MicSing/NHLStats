@@ -3,11 +3,11 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
-import { AdminProtectedRoute } from './components/ProtectedRoute'
+import ProtectedRoute, { AdminProtectedRoute } from './components/ProtectedRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
+import ProfilePage from './pages/ProfilePage'
 import UsersPage from './pages/admin/UsersPage'
 import SeasonManagementPage from './pages/admin/SeasonManagementPage'
 import PointReasonsPage from './pages/admin/PointReasonsPage'
@@ -38,7 +38,8 @@ function App() {
                 {/* Public routes — top navigation bar */}
                 <Route element={<PublicLayout />}>
                   <Route path="/login" element={<LoginPage />} />
-                  <Route path="/change-password" element={<ChangePasswordPage />} />
+                  <Route path="/change-password" element={<Navigate to="/profile?tab=settings" replace />} />
+                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/earnings" element={<FinancePage />} />
                   <Route path="/betting" element={<BettingPage />} />

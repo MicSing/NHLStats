@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CaretDownIcon, CaretLeftIcon, CaretRightIcon, KeyIcon, SignOutIcon } from '@phosphor-icons/react'
+import { CaretDownIcon, CaretLeftIcon, CaretRightIcon, GearSixIcon, SignOutIcon } from '@phosphor-icons/react'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
+import { cacheService } from '../services/cacheService'
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavGroups, adminTopNavItems, type NavGroup } from '../config/navConfig'
@@ -85,7 +86,29 @@ export default function PublicLayout() {
     const toggleGroup = (key: string) =>
         setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))
 
-    const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : 'U'
+    const [hasRecentAchievements, setHasRecentAchievements] = useState(false)
+
+    useEffect(() => {
+        if (!user?.userId) {
+            setHasRecentAchievements(false)
+            return
+        }
+        cacheService.getAchievements(user.userId).then((res) => {
+            const hasNew = res.achievements?.some((a) =>
+                a.earned && a.occurrences.some((occ) => {
+                    if (!occ.occurredOn) return false
+                    return new Date(occ.occurredOn) >= new Date(Date.now() - 7 * 86_400_000)
+                })
+            ) ?? false
+            setHasRecentAchievements(hasNew)
+        }).catch(() => { /* silent */ })
+    }, [user?.userId])
+
+    const initials = user?.alias
+        ? user.alias.slice(0, 2).toUpperCase()
+        : user?.email
+            ? user.email.slice(0, 2).toUpperCase()
+            : 'U'
 
     const sidebarContent = (
         <div className="flex flex-col h-full">
@@ -220,19 +243,26 @@ export default function PublicLayout() {
                 {isAuthenticated ? (
                     sidebarCollapsed ? (
                         <div className="flex flex-col items-center gap-2 py-1">
-                            <div
-                                className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 cursor-default"
-                                title={user?.email ?? undefined}
-                            >
-                                {initials}
-                            </div>
                             <NavLink
-                                to="/change-password"
+                                to="/profile"
+                                onClick={closeSidebar}
+                                className="relative flex items-center justify-center cursor-pointer"
+                                title={t('profile.title')}
+                            >
+                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 hover:ring-2 hover:ring-primary/50 transition-all">
+                                    {initials}
+                                </div>
+                                {hasRecentAchievements && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-surface animate-pulse" />
+                                )}
+                            </NavLink>
+                            <NavLink
+                                to="/profile?tab=settings"
                                 onClick={closeSidebar}
                                 className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
-                                title={t('common.changePassword')}
+                                title={t('profile.tabs.settings')}
                             >
-                                <KeyIcon size={14} />
+                                <GearSixIcon size={14} />
                             </NavLink>
                             <button
                                 onClick={() => { logout(); closeSidebar() }}
@@ -244,34 +274,44 @@ export default function PublicLayout() {
                         </div>
                     ) : (
                         <div className="bg-bg rounded-xl p-3 border border-border">
-                            <div className="flex items-center gap-2.5 mb-2.5">
-                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0">
+                            <NavLink
+                                to="/profile"
+                                onClick={closeSidebar}
+                                className="flex items-center gap-2.5 mb-2.5 p-1 -m-1 rounded-lg hover:bg-surface/80 transition-colors group cursor-pointer"
+                                title={t('profile.title')}
+                            >
+                                <div className="relative w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:ring-2 group-hover:ring-primary/40 transition-all">
                                     {initials}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-text truncate">{user?.email}</p>
-                                    {isAdmin && (
-                                        <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">
-                                            {t('layout.adminPanel')}
-                                        </p>
+                                    {hasRecentAchievements && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-bg animate-pulse" />
                                     )}
                                 </div>
-                            </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
+                                        {user?.alias || user?.email}
+                                    </p>
+                                    <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight">
+                                        {isAdmin ? t('layout.adminPanel') : t('profile.title')}
+                                    </p>
+                                </div>
+                            </NavLink>
                             <div className="grid grid-cols-2 gap-2">
                                 <NavLink
-                                    to="/change-password"
+                                    to="/profile?tab=settings"
                                     onClick={closeSidebar}
-                                    className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
-                                    title={t('common.changePassword')}
+                                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200 text-xs"
+                                    title={t('profile.tabs.settings')}
                                 >
-                                    <KeyIcon size={14} />
+                                    <GearSixIcon size={14} />
+                                    <span className="text-[11px] font-medium">{t('profile.tabs.settings')}</span>
                                 </NavLink>
                                 <button
                                     onClick={() => { logout(); closeSidebar() }}
-                                    className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 text-xs"
                                     title={t('layout.logout')}
                                 >
                                     <SignOutIcon size={14} />
+                                    <span className="text-[11px] font-medium">{t('layout.logout')}</span>
                                 </button>
                             </div>
                         </div>

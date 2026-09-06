@@ -110,7 +110,7 @@ interface ModalProps {
     onClose: () => void
 }
 
-function AchievementModal({ def, result, onClose }: ModalProps) {
+export function AchievementModal({ def, result, onClose }: ModalProps) {
     const { t } = useTranslation()
     const currentLevel = result?.level ?? 0
     const [viewLevel, setViewLevel] = useState(Math.max(1, currentLevel))
