@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
     UserCircleIcon,
@@ -21,19 +21,17 @@ import ProfileSettingsTab from '../components/profile/ProfileSettingsTab'
 
 type ProfileTab = 'overview' | 'bets' | 'achievements' | 'settings'
 
-function isRecent(date: string | null, days = 7): boolean {
-    if (!date) return false
-    return new Date(date) >= new Date(Date.now() - days * 86_400_000)
-}
-
 export default function ProfilePage() {
     const { t } = useTranslation()
-    const { user } = useAuth()
+    const { user, isAuthenticated } = useAuth()
     const [searchParams, setSearchParams] = useSearchParams()
 
-    const activeTab = (searchParams.get('tab') as ProfileTab) || 'overview'
+    const activeTab = isAuthenticated
+        ? ((searchParams.get('tab') as ProfileTab) || 'overview')
+        : 'settings'
 
     const setTab = (tab: ProfileTab) => {
+        if (!isAuthenticated) return
         setSearchParams({ tab })
     }
 
@@ -79,76 +77,112 @@ export default function ProfilePage() {
         }
     }, [user?.userId])
 
-    // Check if user has new achievements in last 7 days
-    const hasRecentAchievements = achievements.some((a) =>
-        a.earned && a.occurrences.some((occ) => isRecent(occ.occurredOn))
-    )
+    const [achievementsViewed, setAchievementsViewed] = useState(false)
 
-    const tabs = [
-        {
-            id: 'overview' as ProfileTab,
-            label: t('profile.tabs.overview'),
-            icon: UserCircleIcon,
-            hasBadge: hasRecentAchievements,
-        },
-        {
-            id: 'bets' as ProfileTab,
-            label: t('profile.tabs.bets'),
-            icon: ReceiptIcon,
-        },
-        {
-            id: 'achievements' as ProfileTab,
-            label: t('profile.tabs.achievements'),
-            icon: TrophyIcon,
-            hasBadge: hasRecentAchievements,
-        },
-        {
-            id: 'settings' as ProfileTab,
-            label: t('profile.tabs.settings'),
-            icon: GearSixIcon,
-        },
-    ]
+    useEffect(() => {
+        if (user?.userId && activeTab === 'achievements') {
+            localStorage.setItem(`nhl_achievements_last_viewed_${user.userId}`, new Date().toISOString())
+            window.dispatchEvent(new Event('achievements-viewed'))
+            setAchievementsViewed(true)
+        }
+    }, [user?.userId, activeTab])
+
+    // Check if user has new achievements in last 7 days that haven't been viewed
+    const hasRecentAchievements = !achievementsViewed && achievements.some((a) => {
+        const lastViewedStr = localStorage.getItem(`nhl_achievements_last_viewed_${user?.userId}`)
+        const lastViewedTime = lastViewedStr ? new Date(lastViewedStr).getTime() : 0
+        const cutoffTime = Math.max(Date.now() - 7 * 86_400_000, lastViewedTime)
+        return a.earned && a.occurrences.some((occ) => {
+            if (!occ.occurredOn) return false
+            return new Date(occ.occurredOn).getTime() > cutoffTime
+        })
+    })
+
+    const tabs = isAuthenticated
+        ? [
+            {
+                id: 'overview' as ProfileTab,
+                label: t('profile.tabs.overview'),
+                icon: UserCircleIcon,
+                hasBadge: hasRecentAchievements,
+            },
+            {
+                id: 'bets' as ProfileTab,
+                label: t('profile.tabs.bets'),
+                icon: ReceiptIcon,
+            },
+            {
+                id: 'achievements' as ProfileTab,
+                label: t('profile.tabs.achievements'),
+                icon: TrophyIcon,
+                hasBadge: hasRecentAchievements,
+            },
+            {
+                id: 'settings' as ProfileTab,
+                label: t('profile.tabs.settings'),
+                icon: GearSixIcon,
+            },
+        ]
+        : [
+            {
+                id: 'settings' as ProfileTab,
+                label: t('profile.tabs.settings'),
+                icon: GearSixIcon,
+            },
+        ]
 
     return (
         <div className="container mx-auto px-3 sm:px-4 py-6 max-w-6xl space-y-6">
             {/* Page Header */}
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-text">
-                    {t('profile.title')}
-                </h1>
-                <p className="text-xs sm:text-sm text-text-muted mt-1">
-                    {t('profile.subtitle')}
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-text">
+                        {isAuthenticated ? t('profile.title') : t('profile.guestTitle')}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-text-muted mt-1">
+                        {isAuthenticated ? t('profile.subtitle') : t('profile.guestSubtitle')}
+                    </p>
+                </div>
+                {!isAuthenticated && (
+                    <Link
+                        to="/login"
+                        className="btn-primary text-xs sm:text-sm self-start sm:self-center shrink-0"
+                    >
+                        {t('layout.signIn')}
+                    </Link>
+                )}
             </div>
 
-            {/* Navigation Tabs Bar */}
-            <div className="flex items-center gap-1 sm:gap-2 border-b border-border overflow-x-auto pb-px no-scrollbar">
-                {tabs.map((tab) => {
-                    const Icon = tab.icon
-                    const isActive = activeTab === tab.id
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setTab(tab.id)}
-                            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap relative cursor-pointer ${
-                                isActive
-                                    ? 'border-primary text-primary font-semibold'
-                                    : 'border-transparent text-text-muted hover:text-text hover:border-border'
-                            }`}
-                        >
-                            <Icon size={18} />
-                            <span>{tab.label}</span>
-                            {tab.hasBadge && (
-                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                            )}
-                        </button>
-                    )
-                })}
-            </div>
+            {/* Navigation Tabs Bar - only when authenticated */}
+            {isAuthenticated && (
+                <div className="flex items-center gap-1 sm:gap-2 border-b border-border overflow-x-auto pb-px no-scrollbar">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon
+                        const isActive = activeTab === tab.id
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setTab(tab.id)}
+                                className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap relative cursor-pointer ${
+                                    isActive
+                                        ? 'border-primary text-primary font-semibold'
+                                        : 'border-transparent text-text-muted hover:text-text hover:border-border'
+                                }`}
+                            >
+                                <Icon size={18} />
+                                <span>{tab.label}</span>
+                                {tab.hasBadge && (
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                                )}
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
 
             {/* Tab Contents */}
             <div>
-                {activeTab === 'overview' && (
+                {activeTab === 'overview' && isAuthenticated && (
                     <ProfileOverviewTab
                         user={user}
                         playerName={playerName}
@@ -162,9 +196,9 @@ export default function ProfilePage() {
                     />
                 )}
 
-                {activeTab === 'bets' && <ProfileBetsTab />}
+                {activeTab === 'bets' && isAuthenticated && <ProfileBetsTab />}
 
-                {activeTab === 'achievements' && (
+                {activeTab === 'achievements' && isAuthenticated && (
                     <ProfileAchievementsTab
                         achievements={achievements}
                         onOpenAchievementModal={(def, result) =>

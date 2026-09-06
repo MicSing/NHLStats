@@ -84,18 +84,23 @@ vi.mock('../services/bettingService', () => ({
     },
 }))
 
-function renderProfilePage(initialTab = 'overview') {
-    localStorage.setItem('token', 'fake-jwt-token')
-    localStorage.setItem(
-        'user',
-        JSON.stringify({
-            id: 'u-1',
-            email: 'user@test.com',
-            alias: 'Tester',
-            userId: 1,
-            roles: ['Player'],
-        })
-    )
+function renderProfilePage(initialTab = 'overview', authenticated = true) {
+    if (authenticated) {
+        localStorage.setItem('token', 'fake-jwt-token')
+        localStorage.setItem(
+            'user',
+            JSON.stringify({
+                id: 'u-1',
+                email: 'user@test.com',
+                alias: 'Tester',
+                userId: 1,
+                roles: ['Player'],
+            })
+        )
+    } else {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+    }
 
     return render(
         <ThemeProvider>
@@ -161,5 +166,19 @@ describe('ProfilePage', () => {
         await waitFor(() => {
             expect(screen.getByPlaceholderText(/Hľadať|Search/i)).toBeDefined()
         })
+    })
+
+    test('unauthenticated guest sees only settings tab with theme and language, without password form', async () => {
+        renderProfilePage('overview', false)
+
+        await waitFor(() => {
+            expect(screen.getByText('Slovenčina')).toBeDefined()
+            expect(screen.getByText('English')).toBeDefined()
+        })
+
+        // Password form should not be present
+        expect(screen.queryByPlaceholderText('••••••••')).toBeNull()
+        // No overview tab
+        expect(screen.queryByText('Michal Hráč')).toBeNull()
     })
 })

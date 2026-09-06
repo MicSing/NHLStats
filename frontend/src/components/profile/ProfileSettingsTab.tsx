@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
     MoonIcon,
@@ -20,7 +20,7 @@ import Modal from '../Modal'
 
 export default function ProfileSettingsTab() {
     const { t, i18n } = useTranslation()
-    const { logout } = useAuth()
+    const { isAuthenticated, logout } = useAuth()
     const { theme, toggleTheme } = useTheme()
     const toast = useToast()
     const navigate = useNavigate()
@@ -236,135 +236,157 @@ export default function ProfileSettingsTab() {
                 </div>
             </div>
 
-            {/* ─── Change Password ────────────────────────────────────────── */}
-            <div className="card p-5 border-border">
-                <div className="mb-4">
-                    <div className="flex items-center gap-2">
-                        <LockKeyIcon size={18} className="text-primary" />
-                        <h3 className="text-base font-bold text-text">
-                            {t('profile.settings.securityTitle')}
-                        </h3>
-                    </div>
-                    <p className="text-xs text-text-muted mt-0.5">
-                        {t('profile.settings.securitySubtitle')}
-                    </p>
-                </div>
+            {/* ─── Change Password & Session (Authenticated Only) ─────── */}
+            {isAuthenticated ? (
+                <>
+                    <div className="card p-5 border-border">
+                        <div className="mb-4">
+                            <div className="flex items-center gap-2">
+                                <LockKeyIcon size={18} className="text-primary" />
+                                <h3 className="text-base font-bold text-text">
+                                    {t('profile.settings.securityTitle')}
+                                </h3>
+                            </div>
+                            <p className="text-xs text-text-muted mt-0.5">
+                                {t('profile.settings.securitySubtitle')}
+                            </p>
+                        </div>
 
-                {passwordSuccess && (
-                    <div className="p-3 mb-4 rounded-lg bg-success/20 border border-success/40 text-success text-xs flex items-center gap-2">
-                        <CheckCircleIcon size={16} weight="fill" className="shrink-0" />
-                        <span>{passwordSuccess}</span>
-                    </div>
-                )}
+                        {passwordSuccess && (
+                            <div className="p-3 mb-4 rounded-lg bg-success/20 border border-success/40 text-success text-xs flex items-center gap-2">
+                                <CheckCircleIcon size={16} weight="fill" className="shrink-0" />
+                                <span>{passwordSuccess}</span>
+                            </div>
+                        )}
 
-                {passwordError && (
-                    <div className="p-3 mb-4 rounded-lg bg-danger/20 border border-danger/40 text-danger text-xs flex items-center gap-2">
-                        <WarningCircleIcon size={16} weight="fill" className="shrink-0" />
-                        <span>{passwordError}</span>
-                    </div>
-                )}
+                        {passwordError && (
+                            <div className="p-3 mb-4 rounded-lg bg-danger/20 border border-danger/40 text-danger text-xs flex items-center gap-2">
+                                <WarningCircleIcon size={16} weight="fill" className="shrink-0" />
+                                <span>{passwordError}</span>
+                            </div>
+                        )}
 
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                    <div>
-                        <label className="label text-xs">
-                            {t('changePassword.currentPassword')}
-                        </label>
-                        <div className="relative">
-                            <input
-                                type={showCurrentPassword ? 'text' : 'password'}
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                required
-                                disabled={loadingPassword}
-                                className="input pr-10 text-xs sm:text-sm"
-                                placeholder="••••••••"
-                            />
+                        <form onSubmit={handlePasswordChange} className="space-y-4">
+                            <div>
+                                <label className="label text-xs">
+                                    {t('changePassword.currentPassword')}
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showCurrentPassword ? 'text' : 'password'}
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        required
+                                        disabled={loadingPassword}
+                                        className="input pr-10 text-xs sm:text-sm"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCurrentPassword((prev) => !prev)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+                                    >
+                                        {showCurrentPassword ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="label text-xs">
+                                        {t('changePassword.newPassword')}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            required
+                                            disabled={loadingPassword}
+                                            className="input pr-10 text-xs sm:text-sm"
+                                            placeholder="••••••••"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPassword((prev) => !prev)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+                                        >
+                                            {showNewPassword ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="label text-xs">
+                                        {t('changePassword.confirmPassword')}
+                                    </label>
+                                    <input
+                                        type={showNewPassword ? 'text' : 'password'}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        required
+                                        disabled={loadingPassword}
+                                        className="input text-xs sm:text-sm"
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={loadingPassword}
+                                    className="btn-primary text-xs sm:text-sm flex items-center gap-2"
+                                >
+                                    {loadingPassword && <LoadingSpinner size="sm" />}
+                                    <span>{t('changePassword.title')}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* ─── Session / Logout ────────────────────────────────────────── */}
+                    <div className="card p-5 border-border">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-base font-bold text-text">
+                                    {t('profile.settings.sessionTitle')}
+                                </h3>
+                                <p className="text-xs text-text-muted mt-0.5">
+                                    {t('profile.settings.sessionSubtitle')}
+                                </p>
+                            </div>
+
                             <button
                                 type="button"
-                                onClick={() => setShowCurrentPassword((prev) => !prev)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+                                onClick={() => setIsLogoutModalOpen(true)}
+                                className="btn-danger text-xs sm:text-sm flex items-center gap-2 self-start sm:self-center"
                             >
-                                {showCurrentPassword ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
+                                <SignOutIcon size={16} />
+                                <span>{t('profile.settings.logoutButton')}</span>
                             </button>
                         </div>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label className="label text-xs">
-                                {t('changePassword.newPassword')}
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showNewPassword ? 'text' : 'password'}
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    required
-                                    disabled={loadingPassword}
-                                    className="input pr-10 text-xs sm:text-sm"
-                                    placeholder="••••••••"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowNewPassword((prev) => !prev)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
-                                >
-                                    {showNewPassword ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="label text-xs">
-                                {t('changePassword.confirmPassword')}
-                            </label>
-                            <input
-                                type={showNewPassword ? 'text' : 'password'}
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                required
-                                disabled={loadingPassword}
-                                className="input text-xs sm:text-sm"
-                                placeholder="••••••••"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-2">
-                        <button
-                            type="submit"
-                            disabled={loadingPassword}
-                            className="btn-primary text-xs sm:text-sm flex items-center gap-2"
-                        >
-                            {loadingPassword && <LoadingSpinner size="sm" />}
-                            <span>{t('changePassword.title')}</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            {/* ─── Session / Logout ────────────────────────────────────────── */}
-            <div className="card p-5 border-border">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                </>
+            ) : (
+                <div className="card p-5 border-border bg-surface/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h3 className="text-base font-bold text-text">
-                            {t('profile.settings.sessionTitle')}
+                            {t('profile.settings.loginPromptTitle')}
                         </h3>
                         <p className="text-xs text-text-muted mt-0.5">
-                            {t('profile.settings.sessionSubtitle')}
+                            {t('profile.settings.loginPromptSubtitle')}
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={() => setIsLogoutModalOpen(true)}
-                        className="btn-danger text-xs sm:text-sm flex items-center gap-2 self-start sm:self-center"
+                    <Link
+                        to="/login"
+                        className="btn-primary text-xs sm:text-sm self-start sm:self-center shrink-0"
                     >
-                        <SignOutIcon size={16} />
-                        <span>{t('profile.settings.logoutButton')}</span>
-                    </button>
+                        {t('layout.signIn')}
+                    </Link>
                 </div>
-            </div>
+            )}
 
             {/* Logout Confirm Modal */}
             {isLogoutModalOpen && (

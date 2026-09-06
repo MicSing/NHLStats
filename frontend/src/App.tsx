@@ -3,7 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
-import ProtectedRoute, { AdminProtectedRoute } from './components/ProtectedRoute'
+import { AdminProtectedRoute } from './components/ProtectedRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
@@ -39,7 +39,7 @@ function App() {
                 <Route element={<PublicLayout />}>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/change-password" element={<Navigate to="/profile?tab=settings" replace />} />
-                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/earnings" element={<FinancePage />} />
                   <Route path="/betting" element={<BettingPage />} />

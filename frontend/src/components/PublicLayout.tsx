@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CaretDownIcon, CaretLeftIcon, CaretRightIcon, GearSixIcon, SignOutIcon } from '@phosphor-icons/react'
+import { CaretDownIcon, CaretLeftIcon, CaretRightIcon, GearSixIcon, SignOutIcon, TrophyIcon } from '@phosphor-icons/react'
 import { useAuth, useIsAdmin } from '../context/AuthContext'
 import { cacheService } from '../services/cacheService'
-import ThemeToggle from './ThemeToggle'
-import LanguageSwitcher from './LanguageSwitcher'
 import { publicNavItems, adminNavGroups, adminTopNavItems, type NavGroup } from '../config/navConfig'
 
 function AccordionGroup({
@@ -89,19 +87,37 @@ export default function PublicLayout() {
     const [hasRecentAchievements, setHasRecentAchievements] = useState(false)
 
     useEffect(() => {
-        if (!user?.userId) {
+        const userId = user?.userId
+        if (!userId) {
             setHasRecentAchievements(false)
             return
         }
-        cacheService.getAchievements(user.userId).then((res) => {
-            const hasNew = res.achievements?.some((a) =>
-                a.earned && a.occurrences.some((occ) => {
-                    if (!occ.occurredOn) return false
-                    return new Date(occ.occurredOn) >= new Date(Date.now() - 7 * 86_400_000)
-                })
-            ) ?? false
-            setHasRecentAchievements(hasNew)
-        }).catch(() => { /* silent */ })
+
+        const checkNewAchievements = () => {
+            cacheService.getAchievements(userId).then((res) => {
+                const lastViewedStr = localStorage.getItem(`nhl_achievements_last_viewed_${userId}`)
+                const lastViewedTime = lastViewedStr ? new Date(lastViewedStr).getTime() : 0
+                const cutoffTime = Math.max(Date.now() - 7 * 86_400_000, lastViewedTime)
+
+                const hasNew = res.achievements?.some((a) =>
+                    a.earned && a.occurrences.some((occ) => {
+                        if (!occ.occurredOn) return false
+                        return new Date(occ.occurredOn).getTime() > cutoffTime
+                    })
+                ) ?? false
+                setHasRecentAchievements(hasNew)
+            }).catch(() => { /* silent */ })
+        }
+
+        checkNewAchievements()
+
+        const handleViewed = () => {
+            setHasRecentAchievements(false)
+        }
+        window.addEventListener('achievements-viewed', handleViewed)
+        return () => {
+            window.removeEventListener('achievements-viewed', handleViewed)
+        }
     }, [user?.userId])
 
     const initials = user?.alias
@@ -233,107 +249,145 @@ export default function PublicLayout() {
 
             {/* Footer */}
             <div className={`shrink-0 border-t border-border mt-auto ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
-                {!sidebarCollapsed && (
-                    <div className="flex items-center gap-2 px-1 mb-3">
-                        <ThemeToggle />
-                        <LanguageSwitcher />
-                    </div>
-                )}
-
                 {isAuthenticated ? (
                     sidebarCollapsed ? (
                         <div className="flex flex-col items-center gap-2 py-1">
                             <NavLink
-                                to="/profile"
+                                to={hasRecentAchievements ? '/profile?tab=achievements' : '/profile'}
                                 onClick={closeSidebar}
-                                className="relative flex items-center justify-center cursor-pointer"
-                                title={t('profile.title')}
+                                className="relative flex items-center justify-center cursor-pointer group"
+                                title={hasRecentAchievements ? t('profile.achievements.newAchievementBadge') : t('profile.title')}
                             >
-                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 hover:ring-2 hover:ring-primary/50 transition-all">
+                                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:ring-2 group-hover:ring-primary/50 transition-all">
                                     {initials}
                                 </div>
                                 {hasRecentAchievements && (
-                                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-surface animate-pulse" />
+                                    <span
+                                        data-testid="achievement-badge-collapsed"
+                                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-surface animate-bounce"
+                                        title={t('profile.achievements.newAchievementBadge')}
+                                    >
+                                        <TrophyIcon size={10} weight="fill" />
+                                    </span>
                                 )}
-                            </NavLink>
-                            <NavLink
-                                to="/profile?tab=settings"
-                                onClick={closeSidebar}
-                                className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
-                                title={t('profile.tabs.settings')}
-                            >
-                                <GearSixIcon size={14} />
                             </NavLink>
                             <button
                                 onClick={() => { logout(); closeSidebar() }}
                                 className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
                                 title={t('layout.logout')}
+                                aria-label={t('layout.logout')}
                             >
                                 <SignOutIcon size={14} />
                             </button>
                         </div>
                     ) : (
-                        <div className="bg-bg rounded-xl p-3 border border-border">
+                        <div className="bg-bg rounded-xl p-2.5 border border-border flex items-center justify-between gap-2">
                             <NavLink
-                                to="/profile"
+                                to={hasRecentAchievements ? '/profile?tab=achievements' : '/profile'}
                                 onClick={closeSidebar}
-                                className="flex items-center gap-2.5 mb-2.5 p-1 -m-1 rounded-lg hover:bg-surface/80 transition-colors group cursor-pointer"
-                                title={t('profile.title')}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-2.5 min-w-0 flex-1 p-1 -m-0.5 rounded-lg transition-colors group cursor-pointer ${
+                                        isActive ? 'bg-surface/80' : 'hover:bg-surface/80'
+                                    }`
+                                }
+                                title={hasRecentAchievements ? t('profile.achievements.newAchievementBadge') : t('profile.title')}
                             >
                                 <div className="relative w-8 h-8 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs shrink-0 group-hover:ring-2 group-hover:ring-primary/40 transition-all">
                                     {initials}
                                     {hasRecentAchievements && (
-                                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-bg animate-pulse" />
+                                        <span
+                                            data-testid="achievement-badge"
+                                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-md ring-2 ring-bg animate-bounce"
+                                            title={t('profile.achievements.newAchievementBadge')}
+                                        >
+                                            <TrophyIcon size={10} weight="fill" />
+                                        </span>
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
-                                        {user?.alias || user?.email}
-                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
+                                            {user?.alias || user?.email}
+                                        </p>
+                                        {hasRecentAchievements && (
+                                            <span title={t('profile.achievements.newAchievementBadge')} className="inline-flex items-center">
+                                                <TrophyIcon
+                                                    data-testid="achievement-nav-icon"
+                                                    size={13}
+                                                    weight="fill"
+                                                    className="text-amber-400 shrink-0 animate-pulse"
+                                                />
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight">
                                         {isAdmin ? t('layout.adminPanel') : t('profile.title')}
                                     </p>
                                 </div>
                             </NavLink>
-                            <div className="grid grid-cols-2 gap-2">
-                                <NavLink
-                                    to="/profile?tab=settings"
-                                    onClick={closeSidebar}
-                                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200 text-xs"
-                                    title={t('profile.tabs.settings')}
-                                >
-                                    <GearSixIcon size={14} />
-                                    <span className="text-[11px] font-medium">{t('profile.tabs.settings')}</span>
-                                </NavLink>
-                                <button
-                                    onClick={() => { logout(); closeSidebar() }}
-                                    className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 text-xs"
-                                    title={t('layout.logout')}
-                                >
-                                    <SignOutIcon size={14} />
-                                    <span className="text-[11px] font-medium">{t('layout.logout')}</span>
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => { logout(); closeSidebar() }}
+                                className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 shrink-0"
+                                title={t('layout.logout')}
+                                aria-label={t('layout.logout')}
+                            >
+                                <SignOutIcon size={16} />
+                            </button>
                         </div>
                     )
                 ) : (
                     sidebarCollapsed ? (
-                        <NavLink
-                            to="/login"
-                            onClick={closeSidebar}
-                            className="flex items-center justify-center w-8 h-8 mx-auto rounded-lg bg-primary text-white hover:bg-primary/90 transition-all duration-200"
-                            title={t('layout.signIn')}
-                        >
-                            <SignOutIcon size={14} className="rotate-180" />
-                        </NavLink>
+                        <div className="flex flex-col items-center gap-2 py-1">
+                            <NavLink
+                                to="/profile"
+                                onClick={closeSidebar}
+                                className="flex items-center justify-center p-2 rounded-lg bg-surface text-text-muted hover:text-text hover:bg-border transition-all duration-200"
+                                title={t('profile.tabs.settings')}
+                            >
+                                <GearSixIcon size={16} />
+                            </NavLink>
+                            <NavLink
+                                to="/login"
+                                onClick={closeSidebar}
+                                className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all duration-200"
+                                title={t('layout.signIn')}
+                            >
+                                <SignOutIcon size={14} className="rotate-180" />
+                            </NavLink>
+                        </div>
                     ) : (
-                        <NavLink
-                            to="/login"
-                            onClick={closeSidebar}
-                            className="block w-full text-center btn-primary text-sm"
-                        >
-                            {t('layout.signIn')}
-                        </NavLink>
+                        <div className="bg-bg rounded-xl p-2.5 border border-border flex items-center justify-between gap-2">
+                            <NavLink
+                                to="/profile"
+                                onClick={closeSidebar}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-2.5 min-w-0 flex-1 p-1 -m-0.5 rounded-lg transition-colors group cursor-pointer ${
+                                        isActive ? 'bg-surface/80' : 'hover:bg-surface/80'
+                                    }`
+                                }
+                                title={t('profile.tabs.settings')}
+                            >
+                                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center font-bold text-text-muted text-xs shrink-0 group-hover:border-primary/50 group-hover:text-primary transition-all">
+                                    <GearSixIcon size={15} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
+                                        {t('profile.tabs.settings')}
+                                    </p>
+                                    <p className="text-[10px] text-text-muted uppercase font-semibold tracking-tight">
+                                        {t('profile.guestRole')}
+                                    </p>
+                                </div>
+                            </NavLink>
+                            <NavLink
+                                to="/login"
+                                onClick={closeSidebar}
+                                className="btn-primary text-xs px-2.5 py-1.5 rounded-lg shrink-0 font-medium"
+                                title={t('layout.signIn')}
+                            >
+                                {t('layout.signIn')}
+                            </NavLink>
+                        </div>
                     )
                 )}
             </div>
@@ -346,18 +400,55 @@ export default function PublicLayout() {
             <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface border-b border-border px-3 py-2.5 flex items-center justify-between">
                 <button
                     onClick={() => setSidebarOpen(true)}
-                    className="text-text-muted hover:text-text text-2xl leading-none p-1 -ml-1"
+                    className="relative text-text-muted hover:text-text text-2xl leading-none p-1 -ml-1"
                     aria-label={t('common.openMenu')}
                 >
                     ☰
+                    {hasRecentAchievements && (
+                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    )}
                 </button>
                 <span className="flex items-center gap-2 text-sm font-bold text-primary">
                     <img src="/favicon.png" alt="NHL Stats" className="w-6 h-6 rounded-md object-cover" />
                     NHL Stats
                 </span>
-                <div className="flex items-center gap-1.5">
-                    <ThemeToggle />
-                    <LanguageSwitcher />
+                <div className="flex items-center gap-2">
+                    {isAuthenticated ? (
+                        <NavLink
+                            to={hasRecentAchievements ? '/profile?tab=achievements' : '/profile'}
+                            className="relative flex items-center justify-center"
+                            title={hasRecentAchievements ? t('profile.achievements.newAchievementBadge') : t('profile.title')}
+                        >
+                            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center font-bold text-white text-[11px] shrink-0">
+                                {initials}
+                            </div>
+                            {hasRecentAchievements && (
+                                <span
+                                    data-testid="achievement-badge-mobile"
+                                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-md ring-1 ring-surface animate-bounce"
+                                    title={t('profile.achievements.newAchievementBadge')}
+                                >
+                                    <TrophyIcon size={8} weight="fill" />
+                                </span>
+                            )}
+                        </NavLink>
+                    ) : (
+                        <div className="flex items-center gap-1.5">
+                            <NavLink
+                                to="/profile"
+                                className="flex items-center justify-center p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-border transition-all"
+                                title={t('profile.tabs.settings')}
+                            >
+                                <GearSixIcon size={18} />
+                            </NavLink>
+                            <NavLink
+                                to="/login"
+                                className="btn-primary text-xs px-2.5 py-1 rounded-lg font-medium"
+                            >
+                                {t('layout.signIn')}
+                            </NavLink>
+                        </div>
+                    )}
                 </div>
             </div>
 

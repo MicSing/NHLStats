@@ -893,6 +893,9 @@
     "profile": {
         "title": "Môj profil",
         "subtitle": "Správa účtu, história stávok, odznaky a nastavenia",
+        "guestTitle": "Nastavenia",
+        "guestSubtitle": "Prispôsob si vzhľad a jazyk aplikácie",
+        "guestRole": "Hosť",
         "tabs": {
             "overview": "Prehľad",
             "bets": "Moje stávky",
@@ -944,7 +947,8 @@
             "progress": "Progres",
             "completed": "Dosiahnutá maximálna úroveň",
             "history": "História získaní",
-            "noMatches": "Nenašli sa žiadne vyhovujúce achievementy."
+            "noMatches": "Nenašli sa žiadne vyhovujúce achievementy.",
+            "newAchievementBadge": "Nový achievement!"
         },
         "settings": {
             "appearanceTitle": "Vzhľad aplikácie",
@@ -964,7 +968,9 @@
             "sessionSubtitle": "Odhlásenie z tohto zariadenia",
             "logoutButton": "Odhlásiť sa z účtu",
             "confirmLogoutTitle": "Potvrdenie odhlásenia",
-            "confirmLogoutText": "Naozaj sa chceš odhlásiť zo svojho účtu?"
+            "confirmLogoutText": "Naozaj sa chceš odhlásiť zo svojho účtu?",
+            "loginPromptTitle": "Máš účet v aplikácii?",
+            "loginPromptSubtitle": "Prihlás sa a získaj prístup k svojim tipom, štatistikám a achievementom."
         }
     }
 }
