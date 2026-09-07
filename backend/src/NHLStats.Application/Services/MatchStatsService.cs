@@ -512,25 +512,39 @@ public class MatchStatsService : IMatchStatsService
             .Select(g => new { SeasonId = g.Key, MatchCount = g.Count() })
             .ToDictionaryAsync(x => x.SeasonId, x => x.MatchCount);
 
+        var allUsers = await _db.Users
+            .AsNoTracking()
+            .ToDictionaryAsync(u => u.Id, u => u.Name ?? $"User {u.Id}");
+
         return allSeasons.Select(season =>
         {
             var seasonMatches = userMatches.Where(um => um.SeasonId == season.Id);
             var aggregatedDataForSeason = aggregatedData.Where(a => a.SeasonId == season.Id).ToList();
-            var totalMatchesInSeason = totalMatches.TryGetValue(season.Id, out var count) ? count : 0;
+            var totalMatchesInSeason = totalMatches.TryGetValue(season.Id, out var count)
+                ? count
+                : (aggregatedDataForSeason.Count > 0 ? aggregatedDataForSeason.Max(a => a.MatchesPlayed) : 0);
 
-            var userData = season.SeasonUsers.Select(su =>
+            var seasonUserIds = season.SeasonUsers.Select(su => su.UserId)
+                .Union(aggregatedDataForSeason.Select(a => a.UserId))
+                .Union(seasonMatches.Select(um => um.UserId))
+                .Distinct()
+                .OrderBy(id => id);
+
+            var userData = seasonUserIds.Select(userId =>
             {
-                var userSeasonMatches = seasonMatches.Where(um => um.UserId == su.UserId);
-                var aggregatedDataForUser = aggregatedDataForSeason.FirstOrDefault(a => a.UserId == su.UserId);
+                var userSeasonMatches = seasonMatches.Where(um => um.UserId == userId);
+                var aggregatedDataForUser = aggregatedDataForSeason.FirstOrDefault(a => a.UserId == userId);
 
                 var points = userSeasonMatches.SelectMany(um => um.Points);
                 var totals = StatsCalculationHelpers.GetTotalsFromPoints(points);
 
-                var totalPlus = aggregatedDataForUser?.TotalPlus ?? 0 + totals.plus;
-                var totalMinus = aggregatedDataForUser?.TotalMinus ?? 0 + totals.minus;
-                var matchesPlayed = aggregatedDataForUser?.MatchesPlayed ?? 0 + userSeasonMatches.Select(um => um.MatchId).Distinct().Count();
+                var totalPlus = (aggregatedDataForUser?.TotalPlus ?? 0) + totals.plus;
+                var totalMinus = (aggregatedDataForUser?.TotalMinus ?? 0) + totals.minus;
+                var matchesPlayed = (aggregatedDataForUser?.MatchesPlayed ?? 0) + userSeasonMatches.Select(um => um.MatchId).Distinct().Count();
 
-                return new UserPeriodPlusMinusDto(su.UserId, su.User?.Name ?? "", totalPlus, totalMinus, matchesPlayed);
+                var name = allUsers.TryGetValue(userId, out var userName) ? userName : $"User {userId}";
+
+                return new UserPeriodPlusMinusDto(userId, name, totalPlus, totalMinus, matchesPlayed);
             }).ToList();
 
             return new PeriodPlusMinusDto(season.Name, userData, totalMatchesInSeason);
