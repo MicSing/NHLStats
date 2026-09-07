@@ -158,12 +158,28 @@ public class AchievementService : IAchievementService
                      && p.UserMatch.Match.CompletionType != CompletionType.InProgress)
             .Select(p => new
             {
-                MatchId    = p.UserMatch!.MatchId,
-                MatchDate  = p.UserMatch.Match!.MatchDate,
-                SeasonId   = p.UserMatch.SeasonId,
-                SeasonName = p.UserMatch.Season!.Name,
-                PointType  = p.PointReason!.PointType,
+                MatchId         = p.UserMatch!.MatchId,
+                MatchDate       = p.UserMatch.Match!.MatchDate,
+                SeasonId        = p.UserMatch.SeasonId,
+                SeasonName      = p.UserMatch.Season!.Name,
+                PointType       = p.PointReason!.PointType,
+                PointReasonName = p.PointReason.Name,
                 p.Count
+            })
+            .ToListAsync();
+
+        // ─── 3b. User matches ──────────────────────────────────────────────────
+        var userMatches = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => um.UserId == userId
+                      && um.Match!.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .Select(um => new
+            {
+                um.MatchId,
+                um.SeasonId,
+                SeasonName = um.Season!.Name,
+                MatchDate  = um.Match!.MatchDate
             })
             .ToListAsync();
 
@@ -199,16 +215,64 @@ public class AchievementService : IAchievementService
             .ToList();
 
         // Resolve ApplicationUser.Id (string) → domain UserId (int)
-        var creatorIds = allBets.Select(b => b.CreatedBy).Distinct().ToList();
-        var creatorToUserId = await _db.Set<ApplicationUser>()
+        var userCreatedBy = await _db.Set<ApplicationUser>()
             .AsNoTracking()
-            .Where(u => creatorIds.Contains(u.Id) && u.UserId.HasValue)
-            .ToDictionaryAsync(u => u.Id, u => u.UserId!.Value);
+            .Where(u => u.UserId == userId)
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync();
 
-        var userCreatedBy = creatorToUserId
-            .Where(kv => kv.Value == userId)
-            .Select(kv => kv.Key)
-            .FirstOrDefault();
+        // ─── 4b. User's own bets with odds and legs ────────────────────────────
+        var userLegRows = userCreatedBy == null ? [] : await _db.BetLegs
+            .AsNoTracking()
+            .Where(l => l.Bet!.CreatedBy == userCreatedBy
+                     && l.Bet.Status != BetStatus.Cancelled)
+            .Select(l => new
+            {
+                l.BetId,
+                Status      = l.Bet!.Status,
+                Stake       = l.Bet!.Stake,
+                TotalOdds   = l.Bet!.TotalOdds,
+                CreatedOn   = l.Bet!.CreatedOn,
+                EvaluatedOn = l.Bet!.EvaluatedOn,
+                l.MatchId,
+                MatchDate   = l.Match != null ? l.Match.MatchDate : (DateTime?)null,
+                SeasonId    = l.Match != null ? l.Match.SeasonId : 0
+            })
+            .ToListAsync();
+
+        var userBets = userLegRows
+            .GroupBy(r => r.BetId)
+            .Select(g => new
+            {
+                BetId       = g.Key,
+                Status      = g.First().Status,
+                Stake       = g.First().Stake,
+                TotalOdds   = g.First().TotalOdds,
+                CreatedOn   = g.First().CreatedOn,
+                EvaluatedOn = g.First().EvaluatedOn,
+                LegsCount   = g.Count(),
+                MatchIds    = g.Select(r => r.MatchId).Distinct().ToList(),
+                SeasonIds   = g.Where(r => r.SeasonId > 0).Select(r => r.SeasonId).Distinct().ToList(),
+                MatchDate   = g.OrderBy(r => r.MatchDate).Select(r => r.MatchDate).FirstOrDefault()
+            })
+            .OrderBy(b => b.EvaluatedOn ?? b.CreatedOn)
+            .ToList();
+
+        // ─── 4c. Season users & match counts (for Lady Byng) ───────────────────
+        var seasonUserRows = await _db.SeasonUsers
+            .AsNoTracking()
+            .Where(su => completeSeasonIds.Contains(su.SeasonId))
+            .Select(su => new { su.SeasonId, su.UserId })
+            .ToListAsync();
+
+        var userMatchCountsPerSeason = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => completeSeasonIds.Contains(um.SeasonId)
+                      && um.Match!.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .GroupBy(um => new { um.UserId, um.SeasonId })
+            .Select(g => new { g.Key.UserId, g.Key.SeasonId, Count = g.Count() })
+            .ToDictionaryAsync(g => (g.UserId, g.SeasonId), g => g.Count);
 
         // ─── 7. All-user per-season totals (competitive achievements) ─────────
         var allGoalRows = await _db.UserMatchGoals
@@ -268,17 +332,20 @@ public class AchievementService : IAchievementService
             .ToDictionaryAsync(s => s.Id, s => s.Name);
 
         // ─── 9. Global week map (matchId → week number within its season) ─────
-        var userSeasonIds = goals.Select(g => g.SeasonId)
+        var relevantSeasonIds = goals.Select(g => g.SeasonId)
             .Concat(penalties.Select(p => p.SeasonId))
             .Concat(points.Select(p => p.SeasonId))
+            .Concat(userMatches.Select(um => um.SeasonId))
+            .Concat(completeSeasonIds)
             .Distinct().ToList();
 
         var weekMap = new Dictionary<int, int>();
-        if (userSeasonIds.Count > 0)
+        var seasonTotalWeeks = new Dictionary<int, HashSet<int>>();
+        if (relevantSeasonIds.Count > 0)
         {
             var matchRows = await _db.Matches
                 .AsNoTracking()
-                .Where(m => userSeasonIds.Contains(m.SeasonId) && m.MatchDate.HasValue)
+                .Where(m => relevantSeasonIds.Contains(m.SeasonId) && m.MatchDate.HasValue)
                 .Select(m => new { m.Id, m.SeasonId, Date = m.MatchDate!.Value.Date })
                 .ToListAsync();
 
@@ -287,6 +354,7 @@ public class AchievementService : IAchievementService
                 var dateToWeek = sg.Select(m => m.Date).Distinct().OrderBy(d => d)
                     .Select((d, i) => (d, week: i + 1))
                     .ToDictionary(x => x.d, x => x.week);
+                seasonTotalWeeks[sg.Key] = new HashSet<int>(dateToWeek.Values);
                 foreach (var m in sg)
                     weekMap.TryAdd(m.Id, dateToWeek[m.Date]);
             }
@@ -740,8 +808,8 @@ public class AchievementService : IAchievementService
 
             var goalMatchSet    = goals.Select(g => g.MatchId).ToHashSet();
             var penaltyMatchSet = penalties.Select(p => p.MatchId).ToHashSet();
-            var wonBetMatchSet  = allBets
-                .Where(b => b.CreatedBy == userCreatedBy && b.Status == BetStatus.Won)
+            var wonBetMatchSet  = userBets
+                .Where(b => b.Status == BetStatus.Won)
                 .SelectMany(b => b.MatchIds)
                 .ToHashSet();
 
@@ -761,19 +829,243 @@ public class AchievementService : IAchievementService
             return MatchResult("swiss_army_knife", occs);
         }
 
+        // ─── New achievements ─────────────────────────────────────────────────
+
+        AchievementResultDto PowerPlayMaestro()
+        {
+            var occs = goals
+                .Where(g => g.GoalType == GoalType.PowerPlay && weekMap.ContainsKey(g.MatchId))
+                .GroupBy(g => (g.SeasonId, Week: weekMap[g.MatchId]))
+                .Where(wg => wg.Sum(g => g.Count) >= 3)
+                .Select(wg =>
+                {
+                    var first = wg.OrderBy(g => g.MatchDate).First();
+                    return O(null, first.MatchDate, wg.Key.Week,
+                        wg.Key.SeasonId, first.SeasonName, null, wg.Sum(g => g.Count));
+                }).ToList();
+            return WeekResult("power_play_maestro", occs);
+        }
+
+        AchievementResultDto StreakMaster()
+        {
+            var userMatchesByWeek = userMatches
+                .Where(um => weekMap.ContainsKey(um.MatchId))
+                .GroupBy(um => (um.SeasonId, Week: weekMap[um.MatchId]))
+                .Where(wg => wg.Select(um => um.MatchId).Distinct().Count() >= 2)
+                .ToList();
+
+            var occs = new List<AchievementOccurrenceDto>();
+            foreach (var wg in userMatchesByWeek)
+            {
+                var matchIds = wg.Select(um => um.MatchId).Distinct().ToList();
+                var scoredAll = matchIds.All(mid => goals.Any(g => g.MatchId == mid && g.Count > 0));
+                if (scoredAll)
+                {
+                    var first = wg.OrderBy(um => um.MatchDate).First();
+                    occs.Add(O(null, first.MatchDate, wg.Key.Week,
+                        wg.Key.SeasonId, first.SeasonName, null, matchIds.Count));
+                }
+            }
+            return WeekResult("streak_master", occs);
+        }
+
+        AchievementResultDto GuardianAngel()
+        {
+            var userMatchesByWeek = userMatches
+                .Where(um => weekMap.ContainsKey(um.MatchId))
+                .GroupBy(um => (um.SeasonId, Week: weekMap[um.MatchId]))
+                .Where(wg => wg.Select(um => um.MatchId).Distinct().Count() >= 4)
+                .ToList();
+
+            var occs = new List<AchievementOccurrenceDto>();
+            foreach (var wg in userMatchesByWeek)
+            {
+                var matchIds = wg.Select(um => um.MatchId).Distinct().ToHashSet();
+                var minusCount = points
+                    .Where(p => matchIds.Contains(p.MatchId) && p.PointType == PointType.Negative)
+                    .Sum(p => p.Count);
+
+                if (minusCount == 0)
+                {
+                    var first = wg.OrderBy(um => um.MatchDate).First();
+                    occs.Add(O(null, first.MatchDate, wg.Key.Week,
+                        wg.Key.SeasonId, first.SeasonName, null, matchIds.Count));
+                }
+            }
+            return WeekResult("guardian_angel", occs);
+        }
+
+        AchievementResultDto LadyByng()
+        {
+            var occs = new List<AchievementOccurrenceDto>();
+            foreach (var sid in completeSeasonIds)
+            {
+                var activeUserIds = seasonUserRows
+                    .Where(su => su.SeasonId == sid)
+                    .Select(su => su.UserId)
+                    .Where(uid => userMatchCountsPerSeason.TryGetValue((uid, sid), out var cnt) && cnt >= 5)
+                    .Distinct()
+                    .ToList();
+
+                if (!activeUserIds.Contains(userId)) continue;
+
+                var penaltiesByUser = activeUserIds.ToDictionary(
+                    uid => uid,
+                    uid => allPenaltyTotals.Where(x => x.UserId == uid && x.SeasonId == sid).Sum(x => x.Total)
+                );
+
+                if (penaltiesByUser.Count == 0) continue;
+
+                var minPenalties = penaltiesByUser.Values.Min();
+                var userPenalties = penaltiesByUser[userId];
+
+                if (userPenalties == minPenalties)
+                {
+                    var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
+                    occs.Add(O(null, null, null, sid, sName, null, userPenalties));
+                }
+            }
+            return SeasonResult("lady_byng", occs);
+        }
+
+        AchievementResultDto OwnGoalDisaster()
+        {
+            var occs = points
+                .Where(p => p.PointType == PointType.Negative
+                         && (p.PointReasonName.Contains("own goal", StringComparison.OrdinalIgnoreCase)
+                          || p.PointReasonName.Contains("error in defense", StringComparison.OrdinalIgnoreCase)))
+                .GroupBy(p => p.MatchId)
+                .Select(mg =>
+                {
+                    weekMap.TryGetValue(mg.Key, out var w);
+                    var first = mg.First();
+                    return O(mg.Key, first.MatchDate, w, first.SeasonId, first.SeasonName, null, mg.Sum(p => p.Count));
+                }).ToList();
+            return MatchResult("own_goal_disaster", occs);
+        }
+
+        AchievementResultDto ThePerfectGame()
+        {
+            var wonBetMatchIds = userBets
+                .Where(b => b.Status == BetStatus.Won)
+                .SelectMany(b => b.MatchIds)
+                .ToHashSet();
+
+            var occs = userMatches
+                .GroupBy(um => um.MatchId)
+                .Where(mg =>
+                {
+                    var mid = mg.Key;
+                    var hasGoal = goals.Any(g => g.MatchId == mid && g.Count > 0);
+                    var noPenalty = !penalties.Any(p => p.MatchId == mid && p.Count > 0);
+                    var noMinus = !points.Any(p => p.MatchId == mid && p.PointType == PointType.Negative && p.Count > 0);
+                    var wonBet = wonBetMatchIds.Contains(mid);
+                    return hasGoal && noPenalty && noMinus && wonBet;
+                })
+                .Select(mg =>
+                {
+                    var first = mg.First();
+                    weekMap.TryGetValue(mg.Key, out var w);
+                    return O(mg.Key, first.MatchDate, w, first.SeasonId, first.SeasonName, null, null);
+                }).ToList();
+            return MatchResult("the_perfect_game", occs);
+        }
+
+        AchievementResultDto ParlayMaster()
+        {
+            var occs = userBets
+                .Where(b => b.Status == BetStatus.Won && b.LegsCount >= 3)
+                .Select(b =>
+                {
+                    var sid = b.SeasonIds.FirstOrDefault();
+                    var sName = sid > 0 && seasonNames.TryGetValue(sid, out var n) ? n : null;
+                    return O(b.MatchIds.FirstOrDefault(), b.MatchDate ?? b.EvaluatedOn ?? b.CreatedOn, null,
+                        sid > 0 ? (int?)sid : null, sName, null, b.LegsCount);
+                }).ToList();
+            return MatchResult("parlay_master", occs);
+        }
+
+        AchievementResultDto UnderdogKing()
+        {
+            var occs = userBets
+                .Where(b => b.Status == BetStatus.Won && b.TotalOdds >= 4.0m)
+                .Select(b =>
+                {
+                    var sid = b.SeasonIds.FirstOrDefault();
+                    var sName = sid > 0 && seasonNames.TryGetValue(sid, out var n) ? n : null;
+                    return O(b.MatchIds.FirstOrDefault(), b.MatchDate ?? b.EvaluatedOn ?? b.CreatedOn, null,
+                        sid > 0 ? (int?)sid : null, sName, null, (int)Math.Round(b.TotalOdds));
+                }).ToList();
+            return MatchResult("underdog_king", occs);
+        }
+
+        AchievementResultDto HotStreak()
+        {
+            var evaluatedBets = userBets
+                .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+                .OrderBy(b => b.EvaluatedOn ?? b.CreatedOn)
+                .ToList();
+
+            var occs = new List<AchievementOccurrenceDto>();
+            int currentStreak = 0;
+            foreach (var b in evaluatedBets)
+            {
+                if (b.Status == BetStatus.Won)
+                {
+                    currentStreak++;
+                    if (currentStreak >= 5)
+                    {
+                        var sid = b.SeasonIds.FirstOrDefault();
+                        var sName = sid > 0 && seasonNames.TryGetValue(sid, out var n) ? n : null;
+                        occs.Add(O(b.MatchIds.FirstOrDefault(), b.MatchDate ?? b.EvaluatedOn ?? b.CreatedOn, null,
+                            sid > 0 ? (int?)sid : null, sName, null, currentStreak));
+                    }
+                }
+                else
+                {
+                    currentStreak = 0;
+                }
+            }
+            return MatchResult("hot_streak", occs);
+        }
+
+        AchievementResultDto IronMan()
+        {
+            var occs = new List<AchievementOccurrenceDto>();
+            foreach (var sid in completeSeasonIds)
+            {
+                if (!seasonTotalWeeks.TryGetValue(sid, out var allWeeks) || allWeeks.Count == 0) continue;
+
+                var userWeeks = userMatches
+                    .Where(um => um.SeasonId == sid && weekMap.ContainsKey(um.MatchId))
+                    .Select(um => weekMap[um.MatchId])
+                    .Distinct()
+                    .ToHashSet();
+
+                if (allWeeks.All(w => userWeeks.Contains(w)))
+                {
+                    var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
+                    occs.Add(O(null, null, null, sid, sName, null, allWeeks.Count));
+                }
+            }
+            return SeasonResult("iron_man", occs);
+        }
+
         // ─── Assemble result ──────────────────────────────────────────────────
         return new UserAchievementsDto(new[]
         {
             Sniper(), Domination(), Shorty(),
             GodMode(), BlueLineSnipers(),
             MassiveAttack(), OffensiveDefenseman(), PlayerLover(), GoldenStick(),
+            PowerPlayMaestro(), StreakMaster(),
             SinBinVip(), BroadStreetBully(),
             DisciplinaryHearing(),
-            TheEnforcer(), GoonSquad(), Jailbird(),
+            TheEnforcer(), GoonSquad(), Jailbird(), LadyByng(),
             Unlucky(), DeepPockets(), VipSponzor(), TheAtm(),
             IceGeneral(), GoodWeek(), HappySeason(), KingOfTheRink(),
+            GuardianAngel(), OwnGoalDisaster(), IronMan(),
             Oracle(), TheBookie(), Nostradamus(),
-            SwissArmyKnife(),
+            SwissArmyKnife(), ThePerfectGame(), ParlayMaster(), UnderdogKing(), HotStreak(),
         });
     }
 }

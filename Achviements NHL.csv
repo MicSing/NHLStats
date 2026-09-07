@@ -26,3 +26,13 @@ Bets,In season,Best bet among all users,Oracle
 Bets,In season,Most won bets among all users,The bookie
 Bets,In season,>=3 stake,Nostradamus
 "Goal, Penalty, Bet",In match,"1 of each, bet must be won",Swiss Army Knife
+Goals,In week,>=3 Powerplay,Power Play Maestro
+Goals,In week,>=1 goal in every match (min 2 matches),Streak Master
+Points,In week,0 minus points (min 4 matches),Guardian Angel
+Penalty,In season,Fewest penalties among active users,Lady Byng
+Negative points,In match,Own goal or error in defense,Own Goal Disaster
+"Goal, Bet, Penalty, Points",In match,"Goal, won bet, 0 penalties, 0 minus points",The Perfect Game
+Bets,In match,Won bet with >=3 legs,Parlay Master
+Bets,In match,Won bet with odds >=4.0,Underdog King
+Bets,In season,>=5 won bets in a row,Hot Streak
+Points,In season,Active in 100% of weeks in season,Iron Man

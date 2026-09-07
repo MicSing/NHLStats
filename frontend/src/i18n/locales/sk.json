@@ -389,7 +389,17 @@
         "oracle":               { "name": "Veštec",               "desc": "Najvyššia stávka v sezóne" },
         "theBookie":            { "name": "Bookmacher",           "desc": "Najviac vyhratých stávok v sezóne" },
         "nostradamus":          { "name": "Nostradamus",          "desc": "Podal stávku s vkladom ≥ €3" },
-        "swissArmyKnife":       { "name": "Švajčiarsky nôž",      "desc": "≥1 gól, ≥1 trest a vyhratá stávka v rovnakom zápase" }
+        "swissArmyKnife":       { "name": "Švajčiarsky nôž",      "desc": "≥1 gól, ≥1 trest a vyhratá stávka v rovnakom zápase" },
+        "powerPlayMaestro":     { "name": "Power Play Maestro",   "desc": "≥3 presilovkové góly za týždeň" },
+        "streakMaster":         { "name": "Streak Master",        "desc": "Gól v každom zápase týždňa (min. 2 zápasy)" },
+        "guardianAngel":        { "name": "Guardian Angel",       "desc": "0 mínusových bodov (0 čiarok) za celý týždeň (min. 4 zápasy)" },
+        "ladyByng":             { "name": "Lady Byng",            "desc": "Najmenej trestov v sezóne spomedzi všetkých hráčov" },
+        "ownGoalDisaster":      { "name": "Own Goal Disaster",    "desc": "Vlastný gól alebo fatálna chyba v obrane v zápase" },
+        "thePerfectGame":       { "name": "The Perfect Game",     "desc": "≥1 gól, 0 trestov, 0 mínusiek a vyhratá stávka v zápase" },
+        "parlayMaster":         { "name": "Parlay Master",        "desc": "Vyhratý tiket s ≥3 príležitosťami" },
+        "underdogKing":         { "name": "Underdog King",        "desc": "Vyhratá stávka s kurzom ≥ 4.00" },
+        "hotStreak":            { "name": "Hot Streak",           "desc": "Séria aspoň 5 vyhratých stávok v rade" },
+        "ironMan":              { "name": "Iron Man",             "desc": "100% aktívna účasť vo všetkých týždňoch celej sezóny" }
     },
     "rules": {
         "title": "📋 Pravidlá",

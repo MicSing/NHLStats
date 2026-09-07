@@ -389,8 +389,18 @@
         "oracle":               { "name": "Oracle",               "desc": "Highest single bet stake in a season" },
         "theBookie":            { "name": "The Bookie",           "desc": "Most won bets in a season among all players" },
         "nostradamus":          { "name": "Nostradamus",          "desc": "Placed a single bet with stake ≥ €3" },
-        "swissArmyKnife":       { "name": "Swiss Army Knife",     "desc": "≥1 goal, ≥1 penalty, and a won bet in the same match" }
-    },
+        "swissArmyKnife":       { "name": "Swiss Army Knife",     "desc": "≥1 goal, ≥1 penalty, and a won bet in the same match" },
+        "powerPlayMaestro":     { "name": "Power Play Maestro",   "desc": "≥3 powerplay goals in a week" },
+        "streakMaster":         { "name": "Streak Master",        "desc": "Scored in every match of a week (min 2 matches)" },
+        "guardianAngel":        { "name": "Guardian Angel",       "desc": "0 negative points in a week (min 4 matches)" },
+        "ladyByng":             { "name": "Lady Byng",            "desc": "Fewest penalties in a season among all active players" },
+        "ownGoalDisaster":      { "name": "Own Goal Disaster",    "desc": "Own goal or defensive error point in a match" },
+        "thePerfectGame":       { "name": "The Perfect Game",     "desc": "≥1 goal, 0 penalties, 0 negative points, and a won bet in a match" },
+        "parlayMaster":         { "name": "Parlay Master",        "desc": "Won a bet ticket with ≥3 legs" },
+        "underdogKing":         { "name": "Underdog King",        "desc": "Won a bet with odds ≥ 4.00" },
+        "hotStreak":            { "name": "Hot Streak",           "desc": "Streak of at least 5 consecutive won bets" },
+        "ironMan":              { "name": "Iron Man",             "desc": "100% active attendance in all weeks of a season" }
+     },
     "rules": {
         "title": "📋 Rules",
         "subtitle": "How positive/negative points are earned during the season. Every match event can award points from your score. Points are then converted to money at the current rate.",
