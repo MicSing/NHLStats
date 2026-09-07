@@ -394,7 +394,7 @@
         "swissArmyKnife":       { "name": "Švajčiarsky nôž",      "desc": "≥1 gól, ≥1 trest a vyhratá stávka v rovnakom zápase" },
         "powerPlayMaestro":     { "name": "Power Play Maestro",   "desc": "≥3 presilovkové góly za týždeň" },
         "streakMaster":         { "name": "Streak Master",        "desc": "Gól v každom zápase týždňa (min. 4 zápasy)" },
-        "guardianAngel":        { "name": "Guardian Angel",       "desc": "0 mínusových bodov (čiarok) aspoň v polovici týždňov sezóny (min. 4 zápasy v týždni)" },
+        "guardianAngel":        { "name": "Guardian Angel",       "desc": "Najviac týždňov bez mínusky (min. 4 zápasy v týždni) v sezóne spomedzi všetkých hráčov" },
         "ladyByng":             { "name": "Lady Byng",            "desc": "Najmenej trestov v sezóne spomedzi všetkých hráčov" },
         "ownGoalDisaster":      { "name": "Own Goal Disaster",    "desc": "Vlastný gól alebo fatálna chyba v obrane v zápase" },
         "thePerfectGame":       { "name": "The Perfect Game",     "desc": "≥1 gól, 0 trestov, 0 mínusiek a vyhratá stávka v zápase" },

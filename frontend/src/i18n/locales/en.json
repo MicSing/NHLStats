@@ -394,7 +394,7 @@
         "swissArmyKnife":       { "name": "Swiss Army Knife",     "desc": "≥1 goal, ≥1 penalty, and a won bet in the same match" },
         "powerPlayMaestro":     { "name": "Power Play Maestro",   "desc": "≥3 powerplay goals in a week" },
         "streakMaster":         { "name": "Streak Master",        "desc": "Goal in every match of a week (min 4 matches)" },
-        "guardianAngel":        { "name": "Guardian Angel",       "desc": "0 minus points in at least half of the weeks in a completed season (min. 4 matches per week)" },
+        "guardianAngel":        { "name": "Guardian Angel",       "desc": "Most weeks without a minus point (min. 4 matches per week) in a season among all players" },
         "ladyByng":             { "name": "Lady Byng",            "desc": "Fewest penalties in a season among all active players" },
         "ownGoalDisaster":      { "name": "Own Goal Disaster",    "desc": "Own goal or defensive error point in a match" },
         "thePerfectGame":       { "name": "The Perfect Game",     "desc": "≥1 goal, 0 penalties, 0 negative points, and a won bet in a match" },
