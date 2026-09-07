@@ -501,7 +501,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         ],
         levelNames: ['Spark', 'Hot Hand', 'On Fire', 'Streak Master', 'Unstoppable', 'Red Light District', 'Eternal Flame'],
         descKey: 'achievements.streakMaster.desc',
-        valueLabel: 'streaks',
+        valueLabel: 'matches',
     },
     {
         id: 'guardian_angel',
@@ -517,7 +517,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         ],
         levelNames: ['Halo', 'Innocent', 'Blessed', 'Guardian Angel', 'Saint', 'Archangel', 'Seraphim'],
         descKey: 'achievements.guardianAngel.desc',
-        valueLabel: 'clean weeks',
+        valueLabel: 'weeks',
     },
     {
         id: 'lady_byng',
@@ -581,7 +581,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         ],
         levelNames: ['Double Check', 'Combo Builder', 'Acca Punter', 'Parlay Master', 'Slip Wizard', 'The Architect', 'Acca God'],
         descKey: 'achievements.parlayMaster.desc',
-        valueLabel: 'parlays',
+        valueLabel: 'combinations',
     },
     {
         id: 'underdog_king',
@@ -629,6 +629,6 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         ],
         levelNames: ['Reliable', 'Committed', 'Everpresent', 'Iron Man', 'Indestructible', 'Titan', 'Eternal Legend'],
         descKey: 'achievements.ironMan.desc',
-        valueLabel: 'seasons',
+        valueLabel: 'weeks',
     },
 ]

@@ -303,7 +303,7 @@ export default function ProfileOverviewTab({
 
                 {recentAchievements.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {recentAchievements.map(({ def, result, latestDate }) => {
+                        {recentAchievements.map(({ def, result, latestDate, recentCount }) => {
                             const level = result.level
                             const idx = Math.max(0, level - 1)
                             const icon = def.levelIcons[idx]
@@ -325,7 +325,7 @@ export default function ProfileOverviewTab({
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-1.5 mb-1">
                                             <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-amber-950 px-1.5 py-0.2 rounded-full">
-                                                NEW
+                                                {recentCount > 1 ? `NEW ${recentCount}×` : 'NEW'}
                                             </span>
                                             <span className="text-[10px] font-semibold text-primary">
                                                 Lv {level}

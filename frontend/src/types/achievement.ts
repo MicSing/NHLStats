@@ -6,6 +6,7 @@ export interface AchievementOccurrence {
     seasonName:       string | null
     rosterPlayerName: string | null
     value:            number | null
+    matchNumber?:     number | null
 }
 
 export interface AchievementResult {

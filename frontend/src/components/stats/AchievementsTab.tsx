@@ -25,7 +25,34 @@ function isRecent(date: string | null, days = 7): boolean {
     return new Date(date) >= new Date(Date.now() - days * 86_400_000)
 }
 
-function formatOccurrence(occ: AchievementOccurrence, valueLabel: string): string {
+const LABEL_KEY_MAP: Record<string, string> = {
+    'goals': 'goals',
+    'SH goals': 'shGoals',
+    'fwd goals': 'fwdGoals',
+    'def goals': 'defGoals',
+    'penalties': 'penalties',
+    'minus': 'minus',
+    'plus': 'plus',
+    '€ stake': 'stake',
+    'wins': 'wins',
+    'PP goals': 'ppGoals',
+    'matches': 'matches',
+    'weeks': 'weeks',
+    'clean weeks': 'weeks',
+    'blunders': 'blunders',
+    'games': 'games',
+    'combinations': 'combinations',
+    'parlays': 'combinations',
+    'odds': 'odds',
+    'streaks': 'streaks',
+    'seasons': 'weeks',
+}
+
+function formatOccurrence(
+    occ: AchievementOccurrence,
+    valueLabel: string,
+    t: (key: string, options?: any) => string
+): string {
     const parts: string[] = []
 
     if (occ.occurredOn) {
@@ -36,7 +63,10 @@ function formatOccurrence(occ: AchievementOccurrence, valueLabel: string): strin
         }).replace(/\//g, '.'))
     }
     if (occ.weekNumber != null) {
-        parts.push(`Week ${occ.weekNumber}`)
+        parts.push(`${t('achievements.week', 'Week')} ${occ.weekNumber}`)
+    }
+    if (occ.matchNumber != null) {
+        parts.push(`${t('achievements.match', 'Match')} ${occ.matchNumber}`)
     }
     if (occ.seasonName) {
         parts.push(occ.seasonName)
@@ -45,7 +75,12 @@ function formatOccurrence(occ: AchievementOccurrence, valueLabel: string): strin
         parts.push(occ.rosterPlayerName)
     }
     if (occ.value != null && valueLabel) {
-        parts.push(`${occ.value} ${valueLabel}`)
+        const key = LABEL_KEY_MAP[valueLabel] ?? valueLabel
+        const translated = t(`achievements.labels.${key}`, {
+            count: occ.value,
+            defaultValue: `${occ.value} ${valueLabel}`,
+        })
+        parts.push(translated)
     }
 
     return parts.join(' · ')
@@ -200,7 +235,7 @@ export function AchievementModal({ def, result, onClose }: ModalProps) {
                                             : 'bg-bg border-border',
                                     ].join(' ')}
                                 >
-                                    <span>{formatOccurrence(occ, def.valueLabel)}</span>
+                                    <span>{formatOccurrence(occ, def.valueLabel, t)}</span>
                                     {recent && (
                                         <span className="shrink-0 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1.5 py-0.5 font-medium">
                                             {t('achievements.new')}

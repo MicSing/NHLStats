@@ -274,6 +274,14 @@ public class AchievementService : IAchievementService
             .Select(g => new { g.Key.UserId, g.Key.SeasonId, Count = g.Count() })
             .ToDictionaryAsync(g => (g.UserId, g.SeasonId), g => g.Count);
 
+        var allUserMatchesForWeeks = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => completeSeasonIds.Contains(um.SeasonId)
+                      && um.Match!.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .Select(um => new { um.UserId, um.SeasonId, um.MatchId })
+            .ToListAsync();
+
         // ─── 7. All-user per-season totals (competitive achievements) ─────────
         var allGoalRows = await _db.UserMatchGoals
             .AsNoTracking()
@@ -341,12 +349,13 @@ public class AchievementService : IAchievementService
 
         var weekMap = new Dictionary<int, int>();
         var seasonTotalWeeks = new Dictionary<int, HashSet<int>>();
+        var matchNumberMap = new Dictionary<int, int>();
         if (relevantSeasonIds.Count > 0)
         {
             var matchRows = await _db.Matches
                 .AsNoTracking()
                 .Where(m => relevantSeasonIds.Contains(m.SeasonId) && m.MatchDate.HasValue)
-                .Select(m => new { m.Id, m.SeasonId, Date = m.MatchDate!.Value.Date })
+                .Select(m => new { m.Id, m.SeasonId, m.MatchNumber, Date = m.MatchDate!.Value.Date })
                 .ToListAsync();
 
             foreach (var sg in matchRows.GroupBy(m => m.SeasonId))
@@ -356,14 +365,17 @@ public class AchievementService : IAchievementService
                     .ToDictionary(x => x.d, x => x.week);
                 seasonTotalWeeks[sg.Key] = new HashSet<int>(dateToWeek.Values);
                 foreach (var m in sg)
+                {
                     weekMap.TryAdd(m.Id, dateToWeek[m.Date]);
+                    matchNumberMap.TryAdd(m.Id, m.MatchNumber);
+                }
             }
         }
 
         // ─── Occurrence helper ────────────────────────────────────────────────
-        static AchievementOccurrenceDto O(
-            int? matchId, DateTime? on, int? week, int? sid, string? sName, string? player, int? val)
-            => new(matchId, on, week, sid, sName, player, val);
+        AchievementOccurrenceDto O(
+            int? matchId, DateTime? on, int? week, int? sid, string? sName, string? player, int? val, int? matchNumber = null)
+            => new(matchId, on, week, sid, sName, player, val, matchNumber ?? (matchId.HasValue && matchNumberMap.TryGetValue(matchId.Value, out var mn) ? mn : null));
 
         // ─── Match-level goal achievements ────────────────────────────────────
 
@@ -851,7 +863,7 @@ public class AchievementService : IAchievementService
             var userMatchesByWeek = userMatches
                 .Where(um => weekMap.ContainsKey(um.MatchId))
                 .GroupBy(um => (um.SeasonId, Week: weekMap[um.MatchId]))
-                .Where(wg => wg.Select(um => um.MatchId).Distinct().Count() >= 2)
+                .Where(wg => wg.Select(um => um.MatchId).Distinct().Count() >= 4)
                 .ToList();
 
             var occs = new List<AchievementOccurrenceDto>();
@@ -871,28 +883,41 @@ public class AchievementService : IAchievementService
 
         AchievementResultDto GuardianAngel()
         {
-            var userMatchesByWeek = userMatches
-                .Where(um => weekMap.ContainsKey(um.MatchId))
-                .GroupBy(um => (um.SeasonId, Week: weekMap[um.MatchId]))
-                .Where(wg => wg.Select(um => um.MatchId).Distinct().Count() >= 4)
-                .ToList();
-
             var occs = new List<AchievementOccurrenceDto>();
-            foreach (var wg in userMatchesByWeek)
+            foreach (var sid in completeSeasonIds)
             {
-                var matchIds = wg.Select(um => um.MatchId).Distinct().ToHashSet();
-                var minusCount = points
-                    .Where(p => matchIds.Contains(p.MatchId) && p.PointType == PointType.Negative)
-                    .Sum(p => p.Count);
+                if (!seasonTotalWeeks.TryGetValue(sid, out var allWeeks) || allWeeks.Count == 0) continue;
 
-                if (minusCount == 0)
+                var userMatchesInSeason = userMatches
+                    .Where(um => um.SeasonId == sid && weekMap.ContainsKey(um.MatchId))
+                    .ToList();
+
+                var cleanWeeksCount = 0;
+                foreach (var w in allWeeks)
                 {
-                    var first = wg.OrderBy(um => um.MatchDate).First();
-                    occs.Add(O(null, first.MatchDate, wg.Key.Week,
-                        wg.Key.SeasonId, first.SeasonName, null, matchIds.Count));
+                    var weekMatches = userMatchesInSeason.Where(um => weekMap[um.MatchId] == w).ToList();
+                    var distinctMatchIds = weekMatches.Select(um => um.MatchId).Distinct().ToHashSet();
+                    if (distinctMatchIds.Count < 4) continue;
+
+                    var minusCount = points
+                        .Where(p => distinctMatchIds.Contains(p.MatchId) && p.PointType == PointType.Negative)
+                        .Sum(p => p.Count);
+
+                    if (minusCount == 0)
+                    {
+                        cleanWeeksCount++;
+                    }
+                }
+
+                var totalSeasonWeeks = allWeeks.Count;
+                if (totalSeasonWeeks > 0 && cleanWeeksCount * 2 >= totalSeasonWeeks)
+                {
+                    var firstMatch = userMatchesInSeason.OrderBy(um => um.MatchDate).FirstOrDefault();
+                    var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
+                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, cleanWeeksCount));
                 }
             }
-            return WeekResult("guardian_angel", occs);
+            return SeasonResult("guardian_angel", occs);
         }
 
         AchievementResultDto LadyByng()
@@ -900,6 +925,9 @@ public class AchievementService : IAchievementService
             var occs = new List<AchievementOccurrenceDto>();
             foreach (var sid in completeSeasonIds)
             {
+                var seasonTotalPenalties = allPenaltyTotals.Where(x => x.SeasonId == sid).Sum(x => x.Total);
+                if (seasonTotalPenalties == 0) continue;
+
                 var activeUserIds = seasonUserRows
                     .Where(su => su.SeasonId == sid)
                     .Select(su => su.UserId)
@@ -922,7 +950,8 @@ public class AchievementService : IAchievementService
                 if (userPenalties == minPenalties)
                 {
                     var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
-                    occs.Add(O(null, null, null, sid, sName, null, userPenalties));
+                    var firstMatch = userMatches.Where(um => um.SeasonId == sid).OrderBy(um => um.MatchDate).FirstOrDefault();
+                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, userPenalties));
                 }
             }
             return SeasonResult("lady_byng", occs);
@@ -1034,18 +1063,24 @@ public class AchievementService : IAchievementService
             var occs = new List<AchievementOccurrenceDto>();
             foreach (var sid in completeSeasonIds)
             {
-                if (!seasonTotalWeeks.TryGetValue(sid, out var allWeeks) || allWeeks.Count == 0) continue;
-
-                var userWeeks = userMatches
+                var userWeekCounts = allUserMatchesForWeeks
                     .Where(um => um.SeasonId == sid && weekMap.ContainsKey(um.MatchId))
-                    .Select(um => weekMap[um.MatchId])
-                    .Distinct()
-                    .ToHashSet();
+                    .GroupBy(um => um.UserId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(um => weekMap[um.MatchId]).Distinct().Count()
+                    );
 
-                if (allWeeks.All(w => userWeeks.Contains(w)))
+                if (userWeekCounts.Count == 0) continue;
+
+                var maxWeeks = userWeekCounts.Values.Max();
+                if (maxWeeks <= 0) continue;
+
+                if (userWeekCounts.TryGetValue(userId, out var userWeeks) && userWeeks == maxWeeks)
                 {
                     var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
-                    occs.Add(O(null, null, null, sid, sName, null, allWeeks.Count));
+                    var firstMatch = userMatches.Where(um => um.SeasonId == sid).OrderBy(um => um.MatchDate).FirstOrDefault();
+                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, userWeeks));
                 }
             }
             return SeasonResult("iron_man", occs);

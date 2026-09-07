@@ -340,7 +340,8 @@ public record AchievementOccurrenceDto(
     int?      SeasonId,
     string?   SeasonName,
     string?   RosterPlayerName,
-    int?      Value
+    int?      Value,
+    int?      MatchNumber = null
 );
 
 public record AchievementResultDto(
