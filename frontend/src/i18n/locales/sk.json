@@ -1,6 +1,8 @@
 {
     "common": {
         "loading": "Načítavam…",
+        "backendStarting": "Prebúdzam server…",
+        "backendStartingSlow": "Stále sa prebúdza — môže to trvať až minútu…",
         "save": "Uložiť",
         "cancel": "Zrušiť",
         "edit": "Upraviť",

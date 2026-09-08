@@ -1,6 +1,8 @@
 {
     "common": {
         "loading": "Loading…",
+        "backendStarting": "Waking up the server…",
+        "backendStartingSlow": "Still waking up — this can take up to a minute…",
         "save": "Save",
         "cancel": "Cancel",
         "edit": "Edit",

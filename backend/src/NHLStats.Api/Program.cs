@@ -221,8 +221,25 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// Simple health endpoint for smoke tests
-app.MapGet("/health", () => Results.Text("{\"status\":\"Healthy\"}", "application/json"))
+// Health endpoint: reports healthy only when the API is up AND the database
+// is actually reachable, so callers (e.g. a frontend "waking up" gate) can
+// tell a live app from one whose DB has auto-paused / is still resuming.
+app.MapGet("/health", async (NhlStatsDbContext ctx) =>
+{
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+    try
+    {
+        var canConnect = await ctx.Database.CanConnectAsync(cts.Token);
+        return canConnect
+            ? Results.Text("{\"status\":\"Healthy\"}", "application/json")
+            : Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Health check DB connectivity failed: {ex}");
+        return Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
     .WithName("HealthCheck");
 
 
