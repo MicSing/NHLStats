@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
+import BackendHealthGate from './components/BackendHealthGate'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AdminProtectedRoute } from './components/ProtectedRoute'
 import PublicLayout from './components/PublicLayout'
@@ -30,54 +31,56 @@ function TeamStatsRoute() {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <ErrorBoundary>
-            <BrowserRouter>
-              <Routes>
-                {/* Public routes — top navigation bar */}
-                <Route element={<PublicLayout />}>
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/change-password" element={<Navigate to="/profile?tab=settings" replace />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/earnings" element={<FinancePage />} />
-                  <Route path="/betting" element={<BettingPage />} />
-                  <Route path="/seasons" element={<SeasonPage />} />
-                  <Route path="/seasons/:seasonId" element={<SeasonPage />} />
-                  <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />
-                  <Route path="/user-stats" element={<UserStatsPage />} />
-                  <Route path="/team-stats" element={<TeamStatsRoute />} />
-                  <Route path="/rules" element={<RulesPage />} />
-                </Route>
+      <BackendHealthGate>
+        <AuthProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Routes>
+                  {/* Public routes — top navigation bar */}
+                  <Route element={<PublicLayout />}>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/change-password" element={<Navigate to="/profile?tab=settings" replace />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/earnings" element={<FinancePage />} />
+                    <Route path="/betting" element={<BettingPage />} />
+                    <Route path="/seasons" element={<SeasonPage />} />
+                    <Route path="/seasons/:seasonId" element={<SeasonPage />} />
+                    <Route path="/seasons/:seasonId/matches/:matchId" element={<AdminProtectedRoute redirectTo="/seasons"><MatchPage /></AdminProtectedRoute>} />
+                    <Route path="/user-stats" element={<UserStatsPage />} />
+                    <Route path="/team-stats" element={<TeamStatsRoute />} />
+                    <Route path="/rules" element={<RulesPage />} />
+                  </Route>
 
-                {/* Admin routes — sidebar layout, auth-gated at the parent */}
-                <Route
-                  path="/admin"
-                  element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}
-                >
-                  <Route index element={<Navigate to="users" replace />} />
-                  <Route path="logins" element={<Navigate to="/admin/users" replace />} />
-                  <Route path="users" element={<UsersPage />} />
-                  <Route path="seasons" element={<SeasonManagementPage />} />
-                  <Route path="roster" element={<Navigate to="/admin/seasons" replace />} />
-                  <Route path="point-reasons" element={<PointReasonsPage />} />
-                  <Route path="finance" element={<AdminFinancePage />} />
-                  <Route path="money-config" element={<Navigate to="/admin/finance" replace />} />
-                  <Route path="expenses" element={<Navigate to="/admin/finance" replace />} />
-                  <Route path="matches" element={<Navigate to="/admin/seasons" replace />} />
-                  <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
-                  <Route path="aggregated-points" element={<Navigate to="/admin/seasons" replace />} />
-                  <Route path="teams" element={<TeamsPage />} />
-                  <Route path="points" element={<Navigate to="/admin/finance" replace />} />
-                </Route>
+                  {/* Admin routes — sidebar layout, auth-gated at the parent */}
+                  <Route
+                    path="/admin"
+                    element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}
+                  >
+                    <Route index element={<Navigate to="users" replace />} />
+                    <Route path="logins" element={<Navigate to="/admin/users" replace />} />
+                    <Route path="users" element={<UsersPage />} />
+                    <Route path="seasons" element={<SeasonManagementPage />} />
+                    <Route path="roster" element={<Navigate to="/admin/seasons" replace />} />
+                    <Route path="point-reasons" element={<PointReasonsPage />} />
+                    <Route path="finance" element={<AdminFinancePage />} />
+                    <Route path="money-config" element={<Navigate to="/admin/finance" replace />} />
+                    <Route path="expenses" element={<Navigate to="/admin/finance" replace />} />
+                    <Route path="matches" element={<Navigate to="/admin/seasons" replace />} />
+                    <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
+                    <Route path="aggregated-points" element={<Navigate to="/admin/seasons" replace />} />
+                    <Route path="teams" element={<TeamsPage />} />
+                    <Route path="points" element={<Navigate to="/admin/finance" replace />} />
+                  </Route>
 
-                <Route path="*" element={<Navigate to="/seasons" replace />} />
-              </Routes>
-            </BrowserRouter>
-          </ErrorBoundary>
-        </ToastProvider>
-      </AuthProvider>
+                  <Route path="*" element={<Navigate to="/seasons" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </ErrorBoundary>
+          </ToastProvider>
+        </AuthProvider>
+      </BackendHealthGate>
     </ThemeProvider>
   )
 }

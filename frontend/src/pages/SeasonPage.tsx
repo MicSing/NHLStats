@@ -81,6 +81,7 @@ export default function SeasonPage() {
                     navigate(`/seasons/${sorted[0].id}`, { replace: true })
                 }
             })
+            .catch(err => console.error('Failed to fetch seasons:', err))
             .finally(() => setLoadingSeasons(false))
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
