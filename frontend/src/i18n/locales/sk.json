@@ -538,6 +538,8 @@
         "oneMinusPointPerMatch": "Pre jeden zápas je povolený iba jeden tip na mínusový bod.",
         "oneShutoutPerMatch": "Pre jeden zápas je povolený iba jeden tip na výhru bez inkasovaného gólu.",
         "cannotCombineTeamWinAndShutout": "Nie je možné kombinovať výsledok zápasu a výhru na nulu v jednom zápase.",
+        "cannotCombineShutoutAndPlusPoint": "Nie je možné kombinovať výhru domáceho tímu na nulu s tipom na plusový bod v tom istom zápase.",
+        "cannotCombineShutoutAndMinusPoint": "Nie je možné kombinovať výhru súpera na nulu s tipom na mínusový bod v tom istom zápase.",
         "betPlaced": "Tipy boli úspešne uložené!",
         "draftMatchClosed": "Niektoré zápasy na vašom rozpísanom tikete sa už začali alebo skončili a boli odstránené.",
         "draftOddsUpdated": "Kurzy na vašom rozpísanom tikete boli aktualizované podľa najnovších výsledkov.",
@@ -891,8 +893,8 @@
             "addCollection": "Pridať platbu"
         },
         "betting": {
-            "recalculateTitle": "Prepočítať kurzy pre plusové/mínusové body",
-            "recalculateDescription": "Tipy na plusové/mínusové body sú teraz obmedzené na jeden na zápas. Táto akcia prepočíta celkový kurz pre staršie vyhraté tikety, ktoré mali na jednom zápase viac tipov na plusové alebo mínusové body — kurzy takýchto tipov sa zredukujú na najvyšší z nich. Akciu je možné spustiť opakovane bez rizika.",
+            "recalculateTitle": "Prepočítať súvisiace kurzy tiketov",
+            "recalculateDescription": "Niektoré kombinácie tipov nie sú v skutočnosti nezávislé — napr. viac tipov na plusové/mínusové body na jednom zápase, alebo tip na čisté konto kombinovaný s tipom na plusové/mínusové body, ktorý zaručuje. Táto akcia prepočíta celkový kurz pre staršie vyhraté tikety s takýmito tipmi — kurzy takýchto tipov sa zredukujú na najvyšší z nich. Akciu je možné spustiť opakovane bez rizika.",
             "recalculateButton": "Prepočítať teraz",
             "recalculateSuccess": "Prepočítaných {{count}} tiketov.",
             "recalculateError": "Prepočet zlyhal. Skús to prosím znova."

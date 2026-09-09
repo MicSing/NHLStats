@@ -19,7 +19,7 @@ Users place multi-leg betting tickets (`Bet` + `BetLeg`) on upcoming (not-yet-pl
 | `HostedShutoutWin` | 4-bucket blend, atomic event | Participants allowed (inherently hosted-side) |
 | `OpponentShutoutWin` | 4-bucket blend, atomic event | Blocked for participants |
 
-At most one match-result leg (`TeamWin`/`TeamWinOrDraw`/`TeamDraw`) per match per ticket. `UserPlusPoint` and `UserMinusPoint` are capped independently — a ticket may carry one of each on the same match, just not two of the same type.
+At most one match-result leg (`TeamWin`/`TeamWinOrDraw`/`TeamDraw`) per match per ticket. `UserPlusPoint` and `UserMinusPoint` are capped independently — a ticket may carry one of each on the same match, just not two of the same type. A ticket also cannot combine `HostedShutoutWin` with a same-match `UserPlusPoint` leg at `Occasions == 1`, nor `OpponentShutoutWin` with a same-match `UserMinusPoint` leg at `Occasions == 1` — the match-completion auto-point rule guarantees the point leg whenever the shutout leg wins, so the two are not independent (see [ADR 0003](adr/0003-shutout-plus-minus-leg-correlation.md)). Legs at `Occasions >= 2` are unaffected, since the guarantee only holds at exactly one occasion.
 
 ### MatchTotalGoals
 
@@ -43,9 +43,18 @@ Each bucket falls back to the season rate when its own sample is empty (no last1
 
 ---
 
-## Retroactive Plus/Minus Odds Recalculation
+## Retroactive Correlated-Leg Odds Recalculation
 
-Historical tickets placed before the 1-per-match cap could stack multiple `UserPlusPoint`/`UserMinusPoint` legs on the same match, multiplying all their odds together. An admin-triggered global recalculation (`POST /api/admin/bets/recalculate-plus-minus-odds`) finds Won bets with such same-match stacks and collapses each offending match's legs (per type) to their single highest odds — other legs, and plus/minus legs on other matches, are untouched. See [ADR 0002](adr/0002-retroactive-plus-minus-odds-recalculation.md) for the full rationale. The recalculation is a pure function of leg data, safe to re-run at any time; there is no tracking flag. Admin UI: Finance page → Betting tab.
+Historical tickets could combine legs that aren't actually independent, inflating `TotalOdds`:
+placed before the 1-per-match cap, multiple `UserPlusPoint`/`UserMinusPoint` legs stacked on the
+same match ([ADR 0002](adr/0002-retroactive-plus-minus-odds-recalculation.md)); or a shutout-win
+leg paired with a same-match plus/minus-point leg it guarantees at `Occasions == 1`
+([ADR 0003](adr/0003-shutout-plus-minus-leg-correlation.md)). An admin-triggered global
+recalculation (`POST /api/admin/bets/recalculate-correlated-odds`) finds Won bets with such
+redundant leg groups (via union-find, so a match hit by both rules at once collapses correctly)
+and collapses each group to its single highest odds — other legs, and other matches' groups, are
+untouched. The recalculation is a pure function of leg data, safe to re-run at any time; there is
+no tracking flag. Admin UI: Finance page → Betting tab.
 
 ---
 
@@ -64,7 +73,7 @@ Historical tickets placed before the 1-per-match cap could stack multiple `UserP
 ### Services
 
 - **`BettingOddsService`** (`RecalculateForMatchAsync`, `GetMatchOddsAsync`, `GetUserEventOddsForOccasionsAsync`): computes and persists `MatchOdds` rows. Holds all probability-bucket math.
-- **`BetService`** (`PlaceBetAsync`, `EvaluateMatchBetsAsync`, `RecalculatePlusMinusOddsAsync`, ...): validates and places tickets, resolves win/loss on match completion, and runs the retroactive recalculation.
+- **`BetService`** (`PlaceBetAsync`, `EvaluateMatchBetsAsync`, `RecalculateCorrelatedLegOddsAsync`, ...): validates and places tickets, resolves win/loss on match completion, and runs the retroactive recalculation.
 - **`BettingBalanceService`** / **`BettingCalculator`**: compute a user's available betting balance and max-win cap from points, aggregated data, and bet history.
 
 ### API (`BetsController`)
@@ -78,7 +87,7 @@ Historical tickets placed before the 1-per-match cap could stack multiple `UserP
 | `POST` | `/api/betting/bets` | Place a ticket (`CreateBetDto`) |
 | `DELETE` | `/api/betting/bets/{betId}` | Cancel a pending ticket |
 | `POST` | `/api/admin/matches/{matchId}/re-evaluate-bets` | Admin: re-run evaluation for a match |
-| `POST` | `/api/admin/bets/recalculate-plus-minus-odds` | Admin: global retroactive recalculation |
+| `POST` | `/api/admin/bets/recalculate-correlated-odds` | Admin: global retroactive recalculation |
 
 ---
 
@@ -95,5 +104,5 @@ Historical tickets placed before the 1-per-match cap could stack multiple `UserP
 
 - `backend/tests/NHLStats.Application.Tests/Services/BettingOddsServiceTeamWinTests.cs` — TeamWin/Draw odds math.
 - `backend/tests/NHLStats.Application.Tests/Services/BettingOddsServiceNewMarketsTests.cs` — MatchTotalGoals window, shutout blend.
-- `backend/tests/NHLStats.Application.Tests/Services/BetServiceRecalculationTests.cs` — retroactive collapse logic (per-match-group collapse, idempotency, cross-match isolation).
-- `backend/tests/NHLStats.Api.Tests/Bets/BetsTests.cs` — end-to-end ticket placement, per-match caps, admin recalculation endpoint.
+- `backend/tests/NHLStats.Application.Tests/Services/BetServiceRecalculationTests.cs` — retroactive collapse logic (per-match-group collapse via union-find, idempotency, cross-match isolation, shutout/plus-minus correlation).
+- `backend/tests/NHLStats.Api.Tests/Bets/BetsTests.cs` — end-to-end ticket placement, per-match caps, shutout/plus-minus correlation rejection, admin recalculation endpoint.

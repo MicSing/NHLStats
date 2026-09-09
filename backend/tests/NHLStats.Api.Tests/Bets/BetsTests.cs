@@ -180,6 +180,199 @@ public class BetsTests : ApiTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// Seeds `countsPerMatch.Length` completed matches for the given user's Positive-point
+    /// history, adding the given number of distinct Positive-point rows to each — used to give
+    /// BettingOddsService.GetUserEventOddsForOccasionsAsync enough of a track record to offer a
+    /// bettable price at Occasions >= 2 (a brand-new user has none, so higher-occasion
+    /// thresholds are refused as "not available for betting"). Assumes `userId` is the only
+    /// season roster user seeded so far, mirroring EnsureUserLinkedAndSeedPointsAsync's use of
+    /// `ums[0]`.
+    /// </summary>
+    private async Task SeedPlusPointHistoryAsync(HttpClient client, int seasonId, int userId, params int[] countsPerMatch)
+    {
+        var positiveReasonIds = new[] { 9, 10 }; // seeded Positive "Penalty" / "Secondary Penalty"
+
+        foreach (var count in countsPerMatch)
+        {
+            var createResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
+            createResp.EnsureSuccessStatusCode();
+            var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            var matchId = created.GetProperty("id").GetInt32();
+
+            await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+            {
+                homeTeamId = 3,
+                awayTeamId = 4,
+                homeScore = 0,
+                awayScore = 0,
+                matchDate = (string?)null,
+                completionType = 4 // InProgress
+            });
+
+            await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+            {
+                homeTeamId = 3,
+                awayTeamId = 4,
+                homeScore = 2,
+                awayScore = 1,
+                matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"),
+                completionType = 1
+            });
+
+            await client.PostAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches/initialize", null);
+
+            var umResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches");
+            umResp.EnsureSuccessStatusCode();
+            var ums = await umResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userMatchId = ums[0].GetProperty("id").GetInt32();
+
+            for (int i = 0; i < count; i++)
+            {
+                var pointResp = await client.PostAsJsonAsync($"/api/usermatches/{userMatchId}/points",
+                    new { pointReasonId = positiveReasonIds[i % positiveReasonIds.Length], count = 1 });
+                pointResp.EnsureSuccessStatusCode();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Place_hosted_shutout_and_plus_point_occasions_one_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint Correlation Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "HostedShutoutWin" },
+                new { matchId, betType = "UserPlusPoint", userId }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Place_plus_point_then_hosted_shutout_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "PlusPoint Then Shutout Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "UserPlusPoint", userId },
+                new { matchId, betType = "HostedShutoutWin" }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Place_opponent_shutout_and_minus_point_occasions_one_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout MinusPoint Correlation Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "OpponentShutoutWin" },
+                new { matchId, betType = "UserMinusPoint", userId }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Place_hosted_shutout_and_plus_point_occasions_two_returns_201()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint Occasions Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+        // Build enough Positive-point history for Occasions=2 to be a bettable, non-guaranteed price.
+        await SeedPlusPointHistoryAsync(client, seasonId, userId, 1, 1, 2, 2);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "HostedShutoutWin" },
+                new { matchId, betType = "UserPlusPoint", userId, occasions = 2 }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Place_hosted_shutout_and_minus_point_same_match_returns_201()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout MinusPoint NonCorrelated Season");
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        // HostedShutoutWin only auto-guarantees UserPlusPoint (not UserMinusPoint) on the same
+        // match, so this cross-pair must remain allowed.
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId, betType = "HostedShutoutWin" },
+                new { matchId, betType = "UserMinusPoint", userId }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Place_hosted_shutout_and_plus_point_different_matches_returns_201()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint CrossMatch Season");
+        var match1 = await CreateFutureMatchAsync(client, seasonId);
+        var match2 = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: 7);
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new object[]
+            {
+                new { matchId = match1, betType = "HostedShutoutWin" },
+                new { matchId = match2, betType = "UserPlusPoint", userId }
+            }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs").GetArrayLength().Should().Be(2);
+    }
+
     [Fact]
     public async Task Place_two_plus_point_legs_on_same_match_returns_400()
     {
@@ -217,10 +410,10 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
-    public async Task Recalculate_plus_minus_odds_requires_admin_role_and_returns_200()
+    public async Task Recalculate_correlated_odds_requires_admin_role_and_returns_200()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsync("/api/admin/bets/recalculate-plus-minus-odds", null);
+        var resp = await client.PostAsync("/api/admin/bets/recalculate-correlated-odds", null);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);

@@ -512,6 +512,8 @@
         "oneMinusPointPerMatch": "Only one minus-point bet is allowed per match.",
         "oneShutoutPerMatch": "Only one shutout-win bet is allowed per match.",
         "cannotCombineTeamWinAndShutout": "Cannot combine match result and shutout win for the same match.",
+        "cannotCombineShutoutAndPlusPoint": "Cannot combine hosted-team shutout win with a plus-point bet for the same match.",
+        "cannotCombineShutoutAndMinusPoint": "Cannot combine opponent shutout win with a minus-point bet for the same match.",
         "betPlaced": "Bets placed successfully!",
         "draftMatchClosed": "Some matches on your ticket draft have closed and were removed.",
         "draftOddsUpdated": "Odds on your ticket draft have been updated according to latest results.",
@@ -863,8 +865,8 @@
             "addCollection": "Add Payment"
         },
         "betting": {
-            "recalculateTitle": "Recalculate Plus/Minus Odds",
-            "recalculateDescription": "Plus/minus bets are now capped at one per match. This recalculates TotalOdds for past Won bets that stacked multiple plus- or minus-point legs on the same match, collapsing each offending match's legs to their single highest odds. Safe to run more than once.",
+            "recalculateTitle": "Recalculate Correlated Bet Odds",
+            "recalculateDescription": "Some leg combinations aren't actually independent — e.g. multiple plus/minus-point legs stacked on one match, or a shutout-win leg paired with a plus/minus-point leg it guarantees. This recalculates TotalOdds for past Won bets with such legs, collapsing each offending match's redundant legs to their single highest odds. Safe to run more than once.",
             "recalculateButton": "Recalculate Now",
             "recalculateSuccess": "Recalculated {{count}} bet(s).",
             "recalculateError": "Failed to recalculate odds. Please try again."

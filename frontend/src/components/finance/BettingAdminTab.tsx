@@ -12,7 +12,7 @@ export default function BettingAdminTab() {
         setRunning(true)
         try {
             const result = await apiClient.post<{ betsUpdated: number }>(
-                '/api/admin/bets/recalculate-plus-minus-odds', {},
+                '/api/admin/bets/recalculate-correlated-odds', {},
             )
             success(t('admin.betting.recalculateSuccess', { count: result.betsUpdated }))
         } catch {
