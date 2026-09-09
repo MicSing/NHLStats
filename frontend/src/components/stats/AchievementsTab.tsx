@@ -46,6 +46,8 @@ const LABEL_KEY_MAP: Record<string, string> = {
     'odds': 'odds',
     'streaks': 'streaks',
     'seasons': 'weeks',
+    'offsides': 'offsides',
+    'icings': 'icings',
 }
 
 function formatOccurrence(

@@ -404,6 +404,8 @@
         "underdogKing":         { "name": "Underdog King",        "desc": "Vyhratá stávka s kurzom ≥ 4.00" },
         "hotStreak":            { "name": "Hot Streak",           "desc": "Séria aspoň 5 vyhratých stávok v rade" },
         "ironMan":              { "name": "Iron Man",             "desc": "Najväčšia účasť v týždňoch zo sezóny spomedzi všetkých hráčov" },
+        "offsideTrap":          { "name": "Ofsajdová pasca",      "desc": "Mínusový bod za ofsajd v zápase" },
+        "icingMachine":         { "name": "Zakázané uvoľnenie",   "desc": "Mínusový bod za zakázané uvoľnenie v zápase" },
         "labels": {
             "goals_one": "{{count}} gól",
             "goals_few": "{{count}} góly",
@@ -460,7 +462,15 @@
             "streaks_one": "{{count}} séria",
             "streaks_few": "{{count}} série",
             "streaks_many": "{{count}} sérií",
-            "streaks_other": "{{count}} sérií"
+            "streaks_other": "{{count}} sérií",
+            "offsides_one": "{{count}} ofsajd",
+            "offsides_few": "{{count}} ofsajdy",
+            "offsides_many": "{{count}} ofsajdov",
+            "offsides_other": "{{count}} ofsajdov",
+            "icings_one": "{{count}} zakázané uvoľnenie",
+            "icings_few": "{{count}} zakázané uvoľnenia",
+            "icings_many": "{{count}} zakázaných uvoľnení",
+            "icings_other": "{{count}} zakázaných uvoľnení"
         }
     },
     "rules": {

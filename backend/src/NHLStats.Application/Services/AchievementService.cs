@@ -80,6 +80,35 @@ public class AchievementService : IAchievementService
         _     => (0,  1),
     };
 
+    private static (int current, int? next) RareLevelRange(int count) => count switch {
+        >= 10 => (10, null),
+        >= 8  => (8,  10),
+        >= 6  => (6,  8),
+        >= 4  => (4,  6),
+        >= 3  => (3,  4),
+        >= 2  => (2,  3),
+        >= 1  => (1,  2),
+        _     => (0,  1),
+    };
+
+    private static int ToRareLevel(int count) => count switch {
+        >= 10 => 7,
+        >= 8  => 6,
+        >= 6  => 5,
+        >= 4  => 4,
+        >= 3  => 3,
+        >= 2  => 2,
+        >= 1  => 1,
+        _     => 0
+    };
+
+    private static AchievementResultDto RareResult(string id, List<AchievementOccurrenceDto> occs)
+    {
+        var total = occs.Sum(o => o.Value ?? 1);
+        var (cur, next) = RareLevelRange(total);
+        return new(id, total > 0, ToRareLevel(total), total, cur, next, occs);
+    }
+
     private static AchievementResultDto MatchResult(string id, List<AchievementOccurrenceDto> occs)
     {
         var (cur, next) = MatchLevelRange(occs.Count);
@@ -989,6 +1018,36 @@ public class AchievementService : IAchievementService
             return MatchResult("own_goal_disaster", occs);
         }
 
+        AchievementResultDto OffsideTrap()
+        {
+            var occs = points
+                .Where(p => p.PointType == PointType.Negative
+                         && p.PointReasonName.Contains("offside", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(p => p.MatchId)
+                .Select(mg =>
+                {
+                    weekMap.TryGetValue(mg.Key, out var w);
+                    var first = mg.First();
+                    return O(mg.Key, first.MatchDate, w, first.SeasonId, first.SeasonName, null, mg.Sum(p => p.Count));
+                }).ToList();
+            return RareResult("offside_trap", occs);
+        }
+
+        AchievementResultDto IcingMachine()
+        {
+            var occs = points
+                .Where(p => p.PointType == PointType.Negative
+                         && p.PointReasonName.Contains("icing", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(p => p.MatchId)
+                .Select(mg =>
+                {
+                    weekMap.TryGetValue(mg.Key, out var w);
+                    var first = mg.First();
+                    return O(mg.Key, first.MatchDate, w, first.SeasonId, first.SeasonName, null, mg.Sum(p => p.Count));
+                }).ToList();
+            return RareResult("icing_machine", occs);
+        }
+
         AchievementResultDto ThePerfectGame()
         {
             var wonBetMatchIds = userBets
@@ -1115,6 +1174,7 @@ public class AchievementService : IAchievementService
             Unlucky(), DeepPockets(), VipSponzor(), TheAtm(),
             IceGeneral(), GoodWeek(), HappySeason(), KingOfTheRink(),
             GuardianAngel(), OwnGoalDisaster(), IronMan(),
+            OffsideTrap(), IcingMachine(),
             Oracle(), TheBookie(), Nostradamus(),
             SwissArmyKnife(), ThePerfectGame(), ParlayMaster(), UnderdogKing(), HotStreak(),
         });
