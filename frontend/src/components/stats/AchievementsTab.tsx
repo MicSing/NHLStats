@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { LockSimpleIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { AchievementResult, AchievementOccurrence } from '../../types/achievement'
-import { ACHIEVEMENT_DEFS } from './achievementDefs'
+import type { AchievementDef } from './achievementDefs'
+import { useAchievementFilters, isRecent } from './useAchievementFilters'
+import AchievementFilterBar from './AchievementFilterBar'
 import Modal from '../Modal'
 
 const TIER_COLORS = [
@@ -18,11 +20,6 @@ const TIER_COLORS = [
 interface Props {
     achievements: AchievementResult[]
     loading: boolean
-}
-
-function isRecent(date: string | null, days = 7): boolean {
-    if (!date) return false
-    return new Date(date) >= new Date(Date.now() - days * 86_400_000)
 }
 
 const LABEL_KEY_MAP: Record<string, string> = {
@@ -89,7 +86,7 @@ function formatOccurrence(
 }
 
 interface BadgeCardProps {
-    def: (typeof ACHIEVEMENT_DEFS)[number]
+    def: AchievementDef
     result: AchievementResult | undefined
     onClick: () => void
 }
@@ -142,7 +139,7 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
 }
 
 interface ModalProps {
-    def: (typeof ACHIEVEMENT_DEFS)[number]
+    def: AchievementDef
     result: AchievementResult | undefined
     onClose: () => void
 }
@@ -254,7 +251,10 @@ export function AchievementModal({ def, result, onClose }: ModalProps) {
 }
 
 export default function AchievementsTab({ achievements, loading }: Props) {
-    const [selected, setSelected] = useState<{ def: (typeof ACHIEVEMENT_DEFS)[number]; result: AchievementResult | undefined } | null>(null)
+    const { t } = useTranslation()
+    const filters = useAchievementFilters(achievements)
+    const { achievementMap, filteredDefs, activeFilters, clearAllFilters } = filters
+    const [selected, setSelected] = useState<{ def: AchievementDef; result: AchievementResult | undefined } | null>(null)
 
     if (loading) {
         return (
@@ -266,26 +266,43 @@ export default function AchievementsTab({ achievements, loading }: Props) {
         )
     }
 
-    const resultById = Object.fromEntries(achievements.map((a) => [a.id, a]))
-
-    const sorted = [...ACHIEVEMENT_DEFS].sort((a, b) => {
-        const aLevel = resultById[a.id]?.level ?? 0
-        const bLevel = resultById[b.id]?.level ?? 0
+    const sorted = [...filteredDefs].sort((a, b) => {
+        const aLevel = achievementMap.get(a.id)?.level ?? 0
+        const bLevel = achievementMap.get(b.id)?.level ?? 0
         return bLevel - aLevel
     })
 
     return (
         <>
-            <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {sorted.map((def) => (
-                    <BadgeCard
-                        key={def.id}
-                        def={def}
-                        result={resultById[def.id]}
-                        onClick={() => setSelected({ def, result: resultById[def.id] })}
-                    />
-                ))}
-            </section>
+            <div className="space-y-6">
+                <AchievementFilterBar {...filters} />
+
+                {sorted.length === 0 ? (
+                    <div className="card p-8 text-center">
+                        <p className="text-text-muted text-sm">{t('profile.achievements.noMatches')}</p>
+                        {activeFilters.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="mt-3 text-xs text-primary hover:underline font-medium"
+                            >
+                                {t('profile.achievements.clearAll')}
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        {sorted.map((def) => (
+                            <BadgeCard
+                                key={def.id}
+                                def={def}
+                                result={achievementMap.get(def.id)}
+                                onClick={() => setSelected({ def, result: achievementMap.get(def.id) })}
+                            />
+                        ))}
+                    </section>
+                )}
+            </div>
 
             {selected && (
                 <AchievementModal
