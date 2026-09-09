@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next'
 import PageLayout from '../components/PageLayout'
 import ArchiveTab from '../components/betting/ArchiveTab'
 import BettingTab from '../components/betting/BettingTab'
+import SummaryTab from '../components/betting/SummaryTab'
 import TicketsTab from '../components/betting/TicketsTab'
 import { useAuth } from '../context/AuthContext'
 import { useSeasonEventNotifications } from '../hooks/useSeasonEventNotifications'
 import { cacheService } from '../services/cacheService'
 import type { BettingBalanceDto } from '../types/bet'
 
-type Tab = 'betting' | 'archive' | 'tickets'
+type Tab = 'betting' | 'archive' | 'tickets' | 'summary'
 
 export default function BettingPage() {
     const { t } = useTranslation()
@@ -35,7 +36,7 @@ export default function BettingPage() {
 
     const rawTab = searchParams.get('tab')
     const tab: Tab =
-        rawTab === 'archive' || rawTab === 'tickets'
+        rawTab === 'archive' || rawTab === 'tickets' || rawTab === 'summary'
             ? rawTab
             : userId ? 'betting' : 'tickets'
 
@@ -45,9 +46,10 @@ export default function BettingPage() {
         setSearchParams(prev => {
             const p = new URLSearchParams(prev)
             p.set('tab', next)
-            // clear ticket filter params when leaving tickets tab
-            if (next !== 'tickets') {
-                ['id','userId','matchNumber','seasonId','status','structure','betType',
+            // Tickets and Summary share the same filter params so switching between
+            // them keeps the current filters; clear them when leaving both.
+            if (next !== 'tickets' && next !== 'summary') {
+                ['id','userId','matchNumber','seasonId','week','status','structure','betType',
                  'stakeMin','stakeMax','oddsMin','oddsMax','winMin','winMax',
                  'sortBy','sortDir','page'].forEach(k => p.delete(k))
             }
@@ -88,6 +90,14 @@ export default function BettingPage() {
                         >
                             {t('betting.tabTickets', 'Tickets')}
                         </button>
+                        <button
+                            onClick={() => setTab('summary')}
+                            className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${
+                                tab === 'summary' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                            }`}
+                        >
+                            {t('betting.tabSummary')}
+                        </button>
                     </div>
                     {balance && (
                         <div className="flex gap-2 sm:gap-3 text-sm">
@@ -109,6 +119,8 @@ export default function BettingPage() {
                     <BettingTab userId={userId} onBalanceChanged={setBalance} refreshKey={refreshKey} />
                 ) : tab === 'archive' && userId ? (
                     <ArchiveTab refreshKey={refreshKey} />
+                ) : tab === 'summary' ? (
+                    <SummaryTab refreshKey={refreshKey} />
                 ) : (
                     <TicketsTab refreshKey={refreshKey} />
                 )}
