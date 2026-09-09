@@ -464,7 +464,7 @@ export default function SummaryTab({ refreshKey }: SummaryTabProps) {
                 </section>
             ) : (
                 <div className="card overflow-x-auto border border-border">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm whitespace-nowrap">
                         <thead>
                             <tr className="border-b border-border text-left text-text-muted text-xs uppercase tracking-wider">
                                 <th className="px-4 py-2.5 font-semibold">{t('betting.tickets.user')}</th>
