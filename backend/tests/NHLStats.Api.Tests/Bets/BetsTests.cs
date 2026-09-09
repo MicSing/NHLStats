@@ -181,18 +181,24 @@ public class BetsTests : ApiTestBase
     }
 
     /// <summary>
-    /// Seeds `countsPerMatch.Length` completed matches for the given user's Positive-point
-    /// history, adding the given number of distinct Positive-point rows to each — used to give
-    /// BettingOddsService.GetUserEventOddsForOccasionsAsync enough of a track record to offer a
-    /// bettable price at Occasions >= 2 (a brand-new user has none, so higher-occasion
-    /// thresholds are refused as "not available for betting"). Assumes `userId` is the only
-    /// season roster user seeded so far, mirroring EnsureUserLinkedAndSeedPointsAsync's use of
-    /// `ums[0]`.
+    /// Seeds `countsPerMatch.Length` completed matches for the given user's point history,
+    /// adding the given number of distinct point rows (cycling through `reasonIds`) to each —
+    /// used to give BettingOddsService a real track record so a plus/minus-point market is
+    /// actually bettable (a user with zero history has Probability == 0, which is always below
+    /// BettingConstants.MinBettableProbability and gets rejected outright, or — depending on
+    /// unrelated test/global state — the market simply isn't priced at all yet, defaulting to
+    /// odds 1.0). `userId` must belong to a user with NO other point history in the shared test
+    /// database (e.g. a dedicated user created just for this test, not the shared admin user
+    /// other tests in this class also seed via EnsureUserLinkedAndSeedPointsAsync) —
+    /// BettingOddsService's "last10"/"prev" windows for plus/minus points are not season-scoped,
+    /// so a shared user's history would make the resulting probability depend on unrelated test
+    /// execution order.
     /// </summary>
-    private async Task SeedPlusPointHistoryAsync(HttpClient client, int seasonId, int userId, params int[] countsPerMatch)
-    {
-        var positiveReasonIds = new[] { 9, 10 }; // seeded Positive "Penalty" / "Secondary Penalty"
+    private static readonly int[] PositiveReasonIds = { 9, 10 };  // seeded Positive "Penalty" / "Secondary Penalty"
+    private static readonly int[] NegativeReasonIds = { 1, 2 };   // seeded Negative "Penalty" / "Secondary Penalty"
 
+    private async Task SeedPointHistoryAsync(HttpClient client, int seasonId, int userId, int[] reasonIds, params int[] countsPerMatch)
+    {
         foreach (var count in countsPerMatch)
         {
             var createResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
@@ -225,12 +231,12 @@ public class BetsTests : ApiTestBase
             var umResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches");
             umResp.EnsureSuccessStatusCode();
             var ums = await umResp.Content.ReadFromJsonAsync<JsonElement>();
-            var userMatchId = ums[0].GetProperty("id").GetInt32();
+            var userMatchId = ums.EnumerateArray().First(u => u.GetProperty("userId").GetInt32() == userId).GetProperty("id").GetInt32();
 
             for (int i = 0; i < count; i++)
             {
                 var pointResp = await client.PostAsJsonAsync($"/api/usermatches/{userMatchId}/points",
-                    new { pointReasonId = positiveReasonIds[i % positiveReasonIds.Length], count = 1 });
+                    new { pointReasonId = reasonIds[i % reasonIds.Length], count = 1 });
                 pointResp.EnsureSuccessStatusCode();
             }
         }
@@ -305,9 +311,20 @@ public class BetsTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint Occasions Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
-        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId); // gives the bettor (admin) enough balance
+
+        // Use a dedicated target user (not the shared admin user other tests in this class also
+        // seed via EnsureUserLinkedAndSeedPointsAsync) so this test's Occasions=2 probability
+        // math is deterministic regardless of what other tests already ran in the shared DB —
+        // see SeedPointHistoryAsync's doc comment.
+        var createTargetResp = await client.PostAsJsonAsync("/api/users", new { name = "Occasions Target User" });
+        createTargetResp.EnsureSuccessStatusCode();
+        var target = await createTargetResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = target.GetProperty("id").GetInt32();
+        await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null);
+
         // Build enough Positive-point history for Occasions=2 to be a bettable, non-guaranteed price.
-        await SeedPlusPointHistoryAsync(client, seasonId, userId, 1, 1, 2, 2);
+        await SeedPointHistoryAsync(client, seasonId, userId, PositiveReasonIds, 1, 1, 2, 2);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
@@ -329,8 +346,29 @@ public class BetsTests : ApiTestBase
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Shutout MinusPoint NonCorrelated Season");
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId); // gives the bettor (admin) enough balance
+
+        // Dedicated target user with its own seeded Negative-point history — see
+        // SeedPointHistoryAsync's doc comment for why a shared user isn't safe here. A user with
+        // zero negative-point history would have Probability == 0 for UserMinusPoint, which is
+        // always below MinBettableProbability once a MatchOdds row for it exists.
+        var createTargetResp = await client.PostAsJsonAsync("/api/users", new { name = "Shutout MinusPoint Target User" });
+        createTargetResp.EnsureSuccessStatusCode();
+        var target = await createTargetResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = target.GetProperty("id").GetInt32();
+        await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null);
+        // A rate too close to 0 leaves Probability below MinBettableProbability; too close to 1
+        // pushes the computed odds below 1.0 (a near-certain event isn't worth offering odds on
+        // at all under the margin formula) — 2 of 5 matches lands comfortably in between.
+        await SeedPointHistoryAsync(client, seasonId, userId, NegativeReasonIds, 0, 0, 0, 1, 1);
+
+        // Create the future match to bet on only AFTER the target's history is fully seeded:
+        // each completed match above can trigger a background odds recalculation for whichever
+        // upcoming matches are currently "next" globally, and that recalculation is a one-shot
+        // snapshot cached in MatchOdds (nothing re-triggers it later just because more history
+        // arrives) — creating the bet match first risked it being caught mid-seed with a
+        // still-incomplete (e.g. zero) probability baked in permanently.
         var matchId = await CreateFutureMatchAsync(client, seasonId);
-        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         // HostedShutoutWin only auto-guarantees UserPlusPoint (not UserMinusPoint) on the same
         // match, so this cross-pair must remain allowed.
@@ -343,7 +381,6 @@ public class BetsTests : ApiTestBase
                 new { matchId, betType = "UserMinusPoint", userId }
             }
         });
-
         resp.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("legs").GetArrayLength().Should().Be(2);
@@ -354,9 +391,12 @@ public class BetsTests : ApiTestBase
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint CrossMatch Season");
+        // Seed the bettor's own history before creating the future matches — see the ordering
+        // note in Place_hosted_shutout_and_minus_point_same_match_returns_201 for why creating
+        // the bet matches first risks a background odds recalculation catching them mid-seed.
+        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
         var match1 = await CreateFutureMatchAsync(client, seasonId);
         var match2 = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: 7);
-        var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
