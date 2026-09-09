@@ -218,6 +218,10 @@ public class BetService : IBetService
         var matchesWithPlusPointLeg = new HashSet<int>();
         var matchesWithMinusPointLeg = new HashSet<int>();
         var matchesWithShutoutLeg = new HashSet<int>();
+        var matchesWithHostedShutoutLeg = new HashSet<int>();
+        var matchesWithOpponentShutoutLeg = new HashSet<int>();
+        var matchesWithPlusPointOccasions1Leg = new HashSet<int>();
+        var matchesWithMinusPointOccasions1Leg = new HashSet<int>();
 
         foreach (var legDto in dto.Legs)
         {
@@ -264,6 +268,19 @@ public class BetService : IBetService
                     return (null, "Only one shutout-win bet is allowed per match in a single ticket.");
                 if (matchesWithTeamOutcomeLeg.Contains(legDto.MatchId))
                     return (null, "Cannot combine match result and shutout win for the same match in a single ticket.");
+
+                if (legDto.BetType == BetType.HostedShutoutWin)
+                {
+                    matchesWithHostedShutoutLeg.Add(legDto.MatchId);
+                    if (matchesWithPlusPointOccasions1Leg.Contains(legDto.MatchId))
+                        return (null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
+                }
+                else
+                {
+                    matchesWithOpponentShutoutLeg.Add(legDto.MatchId);
+                    if (matchesWithMinusPointOccasions1Leg.Contains(legDto.MatchId))
+                        return (null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
+                }
             }
 
             if (legDto.BetType == BetType.UserPlusPoint)
@@ -281,6 +298,19 @@ public class BetService : IBetService
             var occasions = legDto.BetType == BetType.MatchTotalGoals ? Math.Max(BettingConstants.MinGoalThreshold, legDto.Occasions)
                 : IsUserEventBetType(legDto.BetType) ? Math.Max(1, legDto.Occasions)
                 : 1;
+
+            if (legDto.BetType == BetType.UserPlusPoint && occasions == 1)
+            {
+                matchesWithPlusPointOccasions1Leg.Add(legDto.MatchId);
+                if (matchesWithHostedShutoutLeg.Contains(legDto.MatchId))
+                    return (null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
+            }
+            if (legDto.BetType == BetType.UserMinusPoint && occasions == 1)
+            {
+                matchesWithMinusPointOccasions1Leg.Add(legDto.MatchId);
+                if (matchesWithOpponentShutoutLeg.Contains(legDto.MatchId))
+                    return (null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
+            }
 
             // Odds are only (re)computed by the background job when a match finishes —
             // placing a bet never triggers recalculation. If nothing has been computed yet
@@ -619,12 +649,19 @@ public class BetService : IBetService
     }
 
     /// <summary>
-    /// Recalculates TotalOdds for Won bets that stacked 2+ same-type plus/minus-point legs on
-    /// the same match (now capped at 1 per match per type). Each offending match's plus/minus
-    /// legs of one type collapse to their single highest odds; all other legs are untouched.
-    /// Pure function of leg data — safe to re-run at any time (see docs/adr/0002).
+    /// Recalculates TotalOdds for Won bets whose legs are not actually independent, so the
+    /// naive "multiply every leg's odds" math overstated the payout:
+    ///  - 2+ same-type plus/minus-point legs stacked on the same match (now capped at 1 per
+    ///    match per type at placement time), and
+    ///  - a shutout-win leg paired with a same-match plus/minus-point leg at Occasions == 1,
+    ///    which the match-completion auto-point rule (see docs/adr/0003) guarantees together.
+    /// Each offending match's redundant legs collapse to their single highest odds (using
+    /// union-find so a match hit by both rules at once — e.g. a shutout leg plus two legacy
+    /// same-type point legs — collapses to ONE group, not two multiplied-together groups);
+    /// all other legs are untouched. Pure function of leg data — safe to re-run at any time
+    /// (see docs/adr/0002, docs/adr/0003).
     /// </summary>
-    public async Task<int> RecalculatePlusMinusOddsAsync()
+    public async Task<int> RecalculateCorrelatedLegOddsAsync()
     {
         var wonBets = await _db.Bets
             .Include(b => b.Legs)
@@ -651,28 +688,73 @@ public class BetService : IBetService
     private static decimal RecomputeCollapsedTotalOdds(IEnumerable<BetLeg> legs)
     {
         var legList = legs.ToList();
-        var violatingLegIds = new HashSet<int>();
-        decimal collapsedFactor = 1m;
+        var groups = BuildRedundancyGroups(legList);
+        var groupedLegIds = groups.SelectMany(g => g.Select(l => l.Id)).ToHashSet();
 
-        foreach (var betType in new[] { BetType.UserPlusPoint, BetType.UserMinusPoint })
-        {
-            var groups = legList
-                .Where(l => l.BetType == betType)
-                .GroupBy(l => l.MatchId)
-                .Where(g => g.Count() >= 2);
-
-            foreach (var group in groups)
-            {
-                foreach (var leg in group) violatingLegIds.Add(leg.Id);
-                collapsedFactor = Math.Floor(collapsedFactor * group.Max(l => l.Odds) * 100m) / 100m;
-            }
-        }
+        var collapsedFactor = groups.Aggregate(1m, (acc, g) =>
+            Math.Floor(acc * g.Max(l => l.Odds) * 100m) / 100m);
 
         var otherLegsFactor = legList
-            .Where(l => !violatingLegIds.Contains(l.Id))
+            .Where(l => !groupedLegIds.Contains(l.Id))
             .Aggregate(1m, (acc, l) => Math.Floor(acc * l.Odds * 100m) / 100m);
 
         return Math.Floor(otherLegsFactor * collapsedFactor * 100m) / 100m;
+    }
+
+    /// <summary>
+    /// Groups (size &gt;= 2) of legs on the same bet that are policy-redundant with each other,
+    /// via union-find over two edge kinds within each match:
+    ///  (1) same-BetType edges for UserPlusPoint/UserMinusPoint — ANY 2+ same-type legs on one
+    ///      match are redundant, unconditional on Occasions.
+    ///  (2) shutout-correlation edges: HostedShutoutWin &lt;-&gt; each UserPlusPoint leg with
+    ///      Occasions == 1 on that match; OpponentShutoutWin &lt;-&gt; each UserMinusPoint leg with
+    ///      Occasions == 1 on that match (see docs/adr/0003).
+    /// Union-find (rather than two independent passes) is required so a match hit by both rule
+    /// kinds at once collapses into a single group instead of being double-collapsed and still
+    /// overstating TotalOdds.
+    /// </summary>
+    private static List<List<BetLeg>> BuildRedundancyGroups(List<BetLeg> legList)
+    {
+        var parent = legList.ToDictionary(l => l.Id, l => l.Id);
+        int Find(int x) => parent[x] == x ? x : (parent[x] = Find(parent[x]));
+        void Union(int a, int b)
+        {
+            var ra = Find(a);
+            var rb = Find(b);
+            if (ra != rb) parent[ra] = rb;
+        }
+
+        foreach (var matchGroup in legList.GroupBy(l => l.MatchId))
+        {
+            var matchLegs = matchGroup.ToList();
+
+            foreach (var betType in new[] { BetType.UserPlusPoint, BetType.UserMinusPoint })
+            {
+                var sameType = matchLegs.Where(l => l.BetType == betType).ToList();
+                for (int i = 1; i < sameType.Count; i++) Union(sameType[0].Id, sameType[i].Id);
+            }
+
+            var hostedShutout = matchLegs.FirstOrDefault(l => l.BetType == BetType.HostedShutoutWin);
+            if (hostedShutout != null)
+            {
+                foreach (var plusLeg in matchLegs.Where(l => l.BetType == BetType.UserPlusPoint && l.Occasions == 1))
+                    Union(hostedShutout.Id, plusLeg.Id);
+            }
+
+            var opponentShutout = matchLegs.FirstOrDefault(l => l.BetType == BetType.OpponentShutoutWin);
+            if (opponentShutout != null)
+            {
+                foreach (var minusLeg in matchLegs.Where(l => l.BetType == BetType.UserMinusPoint && l.Occasions == 1))
+                    Union(opponentShutout.Id, minusLeg.Id);
+            }
+        }
+
+        var byId = legList.ToDictionary(l => l.Id);
+        return byId.Keys
+            .GroupBy(Find)
+            .Where(g => g.Count() >= 2)
+            .Select(g => g.Select(id => byId[id]).ToList())
+            .ToList();
     }
 
     private static BetStatus RollupStatus(IEnumerable<BetLeg> legs)

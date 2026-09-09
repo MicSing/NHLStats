@@ -267,14 +267,38 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
                 error(t('betting.cannotCombineTeamWinAndShutout'))
                 return
             }
+            if (leg.betType === 'HostedShutoutWin' &&
+                draftLegs.some((l) => l.matchId === leg.matchId && l.betType === 'UserPlusPoint' && (l.occasions ?? 1) === 1)) {
+                error(t('betting.cannotCombineShutoutAndPlusPoint'))
+                return
+            }
+            if (leg.betType === 'OpponentShutoutWin' &&
+                draftLegs.some((l) => l.matchId === leg.matchId && l.betType === 'UserMinusPoint' && (l.occasions ?? 1) === 1)) {
+                error(t('betting.cannotCombineShutoutAndMinusPoint'))
+                return
+            }
         }
-        if (leg.betType === 'UserPlusPoint' && matchHasLegOfType(draftLegs, leg.matchId, 'UserPlusPoint')) {
-            error(t('betting.onePlusPointPerMatch'))
-            return
+        if (leg.betType === 'UserPlusPoint') {
+            if (matchHasLegOfType(draftLegs, leg.matchId, 'UserPlusPoint')) {
+                error(t('betting.onePlusPointPerMatch'))
+                return
+            }
+            if (occasions === 1 &&
+                draftLegs.some((l) => l.matchId === leg.matchId && l.betType === 'HostedShutoutWin')) {
+                error(t('betting.cannotCombineShutoutAndPlusPoint'))
+                return
+            }
         }
-        if (leg.betType === 'UserMinusPoint' && matchHasLegOfType(draftLegs, leg.matchId, 'UserMinusPoint')) {
-            error(t('betting.oneMinusPointPerMatch'))
-            return
+        if (leg.betType === 'UserMinusPoint') {
+            if (matchHasLegOfType(draftLegs, leg.matchId, 'UserMinusPoint')) {
+                error(t('betting.oneMinusPointPerMatch'))
+                return
+            }
+            if (occasions === 1 &&
+                draftLegs.some((l) => l.matchId === leg.matchId && l.betType === 'OpponentShutoutWin')) {
+                error(t('betting.cannotCombineShutoutAndMinusPoint'))
+                return
+            }
         }
         setDraftLegs((prev) => [...prev, { ...leg, occasions, maxOccasions, key }])
     }
