@@ -35,10 +35,10 @@ public static class OddsFormula
     /// priced the hosted team's TeamWin leg with the default (App) margin and the opponent's
     /// with TeamMargin — an asymmetry that predates this file and must be preserved.
     /// </param>
-    public static decimal MarginFor(decimal version, BetType betType, int occasions, bool isHostedTeamLeg)
+    public static decimal MarginFor(OddsFormulaTier version, BetType betType, int occasions, bool isHostedTeamLeg)
     {
-        if (version == BettingConstants.HistoricalOddsFormulaVersion) return BettingConstants.HistoricalMargin;
-        if (version != BettingConstants.LegacyOddsFormulaVersion) return BettingConstants.Margin;
+        if (version == OddsFormulaTier.Historical) return BettingConstants.HistoricalMargin;
+        if (version != OddsFormulaTier.Legacy) return BettingConstants.Margin;
 
         return betType switch
         {
@@ -53,10 +53,10 @@ public static class OddsFormula
     }
 
     /// <summary>Computes the odds for a probability under the given formula version and margin.</summary>
-    public static decimal Compute(decimal version, decimal probability, decimal margin)
+    public static decimal Compute(OddsFormulaTier version, decimal probability, decimal margin)
     {
         probability = Math.Clamp(probability, 0.01m, 0.99m);
-        var odds = version == BettingConstants.LegacyOddsFormulaVersion
+        var odds = version == OddsFormulaTier.Legacy
             ? margin / probability
             : 1m + (1m / probability - 1m) * margin;
         return Math.Floor(odds * 100m) / 100m;
@@ -67,12 +67,12 @@ public static class OddsFormula
     /// version/margin. Returns null if the odds can't be inverted safely (e.g. below 1.0, or the
     /// implied probability would fall outside (0, 1)).
     /// </summary>
-    public static decimal? Invert(decimal version, decimal margin, decimal odds)
+    public static decimal? Invert(OddsFormulaTier version, decimal margin, decimal odds)
     {
         if (odds < 1m) return null;
 
         decimal probability;
-        if (version == BettingConstants.LegacyOddsFormulaVersion)
+        if (version == OddsFormulaTier.Legacy)
         {
             probability = margin / odds;
         }

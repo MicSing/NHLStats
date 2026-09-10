@@ -105,7 +105,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin);
+        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin);
         var repricedLeg = reloaded.Legs.Single();
         repricedLeg.Odds.Should().Be(expected);
         reloaded.TotalOdds.Should().Be(expected);
@@ -144,7 +144,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.80m / 2.00m, BettingConstants.Margin);
+        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.80m / 2.00m, BettingConstants.Margin);
         reloaded.Legs.Single().Odds.Should().Be(expected);
     }
 
@@ -174,7 +174,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        reloaded.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin));
+        reloaded.Legs.Single().Odds.Should().Be(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin));
     }
 
     [Fact]
@@ -227,8 +227,8 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         count.Should().Be(2);
         var reloadedHosted = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == hostedBet.Id);
         var reloadedOpponent = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == opponentBet.Id);
-        reloadedHosted.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.80m), "the hosted team's TeamWin leg reprices with the default (App) margin under v1");
-        reloadedOpponent.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.75m), "the opponent's TeamWin leg reprices with TeamMargin under v1");
+        reloadedHosted.Legs.Single().Odds.Should().Be(OddsFormula.Compute(OddsFormulaTier.Legacy, 0.40m, 0.80m), "the hosted team's TeamWin leg reprices with the default (App) margin under v1");
+        reloadedOpponent.Legs.Single().Odds.Should().Be(OddsFormula.Compute(OddsFormulaTier.Legacy, 0.40m, 0.75m), "the opponent's TeamWin leg reprices with TeamMargin under v1");
         reloadedHosted.Legs.Single().OddsFormulaVersion.Should().Be(BettingConstants.LegacyOddsFormulaVersion);
     }
 
@@ -247,9 +247,9 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
         var repricedLeg = reloaded.Legs.Single();
-        var expected = OddsFormula.Compute(BettingConstants.HistoricalOddsFormulaVersion, 0.40m, BettingConstants.HistoricalMargin);
+        var expected = OddsFormula.Compute(OddsFormulaTier.Historical, 0.40m, BettingConstants.HistoricalMargin);
         repricedLeg.Odds.Should().Be(expected);
-        repricedLeg.Odds.Should().NotBe(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin),
+        repricedLeg.Odds.Should().NotBe(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin),
             "historical and current repricing must actually diverge for this test to mean anything");
         repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.HistoricalOddsFormulaVersion);
     }
@@ -266,7 +266,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var perLeg = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin);
+        var perLeg = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin);
         reloaded.TotalOdds.Should().Be(Math.Floor(perLeg * perLeg * 100m) / 100m);
     }
 

@@ -7,12 +7,12 @@ namespace NHLStats.Application.Tests.Services;
 
 public class OddsFormulaTests
 {
-    private const decimal V1 = 1.0m;
-    // V2 = BettingConstants.HistoricalOddsFormulaVersion. Used both as the "historical" version
-    // for MarginFor tests, and as a stand-in "any non-legacy version" for Compute/Invert tests —
-    // those two only dispatch on legacy-vs-not, so the specific non-legacy value doesn't matter
-    // there (margin is always passed in explicitly).
-    private const decimal V2 = 2.0m;
+    private const OddsFormulaTier V1 = OddsFormulaTier.Legacy;
+    // V2 = OddsFormulaTier.Historical. Used both as the "historical" version for MarginFor tests,
+    // and as a stand-in "any non-legacy version" for Compute/Invert tests — those two only
+    // dispatch on legacy-vs-not, so the specific non-legacy value doesn't matter there (margin is
+    // always passed in explicitly).
+    private const OddsFormulaTier V2 = OddsFormulaTier.Historical;
 
     // ── MarginFor ───────────────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ public class OddsFormulaTests
     [InlineData(BetType.TeamDraw, false)]
     public void MarginFor_Current_IsAlwaysTheUniformLiveMargin(BetType betType, bool isHostedTeamLeg)
     {
-        OddsFormula.MarginFor(BettingConstants.CurrentOddsFormulaVersion, betType, occasions: 1, isHostedTeamLeg)
+        OddsFormula.MarginFor(OddsFormulaTier.Current, betType, occasions: 1, isHostedTeamLeg)
             .Should().Be(BettingConstants.Margin);
     }
 

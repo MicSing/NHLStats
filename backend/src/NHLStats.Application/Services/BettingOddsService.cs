@@ -23,7 +23,7 @@ public class BettingOddsService : IBettingOddsService
     // Delegates to OddsFormula so this stays the one place the current (2.1) formula is defined —
     // see OddsFormula for the versioned formula used to reprice historical tickets.
     private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin) =>
-        OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, probability, margin);
+        OddsFormula.Compute(OddsFormulaTier.Current, probability, margin);
 
 
     public async Task RecalculateForMatchAsync(int matchId)

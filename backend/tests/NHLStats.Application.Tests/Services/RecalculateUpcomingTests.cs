@@ -42,19 +42,36 @@ public class RecalculateUpcomingTests : IDisposable
         _db.Seasons.Add(season);
         _db.SaveChanges();
 
-        // Add 1 completed match so team has match history for odds calculation
-        var completedMatch = new Match
-        {
-            SeasonId = season.Id,
-            MatchNumber = 1,
-            HomeTeamId = hosted.Id,
-            AwayTeamId = opp.Id,
-            HomeScore = 3,
-            AwayScore = 2,
-            MatchDate = DateTime.UtcNow.AddDays(-5),
-            CompletionType = CompletionType.RegularTime
-        };
-        _db.Matches.Add(completedMatch);
+        // Two completed matches (one win, one loss) so the hosted team has match history for odds
+        // calculation without being a near-certain favorite — a single-match history would make
+        // TeamWin odds on one side fall below MinBettableOdds under the current margin formula
+        // (see RecalculateUpcomingTests.GetMatchOddsAsync_ComputesOddsOnDemandIfMissing), hiding
+        // the market entirely instead of proving it gets computed on demand.
+        // MatchNumbers are deliberately far outside the 1-11 range callers of this helper use for
+        // their own upcoming matches — MatchNumber is unique per season.
+        _db.Matches.AddRange(
+            new Match
+            {
+                SeasonId = season.Id,
+                MatchNumber = 101,
+                HomeTeamId = hosted.Id,
+                AwayTeamId = opp.Id,
+                HomeScore = 2,
+                AwayScore = 1,
+                MatchDate = DateTime.UtcNow.AddDays(-6),
+                CompletionType = CompletionType.RegularTime
+            },
+            new Match
+            {
+                SeasonId = season.Id,
+                MatchNumber = 102,
+                HomeTeamId = hosted.Id,
+                AwayTeamId = opp.Id,
+                HomeScore = 1,
+                AwayScore = 2,
+                MatchDate = DateTime.UtcNow.AddDays(-5),
+                CompletionType = CompletionType.RegularTime
+            });
         _db.SaveChanges();
 
         return (hosted, opp, season);

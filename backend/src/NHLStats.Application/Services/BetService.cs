@@ -715,10 +715,12 @@ public class BetService : IBetService
         int backfilled = 0;
         foreach (var leg in legs)
         {
+            if (!OddsFormulaTiers.TryFromDecimal(leg.OddsFormulaVersion, out var tier)) continue; // unknown version — nothing safe to invert
+
             var hostedTeamId = leg.Match?.Season?.HostedTeamId;
             var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-            var margin = OddsFormula.MarginFor(leg.OddsFormulaVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
-            var probability = OddsFormula.Invert(leg.OddsFormulaVersion, margin, leg.Odds);
+            var margin = OddsFormula.MarginFor(tier, leg.BetType, leg.Occasions, isHostedTeamLeg);
+            var probability = OddsFormula.Invert(tier, margin, leg.Odds);
             if (!probability.HasValue) continue; // can't safely recover — leave null, retried on the next startup
 
             leg.Probability = probability;
@@ -748,6 +750,9 @@ public class BetService : IBetService
     /// </summary>
     public async Task<int> RecalculateHistoricalTicketOddsAsync(decimal targetVersion = BettingConstants.CurrentOddsFormulaVersion)
     {
+        if (!OddsFormulaTiers.TryFromDecimal(targetVersion, out var targetTier))
+            throw new ArgumentOutOfRangeException(nameof(targetVersion), targetVersion, "Unknown odds formula version.");
+
         var bets = await _db.Bets
             .Include(b => b.Legs)
                 .ThenInclude(l => l.Match)
@@ -767,8 +772,8 @@ public class BetService : IBetService
 
                 var hostedTeamId = leg.Match?.Season?.HostedTeamId;
                 var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-                var targetMargin = OddsFormula.MarginFor(targetVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
-                leg.Odds = OddsFormula.Compute(targetVersion, probability, targetMargin);
+                var targetMargin = OddsFormula.MarginFor(targetTier, leg.BetType, leg.Occasions, isHostedTeamLeg);
+                leg.Odds = OddsFormula.Compute(targetTier, probability, targetMargin);
                 leg.OddsFormulaVersion = targetVersion;
                 changed = true;
             }

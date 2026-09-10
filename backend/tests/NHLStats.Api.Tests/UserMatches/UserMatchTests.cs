@@ -569,6 +569,35 @@ public class UserMatchTests : ApiTestBase
         var playerUserId = await CreateUserAsync(client, "BetCancel Target Player");
         await AssignUserToSeasonAsync(client, seasonId, playerUserId);
 
+        // Seed the player a bettable (not 0% or 100%) PlusPoint rate: one completed match with a
+        // point, one without — UserGoal would need 10+ completed matches in the season before
+        // goal betting is even enabled at all (see BettingOddsService.RecalculateForMatchAsync),
+        // which isn't what this test is about; PlusPoint has no such gate.
+        foreach (var withPoint in new[] { true, false })
+        {
+            var histMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
+            histMatchResp.EnsureSuccessStatusCode();
+            var histMatchId = (await histMatchResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+            await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{histMatchId}", new
+            {
+                homeTeamId = 3, awayTeamId = 4, homeScore = 0, awayScore = 0, matchDate = (string?)null, completionType = 4
+            });
+            await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{histMatchId}", new
+            {
+                homeTeamId = 3, awayTeamId = 4, homeScore = 2, awayScore = 1,
+                matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"), completionType = 1
+            });
+            var histUmResp = await client.PostAsJsonAsync(
+                $"/api/seasons/{seasonId}/matches/{histMatchId}/usermatches", new { userId = playerUserId });
+            histUmResp.EnsureSuccessStatusCode();
+            if (withPoint)
+            {
+                var histUmId = (await histUmResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+                var pointResp = await client.PostAsJsonAsync($"/api/usermatches/{histUmId}/points", new { pointReasonId = 9, count = 1 });
+                pointResp.EnsureSuccessStatusCode();
+            }
+        }
+
         // Create a future match for betting
         var futureMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 1, awayTeamId = 2 });
         futureMatchResp.EnsureSuccessStatusCode();
@@ -588,13 +617,19 @@ public class UserMatchTests : ApiTestBase
         umResp.EnsureSuccessStatusCode();
         var umId = (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
 
-        // Place a UserGoal ticket on the player (single-leg combo)
+        // Force a synchronous odds recompute now that the future match and its participant both
+        // exist, rather than relying on the fire-and-forget recalculation each of the seeded
+        // history matches triggers on its own.
+        var recalcResp = await client.PostAsync("/api/admin/odds/recalculate-upcoming", null);
+        recalcResp.EnsureSuccessStatusCode();
+
+        // Place a UserPlusPoint ticket on the player (single-leg combo)
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
             stake = 1.0,
             legs = new[]
             {
-                new { matchId = futureMatchId, betType = "UserGoal", userId = playerUserId }
+                new { matchId = futureMatchId, betType = "UserPlusPoint", userId = playerUserId }
             }
         });
         betResp.EnsureSuccessStatusCode();
