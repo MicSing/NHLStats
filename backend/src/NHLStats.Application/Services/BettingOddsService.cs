@@ -20,13 +20,10 @@ public class BettingOddsService : IBettingOddsService
     // This keeps offeredOdds >= 1 for any probability in (0, 1) — a margin < 1 shaves the
     // bettor's edge rather than collapsing the whole market below 1.0 for likely outcomes.
     // BettingConstants.MinBettableOdds is the separate floor for "worth offering at all".
-    private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin)
-    {
-        probability = Math.Clamp(probability, 0.01m, 0.99m);
-        var fairOdds = 1m / probability;
-        var odds = 1m + (fairOdds - 1m) * margin;
-        return Math.Floor(odds * 100m) / 100m;
-    }
+    // Delegates to OddsFormula so this stays the one place the current (2.0) formula is defined —
+    // see OddsFormula for the versioned formula used to reprice historical tickets.
+    private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin) =>
+        OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, probability, margin);
 
 
     public async Task RecalculateForMatchAsync(int matchId)
@@ -219,7 +216,8 @@ public class BettingOddsService : IBettingOddsService
             if (!found) return null;
         }
 
-        if (ComputeProbabilityForOccasions(counts, effectiveN) < BettingConstants.MinBettableProbability)
+        var effectiveProbability = ComputeProbabilityForOccasions(counts, effectiveN);
+        if (effectiveProbability < BettingConstants.MinBettableProbability)
             return null;
 
         int maxN = effectiveN;
@@ -231,7 +229,7 @@ public class BettingOddsService : IBettingOddsService
                 break;
         }
 
-        return new OccasionsOddsDto(effectiveN, effectiveOdds, maxN);
+        return new OccasionsOddsDto(effectiveN, effectiveOdds, maxN, effectiveProbability);
     }
 
     public async Task<MatchOddsDto?> GetMatchOddsAsync(int matchId)

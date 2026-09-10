@@ -9,13 +9,13 @@ public static class BettingConstants
 
     // The one margin every bet type is currently priced with — see BettingOddsService.ComputeOdds.
     // Kept here (rather than duplicated as private consts on BettingOddsService) so
-    // LegacyOddsReconstructor can reprice historical tickets against the same live value.
+    // OddsFormula can reprice historical tickets against the same live value.
     public const decimal Margin = 0.35m;
 
     // BetLeg.OddsFormulaVersion values — see that property's doc comment. Bump
-    // CurrentOddsFormulaVersion (and update BettingOddsService.ComputeOdds / LegacyOddsReconstructor
-    // accordingly) the next time the odds formula or margin changes, so historical tickets can be
-    // told apart from ones already priced under the new rules.
+    // CurrentOddsFormulaVersion (and add a branch to OddsFormula.Compute/Invert/MarginFor)
+    // the next time the odds formula or margin changes, so historical tickets can be told apart
+    // from ones already priced under the new rules.
     public const decimal LegacyOddsFormulaVersion = 1.0m;
     public const decimal CurrentOddsFormulaVersion = 2.0m;
 

@@ -44,6 +44,9 @@ public record CreateBetDto(
     decimal Stake,
     IReadOnlyList<CreateBetLegDto> Legs);
 
+/// <summary>Optional target for the admin "recalculate historical ticket odds" action — defaults to the current formula version when omitted.</summary>
+public record RecalculateHistoricalOddsRequestDto(decimal? TargetVersion);
+
 public record BettingBalanceDto(
     decimal AvailableBalance,
     decimal MaxWinCap,

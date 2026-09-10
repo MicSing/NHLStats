@@ -481,6 +481,24 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Recalculate_historical_odds_accepts_an_explicit_target_version()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 1.0m });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("targetVersion").GetDecimal().Should().Be(1.0m);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_rejects_an_unknown_target_version()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 3.5m });
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Place_single_leg_ticket_returns_201_with_short_id_and_one_leg()
     {
         var client = await CreateAuthenticatedClientAsync();

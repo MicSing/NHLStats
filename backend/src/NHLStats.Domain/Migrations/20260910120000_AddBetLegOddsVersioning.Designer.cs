@@ -12,8 +12,8 @@ using NHLStats.Domain;
 namespace NHLStats.Domain.Migrations
 {
     [DbContext(typeof(NhlStatsDbContext))]
-    [Migration("20260910120000_AddBetLegOddsFormulaVersion")]
-    partial class AddBetLegOddsFormulaVersion
+    [Migration("20260910120000_AddBetLegOddsVersioning")]
+    partial class AddBetLegOddsVersioning
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -181,6 +181,9 @@ namespace NHLStats.Domain.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(1.0m);
+
+                    b.Property<decimal?>("Probability")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");

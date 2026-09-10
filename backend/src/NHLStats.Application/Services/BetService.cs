@@ -316,6 +316,7 @@ public class BetService : IBetService
             // placing a bet never triggers recalculation. If nothing has been computed yet
             // for this leg, it's simply not available for betting.
             decimal lockedOdds;
+            decimal? lockedProbability;
             if (legDto.BetType == BetType.MatchTotalGoals)
             {
                 var oddsRow = await _db.MatchOdds.FirstOrDefaultAsync(o =>
@@ -323,6 +324,7 @@ public class BetService : IBetService
                 if (oddsRow == null || oddsRow.Probability < BettingConstants.MinBettableProbability || oddsRow.Odds < BettingConstants.MinBettableOdds)
                     return (null, "This total-goals threshold is not available for betting.");
                 lockedOdds = oddsRow.Odds;
+                lockedProbability = oddsRow.Probability;
             }
             else if (occasions > 1 && IsUserEventBetType(legDto.BetType) && legDto.UserId.HasValue)
             {
@@ -331,6 +333,7 @@ public class BetService : IBetService
                 if (occasionsResult == null)
                     return (null, "This selection is not available for betting.");
                 lockedOdds = occasionsResult.Odds;
+                lockedProbability = occasionsResult.Probability;
             }
             else
             {
@@ -338,6 +341,7 @@ public class BetService : IBetService
                 if (oddsRow != null && oddsRow.Probability < BettingConstants.MinBettableProbability)
                     return (null, "Probability too low — this selection is not available for betting.");
                 lockedOdds = oddsRow?.Odds ?? 1.0m;
+                lockedProbability = oddsRow?.Probability;
             }
 
             if (lockedOdds < BettingConstants.MinBettableOdds)
@@ -355,6 +359,7 @@ public class BetService : IBetService
                           || legDto.BetType == BetType.OpponentShutoutWin || legDto.BetType == BetType.MatchTotalGoals)
                     ? null : legDto.TeamId,
                 Odds = lockedOdds,
+                Probability = lockedProbability,
                 Occasions = occasions,
                 Status = BetLegStatus.Pending,
                 OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion
@@ -687,25 +692,31 @@ public class BetService : IBetService
     }
 
     /// <summary>
-    /// Reprices every still-legacy leg (BetLeg.OddsFormulaVersion &lt; CurrentOddsFormulaVersion)
-    /// of every already-evaluated (Won/Lost) ticket via LegacyOddsReconstructor, stamping each
-    /// repriced leg with CurrentOddsFormulaVersion, then recomputes TotalOdds from the repriced
-    /// legs (reusing the same redundancy-collapsing math as RecalculateCorrelatedLegOddsAsync).
-    /// Pending tickets are untouched — their odds lock in at placement time same as always — and
-    /// Cancelled tickets don't pay out, so there's nothing to correct there either.
+    /// Reprices every leg not already on <paramref name="targetVersion"/>, of every
+    /// already-evaluated (Won/Lost) ticket, to that formula version via OddsFormula — stamping
+    /// each repriced leg with it — then recomputes TotalOdds from the repriced legs (reusing the
+    /// same redundancy-collapsing math as RecalculateCorrelatedLegOddsAsync). Pending tickets are
+    /// untouched — their odds lock in at placement time same as always — and Cancelled tickets
+    /// don't pay out, so there's nothing to correct there either.
     ///
-    /// Safe to re-run: a leg already on the current version is skipped, and a leg
-    /// LegacyOddsReconstructor can't confidently invert is left on its old version (untouched)
-    /// so it's retried, not silently abandoned, on the next run.
+    /// A leg placed since BetLeg.Probability was introduced already has its true base
+    /// probability on hand, so repricing it to any version is exact. A leg from before that
+    /// (Probability == null) has one inverted from its current Odds/version first via
+    /// OddsFormula.Invert, then that recovered probability is backfilled onto the leg so future
+    /// recalculations — to any version — no longer need to invert it again.
+    ///
+    /// Safe to re-run: a leg already on targetVersion is skipped, and a leg OddsFormula can't
+    /// confidently invert a probability for is left exactly as it was (not silently abandoned —
+    /// retried on the next run).
     /// </summary>
-    public async Task<int> RecalculateHistoricalTicketOddsAsync()
+    public async Task<int> RecalculateHistoricalTicketOddsAsync(decimal targetVersion = BettingConstants.CurrentOddsFormulaVersion)
     {
         var bets = await _db.Bets
             .Include(b => b.Legs)
                 .ThenInclude(l => l.Match)
                     .ThenInclude(m => m!.Season)
             .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
-            .Where(b => b.Legs.Any(l => l.OddsFormulaVersion < BettingConstants.CurrentOddsFormulaVersion))
+            .Where(b => b.Legs.Any(l => l.OddsFormulaVersion != targetVersion))
             .ToListAsync();
 
         int updated = 0;
@@ -714,15 +725,23 @@ public class BetService : IBetService
             bool changed = false;
             foreach (var leg in bet.Legs)
             {
-                if (leg.OddsFormulaVersion >= BettingConstants.CurrentOddsFormulaVersion) continue;
+                if (leg.OddsFormulaVersion == targetVersion) continue;
 
                 var hostedTeamId = leg.Match?.Season?.HostedTeamId;
                 var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-                var reconstructed = LegacyOddsReconstructor.Reconstruct(leg.BetType, leg.Occasions, isHostedTeamLeg, leg.Odds);
-                if (!reconstructed.HasValue) continue; // can't safely invert — leave on the old version, retry next run
 
-                leg.Odds = reconstructed.Value;
-                leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
+                var probability = leg.Probability;
+                if (!probability.HasValue)
+                {
+                    var currentMargin = OddsFormula.MarginFor(leg.OddsFormulaVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
+                    probability = OddsFormula.Invert(leg.OddsFormulaVersion, currentMargin, leg.Odds);
+                    if (!probability.HasValue) continue; // can't safely recover a probability — leave it alone, retry next run
+                    leg.Probability = probability; // backfill so future recalcs never need to invert this leg again
+                }
+
+                var targetMargin = OddsFormula.MarginFor(targetVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
+                leg.Odds = OddsFormula.Compute(targetVersion, probability.Value, targetMargin);
+                leg.OddsFormulaVersion = targetVersion;
                 changed = true;
             }
 

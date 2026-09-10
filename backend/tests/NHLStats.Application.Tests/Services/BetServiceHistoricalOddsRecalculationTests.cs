@@ -59,9 +59,11 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         return (home, away, match);
     }
 
-    // Mirrors LegacyOddsReconstructor's own computation exactly (same operation order) rather
-    // than a hand-typed literal, so assertions can't drift from a `decimal` rounding quirk on a
-    // repeating fraction (e.g. 1/0.35) that wasn't hand-verified against the real runtime.
+    // Mirrors the invert-then-Compute path RecalculateHistoricalTicketOddsAsync takes for a
+    // legacy leg with no stored Probability (same operation order as OddsFormula.Invert followed
+    // by OddsFormula.Compute) rather than a hand-typed literal, so assertions can't drift from a
+    // `decimal` rounding quirk on a repeating fraction (e.g. 1/0.35) that wasn't hand-verified
+    // against the real runtime.
     private static decimal ExpectedOdds(decimal legacyMargin, decimal legacyOdds)
     {
         var probability = legacyMargin / legacyOdds;
@@ -111,9 +113,53 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
         var expected = ExpectedOdds(0.80m, 2.00m);
-        reloaded.Legs.Single().Odds.Should().Be(expected);
+        var repricedLeg = reloaded.Legs.Single();
+        repricedLeg.Odds.Should().Be(expected);
         reloaded.TotalOdds.Should().Be(expected);
-        reloaded.Legs.Single().OddsFormulaVersion.Should().Be(BettingConstants.CurrentOddsFormulaVersion);
+        repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.CurrentOddsFormulaVersion);
+        repricedLeg.Probability.Should().Be(0.80m / 2.00m, "the implied probability recovered by inversion is backfilled for future recalculations");
+    }
+
+    [Fact]
+    public async Task LegWithStoredProbability_UsesStoredProbability_NotStaleOdds()
+    {
+        // A leg that already has Probability on hand (the normal case for anything placed after
+        // this field was introduced) must reprice from that probability directly — never by
+        // inverting its own (possibly stale/inconsistent) Odds.
+        var (_, _, match) = SeedMatch();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 999.99m, 1, null));
+        var leg = bet.Legs.Single();
+        leg.Probability = 0.40m; // deliberately inconsistent with the seeded (legacy) Odds above
+        await _db.SaveChangesAsync();
+
+        var count = await _service.RecalculateHistoricalTicketOddsAsync();
+
+        count.Should().Be(1);
+        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
+        var repricedLeg = reloaded.Legs.Single();
+        repricedLeg.Odds.Should().Be(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin));
+        repricedLeg.Probability.Should().Be(0.40m, "the stored probability is untouched, not overwritten by an inversion");
+    }
+
+    [Fact]
+    public async Task RecalculateToLegacyVersion_RepricesCurrentLegBackToV1()
+    {
+        // Exercises picking a target formula version other than "current" — a v2 leg (with its
+        // true probability already stored) reprices back to v1 using the same stored probability.
+        var (_, _, match) = SeedMatch();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 1.52m, 1, null));
+        var leg = bet.Legs.Single();
+        leg.Probability = 0.40m;
+        leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
+        await _db.SaveChangesAsync();
+
+        var count = await _service.RecalculateHistoricalTicketOddsAsync(BettingConstants.LegacyOddsFormulaVersion);
+
+        count.Should().Be(1);
+        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
+        var repricedLeg = reloaded.Legs.Single();
+        repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.LegacyOddsFormulaVersion);
+        repricedLeg.Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.80m));
     }
 
     [Fact]

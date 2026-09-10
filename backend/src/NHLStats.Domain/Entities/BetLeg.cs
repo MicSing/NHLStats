@@ -18,11 +18,19 @@ public class BetLeg
     /// multiplicative formula (odds = margin / probability) with per-bet-type margins
     /// 0.80/0.75/0.70. 2.0 = the current formula (odds = 1 + (1/probability - 1) * margin) with
     /// a single BettingConstants.Margin. New legs are stamped with the current version at
-    /// placement time; BetService.RecalculateHistoricalTicketOddsAsync uses this to find legs
-    /// still on an old version and to mark them done once repriced, so it's safe to re-run.
-    /// See BettingConstants.LegacyOddsFormulaVersion / CurrentOddsFormulaVersion.
+    /// placement time; BetService.RecalculateHistoricalTicketOddsAsync uses this (together with
+    /// <see cref="Probability"/>) to reprice a leg to any chosen version, and to mark it done, so
+    /// it's safe to re-run. See BettingConstants.LegacyOddsFormulaVersion / CurrentOddsFormulaVersion.
     /// </summary>
     public decimal OddsFormulaVersion { get; set; } = 1.0m;
+
+    /// <summary>
+    /// The raw base probability <see cref="Odds"/> was computed from, before margin was applied —
+    /// null only for legs placed before this field existed. Storing it means repricing this leg to
+    /// any OddsFormulaVersion later is an exact forward computation (via OddsFormula.Compute)
+    /// instead of an approximation reconstructed by inverting the currently-stored Odds.
+    /// </summary>
+    public decimal? Probability { get; set; }
 
     public Bet? Bet { get; set; }
     public Match? Match { get; set; }

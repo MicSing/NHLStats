@@ -5,10 +5,14 @@ import apiClient from '../../services/apiClient'
 
 type RunningAction = 'correlated' | 'upcoming' | 'historical' | null
 
+const CURRENT_FORMULA_VERSION = '2.0'
+const LEGACY_FORMULA_VERSION = '1.0'
+
 export default function BettingAdminTab() {
     const { t } = useTranslation()
     const { success, error } = useToast()
     const [running, setRunning] = useState<RunningAction>(null)
+    const [targetVersion, setTargetVersion] = useState(CURRENT_FORMULA_VERSION)
     const busy = running !== null
 
     const recalculateCorrelated = async () => {
@@ -44,7 +48,7 @@ export default function BettingAdminTab() {
         setRunning('historical')
         try {
             const result = await apiClient.post<{ betsUpdated: number }>(
-                '/api/admin/bets/recalculate-historical-odds', {},
+                '/api/admin/bets/recalculate-historical-odds', { targetVersion: Number(targetVersion) },
             )
             success(t('admin.betting.recalculateHistoricalSuccess', { count: result.betsUpdated }))
         } catch {
@@ -95,6 +99,21 @@ export default function BettingAdminTab() {
                 <p className="text-sm text-text-muted">
                     {t('admin.betting.recalculateHistoricalDescription')}
                 </p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <label htmlFor="historical-odds-formula-version" className="text-sm text-text-muted">
+                        {t('admin.betting.recalculateHistoricalFormulaLabel')}
+                    </label>
+                    <select
+                        id="historical-odds-formula-version"
+                        value={targetVersion}
+                        onChange={(e) => setTargetVersion(e.target.value)}
+                        disabled={busy}
+                        className="px-3 py-1.5 rounded border border-border bg-surface text-sm disabled:opacity-50"
+                    >
+                        <option value={CURRENT_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaCurrent')}</option>
+                        <option value={LEGACY_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaLegacy')}</option>
+                    </select>
+                </div>
                 <button
                     onClick={() => void recalculateHistorical()}
                     disabled={busy}

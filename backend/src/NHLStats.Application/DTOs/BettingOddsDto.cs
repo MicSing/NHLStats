@@ -17,7 +17,7 @@ public record UserOddsDto(
     decimal EffectiveOdds,
     int MaxOccasions);
 
-public record OccasionsOddsDto(int Occasions, decimal Odds, int MaxOccasions);
+public record OccasionsOddsDto(int Occasions, decimal Odds, int MaxOccasions, decimal Probability);
 
 public record MatchTotalGoalsOddsDto(int Threshold, decimal Odds);
 

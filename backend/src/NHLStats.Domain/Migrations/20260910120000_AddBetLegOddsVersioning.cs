@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace NHLStats.Domain.Migrations
 {
     /// <inheritdoc />
-    public partial class AddBetLegOddsFormulaVersion : Migration
+    public partial class AddBetLegOddsVersioning : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,6 +16,12 @@ namespace NHLStats.Domain.Migrations
                 type: "decimal(18,2)",
                 nullable: false,
                 defaultValue: 1.0m);
+
+            migrationBuilder.AddColumn<decimal>(
+                name: "Probability",
+                table: "BetLegs",
+                type: "decimal(18,2)",
+                nullable: true);
         }
 
         /// <inheritdoc />
@@ -23,6 +29,10 @@ namespace NHLStats.Domain.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "OddsFormulaVersion",
+                table: "BetLegs");
+
+            migrationBuilder.DropColumn(
+                name: "Probability",
                 table: "BetLegs");
         }
     }

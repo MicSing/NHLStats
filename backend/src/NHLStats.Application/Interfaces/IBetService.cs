@@ -1,4 +1,5 @@
 using NHLStats.Application.DTOs;
+using NHLStats.Application.Services;
 
 namespace NHLStats.Application.Interfaces;
 
@@ -13,5 +14,7 @@ public interface IBetService
     Task EvaluateMatchBetsAsync(int matchId);
     Task ResetMatchBetsAsync(int matchId);
     Task<int> RecalculateCorrelatedLegOddsAsync();
-    Task<int> RecalculateHistoricalTicketOddsAsync();
+
+    /// <summary>Reprices historical (Won/Lost) tickets to the given formula version. Defaults to the current version.</summary>
+    Task<int> RecalculateHistoricalTicketOddsAsync(decimal targetVersion = BettingConstants.CurrentOddsFormulaVersion);
 }

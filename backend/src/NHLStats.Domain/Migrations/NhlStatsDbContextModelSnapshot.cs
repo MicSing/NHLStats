@@ -179,6 +179,9 @@ namespace NHLStats.Domain.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(1.0m);
 
+                    b.Property<decimal?>("Probability")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
