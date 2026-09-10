@@ -9,9 +9,9 @@ namespace NHLStats.Application.Services;
 public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
-    private const decimal AppMargin = 0.80m;
-    private const decimal TeamMargin = 0.75m;
-    private const decimal OccasionsMargin = 0.70m;
+    private const decimal AppMargin = 0.35m;
+    private const decimal TeamMargin = 0.35m;
+    private const decimal OccasionsMargin = 0.35m;
 
     public BettingOddsService(NhlStatsDbContext db) => _db = db;
 
