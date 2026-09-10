@@ -874,6 +874,7 @@
             "addCollection": "Add Payment"
         },
         "betting": {
+            "recalculating": "Recalculating… ({{seconds}}s)",
             "recalculateTitle": "Recalculate Correlated Bet Odds",
             "recalculateDescription": "Some leg combinations aren't actually independent — e.g. multiple plus/minus-point legs stacked on one match, or a shutout-win leg paired with a plus/minus-point leg it guarantees. This recalculates TotalOdds for past Won bets with such legs, collapsing each offending match's redundant legs to their single highest odds. Safe to run more than once.",
             "recalculateButton": "Recalculate Now",

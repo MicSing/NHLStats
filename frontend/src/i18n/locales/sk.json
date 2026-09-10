@@ -906,6 +906,7 @@
             "addCollection": "Pridať platbu"
         },
         "betting": {
+            "recalculating": "Prepočítavam… ({{seconds}}s)",
             "recalculateTitle": "Prepočítať súvisiace kurzy tiketov",
             "recalculateDescription": "Niektoré kombinácie tipov nie sú v skutočnosti nezávislé — napr. viac tipov na plusové/mínusové body na jednom zápase, alebo tip na čisté konto kombinovaný s tipom na plusové/mínusové body, ktorý zaručuje. Táto akcia prepočíta celkový kurz pre staršie vyhraté tikety s takýmito tipmi — kurzy takýchto tipov sa zredukujú na najvyšší z nich. Akciu je možné spustiť opakovane bez rizika.",
             "recalculateButton": "Prepočítať teraz",

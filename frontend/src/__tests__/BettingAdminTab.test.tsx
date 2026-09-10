@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BettingAdminTab from '../components/finance/BettingAdminTab'
-import { ToastProvider } from '../context/ToastContext'
 
 const postMock = vi.fn()
 vi.mock('../services/apiClient', () => ({
@@ -11,16 +10,16 @@ vi.mock('../services/apiClient', () => ({
 }))
 
 function renderTab() {
-    return render(
-        <ToastProvider>
-            <BettingAdminTab />
-        </ToastProvider>,
-    )
+    return render(<BettingAdminTab />)
 }
 
 describe('BettingAdminTab', () => {
     beforeEach(() => {
         postMock.mockReset()
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     it('recalculates upcoming match odds without a confirmation prompt', async () => {
@@ -33,7 +32,7 @@ describe('BettingAdminTab', () => {
 
         expect(confirmSpy).not.toHaveBeenCalled()
         expect(postMock).toHaveBeenCalledWith('/api/admin/odds/recalculate-upcoming', {})
-        expect(await screen.findByRole('alert')).toHaveTextContent('Recalculated odds for 4 upcoming match(es).')
+        expect(await screen.findByRole('status')).toHaveTextContent('Recalculated odds for 4 upcoming match(es).')
     })
 
     it('does not call the API when the historical-odds confirmation is dismissed', async () => {
@@ -55,7 +54,7 @@ describe('BettingAdminTab', () => {
         await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
 
         expect(postMock).toHaveBeenCalledWith('/api/admin/bets/recalculate-historical-odds', { targetVersion: 2 })
-        expect(await screen.findByRole('alert')).toHaveTextContent('Recalculated 7 historical ticket(s).')
+        expect(await screen.findByRole('status')).toHaveTextContent('Recalculated 7 historical ticket(s).')
     })
 
     it('sends the chosen formula version when a different one is selected', async () => {
@@ -70,7 +69,7 @@ describe('BettingAdminTab', () => {
         expect(postMock).toHaveBeenCalledWith('/api/admin/bets/recalculate-historical-odds', { targetVersion: 1 })
     })
 
-    it('shows an error toast when the historical recalculation fails', async () => {
+    it('shows a persistent error panel when the historical recalculation fails', async () => {
         const user = userEvent.setup()
         vi.spyOn(window, 'confirm').mockReturnValue(true)
         postMock.mockRejectedValueOnce(new Error('boom'))
@@ -78,10 +77,10 @@ describe('BettingAdminTab', () => {
         renderTab()
         await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('Failed to recalculate historical odds. Please try again.')
+        expect(await screen.findByRole('status')).toHaveTextContent('Failed to recalculate historical odds. Please try again.')
     })
 
-    it('disables all recalculation buttons while one is running', async () => {
+    it('shows a running label while the request is in flight and disables the other buttons', async () => {
         const user = userEvent.setup()
         let resolvePost: (value: { matchesUpdated: number }) => void = () => { }
         postMock.mockReturnValueOnce(new Promise((resolve) => { resolvePost = resolve }))
@@ -89,11 +88,38 @@ describe('BettingAdminTab', () => {
         renderTab()
         await user.click(screen.getByRole('button', { name: 'Recalculate Upcoming Odds' }))
 
+        expect(screen.getByRole('button', { name: /Recalculating…/ })).toBeDisabled()
         expect(screen.getByRole('button', { name: 'Recalculate Historical Odds' })).toBeDisabled()
 
         resolvePost({ matchesUpdated: 0 })
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: 'Recalculate Historical Odds' })).not.toBeDisabled()
-        })
+        expect(await screen.findByRole('button', { name: 'Recalculate Historical Odds' })).not.toBeDisabled()
+    })
+
+    it('the result panel stays visible indefinitely, unlike the toast it replaced', async () => {
+        const user = userEvent.setup()
+        postMock.mockResolvedValueOnce({ matchesUpdated: 4 })
+
+        renderTab()
+        await user.click(screen.getByRole('button', { name: 'Recalculate Upcoming Odds' }))
+        await screen.findByRole('status')
+
+        vi.useFakeTimers()
+        vi.advanceTimersByTime(10_000) // well past the old 4s toast auto-dismiss window
+        vi.useRealTimers()
+
+        expect(screen.getByRole('status')).toHaveTextContent('Recalculated odds for 4 upcoming match(es).')
+    })
+
+    it('dismisses the result panel when its close button is clicked', async () => {
+        const user = userEvent.setup()
+        postMock.mockResolvedValueOnce({ matchesUpdated: 4 })
+
+        renderTab()
+        await user.click(screen.getByRole('button', { name: 'Recalculate Upcoming Odds' }))
+        await screen.findByRole('status')
+
+        await user.click(screen.getByRole('button', { name: 'dismiss' }))
+
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 })
