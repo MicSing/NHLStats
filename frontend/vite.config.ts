@@ -18,17 +18,19 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5267',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5267',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:5267',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5267',
         changeOrigin: true,
       },
       '/hubs': {
-        target: 'http://localhost:5267',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5267',
         changeOrigin: true,
         ws: true,
       },

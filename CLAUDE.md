@@ -15,6 +15,22 @@ NHL Stats 2.0 is a full-stack web app for tracking NHL (PlayStation/Xbox) player
 
 ## Commands
 
+### Full Stack via Docker Compose (Recommended for local testing)
+
+```bash
+# Start DB, Backend API, and Frontend in Docker
+docker compose up -d
+
+# View live logs
+docker compose logs -f
+
+# Stop all containers
+docker compose down
+
+# Clone/refresh database from Azure to local Docker DB
+./clone_db_to_local.sh
+```
+
 ### Backend
 
 ```bash

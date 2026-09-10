@@ -22,7 +22,21 @@ namespace DataExporter
             Directory.CreateDirectory(outputDir);
 
             using var conn = new SqlConnection(connectionString);
-            conn.Open();
+            int retries = 10;
+            while (retries > 0)
+            {
+                try
+                {
+                    conn.Open();
+                    break;
+                }
+                catch (SqlException ex) when (retries > 1)
+                {
+                    Console.WriteLine($"Database waking up (error {ex.Number}), retrying in 5 seconds... ({retries - 1} retries left)");
+                    System.Threading.Thread.Sleep(5000);
+                    retries--;
+                }
+            }
 
             // Get all user tables
             var tables = new List<string>();
