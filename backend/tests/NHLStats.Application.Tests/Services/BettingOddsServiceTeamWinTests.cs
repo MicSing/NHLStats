@@ -185,8 +185,8 @@ public class BettingOddsServiceTeamWinTests : IDisposable
 
         hostedRow.Probability.Should().BeApproximately(expectedHosted, 0.0001m);
         oppRow.Probability.Should().BeApproximately(expectedOpp, 0.0001m);
-        hostedRow.Odds.Should().Be(Math.Floor(0.35m / expectedHosted * 100m) / 100m);
-        oppRow.Odds.Should().Be(Math.Floor(0.35m / expectedOpp * 100m) / 100m);
+        hostedRow.Odds.Should().Be(Math.Floor((1m + (1m / expectedHosted - 1m) * 0.35m) * 100m) / 100m);
+        oppRow.Odds.Should().Be(Math.Floor((1m + (1m / expectedOpp - 1m) * 0.35m) * 100m) / 100m);
         (expectedHosted + expectedOpp + expectedDraw).Should().BeApproximately(1m, 0.0001m);
     }
 

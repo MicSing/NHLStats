@@ -320,7 +320,7 @@ public class BetService : IBetService
             {
                 var oddsRow = await _db.MatchOdds.FirstOrDefaultAsync(o =>
                     o.MatchId == legDto.MatchId && o.BetType == OddsBetType.MatchTotalGoals && o.TargetId == occasions);
-                if (oddsRow == null || oddsRow.Probability < BettingConstants.MinBettableProbability)
+                if (oddsRow == null || oddsRow.Probability < BettingConstants.MinBettableProbability || oddsRow.Odds < BettingConstants.MinBettableOdds)
                     return (null, "This total-goals threshold is not available for betting.");
                 lockedOdds = oddsRow.Odds;
             }
@@ -340,8 +340,8 @@ public class BetService : IBetService
                 lockedOdds = oddsRow?.Odds ?? 1.0m;
             }
 
-            if (lockedOdds < 1.0m)
-                return (null, "Odds for this bet are below 1.0 and cannot be placed.");
+            if (lockedOdds < BettingConstants.MinBettableOdds)
+                return (null, "Odds for this bet are too low and cannot be placed.");
             totalOdds = Math.Floor(totalOdds * lockedOdds * 100m) / 100m;
 
             legsToInsert.Add(new BetLeg

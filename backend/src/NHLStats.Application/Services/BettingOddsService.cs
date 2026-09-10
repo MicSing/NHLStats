@@ -15,10 +15,17 @@ public class BettingOddsService : IBettingOddsService
 
     public BettingOddsService(NhlStatsDbContext db) => _db = db;
 
+    // Margin is applied to the profit above stake return, not to the whole payout:
+    // fairOdds = 1/probability; offeredOdds = 1 + (fairOdds - 1) * margin.
+    // This keeps offeredOdds >= 1 for any probability in (0, 1) — a margin < 1 shaves the
+    // bettor's edge rather than collapsing the whole market below 1.0 for likely outcomes.
+    // BettingConstants.MinBettableOdds is the separate floor for "worth offering at all".
     private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin)
     {
         probability = Math.Clamp(probability, 0.01m, 0.99m);
-        return Math.Floor(margin / probability * 100m) / 100m;
+        var fairOdds = 1m / probability;
+        var odds = 1m + (fairOdds - 1m) * margin;
+        return Math.Floor(odds * 100m) / 100m;
     }
 
 
@@ -199,13 +206,13 @@ public class BettingOddsService : IBettingOddsService
         var odds = OddsForN(counts, occasions);
         int effectiveN = occasions;
         decimal effectiveOdds = odds;
-        if (odds < 1m)
+        if (odds < BettingConstants.MinBettableOdds)
         {
             bool found = false;
             for (int n = occasions + 1; n <= 30; n++)
             {
                 var bumped = OddsForN(counts, n);
-                if (bumped >= 1m) { effectiveN = n; effectiveOdds = bumped; found = true; break; }
+                if (bumped >= BettingConstants.MinBettableOdds) { effectiveN = n; effectiveOdds = bumped; found = true; break; }
             }
             if (!found) return null;
         }
@@ -264,6 +271,11 @@ public class BettingOddsService : IBettingOddsService
             if (drawRow?.Probability < BettingConstants.MinBettableProbability) drawRow = null;
             if (home1XRow?.Probability < BettingConstants.MinBettableProbability) home1XRow = null;
             if (away1XRow?.Probability < BettingConstants.MinBettableProbability) away1XRow = null;
+            if (homeRow?.Odds < BettingConstants.MinBettableOdds) homeRow = null;
+            if (awayRow?.Odds < BettingConstants.MinBettableOdds) awayRow = null;
+            if (drawRow?.Odds < BettingConstants.MinBettableOdds) drawRow = null;
+            if (home1XRow?.Odds < BettingConstants.MinBettableOdds) home1XRow = null;
+            if (away1XRow?.Odds < BettingConstants.MinBettableOdds) away1XRow = null;
             if (homeRow != null && awayRow != null)
                 teamWin = new TeamWinOddsDto(
                     match.HomeTeamId, homeRow.Odds,
@@ -282,15 +294,21 @@ public class BettingOddsService : IBettingOddsService
         var userMinusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserMinusPoint, matchId, users);
 
         var matchTotalGoals = matchOddsRows
-            .Where(o => o.BetType == OddsBetType.MatchTotalGoals && o.TargetId.HasValue && o.Odds >= 1.0m)
+            .Where(o => o.BetType == OddsBetType.MatchTotalGoals && o.TargetId.HasValue && o.Odds >= BettingConstants.MinBettableOdds)
             .OrderBy(o => o.TargetId)
             .Select(o => new MatchTotalGoalsOddsDto(o.TargetId!.Value, o.Odds))
             .ToList();
 
         var hostedShutoutRow = matchOddsRows.FirstOrDefault(o => o.BetType == OddsBetType.HostedShutoutWin);
         var opponentShutoutRow = matchOddsRows.FirstOrDefault(o => o.BetType == OddsBetType.OpponentShutoutWin);
-        decimal? hostedShutoutOdds = hostedShutoutRow != null && hostedShutoutRow.Probability >= BettingConstants.MinBettableProbability ? hostedShutoutRow.Odds : null;
-        decimal? opponentShutoutOdds = opponentShutoutRow != null && opponentShutoutRow.Probability >= BettingConstants.MinBettableProbability ? opponentShutoutRow.Odds : null;
+        decimal? hostedShutoutOdds = hostedShutoutRow != null
+            && hostedShutoutRow.Probability >= BettingConstants.MinBettableProbability
+            && hostedShutoutRow.Odds >= BettingConstants.MinBettableOdds
+            ? hostedShutoutRow.Odds : null;
+        decimal? opponentShutoutOdds = opponentShutoutRow != null
+            && opponentShutoutRow.Probability >= BettingConstants.MinBettableProbability
+            && opponentShutoutRow.Odds >= BettingConstants.MinBettableOdds
+            ? opponentShutoutRow.Odds : null;
 
         var computedOn = matchOddsRows.Max(o => o.ComputedOn);
         return new MatchOddsDto(teamWin, userGoal, userPenalty, userPlusPoint, userMinusPoint,
@@ -551,7 +569,7 @@ public class BettingOddsService : IBettingOddsService
         {
             var window = Enumerable.Range(start, BettingConstants.GoalWindowSize).ToList();
             var bottomOdds = ComputeOdds(BlendTotalGoalsProbability(b, window[0]));
-            if (bottomOdds < 1.0m) continue;
+            if (bottomOdds < BettingConstants.MinBettableOdds) continue;
 
             var topProb = BlendTotalGoalsProbability(b, window[^1]);
             if (topProb < BettingConstants.MinBettableProbability)
@@ -734,6 +752,7 @@ public class BettingOddsService : IBettingOddsService
         foreach (var o in rows.Where(o => o.BetType == betType && o.TargetId.HasValue))
         {
             if (o.Probability < BettingConstants.MinBettableProbability) continue;
+            if (o.Odds < BettingConstants.MinBettableOdds) continue;
             var (n, eo, maxN) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
             result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo, maxN));
         }
@@ -854,7 +873,7 @@ public class BettingOddsService : IBettingOddsService
         {
             var margin = n == 1 ? AppMargin : OccasionsMargin;
             var o = ComputeOdds(ComputeProbabilityForOccasions(counts, n), margin);
-            if (o >= 1m) { minN = n; effectiveOdds = o; break; }
+            if (o >= BettingConstants.MinBettableOdds) { minN = n; effectiveOdds = o; break; }
         }
 
         int maxN = minN;

@@ -358,8 +358,9 @@ public class BetsTests : ApiTestBase
         var userId = target.GetProperty("id").GetInt32();
         await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null);
         // A rate too close to 0 leaves Probability below MinBettableProbability; too close to 1
-        // pushes the computed odds below 1.0 (a near-certain event isn't worth offering odds on
-        // at all under the margin formula) — 2 of 5 matches lands comfortably in between.
+        // pushes the computed odds below MinBettableOdds (a near-certain event isn't worth
+        // offering odds on at all under the margin formula) — 2 of 5 matches lands comfortably
+        // in between.
         await SeedPointHistoryAsync(client, seasonId, userId, NegativeReasonIds, 0, 0, 0, 1, 1);
 
         // Create the future match to bet on only AFTER the target's history is fully seeded:
