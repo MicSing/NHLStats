@@ -13,4 +13,5 @@ public interface IBetService
     Task EvaluateMatchBetsAsync(int matchId);
     Task ResetMatchBetsAsync(int matchId);
     Task<int> RecalculateCorrelatedLegOddsAsync();
+    Task<int> RecalculateHistoricalTicketOddsAsync();
 }

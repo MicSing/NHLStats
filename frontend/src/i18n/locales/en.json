@@ -878,7 +878,18 @@
             "recalculateDescription": "Some leg combinations aren't actually independent — e.g. multiple plus/minus-point legs stacked on one match, or a shutout-win leg paired with a plus/minus-point leg it guarantees. This recalculates TotalOdds for past Won bets with such legs, collapsing each offending match's redundant legs to their single highest odds. Safe to run more than once.",
             "recalculateButton": "Recalculate Now",
             "recalculateSuccess": "Recalculated {{count}} bet(s).",
-            "recalculateError": "Failed to recalculate odds. Please try again."
+            "recalculateError": "Failed to recalculate odds. Please try again.",
+            "recalculateUpcomingTitle": "Recalculate Upcoming Match Odds",
+            "recalculateUpcomingDescription": "Recomputes odds for every not-yet-played match using the current odds formula and margin. Doesn't touch any already-placed bet — those stay locked at whatever odds they were placed at. Safe to run more than once.",
+            "recalculateUpcomingButton": "Recalculate Upcoming Odds",
+            "recalculateUpcomingSuccess": "Recalculated odds for {{count}} upcoming match(es).",
+            "recalculateUpcomingError": "Failed to recalculate upcoming odds. Please try again.",
+            "recalculateHistoricalTitle": "Recalculate Historical Ticket Odds",
+            "recalculateHistoricalDescription": "Reprices every leg of every already-settled (Won/Lost) ticket, reconstructing the odds each leg would have had under the current margin from its originally locked-in odds. This rewrites numbers on tickets users already saw. Run this ONCE only — running it again will reprice already-corrected tickets a second time and corrupt them.",
+            "recalculateHistoricalButton": "Recalculate Historical Odds",
+            "recalculateHistoricalConfirm": "This permanently rewrites the odds and payout on every settled (Won/Lost) bet ticket. This is a one-time operation — running it a second time will corrupt tickets that were already corrected. Are you sure you want to proceed?",
+            "recalculateHistoricalSuccess": "Recalculated {{count}} historical ticket(s).",
+            "recalculateHistoricalError": "Failed to recalculate historical odds. Please try again."
         },
         "aggregated": {
             "title": "Aggregated Points",

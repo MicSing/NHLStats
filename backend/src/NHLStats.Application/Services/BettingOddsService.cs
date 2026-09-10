@@ -9,9 +9,9 @@ namespace NHLStats.Application.Services;
 public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
-    private const decimal AppMargin = 0.35m;
-    private const decimal TeamMargin = 0.35m;
-    private const decimal OccasionsMargin = 0.35m;
+    private const decimal AppMargin = BettingConstants.Margin;
+    private const decimal TeamMargin = BettingConstants.Margin;
+    private const decimal OccasionsMargin = BettingConstants.Margin;
 
     public BettingOddsService(NhlStatsDbContext db) => _db = db;
 
@@ -148,7 +148,7 @@ public class BettingOddsService : IBettingOddsService
         }
     }
 
-    public async Task RecalculateAllUpcomingAsync()
+    public async Task<int> RecalculateAllUpcomingAsync()
     {
         var upcomingMatchIds = await _db.Matches
             .Where(m => m.CompletionType == CompletionType.None)
@@ -157,6 +157,8 @@ public class BettingOddsService : IBettingOddsService
 
         foreach (var matchId in upcomingMatchIds)
             await RecalculateForMatchAsync(matchId);
+
+        return upcomingMatchIds.Count;
     }
 
     public async Task RecalculateUpcomingAsync(int count = 7)

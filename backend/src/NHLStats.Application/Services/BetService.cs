@@ -685,6 +685,58 @@ public class BetService : IBetService
         return recalculated;
     }
 
+    /// <summary>
+    /// Reprices every leg of every already-evaluated (Won/Lost) ticket via
+    /// LegacyOddsReconstructor, then recomputes TotalOdds from the repriced legs (reusing the
+    /// same redundancy-collapsing math as RecalculateCorrelatedLegOddsAsync). Pending tickets are
+    /// untouched — their odds lock in at placement time same as always — and Cancelled tickets
+    /// don't pay out, so there's nothing to correct there either.
+    ///
+    /// UNLIKE RecalculateCorrelatedLegOddsAsync, this is NOT safe to run more than once: it has
+    /// no way to tell an already-repriced leg's Odds apart from a still-legacy one (nothing is
+    /// persisted to mark a leg as done), so a second run would reinterpret already-corrected
+    /// odds as legacy odds and reprice them again — silently double-transforming, not a no-op.
+    /// It's a one-time migration, meant to run exactly once per environment; there is currently
+    /// no database-level guard against a second run, so this depends entirely on the caller.
+    /// </summary>
+    public async Task<int> RecalculateHistoricalTicketOddsAsync()
+    {
+        var bets = await _db.Bets
+            .Include(b => b.Legs)
+                .ThenInclude(l => l.Match)
+                    .ThenInclude(m => m!.Season)
+            .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+            .ToListAsync();
+
+        int updated = 0;
+        foreach (var bet in bets)
+        {
+            bool changed = false;
+            foreach (var leg in bet.Legs)
+            {
+                var hostedTeamId = leg.Match?.Season?.HostedTeamId;
+                var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
+                var reconstructed = LegacyOddsReconstructor.Reconstruct(leg.BetType, leg.Occasions, isHostedTeamLeg, leg.Odds);
+                if (reconstructed.HasValue && reconstructed.Value != leg.Odds)
+                {
+                    leg.Odds = reconstructed.Value;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                bet.TotalOdds = RecomputeCollapsedTotalOdds(bet.Legs);
+                updated++;
+            }
+        }
+
+        if (updated > 0)
+            await _db.SaveChangesAsync();
+
+        return updated;
+    }
+
     private static decimal RecomputeCollapsedTotalOdds(IEnumerable<BetLeg> legs)
     {
         var legList = legs.ToList();

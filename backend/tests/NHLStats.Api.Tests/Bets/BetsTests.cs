@@ -461,6 +461,26 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Recalculate_upcoming_odds_requires_admin_role_and_returns_200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/admin/odds/recalculate-upcoming", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("matchesUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_requires_admin_role_and_returns_200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task Place_single_leg_ticket_returns_201_with_short_id_and_one_leg()
     {
         var client = await CreateAuthenticatedClientAsync();

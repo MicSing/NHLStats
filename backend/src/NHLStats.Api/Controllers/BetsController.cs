@@ -120,6 +120,31 @@ public class BetsController : ControllerBase
         return Ok(new { message = "Correlated bet odds recalculated.", betsUpdated = count });
     }
 
+    // POST /api/admin/odds/recalculate-upcoming (admin only)
+    // Recalculates MatchOdds for every not-yet-played match under the current odds formula/margin.
+    // Doesn't touch any already-placed bet — those stay locked at whatever odds they were placed at.
+    [HttpPost("api/admin/odds/recalculate-upcoming")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecalculateUpcomingOdds()
+    {
+        var count = await _oddsService.RecalculateAllUpcomingAsync();
+        return Ok(new { message = "Upcoming match odds recalculated.", matchesUpdated = count });
+    }
+
+    // POST /api/admin/bets/recalculate-historical-odds (admin only)
+    // Reprices already-evaluated (Won/Lost) tickets that were locked in under the old margin
+    // formula, reconstructing each leg's implied probability from its stored odds. Rewrites
+    // historical numbers users already saw — the frontend gates this behind a confirmation.
+    // ONE-TIME migration: see RecalculateHistoricalTicketOddsAsync — there is no guard against
+    // running this a second time, which would double-reprice already-corrected legs.
+    [HttpPost("api/admin/bets/recalculate-historical-odds")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecalculateHistoricalOdds()
+    {
+        var count = await _betService.RecalculateHistoricalTicketOddsAsync();
+        return Ok(new { message = "Historical ticket odds recalculated.", betsUpdated = count });
+    }
+
     private string? GetLoginId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier) ??
         User.FindFirstValue(JwtRegisteredClaimNames.Sub);
