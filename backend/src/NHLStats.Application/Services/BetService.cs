@@ -692,6 +692,46 @@ public class BetService : IBetService
     }
 
     /// <summary>
+    /// One-time bootstrap: recovers BetLeg.Probability for every leg that predates that field
+    /// (Probability == null), by inverting its currently-stored Odds under its own
+    /// OddsFormulaVersion via OddsFormula.Invert. Covers every leg regardless of Bet.Status —
+    /// Pending and Cancelled legs get their base probability on record too, not just
+    /// already-evaluated ones, so nothing is left needing this later.
+    ///
+    /// Meant to run once per environment (called from Program.cs on startup, after migrations),
+    /// but is naturally idempotent and cheap to re-run: only legs still missing Probability are
+    /// touched, so once every leg has been backfilled this is a no-op query. A leg whose Odds
+    /// can't be safely inverted (e.g. below 1.0) is left with Probability still null; downstream
+    /// consumers (RecalculateHistoricalTicketOddsAsync) simply skip such legs rather than fail.
+    /// </summary>
+    public async Task<int> BackfillLegacyProbabilitiesAsync()
+    {
+        var legs = await _db.BetLegs
+            .Include(l => l.Match)
+                .ThenInclude(m => m!.Season)
+            .Where(l => l.Probability == null)
+            .ToListAsync();
+
+        int backfilled = 0;
+        foreach (var leg in legs)
+        {
+            var hostedTeamId = leg.Match?.Season?.HostedTeamId;
+            var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
+            var margin = OddsFormula.MarginFor(leg.OddsFormulaVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
+            var probability = OddsFormula.Invert(leg.OddsFormulaVersion, margin, leg.Odds);
+            if (!probability.HasValue) continue; // can't safely recover — leave null, retried on the next startup
+
+            leg.Probability = probability;
+            backfilled++;
+        }
+
+        if (backfilled > 0)
+            await _db.SaveChangesAsync();
+
+        return backfilled;
+    }
+
+    /// <summary>
     /// Reprices every leg not already on <paramref name="targetVersion"/>, of every
     /// already-evaluated (Won/Lost) ticket, to that formula version via OddsFormula — stamping
     /// each repriced leg with it — then recomputes TotalOdds from the repriced legs (reusing the
@@ -699,15 +739,12 @@ public class BetService : IBetService
     /// untouched — their odds lock in at placement time same as always — and Cancelled tickets
     /// don't pay out, so there's nothing to correct there either.
     ///
-    /// A leg placed since BetLeg.Probability was introduced already has its true base
-    /// probability on hand, so repricing it to any version is exact. A leg from before that
-    /// (Probability == null) has one inverted from its current Odds/version first via
-    /// OddsFormula.Invert, then that recovered probability is backfilled onto the leg so future
-    /// recalculations — to any version — no longer need to invert it again.
+    /// Purely a repricing operation — it never invents a probability. A leg's Odds are only ever
+    /// touched here if BetLeg.Probability is already on record for it, via a leg placed since that
+    /// field existed, or via BackfillLegacyProbabilitiesAsync having filled it in first. A leg
+    /// still missing Probability is left exactly as it was, not silently guessed at.
     ///
-    /// Safe to re-run: a leg already on targetVersion is skipped, and a leg OddsFormula can't
-    /// confidently invert a probability for is left exactly as it was (not silently abandoned —
-    /// retried on the next run).
+    /// Safe to re-run: a leg already on targetVersion is skipped.
     /// </summary>
     public async Task<int> RecalculateHistoricalTicketOddsAsync(decimal targetVersion = BettingConstants.CurrentOddsFormulaVersion)
     {
@@ -716,7 +753,7 @@ public class BetService : IBetService
                 .ThenInclude(l => l.Match)
                     .ThenInclude(m => m!.Season)
             .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
-            .Where(b => b.Legs.Any(l => l.OddsFormulaVersion != targetVersion))
+            .Where(b => b.Legs.Any(l => l.OddsFormulaVersion != targetVersion && l.Probability != null))
             .ToListAsync();
 
         int updated = 0;
@@ -726,21 +763,12 @@ public class BetService : IBetService
             foreach (var leg in bet.Legs)
             {
                 if (leg.OddsFormulaVersion == targetVersion) continue;
+                if (leg.Probability is not { } probability) continue; // no base probability on record — nothing safe to reprice from
 
                 var hostedTeamId = leg.Match?.Season?.HostedTeamId;
                 var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-
-                var probability = leg.Probability;
-                if (!probability.HasValue)
-                {
-                    var currentMargin = OddsFormula.MarginFor(leg.OddsFormulaVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
-                    probability = OddsFormula.Invert(leg.OddsFormulaVersion, currentMargin, leg.Odds);
-                    if (!probability.HasValue) continue; // can't safely recover a probability — leave it alone, retry next run
-                    leg.Probability = probability; // backfill so future recalcs never need to invert this leg again
-                }
-
                 var targetMargin = OddsFormula.MarginFor(targetVersion, leg.BetType, leg.Occasions, isHostedTeamLeg);
-                leg.Odds = OddsFormula.Compute(targetVersion, probability.Value, targetMargin);
+                leg.Odds = OddsFormula.Compute(targetVersion, probability, targetMargin);
                 leg.OddsFormulaVersion = targetVersion;
                 changed = true;
             }

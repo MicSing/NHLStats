@@ -59,20 +59,11 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         return (home, away, match);
     }
 
-    // Mirrors the invert-then-Compute path RecalculateHistoricalTicketOddsAsync takes for a
-    // legacy leg with no stored Probability (same operation order as OddsFormula.Invert followed
-    // by OddsFormula.Compute) rather than a hand-typed literal, so assertions can't drift from a
-    // `decimal` rounding quirk on a repeating fraction (e.g. 1/0.35) that wasn't hand-verified
-    // against the real runtime.
-    private static decimal ExpectedOdds(decimal legacyMargin, decimal legacyOdds)
-    {
-        var probability = legacyMargin / legacyOdds;
-        var fairOdds = 1m / probability;
-        var odds = 1m + (fairOdds - 1m) * BettingConstants.Margin;
-        return Math.Floor(odds * 100m) / 100m;
-    }
-
-    private Bet SeedBet(BetStatus status, params (BetType Type, int MatchId, decimal Odds, int Occasions, int? TeamId)[] legs)
+    /// <param name="probability">
+    /// Null reproduces a leg that predates BetLeg.Probability (or one BackfillLegacyProbabilitiesAsync
+    /// hasn't reached yet); a value reproduces one placed since, or already backfilled.
+    /// </param>
+    private Bet SeedBet(BetStatus status, params (BetType Type, int MatchId, decimal Odds, int Occasions, int? TeamId, decimal? Probability)[] legs)
     {
         var bet = new Bet
         {
@@ -87,6 +78,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
                 MatchId = l.MatchId,
                 BetType = l.Type,
                 Odds = l.Odds,
+                Probability = l.Probability,
                 Occasions = l.Occasions,
                 TeamId = l.TeamId,
                 Status = status == BetStatus.Won ? BetLegStatus.Won
@@ -103,83 +95,64 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
     }
 
     [Fact]
-    public async Task WonBet_SingleOccasionUserLeg_RepricedFromLegacyAppMargin()
+    public async Task WonBet_LegWithStoredProbability_RepricesToCurrentVersionByDefault()
     {
         var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
+        // Odds is deliberately stale/arbitrary — with Probability on record, it must be ignored.
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 999.99m, 1, null, 0.40m));
 
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = ExpectedOdds(0.80m, 2.00m);
+        var expected = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin);
         var repricedLeg = reloaded.Legs.Single();
         repricedLeg.Odds.Should().Be(expected);
         reloaded.TotalOdds.Should().Be(expected);
         repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.CurrentOddsFormulaVersion);
-        repricedLeg.Probability.Should().Be(0.80m / 2.00m, "the implied probability recovered by inversion is backfilled for future recalculations");
+        repricedLeg.Probability.Should().Be(0.40m, "the stored probability is untouched by repricing");
     }
 
     [Fact]
-    public async Task LegWithStoredProbability_UsesStoredProbability_NotStaleOdds()
+    public async Task LegWithoutStoredProbability_IsLeftUntouched()
     {
-        // A leg that already has Probability on hand (the normal case for anything placed after
-        // this field was introduced) must reprice from that probability directly — never by
-        // inverting its own (possibly stale/inconsistent) Odds.
+        // This is the state every pre-existing leg is in until BackfillLegacyProbabilitiesAsync
+        // runs (or PlaceBetAsync stamped it going forward) — RecalculateHistoricalTicketOddsAsync
+        // must never guess at a probability itself.
         var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 999.99m, 1, null));
-        var leg = bet.Legs.Single();
-        leg.Probability = 0.40m; // deliberately inconsistent with the seeded (legacy) Odds above
-        await _db.SaveChangesAsync();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, null));
 
+        var count = await _service.RecalculateHistoricalTicketOddsAsync();
+
+        count.Should().Be(0);
+        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
+        var untouchedLeg = reloaded.Legs.Single();
+        untouchedLeg.Odds.Should().Be(2.00m);
+        untouchedLeg.OddsFormulaVersion.Should().Be(BettingConstants.LegacyOddsFormulaVersion, "nothing repriced it, so it's still on whatever version it started on");
+    }
+
+    [Fact]
+    public async Task BackfillThenRecalculate_RepricesALegThatStartedWithNoProbability()
+    {
+        // The intended real-world flow: BackfillLegacyProbabilitiesAsync runs once on startup,
+        // then the admin action can reprice to any formula version using what it filled in.
+        var (_, _, match) = SeedMatch();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, null));
+
+        await _service.BackfillLegacyProbabilitiesAsync();
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var repricedLeg = reloaded.Legs.Single();
-        repricedLeg.Odds.Should().Be(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin));
-        repricedLeg.Probability.Should().Be(0.40m, "the stored probability is untouched, not overwritten by an inversion");
+        var expected = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.80m / 2.00m, BettingConstants.Margin);
+        reloaded.Legs.Single().Odds.Should().Be(expected);
     }
 
     [Fact]
-    public async Task RecalculateToLegacyVersion_RepricesCurrentLegBackToV1()
-    {
-        // Exercises picking a target formula version other than "current" — a v2 leg (with its
-        // true probability already stored) reprices back to v1 using the same stored probability.
-        var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 1.52m, 1, null));
-        var leg = bet.Legs.Single();
-        leg.Probability = 0.40m;
-        leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
-        await _db.SaveChangesAsync();
-
-        var count = await _service.RecalculateHistoricalTicketOddsAsync(BettingConstants.LegacyOddsFormulaVersion);
-
-        count.Should().Be(1);
-        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var repricedLeg = reloaded.Legs.Single();
-        repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.LegacyOddsFormulaVersion);
-        repricedLeg.Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.80m));
-    }
-
-    [Fact]
-    public async Task Recalculation_IsIdempotent()
+    public async Task LegAlreadyOnTargetVersion_IsSkipped()
     {
         var (_, _, match) = SeedMatch();
-        SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
-
-        var firstRun = await _service.RecalculateHistoricalTicketOddsAsync();
-        var secondRun = await _service.RecalculateHistoricalTicketOddsAsync();
-
-        firstRun.Should().Be(1);
-        secondRun.Should().Be(0, "the leg is now on CurrentOddsFormulaVersion and must not be repriced again");
-    }
-
-    [Fact]
-    public async Task LegAlreadyOnCurrentVersion_IsNotTouched()
-    {
-        var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 1.35m, 1, null));
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 1.35m, 1, null, 0.40m));
         var leg = bet.Legs.Single();
         leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
         await _db.SaveChangesAsync();
@@ -188,27 +161,27 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(0);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        reloaded.Legs.Single().Odds.Should().Be(1.35m, "a leg already priced under the current formula must be left alone");
+        reloaded.Legs.Single().Odds.Should().Be(1.35m, "a leg already priced under the target formula must be left alone");
     }
 
     [Fact]
     public async Task LostBet_IsAlsoRecalculated()
     {
         var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Lost, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
+        var bet = SeedBet(BetStatus.Lost, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
 
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        reloaded.Legs.Single().Odds.Should().Be(ExpectedOdds(0.80m, 2.00m));
+        reloaded.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin));
     }
 
     [Fact]
     public async Task PendingBet_IsNotTouched()
     {
         var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Pending, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
+        var bet = SeedBet(BetStatus.Pending, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
 
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
@@ -221,7 +194,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
     public async Task CancelledBet_IsNotTouched()
     {
         var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Cancelled, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
+        var bet = SeedBet(BetStatus.Cancelled, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
 
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
@@ -231,39 +204,32 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
     }
 
     [Fact]
-    public async Task TeamWinLeg_HostedVsOpponent_UsesDifferentLegacyMargin()
+    public async Task RecalculateToLegacyVersion_HostedVsOpponent_UsesDifferentTargetMargin()
     {
+        // Exercises picking a target formula version other than "current" — two v2 legs (with
+        // their true probability already stored) reprice back to v1, where the hosted/opponent
+        // TeamWin asymmetry applies (it doesn't under v2 — every bet type shares one margin there).
         var (home, away, match) = SeedMatch();
-        // The hosted team can only be set once the team ids exist.
         var season = await _db.Seasons.FirstAsync(s => s.Id == match.SeasonId);
         season.HostedTeamId = home.Id;
         await _db.SaveChangesAsync();
 
-        var hostedBet = SeedBet(BetStatus.Won, (BetType.TeamWin, match.Id, 2.00m, 1, home.Id));
-        var opponentBet = SeedBet(BetStatus.Won, (BetType.TeamWin, match.Id, 2.00m, 1, away.Id));
+        var hostedBet = SeedBet(BetStatus.Won, (BetType.TeamWin, match.Id, 1.52m, 1, home.Id, 0.40m));
+        var opponentBet = SeedBet(BetStatus.Won, (BetType.TeamWin, match.Id, 1.52m, 1, away.Id, 0.40m));
+        foreach (var bet in new[] { hostedBet, opponentBet })
+        {
+            bet.Legs.Single().OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
+        }
+        await _db.SaveChangesAsync();
 
-        var count = await _service.RecalculateHistoricalTicketOddsAsync();
+        var count = await _service.RecalculateHistoricalTicketOddsAsync(BettingConstants.LegacyOddsFormulaVersion);
 
         count.Should().Be(2);
         var reloadedHosted = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == hostedBet.Id);
         var reloadedOpponent = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == opponentBet.Id);
-        reloadedHosted.Legs.Single().Odds.Should().Be(ExpectedOdds(0.80m, 2.00m), "the hosted team's TeamWin leg was originally priced with the default (App) margin");
-        reloadedOpponent.Legs.Single().Odds.Should().Be(ExpectedOdds(0.75m, 2.00m), "the opponent's TeamWin leg was originally priced with TeamMargin");
-    }
-
-    [Fact]
-    public async Task MultiOccasionLeg_UsesLegacyOccasionsMargin_AndTotalOddsFollows()
-    {
-        var (_, _, match) = SeedMatch();
-        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 3, null));
-
-        var count = await _service.RecalculateHistoricalTicketOddsAsync();
-
-        count.Should().Be(1);
-        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = ExpectedOdds(0.70m, 2.00m);
-        reloaded.Legs.Single().Odds.Should().Be(expected);
-        reloaded.TotalOdds.Should().Be(expected);
+        reloadedHosted.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.80m), "the hosted team's TeamWin leg reprices with the default (App) margin under v1");
+        reloadedOpponent.Legs.Single().Odds.Should().Be(OddsFormula.Compute(BettingConstants.LegacyOddsFormulaVersion, 0.40m, 0.75m), "the opponent's TeamWin leg reprices with TeamMargin under v1");
+        reloadedHosted.Legs.Single().OddsFormulaVersion.Should().Be(BettingConstants.LegacyOddsFormulaVersion);
     }
 
     [Fact]
@@ -271,14 +237,27 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
     {
         var (_, _, match) = SeedMatch();
         var bet = SeedBet(BetStatus.Won,
-            (BetType.UserPlusPoint, match.Id, 2.00m, 1, null),
-            (BetType.UserGoal, match.Id, 2.00m, 1, null));
+            (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m),
+            (BetType.UserGoal, match.Id, 2.00m, 1, null, 0.40m));
 
         var count = await _service.RecalculateHistoricalTicketOddsAsync();
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var perLeg = ExpectedOdds(0.80m, 2.00m);
+        var perLeg = OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin);
         reloaded.TotalOdds.Should().Be(Math.Floor(perLeg * perLeg * 100m) / 100m);
+    }
+
+    [Fact]
+    public async Task Recalculation_IsIdempotent()
+    {
+        var (_, _, match) = SeedMatch();
+        SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
+
+        var firstRun = await _service.RecalculateHistoricalTicketOddsAsync();
+        var secondRun = await _service.RecalculateHistoricalTicketOddsAsync();
+
+        firstRun.Should().Be(1);
+        secondRun.Should().Be(0, "the leg is now on CurrentOddsFormulaVersion and must not be repriced again");
     }
 }
