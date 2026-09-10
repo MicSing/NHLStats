@@ -132,11 +132,10 @@ public class BetsController : ControllerBase
     }
 
     // POST /api/admin/bets/recalculate-historical-odds (admin only)
-    // Reprices already-evaluated (Won/Lost) tickets that were locked in under the old margin
-    // formula, reconstructing each leg's implied probability from its stored odds. Rewrites
-    // historical numbers users already saw — the frontend gates this behind a confirmation.
-    // ONE-TIME migration: see RecalculateHistoricalTicketOddsAsync — there is no guard against
-    // running this a second time, which would double-reprice already-corrected legs.
+    // Reprices already-evaluated (Won/Lost) tickets still on an old BetLeg.OddsFormulaVersion,
+    // reconstructing each leg's implied probability from its stored odds. Rewrites historical
+    // numbers users already saw — the frontend gates this behind a confirmation. Guarded by
+    // OddsFormulaVersion (see RecalculateHistoricalTicketOddsAsync), so safe to run more than once.
     [HttpPost("api/admin/bets/recalculate-historical-odds")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RecalculateHistoricalOdds()

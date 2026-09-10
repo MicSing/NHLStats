@@ -113,6 +113,36 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         var expected = ExpectedOdds(0.80m, 2.00m);
         reloaded.Legs.Single().Odds.Should().Be(expected);
         reloaded.TotalOdds.Should().Be(expected);
+        reloaded.Legs.Single().OddsFormulaVersion.Should().Be(BettingConstants.CurrentOddsFormulaVersion);
+    }
+
+    [Fact]
+    public async Task Recalculation_IsIdempotent()
+    {
+        var (_, _, match) = SeedMatch();
+        SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null));
+
+        var firstRun = await _service.RecalculateHistoricalTicketOddsAsync();
+        var secondRun = await _service.RecalculateHistoricalTicketOddsAsync();
+
+        firstRun.Should().Be(1);
+        secondRun.Should().Be(0, "the leg is now on CurrentOddsFormulaVersion and must not be repriced again");
+    }
+
+    [Fact]
+    public async Task LegAlreadyOnCurrentVersion_IsNotTouched()
+    {
+        var (_, _, match) = SeedMatch();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 1.35m, 1, null));
+        var leg = bet.Legs.Single();
+        leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
+        await _db.SaveChangesAsync();
+
+        var count = await _service.RecalculateHistoricalTicketOddsAsync();
+
+        count.Should().Be(0);
+        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
+        reloaded.Legs.Single().Odds.Should().Be(1.35m, "a leg already priced under the current formula must be left alone");
     }
 
     [Fact]

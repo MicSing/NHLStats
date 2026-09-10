@@ -356,7 +356,8 @@ public class BetService : IBetService
                     ? null : legDto.TeamId,
                 Odds = lockedOdds,
                 Occasions = occasions,
-                Status = BetLegStatus.Pending
+                Status = BetLegStatus.Pending,
+                OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion
             });
         }
 
@@ -686,18 +687,16 @@ public class BetService : IBetService
     }
 
     /// <summary>
-    /// Reprices every leg of every already-evaluated (Won/Lost) ticket via
-    /// LegacyOddsReconstructor, then recomputes TotalOdds from the repriced legs (reusing the
-    /// same redundancy-collapsing math as RecalculateCorrelatedLegOddsAsync). Pending tickets are
-    /// untouched — their odds lock in at placement time same as always — and Cancelled tickets
-    /// don't pay out, so there's nothing to correct there either.
+    /// Reprices every still-legacy leg (BetLeg.OddsFormulaVersion &lt; CurrentOddsFormulaVersion)
+    /// of every already-evaluated (Won/Lost) ticket via LegacyOddsReconstructor, stamping each
+    /// repriced leg with CurrentOddsFormulaVersion, then recomputes TotalOdds from the repriced
+    /// legs (reusing the same redundancy-collapsing math as RecalculateCorrelatedLegOddsAsync).
+    /// Pending tickets are untouched — their odds lock in at placement time same as always — and
+    /// Cancelled tickets don't pay out, so there's nothing to correct there either.
     ///
-    /// UNLIKE RecalculateCorrelatedLegOddsAsync, this is NOT safe to run more than once: it has
-    /// no way to tell an already-repriced leg's Odds apart from a still-legacy one (nothing is
-    /// persisted to mark a leg as done), so a second run would reinterpret already-corrected
-    /// odds as legacy odds and reprice them again — silently double-transforming, not a no-op.
-    /// It's a one-time migration, meant to run exactly once per environment; there is currently
-    /// no database-level guard against a second run, so this depends entirely on the caller.
+    /// Safe to re-run: a leg already on the current version is skipped, and a leg
+    /// LegacyOddsReconstructor can't confidently invert is left on its old version (untouched)
+    /// so it's retried, not silently abandoned, on the next run.
     /// </summary>
     public async Task<int> RecalculateHistoricalTicketOddsAsync()
     {
@@ -706,6 +705,7 @@ public class BetService : IBetService
                 .ThenInclude(l => l.Match)
                     .ThenInclude(m => m!.Season)
             .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+            .Where(b => b.Legs.Any(l => l.OddsFormulaVersion < BettingConstants.CurrentOddsFormulaVersion))
             .ToListAsync();
 
         int updated = 0;
@@ -714,14 +714,16 @@ public class BetService : IBetService
             bool changed = false;
             foreach (var leg in bet.Legs)
             {
+                if (leg.OddsFormulaVersion >= BettingConstants.CurrentOddsFormulaVersion) continue;
+
                 var hostedTeamId = leg.Match?.Season?.HostedTeamId;
                 var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
                 var reconstructed = LegacyOddsReconstructor.Reconstruct(leg.BetType, leg.Occasions, isHostedTeamLeg, leg.Odds);
-                if (reconstructed.HasValue && reconstructed.Value != leg.Odds)
-                {
-                    leg.Odds = reconstructed.Value;
-                    changed = true;
-                }
+                if (!reconstructed.HasValue) continue; // can't safely invert — leave on the old version, retry next run
+
+                leg.Odds = reconstructed.Value;
+                leg.OddsFormulaVersion = BettingConstants.CurrentOddsFormulaVersion;
+                changed = true;
             }
 
             if (changed)

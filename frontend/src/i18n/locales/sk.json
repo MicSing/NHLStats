@@ -917,9 +917,9 @@
             "recalculateUpcomingSuccess": "Prepočítané kurzy pre {{count}} budúcich zápasov.",
             "recalculateUpcomingError": "Prepočet kurzov zlyhal. Skús to prosím znova.",
             "recalculateHistoricalTitle": "Prepočítať kurzy historických tiketov",
-            "recalculateHistoricalDescription": "Prepočíta kurz každého tipu na každom už uzavretom (vyhratom/prehratom) tikete — z pôvodne uzamknutého kurzu sa rekonštruuje kurz, aký by tip mal pri aktuálnej marži. Táto akcia prepíše čísla na tiketoch, ktoré už používatelia videli. Spusti túto akciu LEN RAZ — opätovné spustenie by už opravené tikety prepočítalo znova a poškodilo ich.",
+            "recalculateHistoricalDescription": "Prepočíta kurz každého tipu na každom už uzavretom (vyhratom/prehratom) tikete, ktorý je stále na starom vzorci kurzov — z pôvodne uzamknutého kurzu sa rekonštruuje kurz, aký by tip mal pri aktuálnej marži. Táto akcia prepíše čísla na tiketoch, ktoré už používatelia videli. Každý tip je označený verziou vzorca, ktorým bol ocenený, takže už opravené tikety sa automaticky preskočia — akciu je možné spustiť opakovane bez rizika.",
             "recalculateHistoricalButton": "Prepočítať historické kurzy",
-            "recalculateHistoricalConfirm": "Táto akcia natrvalo prepíše kurz a výhru na každom uzavretom (vyhratom/prehratom) tikete. Ide o jednorazovú operáciu — opätovné spustenie poškodí už opravené tikety. Naozaj chceš pokračovať?",
+            "recalculateHistoricalConfirm": "Táto akcia natrvalo prepíše kurz a výhru na každom uzavretom (vyhratom/prehratom) tikete, ktorý je stále ocenený starým vzorcom kurzov. Naozaj chceš pokračovať?",
             "recalculateHistoricalSuccess": "Prepočítaných {{count}} historických tiketov.",
             "recalculateHistoricalError": "Prepočet historických kurzov zlyhal. Skús to prosím znova."
         },

@@ -885,9 +885,9 @@
             "recalculateUpcomingSuccess": "Recalculated odds for {{count}} upcoming match(es).",
             "recalculateUpcomingError": "Failed to recalculate upcoming odds. Please try again.",
             "recalculateHistoricalTitle": "Recalculate Historical Ticket Odds",
-            "recalculateHistoricalDescription": "Reprices every leg of every already-settled (Won/Lost) ticket, reconstructing the odds each leg would have had under the current margin from its originally locked-in odds. This rewrites numbers on tickets users already saw. Run this ONCE only — running it again will reprice already-corrected tickets a second time and corrupt them.",
+            "recalculateHistoricalDescription": "Reprices every leg of every already-settled (Won/Lost) ticket still on an old odds formula, reconstructing the odds each leg would have had under the current margin from its originally locked-in odds. This rewrites numbers on tickets users already saw. Each leg is tagged with the formula version that priced it, so tickets already corrected are skipped automatically — safe to run more than once.",
             "recalculateHistoricalButton": "Recalculate Historical Odds",
-            "recalculateHistoricalConfirm": "This permanently rewrites the odds and payout on every settled (Won/Lost) bet ticket. This is a one-time operation — running it a second time will corrupt tickets that were already corrected. Are you sure you want to proceed?",
+            "recalculateHistoricalConfirm": "This permanently rewrites the odds and payout on every settled (Won/Lost) bet ticket still priced under the old odds formula. Are you sure you want to proceed?",
             "recalculateHistoricalSuccess": "Recalculated {{count}} historical ticket(s).",
             "recalculateHistoricalError": "Failed to recalculate historical odds. Please try again."
         },

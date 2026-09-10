@@ -12,6 +12,13 @@ public static class BettingConstants
     // LegacyOddsReconstructor can reprice historical tickets against the same live value.
     public const decimal Margin = 0.35m;
 
+    // BetLeg.OddsFormulaVersion values — see that property's doc comment. Bump
+    // CurrentOddsFormulaVersion (and update BettingOddsService.ComputeOdds / LegacyOddsReconstructor
+    // accordingly) the next time the odds formula or margin changes, so historical tickets can be
+    // told apart from ones already priced under the new rules.
+    public const decimal LegacyOddsFormulaVersion = 1.0m;
+    public const decimal CurrentOddsFormulaVersion = 2.0m;
+
     public const int MinGoalThreshold = 3;
     public const int GoalWindowSize = 4;
 
