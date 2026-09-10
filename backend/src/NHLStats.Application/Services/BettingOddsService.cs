@@ -752,8 +752,12 @@ public class BettingOddsService : IBettingOddsService
         foreach (var o in rows.Where(o => o.BetType == betType && o.TargetId.HasValue))
         {
             if (o.Probability < BettingConstants.MinBettableProbability) continue;
-            if (o.Odds < BettingConstants.MinBettableOdds) continue;
+            // Don't reject on the raw occasions=1 odds alone — ResolveEffectiveOddsAsync already
+            // tries higher occasions thresholds (2+, 3+, ...) up to 30 before giving up, so a user
+            // whose "at least once" price is too short (odds < MinBettableOdds) still gets a shot
+            // at a bettable "N+" market instead of just disappearing from the list.
             var (n, eo, maxN) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
+            if (eo < BettingConstants.MinBettableOdds) continue; // no occasions threshold clears the floor even after bumping
             result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo, maxN));
         }
         return result;

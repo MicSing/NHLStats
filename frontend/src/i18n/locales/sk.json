@@ -558,6 +558,7 @@
         "unknownTeam": "Neznámy tím",
         "unknownUser": "Neznámy používateľ",
         "noUsers": "Žiadni používatelia v tomto zápase.",
+        "marketUnavailable": "Pre tohto používateľa nie je dostupný žiadny tip.",
         "homeTeam": "Domáci tím",
         "awayTeam": "Hosťujúci tím",
         "betOnHomeWin": "Tipnúť výhru domácich",

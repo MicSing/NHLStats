@@ -528,6 +528,7 @@
         "unknownTeam": "Unknown Team",
         "unknownUser": "Unknown User",
         "noUsers": "No users in this match.",
+        "marketUnavailable": "No bettable market for this user.",
         "homeTeam": "Home Team",
         "awayTeam": "Away Team",
         "betOnHomeWin": "Bet on home team to win",
