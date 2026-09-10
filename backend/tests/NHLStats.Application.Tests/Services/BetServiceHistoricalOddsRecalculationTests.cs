@@ -233,6 +233,28 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
     }
 
     [Fact]
+    public async Task RecalculateToHistoricalVersion_UsesHistoricalMargin_NotLiveMargin()
+    {
+        // The whole point of the historical (2.0) tier: repricing an old ticket to it uses
+        // BettingConstants.HistoricalMargin, not the live BettingConstants.Margin — a gentler
+        // reconciliation for tickets placed before the margin change, distinct from what new
+        // bets and the "current" (2.1) tier use.
+        var (_, _, match) = SeedMatch();
+        var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
+
+        var count = await _service.RecalculateHistoricalTicketOddsAsync(BettingConstants.HistoricalOddsFormulaVersion);
+
+        count.Should().Be(1);
+        var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
+        var repricedLeg = reloaded.Legs.Single();
+        var expected = OddsFormula.Compute(BettingConstants.HistoricalOddsFormulaVersion, 0.40m, BettingConstants.HistoricalMargin);
+        repricedLeg.Odds.Should().Be(expected);
+        repricedLeg.Odds.Should().NotBe(OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, 0.40m, BettingConstants.Margin),
+            "historical and current repricing must actually diverge for this test to mean anything");
+        repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.HistoricalOddsFormulaVersion);
+    }
+
+    [Fact]
     public async Task MultiLegBet_TotalOddsRecomputedFromRepricedLegs()
     {
         var (_, _, match) = SeedMatch();

@@ -20,7 +20,7 @@ public class BettingOddsService : IBettingOddsService
     // This keeps offeredOdds >= 1 for any probability in (0, 1) — a margin < 1 shaves the
     // bettor's edge rather than collapsing the whole market below 1.0 for likely outcomes.
     // BettingConstants.MinBettableOdds is the separate floor for "worth offering at all".
-    // Delegates to OddsFormula so this stays the one place the current (2.0) formula is defined —
+    // Delegates to OddsFormula so this stays the one place the current (2.1) formula is defined —
     // see OddsFormula for the versioned formula used to reprice historical tickets.
     private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin) =>
         OddsFormula.Compute(BettingConstants.CurrentOddsFormulaVersion, probability, margin);

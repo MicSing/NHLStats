@@ -6,14 +6,16 @@ namespace NHLStats.Application.Services;
 /// Computes and inverts odds for a specific BetLeg.OddsFormulaVersion, so historical tickets can
 /// be (re)priced under any formula version the admin picks — not just always "the current one".
 ///
-/// Two versions exist today:
+/// Three versions exist today, all sharing one of two formula *shapes*:
 ///  - 1.0 (legacy): offeredOdds = margin / probability, with per-bet-type margins
 ///    0.80/0.75/0.70 — the only formula/margin combination that was ever actually live before
 ///    this file existed. Pinned here as historical fact, independent of whatever
-///    BettingConstants.Margin is set to today or in the future.
-///  - 2.0 (current): offeredOdds = 1 + (1/probability - 1) * margin, with a single
-///    BettingConstants.Margin for every bet type. This is also what BettingOddsService.ComputeOdds
-///    uses for all new/upcoming odds — see that method.
+///    BettingConstants.Margin/HistoricalMargin are set to today or in the future.
+///  - 2.0 (historical) and 2.1 (current) both use the additive shape,
+///    offeredOdds = 1 + (1/probability - 1) * margin, with a single margin for every bet type —
+///    2.0 uses BettingConstants.HistoricalMargin (deliberately gentler, meant only for repricing
+///    old settled tickets), 2.1 uses BettingConstants.Margin (what BettingOddsService.ComputeOdds
+///    uses for all new/upcoming odds — see that method — and what new BetLegs are stamped with).
 ///
 /// A BetLeg placed since BetLeg.Probability was introduced always has its true base probability
 /// on hand, so repricing it to any version is an exact forward computation via Compute(). Only
@@ -35,6 +37,7 @@ public static class OddsFormula
     /// </param>
     public static decimal MarginFor(decimal version, BetType betType, int occasions, bool isHostedTeamLeg)
     {
+        if (version == BettingConstants.HistoricalOddsFormulaVersion) return BettingConstants.HistoricalMargin;
         if (version != BettingConstants.LegacyOddsFormulaVersion) return BettingConstants.Margin;
 
         return betType switch

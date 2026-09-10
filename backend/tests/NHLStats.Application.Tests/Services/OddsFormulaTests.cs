@@ -8,6 +8,10 @@ namespace NHLStats.Application.Tests.Services;
 public class OddsFormulaTests
 {
     private const decimal V1 = 1.0m;
+    // V2 = BettingConstants.HistoricalOddsFormulaVersion. Used both as the "historical" version
+    // for MarginFor tests, and as a stand-in "any non-legacy version" for Compute/Invert tests —
+    // those two only dispatch on legacy-vs-not, so the specific non-legacy value doesn't matter
+    // there (margin is always passed in explicitly).
     private const decimal V2 = 2.0m;
 
     // ── MarginFor ───────────────────────────────────────────────────────────
@@ -58,9 +62,23 @@ public class OddsFormulaTests
     [InlineData(BetType.TeamWin, false)]
     [InlineData(BetType.UserPlusPoint, false)]
     [InlineData(BetType.TeamDraw, false)]
-    public void MarginFor_V2_IsAlwaysTheUnifiedMargin(BetType betType, bool isHostedTeamLeg)
+    public void MarginFor_Historical_IsAlwaysTheUniformHistoricalMargin(BetType betType, bool isHostedTeamLeg)
     {
-        OddsFormula.MarginFor(V2, betType, occasions: 1, isHostedTeamLeg).Should().Be(BettingConstants.Margin);
+        // V2 (2.0) is the historical tier — a single margin for every bet type, no
+        // hosted/opponent split (unlike legacy), and deliberately distinct from the live Margin.
+        OddsFormula.MarginFor(V2, betType, occasions: 1, isHostedTeamLeg).Should().Be(BettingConstants.HistoricalMargin);
+        BettingConstants.HistoricalMargin.Should().NotBe(BettingConstants.Margin, "the two tiers must actually differ for this test to mean anything");
+    }
+
+    [Theory]
+    [InlineData(BetType.TeamWin, true)]
+    [InlineData(BetType.TeamWin, false)]
+    [InlineData(BetType.UserPlusPoint, false)]
+    [InlineData(BetType.TeamDraw, false)]
+    public void MarginFor_Current_IsAlwaysTheUniformLiveMargin(BetType betType, bool isHostedTeamLeg)
+    {
+        OddsFormula.MarginFor(BettingConstants.CurrentOddsFormulaVersion, betType, occasions: 1, isHostedTeamLeg)
+            .Should().Be(BettingConstants.Margin);
     }
 
     // ── Compute ─────────────────────────────────────────────────────────────

@@ -143,7 +143,9 @@ public class BetsController : ControllerBase
     public async Task<IActionResult> RecalculateHistoricalOdds([FromBody] RecalculateHistoricalOddsRequestDto? body)
     {
         var targetVersion = body?.TargetVersion ?? BettingConstants.CurrentOddsFormulaVersion;
-        if (targetVersion != BettingConstants.LegacyOddsFormulaVersion && targetVersion != BettingConstants.CurrentOddsFormulaVersion)
+        if (targetVersion != BettingConstants.LegacyOddsFormulaVersion
+            && targetVersion != BettingConstants.HistoricalOddsFormulaVersion
+            && targetVersion != BettingConstants.CurrentOddsFormulaVersion)
             return BadRequest(new { error = $"Unknown odds formula version {targetVersion}." });
 
         var count = await _betService.RecalculateHistoricalTicketOddsAsync(targetVersion);

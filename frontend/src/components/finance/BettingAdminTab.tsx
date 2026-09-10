@@ -6,7 +6,8 @@ type ActionKey = 'correlated' | 'upcoming' | 'historical'
 type RunningAction = ActionKey | null
 type ActionResult = { variant: 'success' | 'error'; message: string } | null
 
-const CURRENT_FORMULA_VERSION = '2.0'
+const CURRENT_FORMULA_VERSION = '2.1'
+const HISTORICAL_FORMULA_VERSION = '2.0'
 const LEGACY_FORMULA_VERSION = '1.0'
 
 function Spinner() {
@@ -174,6 +175,7 @@ export default function BettingAdminTab() {
                         className="px-3 py-1.5 rounded border border-border bg-surface text-sm disabled:opacity-50"
                     >
                         <option value={CURRENT_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaCurrent')}</option>
+                        <option value={HISTORICAL_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaHistorical')}</option>
                         <option value={LEGACY_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaLegacy')}</option>
                     </select>
                 </div>

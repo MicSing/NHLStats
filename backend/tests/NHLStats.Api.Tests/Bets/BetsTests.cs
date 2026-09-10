@@ -491,6 +491,18 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Recalculate_historical_odds_accepts_the_historical_target_version()
+    {
+        // 2.0 is no longer "current" (that's 2.1 now) but must still be reachable as its own
+        // tier — the middle ground meant specifically for reconciling old settled tickets.
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 2.0m });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("targetVersion").GetDecimal().Should().Be(2.0m);
+    }
+
+    [Fact]
     public async Task Recalculate_historical_odds_rejects_an_unknown_target_version()
     {
         var client = await CreateAuthenticatedClientAsync();
