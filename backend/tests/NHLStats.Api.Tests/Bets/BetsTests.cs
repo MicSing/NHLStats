@@ -125,6 +125,7 @@ public class BetsTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Shutout Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
@@ -311,6 +312,7 @@ public class BetsTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Shutout PlusPoint Occasions Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId); // gives the bettor (admin) enough balance
 
         // Use a dedicated target user (not the shared admin user other tests in this class also
@@ -358,8 +360,9 @@ public class BetsTests : ApiTestBase
         var userId = target.GetProperty("id").GetInt32();
         await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null);
         // A rate too close to 0 leaves Probability below MinBettableProbability; too close to 1
-        // pushes the computed odds below 1.0 (a near-certain event isn't worth offering odds on
-        // at all under the margin formula) — 2 of 5 matches lands comfortably in between.
+        // pushes the computed odds below MinBettableOdds (a near-certain event isn't worth
+        // offering odds on at all under the margin formula) — 2 of 5 matches lands comfortably
+        // in between.
         await SeedPointHistoryAsync(client, seasonId, userId, NegativeReasonIds, 0, 0, 0, 1, 1);
 
         // Create the future match to bet on only AFTER the target's history is fully seeded:
@@ -369,6 +372,7 @@ public class BetsTests : ApiTestBase
         // arrives) — creating the bet match first risked it being caught mid-seed with a
         // still-incomplete (e.g. zero) probability baked in permanently.
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
 
         // HostedShutoutWin only auto-guarantees UserPlusPoint (not UserMinusPoint) on the same
         // match, so this cross-pair must remain allowed.
@@ -395,8 +399,33 @@ public class BetsTests : ApiTestBase
         // note in Place_hosted_shutout_and_minus_point_same_match_returns_201 for why creating
         // the bet matches first risks a background odds recalculation catching them mid-seed.
         var userId = await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        // EnsureUserLinkedAndSeedPointsAsync alone gives the bettor a point in their only
+        // completed match — a 100% PlusPoint rate, whose odds fall below MinBettableOdds under
+        // the current margin formula (a near-certain event isn't worth offering odds on). A
+        // second completed match with no points for them dilutes the rate to a bettable 50%.
+        var noPointMatchResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new { homeTeamId = 3, awayTeamId = 4 });
+        noPointMatchResp.EnsureSuccessStatusCode();
+        var noPointMatchId = (await noPointMatchResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{noPointMatchId}", new
+        {
+            homeTeamId = 3, awayTeamId = 4, homeScore = 0, awayScore = 0, matchDate = (string?)null, completionType = 4
+        });
+        var noPointCompleteResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{noPointMatchId}", new
+        {
+            homeTeamId = 3, awayTeamId = 4, homeScore = 2, awayScore = 1,
+            matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"), completionType = 1
+        });
+        noPointCompleteResp.EnsureSuccessStatusCode();
+        var initResp = await client.PostAsync($"/api/seasons/{seasonId}/matches/{noPointMatchId}/usermatches/initialize", null);
+        initResp.EnsureSuccessStatusCode();
+
+        // Seed the bettor's own history before creating the future matches — see the ordering
+        // note in Place_hosted_shutout_and_minus_point_same_match_returns_201 for why creating
+        // the bet matches first risks a background odds recalculation catching them mid-seed.
         var match1 = await CreateFutureMatchAsync(client, seasonId);
         var match2 = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: 7);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
@@ -460,11 +489,62 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Recalculate_upcoming_odds_requires_admin_role_and_returns_200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/admin/odds/recalculate-upcoming", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("matchesUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_requires_admin_role_and_returns_200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_accepts_an_explicit_target_version()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 1.0m });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("targetVersion").GetDecimal().Should().Be(1.0m);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_accepts_the_historical_target_version()
+    {
+        // 2.0 is no longer "current" (that's 2.1 now) but must still be reachable as its own
+        // tier — the middle ground meant specifically for reconciling old settled tickets.
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 2.0m });
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("targetVersion").GetDecimal().Should().Be(2.0m);
+    }
+
+    [Fact]
+    public async Task Recalculate_historical_odds_rejects_an_unknown_target_version()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 3.5m });
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Place_single_leg_ticket_returns_201_with_short_id_and_one_leg()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Bet Create Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
@@ -493,6 +573,7 @@ public class BetsTests : ApiTestBase
         // Both matches host team 1 (the season's hosted team) so TeamWin legs on team 1 validate.
         var match1 = await CreateFutureMatchAsync(client, seasonId);
         var match2 = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: 7);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
@@ -511,7 +592,9 @@ public class BetsTests : ApiTestBase
         var totalOdds = body.GetProperty("totalOdds").GetDecimal();
         var leg0Odds = body.GetProperty("legs")[0].GetProperty("odds").GetDecimal();
         var leg1Odds = body.GetProperty("legs")[1].GetProperty("odds").GetDecimal();
-        totalOdds.Should().BeApproximately(leg0Odds * leg1Odds, 0.0001m);
+        // The server floors to 2 decimal places at each multiplication step (see
+        // BetService.PlaceBetAsync), so totalOdds is the floored product, not the exact one.
+        totalOdds.Should().Be(Math.Floor(leg0Odds * leg1Odds * 100m) / 100m);
     }
 
     [Fact]
@@ -520,6 +603,7 @@ public class BetsTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Bet Cancel Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var createResp = await client.PostAsJsonAsync("/api/betting/bets", new
@@ -546,6 +630,7 @@ public class BetsTests : ApiTestBase
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Active List Season");
         var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
 
         var beforeResp = await client.GetAsync("/api/betting/bets/active");

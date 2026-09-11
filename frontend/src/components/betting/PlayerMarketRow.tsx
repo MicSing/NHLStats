@@ -3,14 +3,18 @@ interface PlayerMarketRowProps {
     odds: number | null
     forceDisabled?: boolean
     occasionsBadge?: number
+    /** Shown as a tooltip when the row is disabled because no market is available (odds == null || odds < 1). */
+    disabledReason?: string
     onAdd: () => void
 }
 
-export default function PlayerMarketRow({ name, odds, forceDisabled, occasionsBadge, onAdd }: PlayerMarketRowProps) {
+export default function PlayerMarketRow({ name, odds, forceDisabled, occasionsBadge, disabledReason, onAdd }: PlayerMarketRowProps) {
+    const unavailable = odds == null || odds < 1
     return (
         <button
             onClick={onAdd}
-            disabled={forceDisabled || odds == null || odds < 1}
+            disabled={forceDisabled || unavailable}
+            title={!forceDisabled && unavailable ? disabledReason : undefined}
             className="w-full flex justify-between items-center px-3 py-2 border border-border rounded bg-bg hover:border-primary hover:bg-primary/5 disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-bg transition-colors"
         >
             <span className="flex items-center gap-1.5 text-sm">

@@ -160,6 +160,21 @@ using (var scope = app.Services.CreateScope())
         Console.Error.WriteLine($"Failed to migrate DB: {ex}");
     }
 
+    // One-time (but idempotent/cheap to re-run) backfill of BetLeg.Probability for legs that
+    // predate that field, so historical tickets can be repriced to any odds formula version —
+    // see BetService.BackfillLegacyProbabilitiesAsync.
+    try
+    {
+        var betService = services.GetRequiredService<IBetService>();
+        var backfilled = betService.BackfillLegacyProbabilitiesAsync().GetAwaiter().GetResult();
+        if (backfilled > 0)
+            Console.WriteLine($"Backfilled base probability for {backfilled} historical bet leg(s).");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Failed to backfill historical bet leg probabilities: {ex}");
+    }
+
     // Seed roles and admin user if not present
     try
     {

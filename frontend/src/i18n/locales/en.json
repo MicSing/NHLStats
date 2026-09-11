@@ -528,6 +528,7 @@
         "unknownTeam": "Unknown Team",
         "unknownUser": "Unknown User",
         "noUsers": "No users in this match.",
+        "marketUnavailable": "No bettable market for this user.",
         "homeTeam": "Home Team",
         "awayTeam": "Away Team",
         "betOnHomeWin": "Bet on home team to win",
@@ -874,11 +875,27 @@
             "addCollection": "Add Payment"
         },
         "betting": {
+            "recalculating": "Recalculating… ({{seconds}}s)",
             "recalculateTitle": "Recalculate Correlated Bet Odds",
             "recalculateDescription": "Some leg combinations aren't actually independent — e.g. multiple plus/minus-point legs stacked on one match, or a shutout-win leg paired with a plus/minus-point leg it guarantees. This recalculates TotalOdds for past Won bets with such legs, collapsing each offending match's redundant legs to their single highest odds. Safe to run more than once.",
             "recalculateButton": "Recalculate Now",
             "recalculateSuccess": "Recalculated {{count}} bet(s).",
-            "recalculateError": "Failed to recalculate odds. Please try again."
+            "recalculateError": "Failed to recalculate odds. Please try again.",
+            "recalculateUpcomingTitle": "Recalculate Upcoming Match Odds",
+            "recalculateUpcomingDescription": "Recomputes odds for every not-yet-played match using the current odds formula and margin. Doesn't touch any already-placed bet — those stay locked at whatever odds they were placed at. Safe to run more than once.",
+            "recalculateUpcomingButton": "Recalculate Upcoming Odds",
+            "recalculateUpcomingSuccess": "Recalculated odds for {{count}} upcoming match(es).",
+            "recalculateUpcomingError": "Failed to recalculate upcoming odds. Please try again.",
+            "recalculateHistoricalTitle": "Recalculate Historical Ticket Odds",
+            "recalculateHistoricalDescription": "Reprices every leg of every already-settled (Won/Lost) ticket not already on the chosen formula version below, computing what each leg's odds would be under that formula from its base probability (reconstructed from the locked-in odds if not already stored). This rewrites numbers on tickets users already saw. Each leg is tagged with the formula version that priced it, so tickets already on the chosen version are skipped automatically — safe to run more than once.",
+            "recalculateHistoricalFormulaLabel": "Formula version:",
+            "recalculateHistoricalFormulaCurrent": "Current (2.1)",
+            "recalculateHistoricalFormulaHistorical": "Historical (2.0)",
+            "recalculateHistoricalFormulaLegacy": "Legacy (1.0)",
+            "recalculateHistoricalButton": "Recalculate Historical Odds",
+            "recalculateHistoricalConfirm": "This permanently rewrites the odds and payout on every settled (Won/Lost) bet ticket not already on the chosen formula version. Are you sure you want to proceed?",
+            "recalculateHistoricalSuccess": "Recalculated {{count}} historical ticket(s).",
+            "recalculateHistoricalError": "Failed to recalculate historical odds. Please try again."
         },
         "aggregated": {
             "title": "Aggregated Points",

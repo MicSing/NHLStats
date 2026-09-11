@@ -4,13 +4,18 @@ set -e
 TIMESTAMP=$(date +"%Y_%m_%d_%H%M%S")
 BACKUP_DIR="db_backups/backup_${TIMESTAMP}"
 
-# Read connection string: 1) from argument, 2) from env var, 3) from dotnet user-secrets
+# Read connection string: 1) from argument, 2) from env var, 3) from dotnet user-secrets (AzureConnection then DefaultConnection)
 if [ -n "$1" ]; then
   CONN_STR="$1"
+elif [ -n "$ConnectionStrings__AzureConnection" ]; then
+  CONN_STR="$ConnectionStrings__AzureConnection"
 elif [ -n "$ConnectionStrings__DefaultConnection" ]; then
   CONN_STR="$ConnectionStrings__DefaultConnection"
 else
-  CONN_STR=$(dotnet user-secrets list --project backend/src/NHLStats.Api 2>/dev/null | grep "ConnectionStrings:DefaultConnection = " | sed 's/^ConnectionStrings:DefaultConnection = //' || true)
+  CONN_STR=$(dotnet user-secrets list --project backend/src/NHLStats.Api 2>/dev/null | grep "ConnectionStrings:AzureConnection = " | sed 's/^ConnectionStrings:AzureConnection = //' || true)
+  if [ -z "$CONN_STR" ]; then
+    CONN_STR=$(dotnet user-secrets list --project backend/src/NHLStats.Api 2>/dev/null | grep "ConnectionStrings:DefaultConnection = " | sed 's/^ConnectionStrings:DefaultConnection = //' || true)
+  fi
 fi
 
 if [ -z "$CONN_STR" ] || [[ "$CONN_STR" == *"YOUR_DB_PASSWORD"* ]]; then

@@ -558,6 +558,7 @@
         "unknownTeam": "Neznámy tím",
         "unknownUser": "Neznámy používateľ",
         "noUsers": "Žiadni používatelia v tomto zápase.",
+        "marketUnavailable": "Pre tohto používateľa nie je dostupný žiadny tip.",
         "homeTeam": "Domáci tím",
         "awayTeam": "Hosťujúci tím",
         "betOnHomeWin": "Tipnúť výhru domácich",
@@ -906,11 +907,27 @@
             "addCollection": "Pridať platbu"
         },
         "betting": {
+            "recalculating": "Prepočítavam… ({{seconds}}s)",
             "recalculateTitle": "Prepočítať súvisiace kurzy tiketov",
             "recalculateDescription": "Niektoré kombinácie tipov nie sú v skutočnosti nezávislé — napr. viac tipov na plusové/mínusové body na jednom zápase, alebo tip na čisté konto kombinovaný s tipom na plusové/mínusové body, ktorý zaručuje. Táto akcia prepočíta celkový kurz pre staršie vyhraté tikety s takýmito tipmi — kurzy takýchto tipov sa zredukujú na najvyšší z nich. Akciu je možné spustiť opakovane bez rizika.",
             "recalculateButton": "Prepočítať teraz",
             "recalculateSuccess": "Prepočítaných {{count}} tiketov.",
-            "recalculateError": "Prepočet zlyhal. Skús to prosím znova."
+            "recalculateError": "Prepočet zlyhal. Skús to prosím znova.",
+            "recalculateUpcomingTitle": "Prepočítať kurzy budúcich zápasov",
+            "recalculateUpcomingDescription": "Prepočíta kurzy pre všetky ešte neodohrané zápasy podľa aktuálneho vzorca a marže. Nemení nič na už uzavretých stávkach — tie zostávajú uzamknuté na kurze, za ktorý boli uzavreté. Akciu je možné spustiť opakovane bez rizika.",
+            "recalculateUpcomingButton": "Prepočítať budúce kurzy",
+            "recalculateUpcomingSuccess": "Prepočítané kurzy pre {{count}} budúcich zápasov.",
+            "recalculateUpcomingError": "Prepočet kurzov zlyhal. Skús to prosím znova.",
+            "recalculateHistoricalTitle": "Prepočítať kurzy historických tiketov",
+            "recalculateHistoricalDescription": "Prepočíta kurz každého tipu na každom už uzavretom (vyhratom/prehratom) tikete, ktorý ešte nie je na zvolenej verzii vzorca nižšie — vypočíta, aký by kurz tipu bol podľa tohto vzorca zo základnej pravdepodobnosti (tá sa v prípade potreby rekonštruuje z uzamknutého kurzu). Táto akcia prepíše čísla na tiketoch, ktoré už používatelia videli. Každý tip je označený verziou vzorca, ktorým bol ocenený, takže tikety už na zvolenej verzii sa automaticky preskočia — akciu je možné spustiť opakovane bez rizika.",
+            "recalculateHistoricalFormulaLabel": "Verzia vzorca:",
+            "recalculateHistoricalFormulaCurrent": "Aktuálna (2.1)",
+            "recalculateHistoricalFormulaHistorical": "Historická (2.0)",
+            "recalculateHistoricalFormulaLegacy": "Pôvodná (1.0)",
+            "recalculateHistoricalButton": "Prepočítať historické kurzy",
+            "recalculateHistoricalConfirm": "Táto akcia natrvalo prepíše kurz a výhru na každom uzavretom (vyhratom/prehratom) tikete, ktorý ešte nie je na zvolenej verzii vzorca. Naozaj chceš pokračovať?",
+            "recalculateHistoricalSuccess": "Prepočítaných {{count}} historických tiketov.",
+            "recalculateHistoricalError": "Prepočet historických kurzov zlyhal. Skús to prosím znova."
         },
         "aggregated": {
             "title": "Súhrnné body",

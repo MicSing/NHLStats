@@ -135,6 +135,7 @@ public class MatchesTests : ApiTestBase
         updateResp.EnsureSuccessStatusCode();
 
         await SeedBettingBalanceAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
 
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
@@ -401,6 +402,7 @@ public class MatchesTests : ApiTestBase
 
         var created = await CreateMatchAsync(client, seasonId, 1, 2);
         var matchId = created.GetProperty("id").GetInt32();
+        await SeedHostedTeamHistoryAsync(client, seasonId);
 
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {

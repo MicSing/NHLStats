@@ -28,9 +28,9 @@ public class StatsTests : ApiTestBase
     // ─── Shared setup helpers ─────────────────────────────────────────────────
 
     private async Task<int> CreateSeasonAsync(HttpClient client, string name,
-        string startedOn = "2024-01-01T00:00:00")
+        string startedOn = "2024-01-01T00:00:00", int? hostedTeamId = null)
     {
-        var resp = await client.PostAsJsonAsync("/api/seasons", new { name, startedOn });
+        var resp = await client.PostAsJsonAsync("/api/seasons", new { name, startedOn, hostedTeamId });
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
     }
@@ -644,19 +644,26 @@ public class StatsTests : ApiTestBase
 
         var targetUserId = await CreateUserAsync(client, "Bet Lost Target");
         await AssignUserAsync(client, seasonId, targetUserId);
+        // Bettable (not 0% or 100%) PlusPoint history — UserGoal would need 10+ completed season
+        // matches before goal betting is even enabled at all (see
+        // BettingOddsService.RecalculateForMatchAsync's goalBettingEnabled gate), which isn't
+        // what this test is about; UserPlusPoint has no such gate.
+        await SeedUserPlusPointHistoryAsync(client, seasonId, targetUserId);
 
-        // Create open match — bettor appears via their bet even without stats
+        // Create open match — bettor appears via their bet even without stats. No point recorded
+        // here for the target, so the UserPlusPoint(Occasions=1) leg loses on completion.
         var matchId = await CreateOpenMatchAsync(client, seasonId);
-        var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
-        await AddPointAsync(client, userMatchId, 9, 1); // target has a point but no goal → bet loses
+        await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
+        var recalcResp = await client.PostAsync("/api/admin/odds/recalculate-upcoming", null);
+        recalcResp.EnsureSuccessStatusCode();
 
-        // Place a UserGoal ticket on the target user while the match is open (single-leg combo)
+        // Place a UserPlusPoint ticket on the target user while the match is open (single-leg combo)
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
             stake = 1.0,
             legs = new[]
             {
-                new { matchId, betType = "UserGoal", userId = targetUserId }
+                new { matchId, betType = "UserPlusPoint", userId = targetUserId }
             }
         });
         betResp.EnsureSuccessStatusCode();
@@ -691,19 +698,26 @@ public class StatsTests : ApiTestBase
 
         var targetUserId = await CreateUserAsync(client, "Bet Won Target");
         await AssignUserAsync(client, seasonId, targetUserId);
+        // Bettable (not 0% or 100%) PlusPoint history — see the matching comment in
+        // Weekly_includes_lost_bet_info_for_user for why UserGoal isn't used here.
+        await SeedUserPlusPointHistoryAsync(client, seasonId, targetUserId);
 
         // Bettor appears via their bet even without stats
         var matchId = await CreateOpenMatchAsync(client, seasonId);
         var userMatchId = await CreateUserMatchAsync(client, seasonId, matchId, targetUserId);
-        var rosterPlayerId = await CreateRosterPlayerAsync(client, seasonId, "Won", "BetPlayer");
-        await AddGoalAsync(client, userMatchId, rosterPlayerId, 1); // goal → UserGoal bet wins
+        // Recorded on the still-open match, so it doesn't feed back into the PlusPoint history
+        // used to price this same match's odds (only completed matches count there) — it's
+        // picked up when the match completes below, winning the UserPlusPoint(Occasions=1) bet.
+        await AddPointAsync(client, userMatchId, 9, 1);
+        var recalcResp = await client.PostAsync("/api/admin/odds/recalculate-upcoming", null);
+        recalcResp.EnsureSuccessStatusCode();
 
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
             stake = 1.0,
             legs = new[]
             {
-                new { matchId, betType = "UserGoal", userId = targetUserId }
+                new { matchId, betType = "UserPlusPoint", userId = targetUserId }
             }
         });
         betResp.EnsureSuccessStatusCode();
@@ -1498,7 +1512,7 @@ public class StatsTests : ApiTestBase
     public async Task FinancialStats_bettingBalance_includes_lost_bet_on_match_with_no_user_match()
     {
         var client = await CreateAuthenticatedClientAsync();
-        var seasonId = await CreateSeasonAsync(client, "FinStats Lost Bet No UM Season");
+        var seasonId = await CreateSeasonAsync(client, "FinStats Lost Bet No UM Season", hostedTeamId: 1);
 
         // Seed admin balance via a separate completed match WITH UserMatch entries
         var bettorUserId = await SeedBettingBalanceAsync(client, seasonId);
@@ -1507,8 +1521,9 @@ public class StatsTests : ApiTestBase
 
         // Create a match with NO UserMatch entries — this is the key for the bug
         var betMatchId = await CreateOpenMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
 
-        // Place a UserGoal ticket on targetUserId — target has no goals so it will be Lost
+        // Bet on the away team (2) to win — the match below finishes as a home win, so it loses.
         var betResp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
             stake = 1.0,

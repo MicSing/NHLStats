@@ -363,6 +363,7 @@ export default function MarketsSection({
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
+                                        disabledReason={t('betting.marketUnavailable')}
                                         onAdd={() =>
                                             displayOdds != null &&
                                             onAddLeg({
@@ -404,6 +405,7 @@ export default function MarketsSection({
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
+                                        disabledReason={t('betting.marketUnavailable')}
                                         onAdd={() =>
                                             displayOdds != null &&
                                             onAddLeg({
@@ -446,6 +448,7 @@ export default function MarketsSection({
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
+                                        disabledReason={t('betting.marketUnavailable')}
                                         forceDisabled={isUserInMatch || matchHasPlusPointLeg}
                                         onAdd={() =>
                                             displayOdds != null &&
@@ -490,6 +493,7 @@ export default function MarketsSection({
                                         name={u.userName ?? t('betting.unknownUser')}
                                         odds={displayOdds}
                                         occasionsBadge={occasions > 1 ? occasions : undefined}
+                                        disabledReason={t('betting.marketUnavailable')}
                                         forceDisabled={isUserInMatch || matchHasMinusPointLeg}
                                         onAdd={() =>
                                             displayOdds != null &&

@@ -1,0 +1,47 @@
+services:
+  db:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: nhlstats-db
+    user: root
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=LocalPass123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - nhlstats-db-data:/var/opt/mssql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nhlstats-backend
+    restart: unless-stopped
+    ports:
+      - "5267:5267"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=sqldb-nhlstats;User Id=sa;Password=LocalPass123!;TrustServerCertificate=True;Encrypt=False;
+      - AllowedOrigins=http://localhost:5173,http://localhost:3000
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nhlstats-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_PROXY_TARGET=http://backend:5267
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  nhlstats-db-data:

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
+using NHLStats.Application.Services;
 using NHLStats.Domain.Entities;
 
 namespace NHLStats.Api.Controllers;
@@ -118,6 +119,35 @@ public class BetsController : ControllerBase
     {
         var count = await _betService.RecalculateCorrelatedLegOddsAsync();
         return Ok(new { message = "Correlated bet odds recalculated.", betsUpdated = count });
+    }
+
+    // POST /api/admin/odds/recalculate-upcoming (admin only)
+    // Recalculates MatchOdds for every not-yet-played match under the current odds formula/margin.
+    // Doesn't touch any already-placed bet — those stay locked at whatever odds they were placed at.
+    [HttpPost("api/admin/odds/recalculate-upcoming")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecalculateUpcomingOdds()
+    {
+        var count = await _oddsService.RecalculateAllUpcomingAsync();
+        return Ok(new { message = "Upcoming match odds recalculated.", matchesUpdated = count });
+    }
+
+    // POST /api/admin/bets/recalculate-historical-odds (admin only)
+    // Reprices already-evaluated (Won/Lost) tickets not already on the chosen target formula
+    // version (defaults to the current one), using each leg's stored base Probability where
+    // available or reconstructing one from its stored odds otherwise. Rewrites historical numbers
+    // users already saw — the frontend gates this behind a confirmation. Guarded by
+    // OddsFormulaVersion (see RecalculateHistoricalTicketOddsAsync), so safe to run more than once.
+    [HttpPost("api/admin/bets/recalculate-historical-odds")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecalculateHistoricalOdds([FromBody] RecalculateHistoricalOddsRequestDto? body)
+    {
+        var targetVersion = body?.TargetVersion ?? BettingConstants.CurrentOddsFormulaVersion;
+        if (!OddsFormulaTiers.TryFromDecimal(targetVersion, out _))
+            return BadRequest(new { error = $"Unknown odds formula version {targetVersion}." });
+
+        var count = await _betService.RecalculateHistoricalTicketOddsAsync(targetVersion);
+        return Ok(new { message = "Historical ticket odds recalculated.", betsUpdated = count, targetVersion });
     }
 
     private string? GetLoginId() =>

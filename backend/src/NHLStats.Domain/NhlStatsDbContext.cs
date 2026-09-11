@@ -188,6 +188,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.BetType).HasConversion<int>();
             b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.OddsFormulaVersion).HasDefaultValue(1.0m);
             b.HasOne(x => x.Bet).WithMany(p => p.Legs).HasForeignKey(x => x.BetId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Match).WithMany(m => m.BetLegs).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.User).WithMany(u => u.BetLegs).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
