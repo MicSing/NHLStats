@@ -209,9 +209,19 @@ public class StatsService : IStatsService
 
         var allBets = await _db.Bets
             .AsNoTracking()
-            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost) && b.EvaluatedOn.HasValue
-                     && b.EvaluatedOn >= seasonStartDate)
-            .Select(b => new { b.CreatedBy, b.Stake, b.TotalOdds, b.Status, b.EvaluatedOn })
+            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+                     && b.Legs.Any(l => l.Match != null && l.Match.SeasonId == seasonId))
+            .Select(b => new
+            {
+                b.CreatedBy,
+                b.Stake,
+                b.TotalOdds,
+                b.Status,
+                LegMatchDates = b.Legs
+                    .Where(l => l.Match != null && l.Match.MatchDate != null)
+                    .Select(l => l.Match!.MatchDate)
+                    .ToList()
+            })
             .ToListAsync();
 
         var creatorIds = allBets.Select(b => b.CreatedBy).Distinct().ToList();
@@ -227,7 +237,11 @@ public class StatsService : IStatsService
                 UserId = creatorToUserId[b.CreatedBy],
                 WonProfit = b.Status == BetStatus.Won ? BettingConstants.GrossPayout(b.Stake, b.TotalOdds) - b.Stake : 0m,
                 LostStake = b.Status == BetStatus.Lost ? b.Stake : 0m,
-                EvaluatedDate = b.EvaluatedOn!.Value.Date
+                MatchDate = b.LegMatchDates
+                    .Where(d => d.HasValue)
+                    .Select(d => d!.Value.Date)
+                    .DefaultIfEmpty(DateTime.MinValue.Date)
+                    .Max()
             })
             .ToList();
 
@@ -270,7 +284,7 @@ public class StatsService : IStatsService
             }
 
             var betsUpToWeek = betsResolved
-                .Where(b => b.EvaluatedDate <= weekDate)
+                .Where(b => b.MatchDate <= weekDate)
                 .GroupBy(b => b.UserId)
                 .ToDictionary(
                     g => g.Key,
@@ -286,7 +300,7 @@ public class StatsService : IStatsService
 
             var rangeStart = previousWeekDate.HasValue ? previousWeekDate.Value.AddDays(1) : DateTime.MinValue.Date;
             var betsInRange = betsResolved
-                .Where(b => b.EvaluatedDate >= rangeStart && b.EvaluatedDate <= weekDate)
+                .Where(b => b.MatchDate >= rangeStart && b.MatchDate <= weekDate)
                 .GroupBy(b => b.UserId)
                 .ToDictionary(
                     g => g.Key,
@@ -317,14 +331,6 @@ public class StatsService : IStatsService
         if (allSeasons.Count == 0)
             return (Enumerable.Empty<WeeklyBettingBalancePeriodDto>(), Enumerable.Empty<WeeklyBetDeltaPeriodDto>());
 
-        var seasonEndDates = (await _db.Matches
-            .AsNoTracking()
-            .Where(m => m.MatchDate != null)
-            .GroupBy(m => m.SeasonId)
-            .Select(g => new { SeasonId = g.Key, MaxDate = g.Max(m => m.MatchDate!.Value) })
-            .ToListAsync())
-            .ToDictionary(x => x.SeasonId, x => x.MaxDate.Date);
-
         var positivePointsBySeason = (await _db.UserMatchPoints
             .AsNoTracking()
             .Where(p => p.UserMatch != null
@@ -343,8 +349,19 @@ public class StatsService : IStatsService
 
         var allBets = await _db.Bets
             .AsNoTracking()
-            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost) && b.EvaluatedOn.HasValue)
-            .Select(b => new { b.CreatedBy, b.Stake, b.TotalOdds, b.Status, b.EvaluatedOn })
+            .Where(b => (b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+                     && b.Legs.Any(l => l.Match != null))
+            .Select(b => new
+            {
+                b.CreatedBy,
+                b.Stake,
+                b.TotalOdds,
+                b.Status,
+                SeasonIds = b.Legs
+                    .Where(l => l.Match != null)
+                    .Select(l => l.Match!.SeasonId)
+                    .ToList()
+            })
             .ToListAsync();
 
         var creatorIds = allBets.Select(b => b.CreatedBy).Distinct().ToList();
@@ -360,7 +377,7 @@ public class StatsService : IStatsService
                 UserId = creatorToUserId[b.CreatedBy],
                 WonProfit = b.Status == BetStatus.Won ? BettingConstants.GrossPayout(b.Stake, b.TotalOdds) - b.Stake : 0m,
                 LostStake = b.Status == BetStatus.Lost ? b.Stake : 0m,
-                EvaluatedDate = b.EvaluatedOn!.Value.Date
+                SeasonId = b.SeasonIds.FirstOrDefault()
             })
             .ToList();
 
@@ -376,11 +393,11 @@ public class StatsService : IStatsService
         var positiveCash = allUserIds.ToDictionary(id => id, _ => 0m);
         var balancePeriods = new List<WeeklyBettingBalancePeriodDto>();
         var deltaPeriods = new List<WeeklyBetDeltaPeriodDto>();
-        DateTime? previousSeasonEnd = null;
+        var processedSeasonIds = new HashSet<int>();
 
         foreach (var season in allSeasons)
         {
-            var endDate = seasonEndDates.TryGetValue(season.Id, out var ed) ? ed : season.StartedOn.Date;
+            processedSeasonIds.Add(season.Id);
 
             if (aggDataBySeason.TryGetValue(season.Id, out var aggList))
                 foreach (var agg in aggList)
@@ -397,7 +414,7 @@ public class StatsService : IStatsService
                 }
 
             var betsUpToSeason = betsResolved
-                .Where(b => b.EvaluatedDate <= endDate)
+                .Where(b => processedSeasonIds.Contains(b.SeasonId))
                 .GroupBy(b => b.UserId)
                 .ToDictionary(
                     g => g.Key,
@@ -414,9 +431,8 @@ public class StatsService : IStatsService
             }).ToList();
             balancePeriods.Add(new WeeklyBettingBalancePeriodDto(season.Name, balanceUsers));
 
-            var rangeStart = previousSeasonEnd.HasValue ? previousSeasonEnd.Value.AddDays(1) : DateTime.MinValue.Date;
             var betsInRange = betsResolved
-                .Where(b => b.EvaluatedDate >= rangeStart && b.EvaluatedDate <= endDate)
+                .Where(b => b.SeasonId == season.Id)
                 .GroupBy(b => b.UserId)
                 .ToDictionary(
                     g => g.Key,
@@ -429,8 +445,6 @@ public class StatsService : IStatsService
                 return new UserWeeklyBetDeltaDto(uid, name, bet.WonProfit - bet.LostStake);
             }).ToList();
             deltaPeriods.Add(new WeeklyBetDeltaPeriodDto(season.Name, deltaUsers));
-
-            previousSeasonEnd = endDate;
         }
 
         return (balancePeriods, deltaPeriods);
