@@ -23,7 +23,7 @@ public class SeasonService : ISeasonService
         s.HostedTeam?.Name,
         s.StartedOn, s.Status, s.ParentSeasonId,
         s.SeasonUsers?
-            .Select(su => new UserDto(su.User!.Id, su.User.Name, su.User.IsActive))
+            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position))
             .ToList() ?? [],
         s.LeagueType);
 
@@ -86,7 +86,7 @@ public class SeasonService : ISeasonService
         return true;
     }
 
-    public async Task<SeasonDetailDto?> AssignUserAsync(int seasonId, int userId)
+    public async Task<SeasonDetailDto?> AssignUserAsync(int seasonId, int userId, SeasonUserPosition? position = null)
     {
         var season = await _db.Seasons.FindAsync(seasonId);
         var user = await _db.Users.FindAsync(userId);
@@ -95,9 +95,21 @@ public class SeasonService : ISeasonService
         var exists = await _db.SeasonUsers.AnyAsync(su => su.SeasonId == seasonId && su.UserId == userId);
         if (!exists)
         {
-            _db.SeasonUsers.Add(new SeasonUser { SeasonId = seasonId, UserId = userId });
+            _db.SeasonUsers.Add(new SeasonUser { SeasonId = seasonId, UserId = userId, Position = position });
             await _db.SaveChangesAsync();
         }
+
+        return await GetByIdAsync(seasonId);
+    }
+
+    public async Task<SeasonDetailDto?> UpdateUserPositionAsync(int seasonId, int userId, SeasonUserPosition? position)
+    {
+        var su = await _db.SeasonUsers
+            .FirstOrDefaultAsync(x => x.SeasonId == seasonId && x.UserId == userId);
+        if (su == null) return null;
+
+        su.Position = position;
+        await _db.SaveChangesAsync();
 
         return await GetByIdAsync(seasonId);
     }
@@ -113,7 +125,7 @@ public class SeasonService : ISeasonService
         return true;
     }
 
-    public async Task<IEnumerable<UserDto>?> GetSeasonUsersAsync(int seasonId)
+    public async Task<IEnumerable<SeasonUserDto>?> GetSeasonUsersAsync(int seasonId)
     {
         var seasonExists = await _db.Seasons.AnyAsync(s => s.Id == seasonId);
         if (!seasonExists) return null;
@@ -121,7 +133,7 @@ public class SeasonService : ISeasonService
         return await _db.SeasonUsers
             .Where(su => su.SeasonId == seasonId)
             .Include(su => su.User)
-            .Select(su => new UserDto(su.User!.Id, su.User.Name, su.User.IsActive))
+            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position))
             .ToListAsync();
     }
 }

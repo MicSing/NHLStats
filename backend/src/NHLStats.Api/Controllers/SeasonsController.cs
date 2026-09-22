@@ -59,9 +59,9 @@ public class SeasonsController : ControllerBase
 
     [Authorize]
     [HttpPost("{id:int}/users/{userId:int}")]
-    public async Task<IActionResult> AssignUser(int id, int userId)
+    public async Task<IActionResult> AssignUser(int id, int userId, [FromBody] AssignSeasonUserDto? dto)
     {
-        var result = await _service.AssignUserAsync(id, userId);
+        var result = await _service.AssignUserAsync(id, userId, dto?.Position);
         return result == null ? NotFound() : Ok(result);
     }
 
@@ -71,5 +71,13 @@ public class SeasonsController : ControllerBase
     {
         var success = await _service.RemoveUserAsync(id, userId);
         return success ? NoContent() : NotFound();
+    }
+
+    [Authorize]
+    [HttpPut("{id:int}/users/{userId:int}/position")]
+    public async Task<IActionResult> UpdateUserPosition(int id, int userId, UpdateSeasonUserPositionDto dto)
+    {
+        var result = await _service.UpdateUserPositionAsync(id, userId, dto.Position);
+        return result == null ? NotFound() : Ok(result);
     }
 }

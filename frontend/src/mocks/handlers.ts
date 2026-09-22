@@ -9,6 +9,8 @@ const mockUsers = [
     { id: 2, name: 'Player Two', isActive: false },
 ]
 
+const mockSeasonUsers = [{ ...mockUsers[0], position: null }]
+
 const mockLoginUsers = [
     { id: 'login-1', email: 'player.one@test.com', alias: null, userId: 1, isActive: true, roles: ['User'] },
     { id: 'login-2', email: 'player.two@test.com', alias: null, userId: 2, isActive: false, roles: ['User'] },
@@ -44,7 +46,7 @@ const mockSeasons = [
 
 const mockSeasonDetail = {
     ...mockSeasons[0],
-    users: [mockUsers[0]],
+    users: mockSeasonUsers,
 }
 
 const mockMatches = [
@@ -421,6 +423,10 @@ export const handlers = [
 
     rest.delete(`${BASE}/api/seasons/:id/users/:userId`, (_req, res, ctx) => {
         return res(ctx.status(204))
+    }),
+
+    rest.put(`${BASE}/api/seasons/:id/users/:userId/position`, (req, res, ctx) => {
+        return res(ctx.json({ ...mockSeasonDetail, id: Number(req.params.id) }))
     }),
 
     // Roster
