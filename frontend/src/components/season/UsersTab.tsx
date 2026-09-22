@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { TrashIcon } from '@phosphor-icons/react'
 import type { Season, SeasonDetail } from '../../types/season'
 import type { User } from '../../types/user'
+import { SEASON_USER_POSITIONS, type SeasonUserPositionCode } from '../../types/seasonUserPosition'
 import apiClient from '../../services/apiClient'
 import { useToast } from '../../context/ToastContext'
 import LoadingSpinner from '../LoadingSpinner'
@@ -19,12 +20,16 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
     const { t } = useTranslation()
     const toast = useToast()
     const [assignUserId, setAssignUserId] = useState<number | ''>('')
+    const [assignPosition, setAssignPosition] = useState<SeasonUserPositionCode | ''>('')
 
     const handleAssignUser = async () => {
         if (assignUserId === '') return
         try {
-            await apiClient.post(`/api/seasons/${season.id}/users/${assignUserId}`, {})
+            await apiClient.post(`/api/seasons/${season.id}/users/${assignUserId}`, {
+                position: assignPosition === '' ? null : assignPosition,
+            })
             setAssignUserId('')
+            setAssignPosition('')
             onRefreshDetail()
         } catch {
             toast.error(t('toast.operationFailed'))
@@ -34,6 +39,17 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
     const handleRemoveUser = async (userId: number) => {
         try {
             await apiClient.delete(`/api/seasons/${season.id}/users/${userId}`)
+            onRefreshDetail()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
+    const handleChangePosition = async (userId: number, position: SeasonUserPositionCode | '') => {
+        try {
+            await apiClient.put(`/api/seasons/${season.id}/users/${userId}/position`, {
+                position: position === '' ? null : position,
+            })
             onRefreshDetail()
         } catch {
             toast.error(t('toast.operationFailed'))
@@ -53,13 +69,14 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                     <thead className="bg-surface">
                         <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
                             <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.seasons.position')}</th>
                             <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                         {seasonDetail.users.length === 0 ? (
                             <tr>
-                                <td colSpan={2} className="px-4 py-6 text-center text-text-muted text-sm">
+                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted text-sm">
                                     {t('admin.seasons.noUsersAssigned')}
                                 </td>
                             </tr>
@@ -67,6 +84,26 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                             seasonDetail.users.map((u) => (
                                 <tr key={u.id} className="hover:bg-surface/50 transition-colors">
                                     <td className="px-4 py-3">{u.name}</td>
+                                    <td className="px-4 py-3">
+                                        <select
+                                            aria-label={t('admin.seasons.positionFor', { name: u.name })}
+                                            value={u.position ?? ''}
+                                            onChange={(e) =>
+                                                void handleChangePosition(
+                                                    u.id,
+                                                    e.target.value as SeasonUserPositionCode | '',
+                                                )
+                                            }
+                                            className="bg-border border border-border rounded px-2 py-1 text-sm"
+                                        >
+                                            <option value="">{t('admin.seasons.noPosition')}</option>
+                                            {SEASON_USER_POSITIONS.map((code) => (
+                                                <option key={code} value={code}>
+                                                    {code}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                         <button
                                             onClick={() => void handleRemoveUser(u.id)}
@@ -97,6 +134,19 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                         {assignableUsers.map((u) => (
                             <option key={u.id} value={u.id}>
                                 {u.name}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        aria-label={t('admin.seasons.position')}
+                        value={assignPosition}
+                        onChange={(e) => setAssignPosition(e.target.value as SeasonUserPositionCode | '')}
+                        className="bg-border border border-border rounded px-3 py-2 text-sm"
+                    >
+                        <option value="">{t('admin.seasons.noPosition')}</option>
+                        {SEASON_USER_POSITIONS.map((code) => (
+                            <option key={code} value={code}>
+                                {code}
                             </option>
                         ))}
                     </select>

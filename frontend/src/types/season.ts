@@ -1,5 +1,6 @@
 import type { User } from './user'
 import type { LeagueTypeValue } from './team'
+import type { SeasonUserPositionCode } from './seasonUserPosition'
 
 export type SeasonStatus = 'Active' | 'Complete'
 
@@ -14,8 +15,12 @@ export interface Season {
     leagueType: LeagueTypeValue
 }
 
+export interface SeasonUser extends User {
+    position: SeasonUserPositionCode | null
+}
+
 export interface SeasonDetail extends Season {
-    users: User[]
+    users: SeasonUser[]
 }
 
 export interface CreateSeasonDto {

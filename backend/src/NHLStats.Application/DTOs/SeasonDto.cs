@@ -21,8 +21,14 @@ public record SeasonDetailDto(
     DateTime StartedOn,
     SeasonStatus Status,
     int? ParentSeasonId,
-    List<UserDto> Users,
+    List<SeasonUserDto> Users,
     LeagueType LeagueType);
+
+public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position);
+
+public record AssignSeasonUserDto(SeasonUserPosition? Position = null);
+
+public record UpdateSeasonUserPositionDto(SeasonUserPosition? Position);
 
 public record CreateSeasonDto(
     [Required] string Name,

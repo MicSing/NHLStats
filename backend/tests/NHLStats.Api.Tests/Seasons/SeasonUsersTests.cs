@@ -85,4 +85,88 @@ public class SeasonUsersTests : ApiTestBase
         var resp = await client.GetAsync("/api/seasons/999999/users");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // ── Position assignment ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssignUser_WithPosition_PersistsPositionForTheSeason()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Position Test Season",
+            startedOn = "2024-07-01T00:00:00"
+        });
+        var season = await seasonResp.Content.ReadFromJsonAsync<JsonElement>();
+        var seasonId = season.GetProperty("id").GetInt32();
+
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = "PlayerGamma" });
+        var user = await userResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = user.GetProperty("id").GetInt32();
+
+        var assignResp = await client.PostAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}", new { position = "LD" });
+        assignResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/users");
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var entry = Enumerable.Range(0, body.GetArrayLength())
+            .Select(i => body[i])
+            .Single(e => e.GetProperty("id").GetInt32() == userId);
+        entry.GetProperty("position").GetString().Should().Be("LD");
+    }
+
+    [Fact]
+    public async Task UpdateUserPosition_ChangesAssignedPosition()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Position Update Season",
+            startedOn = "2024-07-01T00:00:00"
+        });
+        var season = await seasonResp.Content.ReadFromJsonAsync<JsonElement>();
+        var seasonId = season.GetProperty("id").GetInt32();
+
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = "PlayerDelta" });
+        var user = await userResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = user.GetProperty("id").GetInt32();
+
+        await client.PostAsJsonAsync($"/api/seasons/{seasonId}/users/{userId}", new { position = "C" });
+
+        var updateResp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/position", new { position = "RD" });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/users");
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var entry = Enumerable.Range(0, body.GetArrayLength())
+            .Select(i => body[i])
+            .Single(e => e.GetProperty("id").GetInt32() == userId);
+        entry.GetProperty("position").GetString().Should().Be("RD");
+    }
+
+    [Fact]
+    public async Task UpdateUserPosition_UnassignedUser_Returns404()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Position Missing Season",
+            startedOn = "2024-07-01T00:00:00"
+        });
+        var season = await seasonResp.Content.ReadFromJsonAsync<JsonElement>();
+        var seasonId = season.GetProperty("id").GetInt32();
+
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = "PlayerEpsilon" });
+        var user = await userResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = user.GetProperty("id").GetInt32();
+
+        var updateResp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/position", new { position = "RD" });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }
