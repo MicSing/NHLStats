@@ -15,7 +15,9 @@ public record MatchDto(
     int HomeScore,
     int AwayScore,
     DateTime? MatchDate,
-    CompletionType CompletionType);
+    CompletionType CompletionType,
+    MatchPhase Phase,
+    int? PlayoffRound);
 
 public record FutureMatchDto(
     int Id,
@@ -27,6 +29,8 @@ public record FutureMatchDto(
     int AwayTeamId,
     string? AwayTeamName,
     int? HostedTeamId,
+    MatchPhase Phase,
+    int? PlayoffRound,
     IEnumerable<UserMatchInfoDto>? UserMatches);
 
 public record UserMatchInfoDto(
@@ -43,7 +47,9 @@ public record UpdateMatchDto(
     DateTime? MatchDate,
     int HomeScore,
     int AwayScore,
-    CompletionType CompletionType);
+    CompletionType CompletionType,
+    MatchPhase Phase = MatchPhase.RegularSeason,
+    int? PlayoffRound = null);
 
 public record BatchUserPointsDto(
     int UserId,

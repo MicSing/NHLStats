@@ -11,6 +11,8 @@ public class Match
     public int AwayScore { get; set; }
     public DateTime? MatchDate { get; set; }
     public CompletionType CompletionType { get; set; } = CompletionType.None;
+    public MatchPhase Phase { get; set; } = MatchPhase.RegularSeason;
+    public int? PlayoffRound { get; set; }
 
     public Season? Season { get; set; }
     public Team? HomeTeam { get; set; }

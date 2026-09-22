@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NHLStats.Domain;
 
@@ -11,9 +12,11 @@ using NHLStats.Domain;
 namespace NHLStats.Domain.Migrations
 {
     [DbContext(typeof(NhlStatsDbContext))]
-    partial class NhlStatsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922010000_AddMatchPhase")]
+    partial class AddMatchPhase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -256,9 +259,6 @@ namespace NHLStats.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Phase")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PlayoffRound")
                         .HasColumnType("int");
 
                     b.Property<int>("SeasonId")

@@ -197,6 +197,19 @@ public class MatchesTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Create_match_within_regular_season_is_not_playoff()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Regular Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+
+        created.GetProperty("matchNumber").GetInt32().Should().Be(1);
+        created.GetProperty("phase").GetString().Should().Be("RegularSeason");
+        created.GetProperty("playoffRound").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task Create_match_unauthenticated_returns_401()
     {
         var client = Factory.CreateClient();
@@ -272,6 +285,75 @@ public class MatchesTests : ApiTestBase
         updated.GetProperty("matchDate").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
+    [Fact]
+    public async Task Update_match_can_set_phase_and_playoff_round_manually()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Manual Phase Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+        created.GetProperty("phase").GetString().Should().Be("RegularSeason");
+        created.GetProperty("playoffRound").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 0,
+            phase = "Playoff",
+            playoffRound = 3
+        });
+
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("phase").GetString().Should().Be("Playoff");
+        updated.GetProperty("playoffRound").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Update_match_clears_playoff_round_when_phase_set_back_to_regular_season()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Manual Phase Revert Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+
+        var toPlayoffResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 0,
+            phase = "Playoff",
+            playoffRound = 2
+        });
+        toPlayoffResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var toRegularResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 0,
+            phase = "RegularSeason",
+            playoffRound = 2 // ignored: not a playoff match, so round is forced to null
+        });
+
+        toRegularResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await toRegularResp.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("phase").GetString().Should().Be("RegularSeason");
+        updated.GetProperty("playoffRound").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
     // ── DELETE /api/seasons/{seasonId}/matches/{id} ─────────────────────────
 
     [Fact]
@@ -327,6 +409,30 @@ public class MatchesTests : ApiTestBase
         body[0].GetProperty("matchNumber").GetInt32().Should().Be(1);
         body[1].GetProperty("matchNumber").GetInt32().Should().Be(2);
         body[2].GetProperty("matchNumber").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task BatchCreate_does_not_infer_playoff_phase_from_match_number()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Batch Playoff Boundary Season");
+
+        var dtos = Enumerable.Range(0, 83)
+            .Select(_ => new { homeTeamId = 1, awayTeamId = 2 })
+            .ToArray();
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/batch", dtos);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(83);
+        body[81].GetProperty("matchNumber").GetInt32().Should().Be(82);
+        body[81].GetProperty("phase").GetString().Should().Be("RegularSeason");
+        // Phase is only ever Playoff when created via the dedicated playoff-series endpoint,
+        // never inferred from match number alone.
+        body[82].GetProperty("matchNumber").GetInt32().Should().Be(83);
+        body[82].GetProperty("phase").GetString().Should().Be("RegularSeason");
+        body[82].GetProperty("playoffRound").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     // ── POST /api/seasons/{seasonId}/matches/{id}/reset ─────────────────────
@@ -519,6 +625,8 @@ public class MatchesTests : ApiTestBase
         {
             var m = body[i];
             m.GetProperty("matchNumber").GetInt32().Should().Be(i + 1);
+            m.GetProperty("phase").GetString().Should().Be("Playoff");
+            m.GetProperty("playoffRound").GetInt32().Should().Be(1);
             if (expectedHostedIsHome[i])
             {
                 m.GetProperty("homeTeamId").GetInt32().Should().Be(1);
@@ -583,6 +691,33 @@ public class MatchesTests : ApiTestBase
         body.GetArrayLength().Should().Be(7);
         body[0].GetProperty("matchNumber").GetInt32().Should().Be(2);
         body[6].GetProperty("matchNumber").GetInt32().Should().Be(8);
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_increments_round_for_each_new_series_in_the_season()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Round Season"); // hostedTeamId = 1
+
+        var firstResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 2,
+            startsHome = true
+        });
+        firstResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var firstBody = await firstResp.Content.ReadFromJsonAsync<JsonElement>();
+        foreach (var m in firstBody.EnumerateArray())
+            m.GetProperty("playoffRound").GetInt32().Should().Be(1);
+
+        var secondResp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 3,
+            startsHome = true
+        });
+        secondResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var secondBody = await secondResp.Content.ReadFromJsonAsync<JsonElement>();
+        foreach (var m in secondBody.EnumerateArray())
+            m.GetProperty("playoffRound").GetInt32().Should().Be(2);
     }
 
     [Fact]

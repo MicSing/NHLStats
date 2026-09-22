@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { CompletionType } from '../../types/match'
+import { CompletionType, MatchPhase } from '../../types/match'
 import type { CreateMatchDto, UpdateMatchDto } from '../../types/match'
 import type { Team } from '../../types/team'
 import SearchableSelect from '../SearchableSelect'
@@ -143,6 +143,41 @@ export function EditMatchForm({ teams, form, onChange, onSubmit, onCancel }: Edi
                     <option value={CompletionType.Overtime}>{t('admin.matches.overtime')}</option>
                     <option value={CompletionType.Shootout}>{t('admin.matches.shootout')}</option>
                 </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="label">{t('admin.matches.phase')}</label>
+                    <select
+                        value={form.phase}
+                        onChange={(e) =>
+                            onChange({
+                                ...form,
+                                phase: e.target.value as MatchPhase,
+                                playoffRound: e.target.value === MatchPhase.Playoff ? form.playoffRound : null,
+                            })
+                        }
+                        className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full"
+                    >
+                        <option value={MatchPhase.RegularSeason}>{t('admin.matches.regularSeason')}</option>
+                        <option value={MatchPhase.Playoff}>{t('admin.matches.playoff')}</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="label">{t('admin.matches.playoffRoundLabel')}</label>
+                    <input
+                        type="number"
+                        min={1}
+                        disabled={form.phase !== MatchPhase.Playoff}
+                        value={form.playoffRound ?? ''}
+                        onChange={(e) =>
+                            onChange({
+                                ...form,
+                                playoffRound: e.target.value ? Number(e.target.value) : null,
+                            })
+                        }
+                        className="bg-border border border-border rounded px-3 py-2 text-sm text-white w-full disabled:opacity-50"
+                    />
+                </div>
             </div>
             <div className="flex gap-3 pt-2">
                 <button

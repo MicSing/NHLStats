@@ -92,6 +92,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         modelBuilder.Entity<Match>(b =>
         {
             b.HasKey(x => x.Id);
+            b.Property(x => x.Phase).HasConversion<int>();
             b.HasIndex(x => new { x.SeasonId, x.MatchNumber }).IsUnique();
             b.HasOne(x => x.Season).WithMany(s => s.Matches).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.HomeTeam).WithMany(t => t.HomeMatches).HasForeignKey(x => x.HomeTeamId).OnDelete(DeleteBehavior.Restrict);

@@ -8,6 +8,13 @@ export const CompletionType = {
 
 export type CompletionType = (typeof CompletionType)[keyof typeof CompletionType]
 
+export const MatchPhase = {
+    RegularSeason: 'RegularSeason',
+    Playoff: 'Playoff',
+} as const
+
+export type MatchPhase = (typeof MatchPhase)[keyof typeof MatchPhase]
+
 export interface Match {
     id: number
     seasonId: number
@@ -22,6 +29,8 @@ export interface Match {
     awayScore: number
     matchDate: string | null
     completionType: CompletionType
+    phase: MatchPhase
+    playoffRound: number | null
 }
 
 export interface FutureMatch {
@@ -34,6 +43,8 @@ export interface FutureMatch {
     awayTeamId: number
     awayTeamName: string | null
     hostedTeamId: number | null
+    phase: MatchPhase
+    playoffRound: number | null
     userMatches: UserMatchInfo[] | null
 }
 
@@ -54,6 +65,8 @@ export interface UpdateMatchDto {
     homeScore: number
     awayScore: number
     completionType: CompletionType
+    phase: MatchPhase
+    playoffRound: number | null
 }
 
 export interface BatchUserPointsDto {
