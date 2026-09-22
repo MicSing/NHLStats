@@ -1,12 +1,10 @@
 import { useEffect, useState, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { HockeyIcon, WarningOctagonIcon, XIcon, ArrowSquareOutIcon } from '@phosphor-icons/react'
+import { HockeyIcon, WarningOctagonIcon, MinusCircleIcon, PlusCircleIcon, XIcon, ArrowSquareOutIcon } from '@phosphor-icons/react'
 import type { Match } from '../../types/match'
 import { CompletionType } from '../../types/match'
 import type { UserMatch, UserMatchGoal, UserMatchPenalty, UserMatchPoint } from '../../types/userMatch'
-import type { RosterPlayer } from '../../types/roster'
-import type { Season } from '../../types/season'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import apiClient from '../../services/apiClient'
 import CompletionBadge from '../CompletionBadge'
@@ -21,13 +19,8 @@ interface Props {
     onClose: () => void
 }
 
-export interface MatchTimelineEvent {
-    id: string
-    side: 'home' | 'away'
-    type: 'goal' | 'penalty' | 'conceded'
-    title: string
-    count: number
-    goalType?: 'Regular' | 'PowerPlay' | 'ShortHanded'
+interface EnrichedItem<T> {
+    item: T
     userName: string
 }
 
@@ -40,7 +33,10 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
     const { t } = useTranslation()
     const titleId = useId()
     const [loading, setLoading] = useState(false)
-    const [events, setEvents] = useState<MatchTimelineEvent[]>([])
+    const [goals, setGoals] = useState<EnrichedItem<UserMatchGoal>[]>([])
+    const [penalties, setPenalties] = useState<EnrichedItem<UserMatchPenalty>[]>([])
+    const [plusPoints, setPlusPoints] = useState<EnrichedItem<UserMatchPoint>[]>([])
+    const [minusPoints, setMinusPoints] = useState<EnrichedItem<UserMatchPoint>[]>([])
 
     useEffect(() => {
         if (!match) return
@@ -57,30 +53,20 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
 
         let cancelled = false
         setLoading(true)
-        setEvents([])
+        setGoals([])
+        setPenalties([])
+        setPlusPoints([])
+        setMinusPoints([])
 
-        Promise.all([
-            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`).catch(() => []),
-            apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`).catch(() => []),
-            apiClient.get<Season>(`/api/seasons/${seasonId}`).catch(() => null),
-        ])
-            .then(async ([userMatches, roster, season]) => {
+        apiClient
+            .get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`)
+            .then(async (userMatches) => {
                 if (cancelled) return
 
-                const timeline: MatchTimelineEvent[] = []
-
-                const getSideForRosterPlayer = (rosterPlayerId: number): 'home' | 'away' => {
-                    const rp = roster.find((r) => r.id === rosterPlayerId)
-                    if (rp && rp.teamId) {
-                        if (rp.teamId === match.homeTeamId) return 'home'
-                        if (rp.teamId === match.awayTeamId) return 'away'
-                    }
-                    if (season && season.hostedTeamId) {
-                        if (season.hostedTeamId === match.homeTeamId) return 'home'
-                        if (season.hostedTeamId === match.awayTeamId) return 'away'
-                    }
-                    return 'home'
-                }
+                const allGoals: EnrichedItem<UserMatchGoal>[] = []
+                const allPenalties: EnrichedItem<UserMatchPenalty>[] = []
+                const allPlusPoints: EnrichedItem<UserMatchPoint>[] = []
+                const allMinusPoints: EnrichedItem<UserMatchPoint>[] = []
 
                 await Promise.all(
                     userMatches.map(async (um) => {
@@ -91,65 +77,27 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                         ])
                         const userName = um.userName ?? `User ${um.userId}`
 
-                        // Process Goals
                         for (const g of userGoals) {
-                            const side = getSideForRosterPlayer(g.rosterPlayerId)
-                            const playerName =
-                                `${g.playerFirstName ?? ''} ${g.playerSurname ?? ''}`.trim() || t('common.player')
-                            timeline.push({
-                                id: `goal-${g.id}`,
-                                side,
-                                type: 'goal',
-                                title: playerName,
-                                count: g.count,
-                                goalType: g.goalType,
-                                userName,
-                            })
+                            allGoals.push({ item: g, userName })
                         }
-
-                        // Process Penalties
                         for (const p of userPenalties) {
-                            const side = getSideForRosterPlayer(p.rosterPlayerId)
-                            const playerName =
-                                `${p.playerFirstName ?? ''} ${p.playerSurname ?? ''}`.trim() || t('common.player')
-                            timeline.push({
-                                id: `penalty-${p.id}`,
-                                side,
-                                type: 'penalty',
-                                title: playerName,
-                                count: p.count,
-                                userName,
-                            })
+                            allPenalties.push({ item: p, userName })
                         }
-
-                        // Process Conceded goals / Opponent Negative Points (e.g. Own Goal, Error in Defense)
                         for (const pt of userPoints) {
-                            if (pt.pointType === 'Negative' && pt.pointReasonName) {
-                                const isConcededReason =
-                                    pt.pointReasonName.toLowerCase().includes('goal') ||
-                                    pt.pointReasonName.toLowerCase().includes('defense') ||
-                                    pt.pointReasonName.toLowerCase().includes('gól') ||
-                                    pt.pointReasonName.toLowerCase().includes('obrana')
-                                if (isConcededReason) {
-                                    // If hosted team is home, an error or own goal is for the away team
-                                    const hostedIsHome = season?.hostedTeamId === match.homeTeamId
-                                    const side: 'home' | 'away' = hostedIsHome ? 'away' : 'home'
-                                    timeline.push({
-                                        id: `conceded-${pt.id}`,
-                                        side,
-                                        type: 'conceded',
-                                        title: pt.pointReasonName,
-                                        count: pt.count,
-                                        userName,
-                                    })
-                                }
+                            if (pt.pointType === 'Positive') {
+                                allPlusPoints.push({ item: pt, userName })
+                            } else if (pt.pointType === 'Negative') {
+                                allMinusPoints.push({ item: pt, userName })
                             }
                         }
                     })
                 )
 
                 if (!cancelled) {
-                    setEvents(timeline)
+                    setGoals(allGoals)
+                    setPenalties(allPenalties)
+                    setPlusPoints(allPlusPoints)
+                    setMinusPoints(allMinusPoints)
                 }
             })
             .catch(() => {})
@@ -160,7 +108,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
         return () => {
             cancelled = true
         }
-    }, [match?.id, seasonId, t])
+    }, [match?.id, seasonId])
 
     if (!match) return null
 
@@ -172,6 +120,11 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
     const homeLogo = teamLogoUrl(match.homeTeamShortName)
     const awayLogo = teamLogoUrl(match.awayTeamShortName)
 
+    const totalGoals = goals.reduce((sum, g) => sum + g.item.count, 0)
+    const totalPenalties = penalties.reduce((sum, p) => sum + p.item.count, 0)
+    const totalMinusPoints = minusPoints.reduce((sum, p) => sum + p.item.count, 0)
+    const totalPlusPoints = plusPoints.reduce((sum, p) => sum + p.item.count, 0)
+
     return (
         <div
             role="dialog"
@@ -181,7 +134,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
             onClick={onClose}
         >
             <div
-                className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+                className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
@@ -211,7 +164,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     </button>
                 </div>
 
-                {/* Scoreboard Hero Banner (Clean, no trophy or "Winner" badge) */}
+                {/* Scoreboard Hero Banner */}
                 <div className="p-5 sm:p-6 bg-gradient-to-b from-bg/60 to-surface border-b border-border">
                     <div className="grid grid-cols-7 items-center gap-3">
                         {/* Home Team */}
@@ -270,125 +223,197 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     </div>
                 </div>
 
-                {/* Team Label Sub-header for Event History */}
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-2.5 bg-bg/50 border-b border-border text-xs font-bold text-text-muted uppercase tracking-wider">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <img src={homeLogo} alt="" className="w-4 h-4 object-contain" />
-                        <span className="truncate">{match.homeTeamShortName || match.homeTeamName}</span>
-                    </div>
-                    <span className="text-[10px] text-text-muted/80 font-bold px-2">
-                        {t('season.playoffEventHistory')}
-                    </span>
-                    <div className="flex items-center justify-end gap-2 min-w-0 text-right">
-                        <span className="truncate">{match.awayTeamShortName || match.awayTeamName}</span>
-                        <img src={awayLogo} alt="" className="w-4 h-4 object-contain" />
-                    </div>
-                </div>
-
-                {/* Event History / Timeline (Goal on one side, goal on the other side) */}
+                {/* 4 Columns Section: Góly, Fauly, Mínus body, Plus body */}
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                     {loading ? (
                         <div className="py-8">
                             <LoadingSpinner />
                         </div>
-                    ) : events.length === 0 ? (
-                        <p className="text-xs text-text-muted italic py-8 text-center">
-                            {t('season.playoffNoEvents')}
-                        </p>
                     ) : (
-                        <div className="relative space-y-4">
-                            {/* Central timeline line */}
-                            <div
-                                className="absolute left-1/2 -translate-x-1/2 top-2 bottom-2 w-0.5 bg-border/60 pointer-events-none"
-                                aria-hidden="true"
-                            />
-
-                            {events.map((ev) => {
-                                const isHome = ev.side === 'home'
-                                const isGoal = ev.type === 'goal' || ev.type === 'conceded'
-
-                                return (
-                                    <div
-                                        key={ev.id}
-                                        className="relative grid grid-cols-[1fr_28px_1fr] items-center gap-2 text-xs"
-                                    >
-                                        {/* Left Side (Home) */}
-                                        <div className="flex justify-end min-w-0">
-                                            {isHome ? (
-                                                <div className="bg-surface border border-border/80 rounded-lg p-2.5 max-w-[260px] w-full text-right shadow-sm flex flex-col items-end">
-                                                    <div className="flex items-center justify-end gap-1.5 font-bold text-text">
-                                                        <span>{ev.title}</span>
-                                                        {ev.count > 1 && (
-                                                            <span className="text-[11px] font-mono font-bold text-primary">
-                                                                ×{ev.count}
-                                                            </span>
-                                                        )}
-                                                        {ev.goalType === 'PowerPlay' && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                                                PP
-                                                            </span>
-                                                        )}
-                                                        {ev.goalType === 'ShortHanded' && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                                                SH
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[10px] text-text-muted truncate mt-0.5">
-                                                        {ev.userName}
-                                                    </span>
-                                                </div>
-                                            ) : null}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Column 1: Góly (Goals) */}
+                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                                            <HockeyIcon size={13} />
                                         </div>
-
-                                        {/* Center Axis Node */}
-                                        <div className="relative flex items-center justify-center z-10">
-                                            <div
-                                                className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm border ${
-                                                    isGoal
-                                                        ? 'bg-primary/20 text-primary border-primary/40'
-                                                        : 'bg-danger/20 text-danger border-danger/40'
-                                                }`}
-                                            >
-                                                {isGoal ? (
-                                                    <HockeyIcon size={13} />
-                                                ) : (
-                                                    <WarningOctagonIcon size={13} />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Right Side (Away) */}
-                                        <div className="flex justify-start min-w-0">
-                                            {!isHome ? (
-                                                <div className="bg-surface border border-border/80 rounded-lg p-2.5 max-w-[260px] w-full text-left shadow-sm flex flex-col items-start">
-                                                    <div className="flex items-center gap-1.5 font-bold text-text">
-                                                        <span>{ev.title}</span>
-                                                        {ev.count > 1 && (
-                                                            <span className="text-[11px] font-mono font-bold text-primary">
-                                                                ×{ev.count}
-                                                            </span>
-                                                        )}
-                                                        {ev.goalType === 'PowerPlay' && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                                                PP
-                                                            </span>
-                                                        )}
-                                                        {ev.goalType === 'ShortHanded' && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                                                SH
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[10px] text-text-muted truncate mt-0.5">
-                                                        {ev.userName}
-                                                    </span>
-                                                </div>
-                                            ) : null}
-                                        </div>
+                                        <h3 className="font-bold text-xs uppercase tracking-wider text-text truncate">
+                                            {t('season.playoffGoals')}
+                                        </h3>
                                     </div>
-                                )
-                            })}
+                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-1.5 py-0.5 rounded border border-border flex-shrink-0">
+                                        {totalGoals}
+                                    </span>
+                                </div>
+                                {goals.length === 0 ? (
+                                    <p className="text-xs text-text-muted italic py-4 text-center">
+                                        {t('season.playoffNoGoals')}
+                                    </p>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {goals.map(({ item: g, userName }, idx) => {
+                                            const playerName =
+                                                `${g.playerFirstName ?? ''} ${g.playerSurname ?? ''}`.trim() || t('common.player')
+                                            return (
+                                                <li key={g.id || idx} className="bg-surface/70 border border-border/40 rounded px-2.5 py-1.5 text-xs">
+                                                    <div className="flex items-center justify-between gap-1.5">
+                                                        <span className="font-semibold text-text truncate">{playerName}</span>
+                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                            {g.count > 1 && (
+                                                                <span className="text-[11px] font-bold text-primary font-mono">
+                                                                    ×{g.count}
+                                                                </span>
+                                                            )}
+                                                            {g.goalType === 'PowerPlay' && (
+                                                                <span className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                                    PP
+                                                                </span>
+                                                            )}
+                                                            {g.goalType === 'ShortHanded' && (
+                                                                <span className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                                    SH
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[10px] text-text-muted truncate block mt-0.5">
+                                                        {userName}
+                                                    </span>
+                                                </li>
+                                            )
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+
+                            {/* Column 2: Fauly (Fouls) */}
+                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <div className="w-5 h-5 rounded bg-warning/10 text-warning flex items-center justify-center flex-shrink-0">
+                                            <WarningOctagonIcon size={13} />
+                                        </div>
+                                        <h3 className="font-bold text-xs uppercase tracking-wider text-text truncate">
+                                            {t('season.playoffPenalties')}
+                                        </h3>
+                                    </div>
+                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-1.5 py-0.5 rounded border border-border flex-shrink-0">
+                                        {totalPenalties}
+                                    </span>
+                                </div>
+                                {penalties.length === 0 ? (
+                                    <p className="text-xs text-text-muted italic py-4 text-center">
+                                        {t('season.playoffNoPenalties')}
+                                    </p>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {penalties.map(({ item: p, userName }, idx) => {
+                                            const playerName =
+                                                `${p.playerFirstName ?? ''} ${p.playerSurname ?? ''}`.trim() || t('common.player')
+                                            return (
+                                                <li key={p.id || idx} className="bg-surface/70 border border-border/40 rounded px-2.5 py-1.5 text-xs">
+                                                    <div className="flex items-center justify-between gap-1.5">
+                                                        <span className="font-semibold text-text truncate">{playerName}</span>
+                                                        {p.count > 1 && (
+                                                            <span className="text-[11px] font-bold text-warning font-mono flex-shrink-0">
+                                                                ×{p.count}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-text-muted truncate block mt-0.5">
+                                                        {userName}
+                                                    </span>
+                                                </li>
+                                            )
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+
+                            {/* Column 3: Mínus body (Minus Points) */}
+                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <div className="w-5 h-5 rounded bg-danger/10 text-danger flex items-center justify-center flex-shrink-0">
+                                            <MinusCircleIcon size={13} />
+                                        </div>
+                                        <h3 className="font-bold text-xs uppercase tracking-wider text-text truncate">
+                                            {t('season.playoffMinusPoints')}
+                                        </h3>
+                                    </div>
+                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-1.5 py-0.5 rounded border border-border flex-shrink-0">
+                                        {totalMinusPoints}
+                                    </span>
+                                </div>
+                                {minusPoints.length === 0 ? (
+                                    <p className="text-xs text-text-muted italic py-4 text-center">
+                                        {t('season.playoffNoMinusPoints')}
+                                    </p>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {minusPoints.map(({ item: pt, userName }, idx) => (
+                                            <li key={pt.id || idx} className="bg-surface/70 border border-border/40 rounded px-2.5 py-1.5 text-xs">
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                    <span className="font-semibold text-danger truncate">
+                                                        {pt.pointReasonName || t('common.negative')}
+                                                    </span>
+                                                    {pt.count > 1 && (
+                                                        <span className="text-[11px] font-bold text-danger font-mono flex-shrink-0">
+                                                            ×{pt.count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] text-text-muted truncate block mt-0.5">
+                                                    {userName}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
+                            {/* Column 4: Plus body (Plus Points) */}
+                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <div className="w-5 h-5 rounded bg-success/10 text-success flex items-center justify-center flex-shrink-0">
+                                            <PlusCircleIcon size={13} />
+                                        </div>
+                                        <h3 className="font-bold text-xs uppercase tracking-wider text-text truncate">
+                                            {t('season.playoffPlusPoints')}
+                                        </h3>
+                                    </div>
+                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-1.5 py-0.5 rounded border border-border flex-shrink-0">
+                                        {totalPlusPoints}
+                                    </span>
+                                </div>
+                                {plusPoints.length === 0 ? (
+                                    <p className="text-xs text-text-muted italic py-4 text-center">
+                                        {t('season.playoffNoPlusPoints')}
+                                    </p>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {plusPoints.map(({ item: pt, userName }, idx) => (
+                                            <li key={pt.id || idx} className="bg-surface/70 border border-border/40 rounded px-2.5 py-1.5 text-xs">
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                    <span className="font-semibold text-success truncate">
+                                                        {pt.pointReasonName || t('common.positive')}
+                                                    </span>
+                                                    {pt.count > 1 && (
+                                                        <span className="text-[11px] font-bold text-success font-mono flex-shrink-0">
+                                                            ×{pt.count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] text-text-muted truncate block mt-0.5">
+                                                    {userName}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

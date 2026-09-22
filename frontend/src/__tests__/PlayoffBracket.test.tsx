@@ -170,9 +170,12 @@ describe('PlayoffBracket', () => {
         const matchCard = screen.getByText('Game 1')
         await user.click(matchCard)
 
-        // Modal should open with dialog role
+        // Modal should open with dialog role and 4 columns
         expect(screen.getByRole('dialog')).toBeInTheDocument()
-        expect(screen.getByText(/event history/i)).toBeInTheDocument()
+        expect(screen.getByText('Goals')).toBeInTheDocument()
+        expect(screen.getByText('Fouls')).toBeInTheDocument()
+        expect(screen.getByText('Minus Points')).toBeInTheDocument()
+        expect(screen.getByText('Plus Points')).toBeInTheDocument()
 
         // Ensure "Winner" badge is removed from modal
         expect(screen.queryByText(/^winner$/i)).not.toBeInTheDocument()
@@ -219,6 +222,9 @@ describe('PlayoffBracket', () => {
         await user.click(screen.getByText('Quarterfinals'))
 
         expect(screen.getByRole('dialog')).toBeInTheDocument()
-        expect(screen.getByText(/event history/i)).toBeInTheDocument()
+        expect(screen.getByText('Goals')).toBeInTheDocument()
+        expect(screen.getByText('Fouls')).toBeInTheDocument()
+        expect(screen.getByText('Minus Points')).toBeInTheDocument()
+        expect(screen.getByText('Plus Points')).toBeInTheDocument()
     })
 })
