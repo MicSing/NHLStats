@@ -39,9 +39,13 @@ public class SeasonStatsServiceTests : IDisposable
 
         _season = new Season { Id = 1, Name = "Season 1", StartedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
         _db.Seasons.Add(_season);
+        _db.SaveChanges();
 
-        var positiveReason = new PointReason { Id = 1, Name = "Goal", PointType = PointType.Positive };
+        // Id is left unset since the DB seeds default point reasons on creation.
+        var positiveReason = new PointReason { Name = "Goal", PointType = PointType.Positive };
         _db.PointReasons.Add(positiveReason);
+        var rosterPlayer = new RosterPlayer { FirstName = "Test", Surname = "Player", TeamId = homeTeam.Id };
+        _db.RosterPlayers.Add(rosterPlayer);
         _db.SaveChanges();
 
         _regularMatch = new Match
@@ -77,8 +81,8 @@ public class SeasonStatsServiceTests : IDisposable
 
         _db.UserMatchPoints.Add(new UserMatchPoint { UserMatchId = regularUserMatch.Id, PointReasonId = positiveReason.Id, Count = 2, Amount = 0 });
         _db.UserMatchPoints.Add(new UserMatchPoint { UserMatchId = playoffUserMatch.Id, PointReasonId = positiveReason.Id, Count = 3, Amount = 0 });
-        _db.UserMatchGoals.Add(new UserMatchGoal { UserMatchId = playoffUserMatch.Id, RosterPlayerId = 1, Count = 1 });
-        _db.UserMatchPenalties.Add(new UserMatchPenalty { UserMatchId = playoffUserMatch.Id, RosterPlayerId = 1, Count = 1 });
+        _db.UserMatchGoals.Add(new UserMatchGoal { UserMatchId = playoffUserMatch.Id, RosterPlayerId = rosterPlayer.Id, Count = 1 });
+        _db.UserMatchPenalties.Add(new UserMatchPenalty { UserMatchId = playoffUserMatch.Id, RosterPlayerId = rosterPlayer.Id, Count = 1 });
 
         // Legacy pre-tracking totals for the same season/user — predates phase tracking entirely.
         _db.UserSeasonAggregatedData.Add(new UserSeasonAggregatedData
