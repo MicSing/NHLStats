@@ -129,6 +129,49 @@ public class RosterPlayerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_NormalizesMultiplePositionsToCanonicalOrder()
+    {
+        // Arrange
+        var team = new Team { Name = "Edmonton Oilers", ShortName = "EDM" };
+        var season = new Season { Name = "2025/2026", StartedOn = DateTime.UtcNow };
+        _db.Teams.Add(team);
+        _db.Seasons.Add(season);
+        await _db.SaveChangesAsync();
+
+        var dto = new CreateRosterPlayerDto("Leon", "Draisaitl", "RW, C", team.Id);
+
+        // Act
+        var result = await _service.CreateAsync(season.Id, dto);
+
+        // Assert: stored in canonical order (C before RW), regardless of submitted order.
+        result.Position.Should().Be("C, RW");
+
+        var player = await _db.RosterPlayers.FirstAsync();
+        player.Position.Should().Be("C, RW");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_NormalizesMultiplePositionsToCanonicalOrder()
+    {
+        // Arrange
+        var team = new Team { Name = "Edmonton Oilers", ShortName = "EDM" };
+        var season = new Season { Name = "2025/2026", StartedOn = DateTime.UtcNow };
+        _db.Teams.Add(team);
+        _db.Seasons.Add(season);
+        await _db.SaveChangesAsync();
+
+        var created = await _service.CreateAsync(season.Id, new CreateRosterPlayerDto("Leon", "Draisaitl", "C", team.Id));
+
+        // Act
+        var updated = await _service.UpdateAsync(
+            season.Id, created.Id,
+            new UpdateRosterPlayerDto("Leon", "Draisaitl", "RW, C", team.Id, true));
+
+        // Assert
+        updated!.Position.Should().Be("C, RW");
+    }
+
+    [Fact]
     public async Task AllTimeStats_CombinesGoalsAcrossMultipleSeasonsForSamePlayer()
     {
         // Arrange

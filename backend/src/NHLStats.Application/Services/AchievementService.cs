@@ -11,8 +11,8 @@ public class AchievementService : IAchievementService
 {
     private readonly NhlStatsDbContext _db;
 
-    private static readonly HashSet<string> ForwardPositions =
-        new(StringComparer.OrdinalIgnoreCase) { "LW", "C", "RW" };
+    private static readonly HashSet<PlayerPosition> ForwardPositions =
+        [PlayerPosition.LW, PlayerPosition.C, PlayerPosition.RW];
 
     private static int ToMatchLevel(int count) => count switch {
         >= 820 => 7,
@@ -153,7 +153,10 @@ public class AchievementService : IAchievementService
                 g.RosterPlayerId,
                 PlayerFirst   = g.RosterPlayer!.FirstName,
                 PlayerSurname = g.RosterPlayer.Surname,
-                Position      = g.RosterPlayer.Position,
+                Position      = g.RosterPlayer.SeasonRosterPlayers
+                    .Where(srp => srp.SeasonId == g.UserMatch.SeasonId)
+                    .Select(srp => srp.Position)
+                    .FirstOrDefault() ?? g.RosterPlayer.Position,
                 g.GoalType,
                 g.Count
             })
@@ -467,7 +470,7 @@ public class AchievementService : IAchievementService
         AchievementResultDto GodMode()
         {
             var occs = goals
-                .Where(g => g.Position != null && ForwardPositions.Contains(g.Position) && weekMap.ContainsKey(g.MatchId))
+                .Where(g => PlayerPositions.ContainsAny(g.Position, ForwardPositions) && weekMap.ContainsKey(g.MatchId))
                 .GroupBy(g => (g.SeasonId, Week: weekMap[g.MatchId]))
                 .Where(wg => wg.Sum(g => g.Count) >= 10)
                 .Select(wg =>
@@ -482,7 +485,7 @@ public class AchievementService : IAchievementService
         AchievementResultDto BlueLineSnipers()
         {
             var occs = goals
-                .Where(g => g.Position != null && g.Position.Equals("D", StringComparison.OrdinalIgnoreCase) && weekMap.ContainsKey(g.MatchId))
+                .Where(g => PlayerPositions.Contains(g.Position, PlayerPosition.D) && weekMap.ContainsKey(g.MatchId))
                 .GroupBy(g => (g.SeasonId, Week: weekMap[g.MatchId]))
                 .Where(wg => wg.Sum(g => g.Count) >= 5)
                 .Select(wg =>
@@ -500,7 +503,7 @@ public class AchievementService : IAchievementService
         {
             var occs = goals
                 .Where(g => completeSeasonIds.Contains(g.SeasonId)
-                         && g.Position != null && ForwardPositions.Contains(g.Position))
+                         && PlayerPositions.ContainsAny(g.Position, ForwardPositions))
                 .GroupBy(g => g.SeasonId)
                 .Where(sg => sg.Sum(g => g.Count) >= 140)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
@@ -512,7 +515,7 @@ public class AchievementService : IAchievementService
         {
             var occs = goals
                 .Where(g => completeSeasonIds.Contains(g.SeasonId)
-                         && g.Position != null && g.Position.Equals("D", StringComparison.OrdinalIgnoreCase))
+                         && PlayerPositions.Contains(g.Position, PlayerPosition.D))
                 .GroupBy(g => g.SeasonId)
                 .Where(sg => sg.Sum(g => g.Count) >= 45)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))

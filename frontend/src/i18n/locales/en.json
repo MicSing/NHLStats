@@ -773,7 +773,6 @@
             "team": "Team",
             "firstName": "First Name",
             "surname": "Surname",
-            "positionPlaceholder": "C, LW, RW, D, G",
             "importedCount": "Imported {{count}} player(s).",
             "csvFormat": "Format: FirstName,Surname,Position,TeamShortName",
             "csvContent": "CSV Content",
