@@ -54,6 +54,7 @@ public class RosterPlayerService : IRosterPlayerService
     {
         var firstName = dto.FirstName.Trim();
         var surname = dto.Surname.Trim();
+        var position = PlayerPositions.Normalize(dto.Position);
 
         var existingPlayer = await _db.RosterPlayers
             .FirstOrDefaultAsync(p => p.FirstName.ToLower() == firstName.ToLower() && p.Surname.ToLower() == surname.ToLower());
@@ -62,8 +63,8 @@ public class RosterPlayerService : IRosterPlayerService
         if (existingPlayer != null)
         {
             player = existingPlayer;
-            if (!string.IsNullOrWhiteSpace(dto.Position))
-                player.Position = dto.Position.Trim();
+            if (position != null)
+                player.Position = position;
             player.TeamId = dto.TeamId;
         }
         else
@@ -72,7 +73,7 @@ public class RosterPlayerService : IRosterPlayerService
             {
                 FirstName = firstName,
                 Surname = surname,
-                Position = string.IsNullOrWhiteSpace(dto.Position) ? null : dto.Position.Trim(),
+                Position = position,
                 TeamId = dto.TeamId
             };
             _db.RosterPlayers.Add(player);
@@ -87,7 +88,7 @@ public class RosterPlayerService : IRosterPlayerService
         if (seasonPlayer != null)
         {
             seasonPlayer.TeamId = dto.TeamId;
-            seasonPlayer.Position = string.IsNullOrWhiteSpace(dto.Position) ? null : dto.Position.Trim();
+            seasonPlayer.Position = position;
             seasonPlayer.IsActive = true;
         }
         else
@@ -97,7 +98,7 @@ public class RosterPlayerService : IRosterPlayerService
                 SeasonId = seasonId,
                 RosterPlayerId = player.Id,
                 TeamId = dto.TeamId,
-                Position = string.IsNullOrWhiteSpace(dto.Position) ? null : dto.Position.Trim(),
+                Position = position,
                 IsActive = true
             };
             _db.SeasonRosterPlayers.Add(seasonPlayer);
@@ -115,16 +116,18 @@ public class RosterPlayerService : IRosterPlayerService
             .FirstOrDefaultAsync(s => s.SeasonId == seasonId && s.RosterPlayerId == id);
         if (seasonPlayer == null) return null;
 
+        var position = PlayerPositions.Normalize(dto.Position);
+
         seasonPlayer.TeamId = dto.TeamId;
-        seasonPlayer.Position = string.IsNullOrWhiteSpace(dto.Position) ? null : dto.Position.Trim();
+        seasonPlayer.Position = position;
         seasonPlayer.IsActive = dto.IsActive;
 
         if (seasonPlayer.RosterPlayer != null)
         {
             seasonPlayer.RosterPlayer.FirstName = dto.FirstName.Trim();
             seasonPlayer.RosterPlayer.Surname = dto.Surname.Trim();
-            if (!string.IsNullOrWhiteSpace(dto.Position))
-                seasonPlayer.RosterPlayer.Position = dto.Position.Trim();
+            if (position != null)
+                seasonPlayer.RosterPlayer.Position = position;
             seasonPlayer.RosterPlayer.TeamId = dto.TeamId;
         }
 
@@ -187,7 +190,7 @@ public class RosterPlayerService : IRosterPlayerService
 
             var firstName = parts[0].Trim();
             var surname = parts[1].Trim();
-            var position = parts[2].Trim();
+            var rawPosition = parts[2].Trim();
             var teamShortName = parts[3].Trim();
 
             if (string.IsNullOrWhiteSpace(firstName))
@@ -208,6 +211,19 @@ public class RosterPlayerService : IRosterPlayerService
                 continue;
             }
 
+            // The CSV column delimiter is also ',', so a multi-position value (e.g. "C, RW")
+            // can't be represented in a single column — CSV import only supports one position.
+            string? position;
+            try
+            {
+                position = PlayerPositions.Normalize(rawPosition);
+            }
+            catch (FormatException)
+            {
+                errors.Add($"Line {lineNumber}: position '{rawPosition}' is not one of {string.Join(", ", PlayerPositions.Codes)}.");
+                continue;
+            }
+
             var key = $"{firstName.ToLowerInvariant()}|{surname.ToLowerInvariant()}";
             if (!playerLookup.TryGetValue(key, out var player))
             {
@@ -215,7 +231,7 @@ public class RosterPlayerService : IRosterPlayerService
                 {
                     FirstName = firstName,
                     Surname = surname,
-                    Position = string.IsNullOrWhiteSpace(position) ? null : position,
+                    Position = position,
                     TeamId = teamId
                 };
                 _db.RosterPlayers.Add(player);
@@ -225,14 +241,14 @@ public class RosterPlayerService : IRosterPlayerService
             else
             {
                 player.TeamId = teamId;
-                if (!string.IsNullOrWhiteSpace(position))
+                if (position != null)
                     player.Position = position;
             }
 
             if (seasonPlayerLookup.TryGetValue(player.Id, out var existingSp))
             {
                 existingSp.TeamId = teamId;
-                existingSp.Position = string.IsNullOrWhiteSpace(position) ? null : position;
+                existingSp.Position = position;
                 existingSp.IsActive = true;
             }
             else
@@ -242,7 +258,7 @@ public class RosterPlayerService : IRosterPlayerService
                     SeasonId = seasonId,
                     RosterPlayerId = player.Id,
                     TeamId = teamId,
-                    Position = string.IsNullOrWhiteSpace(position) ? null : position,
+                    Position = position,
                     IsActive = true
                 };
                 _db.SeasonRosterPlayers.Add(newSp);

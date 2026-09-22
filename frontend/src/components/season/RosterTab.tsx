@@ -9,6 +9,7 @@ import type {
     UpdateRosterPlayerDto,
     CsvImportResultDto,
 } from '../../types/roster'
+import { POSITIONS, parsePositions, formatPositions } from '../../types/position'
 import apiClient from '../../services/apiClient'
 import { useToast } from '../../context/ToastContext'
 import Modal from '../Modal'
@@ -75,16 +76,36 @@ function PlayerForm({
                 required
             />
 
-            <label htmlFor="player-position" className="label">
-                {t('admin.roster.position')}
-            </label>
-            <input
-                id="player-position"
-                className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
-                value={form.position ?? ''}
-                onChange={(e) => set({ position: e.target.value || null })}
-                placeholder={t('admin.roster.positionPlaceholder')}
-            />
+            <span className="label">{t('admin.roster.position')}</span>
+            <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label={t('admin.roster.position')}>
+                {POSITIONS.map((code) => {
+                    const selectedPositions = parsePositions(form.position)
+                    const isSelected = selectedPositions.includes(code)
+                    return (
+                        <button
+                            key={code}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() =>
+                                set({
+                                    position: formatPositions(
+                                        isSelected
+                                            ? selectedPositions.filter((c) => c !== code)
+                                            : [...selectedPositions, code],
+                                    ),
+                                })
+                            }
+                            className={`px-3 py-1.5 rounded text-sm border transition-colors ${
+                                isSelected
+                                    ? 'bg-primary border-primary text-white'
+                                    : 'bg-border border-border text-text-muted hover:text-white'
+                            }`}
+                        >
+                            {code}
+                        </button>
+                    )
+                })}
+            </div>
 
             <label htmlFor="player-team" className="label">
                 {t('admin.roster.team')}

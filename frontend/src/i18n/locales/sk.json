@@ -805,7 +805,6 @@
             "team": "Tím",
             "firstName": "Meno",
             "surname": "Priezvisko",
-            "positionPlaceholder": "C, LW, RW, D, G",
             "importedCount": "Importovaných {{count}} hráčov.",
             "csvFormat": "Formát: Meno,Priezvisko,Pozícia,SkratkaTímu",
             "csvContent": "Obsah CSV",

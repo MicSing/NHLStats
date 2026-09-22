@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using NHLStats.Domain;
 
 namespace NHLStats.Application.DTOs;
 
@@ -16,13 +17,13 @@ public record RosterPlayerDto(
 public record CreateRosterPlayerDto(
     [Required] string FirstName,
     [Required] string Surname,
-    string? Position,
+    [RegularExpression(PlayerPositions.ValidationPattern)] string? Position,
     [Required][Range(1, int.MaxValue)] int TeamId);
 
 public record UpdateRosterPlayerDto(
     [Required] string FirstName,
     [Required] string Surname,
-    string? Position,
+    [RegularExpression(PlayerPositions.ValidationPattern)] string? Position,
     [Required][Range(1, int.MaxValue)] int TeamId,
     bool IsActive);
 
