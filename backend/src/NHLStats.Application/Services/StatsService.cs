@@ -88,14 +88,15 @@ public class StatsService : IStatsService
             bettingTrendsBySeason);
     }
 
-    public async Task<SeasonTotalsDto> GetSeasonTotalsAsync()
+    public async Task<SeasonTotalsDto> GetSeasonTotalsAsync(MatchPhase? phase = null)
     {
-        var pointStats = await _seasonStats.FetchSeasonPointsStatisticsAsync();
-        var goalStats = await _seasonStats.FetchSeasonGoalStatisicsAsync();
-        var penaltyStats = await _seasonStats.FetchSeasonPenaltyStatisticsAsync();
+        var pointStats = await _seasonStats.FetchSeasonPointsStatisticsAsync(phase);
+        var goalStats = await _seasonStats.FetchSeasonGoalStatisicsAsync(phase);
+        var penaltyStats = await _seasonStats.FetchSeasonPenaltyStatisticsAsync(phase);
 
         var matchesBySeason = await _db.Matches
             .AsNoTracking()
+            .Where(m => !phase.HasValue || m.Phase == phase.Value)
             .Select(m => new { m.Id, m.SeasonId })
             .ToListAsync();
 

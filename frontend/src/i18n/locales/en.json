@@ -207,7 +207,15 @@
         "reEvaluateError": "Failed to re-evaluate bets",
         "bet": "Bet",
         "viewTickets": "View Tickets",
-        "tickets": "Tickets"
+        "tickets": "Tickets",
+        "tabOverview": "Overview",
+        "tabPlayoff": "Playoff",
+        "statsFilterAll": "All",
+        "statsFilterSeason": "Season",
+        "statsFilterPlayoff": "Playoff",
+        "playoffRound": "Round {{number}}",
+        "playoffNoRounds": "No playoff rounds to show yet.",
+        "playoffWinner": "Winner"
     },
     "match": {
         "matchNotFound": "Match not found",

@@ -1,21 +1,50 @@
 import { useTranslation } from 'react-i18next'
 import type { UserSeasonStats, UserSeasonTotals } from '../../types/stats'
 
+export type StatsPhaseFilter = 'All' | 'RegularSeason' | 'Playoff'
+
 interface Props {
     stats: UserSeasonStats[]
     userTotals: UserSeasonTotals[]
+    showPhaseSwitch?: boolean
+    phase?: StatsPhaseFilter
+    onPhaseChange?: (phase: StatsPhaseFilter) => void
 }
 
-export default function SeasonStatsTable({ stats, userTotals }: Props) {
+export default function SeasonStatsTable({ stats, userTotals, showPhaseSwitch, phase = 'All', onPhaseChange }: Props) {
     const { t } = useTranslation()
 
-    if (stats.length === 0) return null
+    if (stats.length === 0 && !showPhaseSwitch) return null
+
+    const phaseOptions: { value: StatsPhaseFilter; label: string }[] = [
+        { value: 'All', label: t('season.statsFilterAll') },
+        { value: 'RegularSeason', label: t('season.statsFilterSeason') },
+        { value: 'Playoff', label: t('season.statsFilterPlayoff') },
+    ]
 
     return (
         <section className="mb-8" aria-label="User stats">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3">
-                {t('season.playerStats', { defaultValue: 'Player Stats' })}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+                    {t('season.playerStats', { defaultValue: 'Player Stats' })}
+                </h2>
+                {showPhaseSwitch && (
+                    <div className="flex gap-1 rounded-lg bg-surface p-1 border border-border">
+                        {phaseOptions.map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => onPhaseChange?.(opt.value)}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors whitespace-nowrap ${
+                                    phase === opt.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
             <div className="bg-surface border border-border rounded-lg overflow-hidden shadow-card">
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[380px] text-xs sm:text-sm">

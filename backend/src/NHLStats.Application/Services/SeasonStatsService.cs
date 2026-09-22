@@ -15,18 +15,27 @@ public class SeasonStatsService : ISeasonStatsService
         _db = db;
     }
 
-    public async Task<IEnumerable<SeasonPointsStatsSummaryDto>> FetchSeasonPointsStatisticsAsync()
+    public async Task<IEnumerable<SeasonPointsStatsSummaryDto>> FetchSeasonPointsStatisticsAsync(MatchPhase? phase = null)
     {
-        var userMatches = await _db.UserMatches
+        var userMatchesQuery = _db.UserMatches
             .AsNoTracking()
             .AsSplitQuery()
             .Include(um => um.User)
             .Include(um => um.Points).ThenInclude(p => p.PointReason)
-            .ToListAsync();
+            .AsQueryable();
 
-        var aggregatedData = await _db.UserSeasonAggregatedData
-            .AsNoTracking()
-            .ToListAsync();
+        if (phase.HasValue)
+            userMatchesQuery = userMatchesQuery.Where(um => um.Match != null && um.Match.Phase == phase.Value);
+
+        var userMatches = await userMatchesQuery.ToListAsync();
+
+        // Legacy aggregated totals predate match-level phase tracking, so they only
+        // represent regular-season play and never contribute to a Playoff-only filter.
+        var aggregatedData = phase == MatchPhase.Playoff
+            ? new List<UserSeasonAggregatedData>()
+            : await _db.UserSeasonAggregatedData
+                .AsNoTracking()
+                .ToListAsync();
 
         // Merge both sources by (season, user) so either source can contribute independently.
         var mergedBySeasonAndUser = new Dictionary<(int SeasonId, int UserId), (int TotalPlus, int TotalMinus)>();
@@ -66,11 +75,11 @@ public class SeasonStatsService : ISeasonStatsService
             .ToList();
     }
 
-    public async Task<IEnumerable<SeasonGoalsStatsSummaryDto>> FetchSeasonGoalStatisicsAsync()
+    public async Task<IEnumerable<SeasonGoalsStatsSummaryDto>> FetchSeasonGoalStatisicsAsync(MatchPhase? phase = null)
     {
         var goalsByUserAndSeason = await _db.UserMatchGoals
             .AsNoTracking()
-            .Where(g => g.UserMatch != null)
+            .Where(g => g.UserMatch != null && (!phase.HasValue || (g.UserMatch.Match != null && g.UserMatch.Match.Phase == phase.Value)))
             .GroupBy(g => new { g.UserMatch!.SeasonId, g.UserMatch.UserId })
             .Select(g => new { g.Key.SeasonId, g.Key.UserId, TotalGoals = g.Sum(x => x.Count) })
             .ToListAsync();
@@ -86,11 +95,11 @@ public class SeasonStatsService : ISeasonStatsService
             .ToList();
     }
 
-    public async Task<IEnumerable<SeasonPenaltiesStatsSummaryDto>> FetchSeasonPenaltyStatisticsAsync()
+    public async Task<IEnumerable<SeasonPenaltiesStatsSummaryDto>> FetchSeasonPenaltyStatisticsAsync(MatchPhase? phase = null)
     {
         var penaltiesByUserAndSeason = await _db.UserMatchPenalties
             .AsNoTracking()
-            .Where(p => p.UserMatch != null)
+            .Where(p => p.UserMatch != null && (!phase.HasValue || (p.UserMatch.Match != null && p.UserMatch.Match.Phase == phase.Value)))
             .GroupBy(p => new { p.UserMatch!.SeasonId, p.UserMatch.UserId })
             .Select(g => new { g.Key.SeasonId, g.Key.UserId, TotalPenalties = g.Sum(x => x.Count) })
             .ToListAsync();
