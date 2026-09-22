@@ -12,8 +12,13 @@ namespace NHLStats.Api.Controllers;
 public class MatchesController : ControllerBase
 {
     private readonly IMatchService _service;
+    private readonly IRealSeasonMatchImportService _importService;
 
-    public MatchesController(IMatchService service) => _service = service;
+    public MatchesController(IMatchService service, IRealSeasonMatchImportService importService)
+    {
+        _service = service;
+        _importService = importService;
+    }
 
     [HttpGet("/api/matches/future")]
     public async Task<IActionResult> GetFuture([FromQuery] int count = 10)
@@ -58,6 +63,19 @@ public class MatchesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Import the real, planned games for this season's NHL year from the NHL's public
+    /// schedule (only meaningful for a season whose NhlYear is set).
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("import-real-season")]
+    public async Task<IActionResult> ImportRealSeason(int seasonId)
+    {
+        var (result, error) = await _importService.ImportAsync(seasonId);
+        if (error != null) return BadRequest(new { error });
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin")]

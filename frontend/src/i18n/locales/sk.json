@@ -779,7 +779,18 @@
             "leagueType": "Liga",
             "leagueTypeNHL": "NHL",
             "leagueTypeIIHF": "IIHF",
-            "leagueTypeOlympic": "Olympiáda"
+            "leagueTypeOlympic": "Olympiáda",
+            "nhlYear": "Ročník NHL",
+            "nhlYearPlaceholder": "napr. 26 pre NHL 26",
+            "console": "Konzola",
+            "consoleNone": "Nenastavené",
+            "consolePlayStation": "PlayStation",
+            "consoleXbox": "Xbox",
+            "importRealSeason": "Importovať reálne zápasy sezóny",
+            "importRealSeasonHint": "Naimportuje reálny, plánovaný rozpis NHL {{year}} ako zápasy tejto sezóny.",
+            "importRealSeasonConfirm": "Importovať všetky reálne zápasy sezóny pre NHL {{year}}? Dá sa spustiť aj opakovane, už naimportované zápasy sa preskočia.",
+            "importRealSeasonSuccess": "Naimportovaných {{imported}} zápasov, preskočených {{skipped}}.",
+            "importRealSeasonErrors": "Niektoré zápasy sa nepodarilo naimportovať:"
         },
         "teams": {
             "title": "Tímy",

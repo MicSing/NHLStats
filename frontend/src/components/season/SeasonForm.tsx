@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { LeagueType } from '../../types/team'
 import type { LeagueTypeValue, Team } from '../../types/team'
+import { GamingConsole } from '../../types/gamingConsole'
+import type { GamingConsoleValue } from '../../types/gamingConsole'
 import type { CreateSeasonDto, SeasonStatus } from '../../types/season'
 
 export interface SeasonFormProps {
@@ -86,13 +88,13 @@ export default function SeasonForm({
                     </select>
                 </div>
 
-                <div className={inlineMode ? 'col-span-2' : ''}>
+                <div>
                     <label htmlFor="season-team" className="label">
                         {t('admin.seasons.hostedBy')}
                     </label>
                     <select
                         id="season-team"
-                        className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                        className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
                         value={form.hostedTeamId ?? ''}
                         onChange={(e) =>
                             set({ hostedTeamId: e.target.value ? Number(e.target.value) : null })
@@ -104,6 +106,42 @@ export default function SeasonForm({
                                 {tm.name}
                             </option>
                         ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label htmlFor="season-nhl-year" className="label">
+                        {t('admin.seasons.nhlYear')}
+                    </label>
+                    <input
+                        id="season-nhl-year"
+                        type="number"
+                        min={1}
+                        max={99}
+                        placeholder={t('admin.seasons.nhlYearPlaceholder')}
+                        className="w-full bg-border border border-border rounded px-3 py-2 mb-3 text-white"
+                        value={form.nhlYear ?? ''}
+                        onChange={(e) =>
+                            set({ nhlYear: e.target.value ? Number(e.target.value) : null })
+                        }
+                    />
+                </div>
+
+                <div className={inlineMode ? 'col-span-2' : ''}>
+                    <label htmlFor="season-console" className="label">
+                        {t('admin.seasons.console')}
+                    </label>
+                    <select
+                        id="season-console"
+                        className="w-full bg-border border border-border rounded px-3 py-2 mb-4 text-white"
+                        value={form.console ?? ''}
+                        onChange={(e) =>
+                            set({ console: (e.target.value || null) as GamingConsoleValue | null })
+                        }
+                    >
+                        <option value="">{t('admin.seasons.consoleNone')}</option>
+                        <option value={GamingConsole.PlayStation}>{t('admin.seasons.consolePlayStation')}</option>
+                        <option value={GamingConsole.Xbox}>{t('admin.seasons.consoleXbox')}</option>
                     </select>
                 </div>
             </div>

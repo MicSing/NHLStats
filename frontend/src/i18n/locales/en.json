@@ -747,7 +747,18 @@
             "leagueType": "League",
             "leagueTypeNHL": "NHL",
             "leagueTypeIIHF": "IIHF",
-            "leagueTypeOlympic": "Olympic"
+            "leagueTypeOlympic": "Olympic",
+            "nhlYear": "NHL Year",
+            "nhlYearPlaceholder": "e.g. 26 for NHL 26",
+            "console": "Console",
+            "consoleNone": "Not set",
+            "consolePlayStation": "PlayStation",
+            "consoleXbox": "Xbox",
+            "importRealSeason": "Import Real Season Matches",
+            "importRealSeasonHint": "Imports the real, planned NHL {{year}} schedule as matches for this season.",
+            "importRealSeasonConfirm": "Import all real season matches for NHL {{year}}? This can be run again safely; already-imported games are skipped.",
+            "importRealSeasonSuccess": "Imported {{imported}} match(es), skipped {{skipped}}.",
+            "importRealSeasonErrors": "Some games could not be imported:"
         },
         "teams": {
             "title": "Teams",

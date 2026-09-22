@@ -11,6 +11,8 @@ public class Season
     public SeasonStatus Status { get; set; } = SeasonStatus.Active;
     public int? ParentSeasonId { get; set; }
     public LeagueType LeagueType { get; set; } = LeagueType.NHL;
+    public int? NhlYear { get; set; }
+    public GamingConsole? Console { get; set; }
 
     public Team? HostedTeam { get; set; }
     public Season? ParentSeason { get; set; }

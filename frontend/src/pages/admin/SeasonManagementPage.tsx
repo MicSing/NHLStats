@@ -275,6 +275,7 @@ export default function SeasonManagementPage() {
                             teams={teams}
                             seasonUsers={seasonDetail?.users ?? []}
                             hostedTeamId={activeSeason.hostedTeamId}
+                            nhlYear={activeSeason.nhlYear}
                         />
                     )}
                     {activeTab === 'points' && (

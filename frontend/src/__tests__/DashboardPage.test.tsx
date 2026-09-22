@@ -101,6 +101,8 @@ const mockSeasons: Season[] = [
         status: 'Active',
         parentSeasonId: null,
         leagueType: 'NHL',
+        nhlYear: null,
+        console: null,
     },
     {
         id: 2,
@@ -111,6 +113,8 @@ const mockSeasons: Season[] = [
         status: 'Active',
         parentSeasonId: null,
         leagueType: 'NHL',
+        nhlYear: null,
+        console: null,
     },
 ]
 

@@ -23,6 +23,8 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
         status: season.status,
         hostedTeamId: season.hostedTeamId,
         leagueType: season.leagueType,
+        nhlYear: season.nhlYear,
+        console: season.console,
     })
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -38,6 +40,8 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
                 status: (form.status ?? 'Active') as SeasonStatus,
                 hostedTeamId: form.hostedTeamId ?? null,
                 leagueType: form.leagueType,
+                nhlYear: form.nhlYear ?? null,
+                console: form.console ?? null,
             })
         } catch {
             toast.error(t('toast.operationFailed'))
