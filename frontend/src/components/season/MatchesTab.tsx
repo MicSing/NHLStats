@@ -19,15 +19,17 @@ import useTable from '../../hooks/useTable'
 import { TableCard, TableHead, ActionCell, PrimaryButton, SecondaryButton } from './SeasonPrimitives'
 import { normalizeCompletionType } from './seasonUtils'
 import BulkMatchCreator from './BulkMatchCreator'
+import PlayoffSeriesCreator from './PlayoffSeriesCreator'
 import { CreateMatchForm, EditMatchForm } from './MatchForms'
 
 export interface MatchesTabProps {
     seasonId: number
     teams: Team[]
     seasonUsers: User[]
+    hostedTeamId: number | null
 }
 
-export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabProps) {
+export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId }: MatchesTabProps) {
     const { t } = useTranslation()
     const toast = useToast()
     const [matches, setMatches] = useState<Match[]>([])
@@ -35,6 +37,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
     const [showAddModal, setShowAddModal] = useState(false)
     const [editMatch, setEditMatch] = useState<Match | null>(null)
     const [showBulkModal, setShowBulkModal] = useState(false)
+    const [showPlayoffModal, setShowPlayoffModal] = useState(false)
     const [showExportModal, setShowExportModal] = useState(false)
     const [initializingAll, setInitializingAll] = useState(false)
     const [createForm, setCreateForm] = useState<CreateMatchDto>({ homeTeamId: 0, awayTeamId: 0 })
@@ -206,6 +209,10 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                         label={t('admin.matches.bulkCreate')}
                         onClick={() => setShowBulkModal(true)}
                     />
+                    <SecondaryButton
+                        label={t('admin.matches.createPlayoffSeries')}
+                        onClick={() => setShowPlayoffModal(true)}
+                    />
                     <PrimaryButton
                         icon={<Plus size={16} />}
                         label={t('admin.matches.newMatch')}
@@ -347,6 +354,25 @@ export default function MatchesTab({ seasonId, teams, seasonUsers }: MatchesTabP
                             void loadMatches(seasonId)
                         }}
                         onClose={() => setShowBulkModal(false)}
+                    />
+                </Modal>
+            )}
+
+            {showPlayoffModal && (
+                <Modal
+                    title={t('admin.matches.createPlayoffSeries')}
+                    onClose={() => setShowPlayoffModal(false)}
+                >
+                    <PlayoffSeriesCreator
+                        seasonId={seasonId}
+                        teams={teams}
+                        hostedTeamId={hostedTeamId}
+                        onSuccess={() => {
+                            setShowPlayoffModal(false)
+                            toast.success(t('toast.createSuccess'))
+                            void loadMatches(seasonId)
+                        }}
+                        onClose={() => setShowPlayoffModal(false)}
                     />
                 </Modal>
             )}

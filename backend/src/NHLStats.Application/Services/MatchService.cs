@@ -336,6 +336,61 @@ public class MatchService : IMatchService
         return created.Select(ToDto);
     }
 
+    // Standard 2-2-1-1-1 playoff format, expressed as whether the hosted team is home in each game.
+    private static readonly bool[] PlayoffSeriesHostedIsHomePattern = [true, true, false, false, true, false, true];
+
+    public async Task<IEnumerable<MatchDto>> CreatePlayoffSeriesAsync(int seasonId, CreatePlayoffSeriesDto dto)
+    {
+        var season = await _db.Seasons.FindAsync(seasonId);
+        if (season == null)
+            throw new ArgumentException($"Season {seasonId} not found");
+        if (season.HostedTeamId == null)
+            throw new ArgumentException("Season has no hosted team configured");
+
+        var hostedTeamId = season.HostedTeamId.Value;
+        if (dto.OpponentTeamId == hostedTeamId)
+            throw new ArgumentException("Opponent team must be different from the hosted team");
+
+        var opponentExists = await _db.Teams.AnyAsync(t => t.Id == dto.OpponentTeamId);
+        if (!opponentExists)
+            throw new ArgumentException($"Invalid team ID: {dto.OpponentTeamId}");
+
+        var startNumber = await _db.Matches
+            .Where(m => m.SeasonId == seasonId)
+            .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
+
+        var matches = PlayoffSeriesHostedIsHomePattern.Select((baseHostedIsHome, i) =>
+        {
+            var hostedIsHome = dto.StartsHome ? baseHostedIsHome : !baseHostedIsHome;
+            return new Match
+            {
+                SeasonId = seasonId,
+                MatchNumber = startNumber + i + 1,
+                HomeTeamId = hostedIsHome ? hostedTeamId : dto.OpponentTeamId,
+                AwayTeamId = hostedIsHome ? dto.OpponentTeamId : hostedTeamId,
+                HomeScore = 0,
+                AwayScore = 0,
+                MatchDate = null,
+                CompletionType = CompletionType.None
+            };
+        }).ToList();
+
+        _db.Matches.AddRange(matches);
+        await _db.SaveChangesAsync();
+
+        await RecalculateUpcomingOddsAsync(7);
+
+        var ids = matches.Select(m => m.Id).ToList();
+        var created = await _db.Matches
+            .Include(m => m.HomeTeam)
+            .Include(m => m.AwayTeam)
+            .Where(m => ids.Contains(m.Id))
+            .OrderBy(m => m.MatchNumber)
+            .ToListAsync();
+
+        return created.Select(ToDto);
+    }
+
     private static bool IsValidTransition(CompletionType from, CompletionType to)
     {
         if (from == to) return true;

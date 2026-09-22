@@ -58,3 +58,7 @@ public record BatchCreateMatchDto(
     int AwayScore = 0,
     CompletionType CompletionType = CompletionType.None,
     IEnumerable<BatchUserPointsDto>? UserPoints = null);
+
+public record CreatePlayoffSeriesDto(
+    int OpponentTeamId,
+    bool StartsHome);

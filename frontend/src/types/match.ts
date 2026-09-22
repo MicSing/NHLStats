@@ -71,3 +71,8 @@ export interface BatchCreateMatchDto {
     completionType?: CompletionType
     userPoints?: BatchUserPointsDto[]
 }
+
+export interface CreatePlayoffSeriesDto {
+    opponentTeamId: number
+    startsHome: boolean
+}

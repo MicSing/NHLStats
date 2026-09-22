@@ -18,4 +18,10 @@ public interface IMatchService
     /// </summary>
     Task<MatchDto?> ResetAsync(int id);
     Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<BatchCreateMatchDto> dtos);
+
+    /// <summary>
+    /// Creates a 7-match playoff series for the season's hosted team against an opponent,
+    /// following the standard 2-2-1-1-1 home/away pattern, then recalculates upcoming odds.
+    /// </summary>
+    Task<IEnumerable<MatchDto>> CreatePlayoffSeriesAsync(int seasonId, CreatePlayoffSeriesDto dto);
 }
