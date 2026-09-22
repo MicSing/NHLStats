@@ -853,6 +853,7 @@
             "initializeAllSuccess": "Inicializovaných {{count}} záznamov.",
             "initializeAllNone": "Všetci hráči sú už inicializovaní.",
             "playoff": "Playoff",
+            "playoffRound": "Playoff · {{round}}. kolo",
             "createPlayoffSeries": "Vytvoriť playoff sériu",
             "opponentTeam": "Súperov tím",
             "playoffSeriesDescription": "Vytvorí 7 zápasov podľa štandardného playoff formátu 2-2-1-1-1 a prepočíta kurzy nadchádzajúcich zápasov.",

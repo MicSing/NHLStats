@@ -16,7 +16,8 @@ public record MatchDto(
     int AwayScore,
     DateTime? MatchDate,
     CompletionType CompletionType,
-    MatchPhase Phase);
+    MatchPhase Phase,
+    int? PlayoffRound);
 
 public record FutureMatchDto(
     int Id,
@@ -29,6 +30,7 @@ public record FutureMatchDto(
     string? AwayTeamName,
     int? HostedTeamId,
     MatchPhase Phase,
+    int? PlayoffRound,
     IEnumerable<UserMatchInfoDto>? UserMatches);
 
 public record UserMatchInfoDto(

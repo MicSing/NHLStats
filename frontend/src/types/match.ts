@@ -30,6 +30,7 @@ export interface Match {
     matchDate: string | null
     completionType: CompletionType
     phase: MatchPhase
+    playoffRound: number | null
 }
 
 export interface FutureMatch {
@@ -43,6 +44,7 @@ export interface FutureMatch {
     awayTeamName: string | null
     hostedTeamId: number | null
     phase: MatchPhase
+    playoffRound: number | null
     userMatches: UserMatchInfo[] | null
 }
 

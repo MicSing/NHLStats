@@ -259,7 +259,9 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
                                         </Link>
                                         {m.phase === MatchPhase.Playoff && (
                                             <span className="ml-2 text-xs px-2 py-0.5 rounded font-medium bg-secondary/20 text-secondary">
-                                                {t('admin.matches.playoff')}
+                                                {m.playoffRound != null
+                                                    ? t('admin.matches.playoffRound', { round: m.playoffRound })
+                                                    : t('admin.matches.playoff')}
                                             </span>
                                         )}
                                     </td>
