@@ -394,7 +394,12 @@ export default function SeasonPage() {
                         )}
 
                         {contentTab === 'playoff' && hasPlayoffMatches ? (
-                            <PlayoffBracket matches={allMatches} isDesktop={isDesktop} />
+                            <PlayoffBracket
+                                matches={allMatches}
+                                seasonId={seasonId}
+                                leagueType={activeLeague}
+                                isDesktop={isDesktop}
+                            />
                         ) : (
                             <>
                                 <HostedTeamRecord

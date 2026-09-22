@@ -6,7 +6,8 @@ const ESPN_NHL_CODES: Record<string, string> = {
     TBL: 'tb',
 }
 
-export function teamLogoUrl(shortName: string): string {
+export function teamLogoUrl(shortName: string | null | undefined): string {
+    if (!shortName) return ''
     const code = ESPN_NHL_CODES[shortName.toUpperCase()] ?? shortName.toLowerCase()
     return `https://a.espncdn.com/i/teamlogos/nhl/500/${code}.png`
 }
