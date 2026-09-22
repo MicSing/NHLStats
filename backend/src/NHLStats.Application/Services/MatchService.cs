@@ -155,6 +155,8 @@ public class MatchService : IMatchService
         match.AwayScore = dto.AwayScore;
         match.CompletionType = dto.CompletionType;
         match.MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType);
+        match.Phase = dto.Phase;
+        match.PlayoffRound = dto.Phase == MatchPhase.Playoff ? dto.PlayoffRound : null;
         await _db.SaveChangesAsync();
 
         var justCompleted = previousCompletionType is CompletionType.None or CompletionType.InProgress

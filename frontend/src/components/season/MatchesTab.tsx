@@ -48,6 +48,8 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
         homeScore: 0,
         awayScore: 0,
         completionType: CompletionType.None,
+        phase: MatchPhase.RegularSeason,
+        playoffRound: null,
     })
 
     const { pageItems, totalFiltered, search, setSearch, currentPage, setCurrentPage } = useTable({
@@ -93,6 +95,8 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
             homeScore: m.homeScore,
             awayScore: m.awayScore,
             completionType: normalizeCompletionType(m.completionType),
+            phase: m.phase,
+            playoffRound: m.playoffRound,
         })
     }
 

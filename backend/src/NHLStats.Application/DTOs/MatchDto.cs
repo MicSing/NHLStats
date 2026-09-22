@@ -47,7 +47,9 @@ public record UpdateMatchDto(
     DateTime? MatchDate,
     int HomeScore,
     int AwayScore,
-    CompletionType CompletionType);
+    CompletionType CompletionType,
+    MatchPhase Phase = MatchPhase.RegularSeason,
+    int? PlayoffRound = null);
 
 public record BatchUserPointsDto(
     int UserId,

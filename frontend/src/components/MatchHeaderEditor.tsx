@@ -115,6 +115,8 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                 awayScore: scores.away,
                 completionType: ct,
                 matchDate: normalizedMatchDate,
+                phase: match.phase,
+                playoffRound: match.playoffRound,
             }
             const updated = await apiClient.put<Match>(
                 `/api/seasons/${seasonId}/matches/${match.id}`,

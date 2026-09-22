@@ -65,6 +65,8 @@ export interface UpdateMatchDto {
     homeScore: number
     awayScore: number
     completionType: CompletionType
+    phase: MatchPhase
+    playoffRound: number | null
 }
 
 export interface BatchUserPointsDto {
