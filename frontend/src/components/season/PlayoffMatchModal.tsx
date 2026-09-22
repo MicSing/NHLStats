@@ -1,10 +1,12 @@
 import { useEffect, useState, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { TrophyIcon, HockeyIcon, WarningOctagonIcon, XIcon, ArrowSquareOutIcon } from '@phosphor-icons/react'
+import { HockeyIcon, WarningOctagonIcon, XIcon, ArrowSquareOutIcon } from '@phosphor-icons/react'
 import type { Match } from '../../types/match'
 import { CompletionType } from '../../types/match'
-import type { UserMatch, UserMatchGoal, UserMatchPenalty } from '../../types/userMatch'
+import type { UserMatch, UserMatchGoal, UserMatchPenalty, UserMatchPoint } from '../../types/userMatch'
+import type { RosterPlayer } from '../../types/roster'
+import type { Season } from '../../types/season'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import apiClient from '../../services/apiClient'
 import CompletionBadge from '../CompletionBadge'
@@ -19,8 +21,13 @@ interface Props {
     onClose: () => void
 }
 
-interface EnrichedEvent<T> {
-    event: T
+export interface MatchTimelineEvent {
+    id: string
+    side: 'home' | 'away'
+    type: 'goal' | 'penalty' | 'conceded'
+    title: string
+    count: number
+    goalType?: 'Regular' | 'PowerPlay' | 'ShortHanded'
     userName: string
 }
 
@@ -33,8 +40,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
     const { t } = useTranslation()
     const titleId = useId()
     const [loading, setLoading] = useState(false)
-    const [goals, setGoals] = useState<EnrichedEvent<UserMatchGoal>[]>([])
-    const [penalties, setPenalties] = useState<EnrichedEvent<UserMatchPenalty>[]>([])
+    const [events, setEvents] = useState<MatchTimelineEvent[]>([])
 
     useEffect(() => {
         if (!match) return
@@ -51,41 +57,102 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
 
         let cancelled = false
         setLoading(true)
-        setGoals([])
-        setPenalties([])
+        setEvents([])
 
-        apiClient
-            .get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`)
-            .then(async (userMatches) => {
+        Promise.all([
+            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`).catch(() => []),
+            apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`).catch(() => []),
+            apiClient.get<Season>(`/api/seasons/${seasonId}`).catch(() => null),
+        ])
+            .then(async ([userMatches, roster, season]) => {
                 if (cancelled) return
 
-                const allGoals: EnrichedEvent<UserMatchGoal>[] = []
-                const allPenalties: EnrichedEvent<UserMatchPenalty>[] = []
+                const timeline: MatchTimelineEvent[] = []
+
+                const getSideForRosterPlayer = (rosterPlayerId: number): 'home' | 'away' => {
+                    const rp = roster.find((r) => r.id === rosterPlayerId)
+                    if (rp && rp.teamId) {
+                        if (rp.teamId === match.homeTeamId) return 'home'
+                        if (rp.teamId === match.awayTeamId) return 'away'
+                    }
+                    if (season && season.hostedTeamId) {
+                        if (season.hostedTeamId === match.homeTeamId) return 'home'
+                        if (season.hostedTeamId === match.awayTeamId) return 'away'
+                    }
+                    return 'home'
+                }
 
                 await Promise.all(
                     userMatches.map(async (um) => {
-                        const [userGoals, userPenalties] = await Promise.all([
+                        const [userGoals, userPenalties, userPoints] = await Promise.all([
                             apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`).catch(() => []),
                             apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`).catch(() => []),
+                            apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`).catch(() => []),
                         ])
                         const userName = um.userName ?? `User ${um.userId}`
+
+                        // Process Goals
                         for (const g of userGoals) {
-                            allGoals.push({ event: g, userName })
+                            const side = getSideForRosterPlayer(g.rosterPlayerId)
+                            const playerName =
+                                `${g.playerFirstName ?? ''} ${g.playerSurname ?? ''}`.trim() || t('common.player')
+                            timeline.push({
+                                id: `goal-${g.id}`,
+                                side,
+                                type: 'goal',
+                                title: playerName,
+                                count: g.count,
+                                goalType: g.goalType,
+                                userName,
+                            })
                         }
+
+                        // Process Penalties
                         for (const p of userPenalties) {
-                            allPenalties.push({ event: p, userName })
+                            const side = getSideForRosterPlayer(p.rosterPlayerId)
+                            const playerName =
+                                `${p.playerFirstName ?? ''} ${p.playerSurname ?? ''}`.trim() || t('common.player')
+                            timeline.push({
+                                id: `penalty-${p.id}`,
+                                side,
+                                type: 'penalty',
+                                title: playerName,
+                                count: p.count,
+                                userName,
+                            })
+                        }
+
+                        // Process Conceded goals / Opponent Negative Points (e.g. Own Goal, Error in Defense)
+                        for (const pt of userPoints) {
+                            if (pt.pointType === 'Negative' && pt.pointReasonName) {
+                                const isConcededReason =
+                                    pt.pointReasonName.toLowerCase().includes('goal') ||
+                                    pt.pointReasonName.toLowerCase().includes('defense') ||
+                                    pt.pointReasonName.toLowerCase().includes('gól') ||
+                                    pt.pointReasonName.toLowerCase().includes('obrana')
+                                if (isConcededReason) {
+                                    // If hosted team is home, an error or own goal is for the away team
+                                    const hostedIsHome = season?.hostedTeamId === match.homeTeamId
+                                    const side: 'home' | 'away' = hostedIsHome ? 'away' : 'home'
+                                    timeline.push({
+                                        id: `conceded-${pt.id}`,
+                                        side,
+                                        type: 'conceded',
+                                        title: pt.pointReasonName,
+                                        count: pt.count,
+                                        userName,
+                                    })
+                                }
+                            }
                         }
                     })
                 )
 
                 if (!cancelled) {
-                    setGoals(allGoals)
-                    setPenalties(allPenalties)
+                    setEvents(timeline)
                 }
             })
-            .catch(() => {
-                // Silently ignore or show empty state
-            })
+            .catch(() => {})
             .finally(() => {
                 if (!cancelled) setLoading(false)
             })
@@ -93,7 +160,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
         return () => {
             cancelled = true
         }
-    }, [match?.id, seasonId])
+    }, [match?.id, seasonId, t])
 
     if (!match) return null
 
@@ -144,35 +211,21 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     </button>
                 </div>
 
-                {/* Scoreboard Hero Banner */}
+                {/* Scoreboard Hero Banner (Clean, no trophy or "Winner" badge) */}
                 <div className="p-5 sm:p-6 bg-gradient-to-b from-bg/60 to-surface border-b border-border">
                     <div className="grid grid-cols-7 items-center gap-3">
                         {/* Home Team */}
                         <div className={`col-span-3 flex items-center gap-3 ${homeWon ? '' : awayWon ? 'opacity-65' : ''}`}>
-                            <div className="relative flex-shrink-0">
-                                <img
-                                    src={homeLogo}
-                                    alt={match.homeTeamShortName ?? ''}
-                                    className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
-                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
-                                />
-                                {homeWon && (
-                                    <div className="absolute -top-1.5 -left-1.5 bg-warning text-black rounded-full p-1 shadow">
-                                        <TrophyIcon size={12} weight="fill" />
-                                    </div>
-                                )}
-                            </div>
+                            <img
+                                src={homeLogo}
+                                alt={match.homeTeamShortName ?? ''}
+                                className="w-12 h-12 sm:w-14 sm:h-14 object-contain flex-shrink-0"
+                                onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                            />
                             <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <h2 id={titleId} className={`font-bold text-base sm:text-lg truncate ${homeWon ? 'text-text' : 'text-text-muted'}`}>
-                                        {match.homeTeamShortName || match.homeTeamName}
-                                    </h2>
-                                    {homeWon && (
-                                        <span className="text-[10px] uppercase font-bold tracking-wide text-warning bg-warning/10 border border-warning/30 px-1.5 py-0.5 rounded">
-                                            {t('season.playoffWinner')}
-                                        </span>
-                                    )}
-                                </div>
+                                <h2 id={titleId} className={`font-bold text-base sm:text-lg truncate ${homeWon ? 'text-text font-black' : 'text-text-muted font-medium'}`}>
+                                    {match.homeTeamShortName || match.homeTeamName}
+                                </h2>
                                 <p className="text-xs text-text-muted truncate hidden sm:block">
                                     {match.homeTeamName}
                                 </p>
@@ -200,146 +253,142 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                         {/* Away Team */}
                         <div className={`col-span-3 flex items-center justify-end gap-3 text-right ${awayWon ? '' : homeWon ? 'opacity-65' : ''}`}>
                             <div className="min-w-0">
-                                <div className="flex items-center justify-end gap-1.5">
-                                    {awayWon && (
-                                        <span className="text-[10px] uppercase font-bold tracking-wide text-warning bg-warning/10 border border-warning/30 px-1.5 py-0.5 rounded">
-                                            {t('season.playoffWinner')}
-                                        </span>
-                                    )}
-                                    <h2 className={`font-bold text-base sm:text-lg truncate ${awayWon ? 'text-text' : 'text-text-muted'}`}>
-                                        {match.awayTeamShortName || match.awayTeamName}
-                                    </h2>
-                                </div>
+                                <h2 className={`font-bold text-base sm:text-lg truncate ${awayWon ? 'text-text font-black' : 'text-text-muted font-medium'}`}>
+                                    {match.awayTeamShortName || match.awayTeamName}
+                                </h2>
                                 <p className="text-xs text-text-muted truncate hidden sm:block">
                                     {match.awayTeamName}
                                 </p>
                             </div>
-                            <div className="relative flex-shrink-0">
-                                <img
-                                    src={awayLogo}
-                                    alt={match.awayTeamShortName ?? ''}
-                                    className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
-                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
-                                />
-                                {awayWon && (
-                                    <div className="absolute -top-1.5 -right-1.5 bg-warning text-black rounded-full p-1 shadow">
-                                        <TrophyIcon size={12} weight="fill" />
-                                    </div>
-                                )}
-                            </div>
+                            <img
+                                src={awayLogo}
+                                alt={match.awayTeamShortName ?? ''}
+                                className="w-12 h-12 sm:w-14 sm:h-14 object-contain flex-shrink-0"
+                                onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Events Section (Goals & Fouls/Penalties) */}
-                <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+                {/* Team Label Sub-header for Event History */}
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-2.5 bg-bg/50 border-b border-border text-xs font-bold text-text-muted uppercase tracking-wider">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <img src={homeLogo} alt="" className="w-4 h-4 object-contain" />
+                        <span className="truncate">{match.homeTeamShortName || match.homeTeamName}</span>
+                    </div>
+                    <span className="text-[10px] text-text-muted/80 font-bold px-2">
+                        {t('season.playoffEventHistory')}
+                    </span>
+                    <div className="flex items-center justify-end gap-2 min-w-0 text-right">
+                        <span className="truncate">{match.awayTeamShortName || match.awayTeamName}</span>
+                        <img src={awayLogo} alt="" className="w-4 h-4 object-contain" />
+                    </div>
+                </div>
+
+                {/* Event History / Timeline (Goal on one side, goal on the other side) */}
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                     {loading ? (
                         <div className="py-8">
                             <LoadingSpinner />
                         </div>
+                    ) : events.length === 0 ? (
+                        <p className="text-xs text-text-muted italic py-8 text-center">
+                            {t('season.playoffNoEvents')}
+                        </p>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {/* Goals Column */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-4 flex flex-col">
-                                <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center">
-                                            <HockeyIcon size={15} />
-                                        </div>
-                                        <h3 className="font-bold text-sm text-text">
-                                            {t('season.playoffGoals')}
-                                        </h3>
-                                    </div>
-                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-2 py-0.5 rounded border border-border">
-                                        {goals.reduce((acc, g) => acc + g.event.count, 0)}
-                                    </span>
-                                </div>
+                        <div className="relative space-y-4">
+                            {/* Central timeline line */}
+                            <div
+                                className="absolute left-1/2 -translate-x-1/2 top-2 bottom-2 w-0.5 bg-border/60 pointer-events-none"
+                                aria-hidden="true"
+                            />
 
-                                {goals.length === 0 ? (
-                                    <p className="text-xs text-text-muted italic py-4 text-center">
-                                        {t('season.playoffNoGoals')}
-                                    </p>
-                                ) : (
-                                    <ul className="space-y-2.5">
-                                        {goals.map(({ event: g, userName }, idx) => {
-                                            const playerName = `${g.playerFirstName ?? ''} ${g.playerSurname ?? ''}`.trim() || t('common.player')
-                                            return (
-                                                <li key={g.id || idx} className="flex items-center justify-between gap-2 text-xs bg-surface/70 border border-border/40 rounded px-3 py-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="font-semibold text-text truncate">
-                                                            {playerName}
-                                                        </span>
-                                                        {g.count > 1 && (
-                                                            <span className="text-[11px] font-bold text-primary font-mono">
-                                                                ×{g.count}
+                            {events.map((ev) => {
+                                const isHome = ev.side === 'home'
+                                const isGoal = ev.type === 'goal' || ev.type === 'conceded'
+
+                                return (
+                                    <div
+                                        key={ev.id}
+                                        className="relative grid grid-cols-[1fr_28px_1fr] items-center gap-2 text-xs"
+                                    >
+                                        {/* Left Side (Home) */}
+                                        <div className="flex justify-end min-w-0">
+                                            {isHome ? (
+                                                <div className="bg-surface border border-border/80 rounded-lg p-2.5 max-w-[260px] w-full text-right shadow-sm flex flex-col items-end">
+                                                    <div className="flex items-center justify-end gap-1.5 font-bold text-text">
+                                                        <span>{ev.title}</span>
+                                                        {ev.count > 1 && (
+                                                            <span className="text-[11px] font-mono font-bold text-primary">
+                                                                ×{ev.count}
                                                             </span>
                                                         )}
-                                                        {g.goalType === 'PowerPlay' && (
+                                                        {ev.goalType === 'PowerPlay' && (
                                                             <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                                                                 PP
                                                             </span>
                                                         )}
-                                                        {g.goalType === 'ShortHanded' && (
+                                                        {ev.goalType === 'ShortHanded' && (
                                                             <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                                                 SH
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-[11px] text-text-muted truncate flex-shrink-0">
-                                                        {userName}
+                                                    <span className="text-[10px] text-text-muted truncate mt-0.5">
+                                                        {ev.userName}
                                                     </span>
-                                                </li>
-                                            )
-                                        })}
-                                    </ul>
-                                )}
-                            </div>
-
-                            {/* Penalties / Fouls Column */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-4 flex flex-col">
-                                <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded bg-danger/10 text-danger flex items-center justify-center">
-                                            <WarningOctagonIcon size={15} />
+                                                </div>
+                                            ) : null}
                                         </div>
-                                        <h3 className="font-bold text-sm text-text">
-                                            {t('season.playoffPenalties')}
-                                        </h3>
-                                    </div>
-                                    <span className="text-xs font-semibold tabular-nums text-text-muted bg-surface px-2 py-0.5 rounded border border-border">
-                                        {penalties.reduce((acc, p) => acc + p.event.count, 0)}
-                                    </span>
-                                </div>
 
-                                {penalties.length === 0 ? (
-                                    <p className="text-xs text-text-muted italic py-4 text-center">
-                                        {t('season.playoffNoPenalties')}
-                                    </p>
-                                ) : (
-                                    <ul className="space-y-2.5">
-                                        {penalties.map(({ event: p, userName }, idx) => {
-                                            const playerName = `${p.playerFirstName ?? ''} ${p.playerSurname ?? ''}`.trim() || t('common.player')
-                                            return (
-                                                <li key={p.id || idx} className="flex items-center justify-between gap-2 text-xs bg-surface/70 border border-border/40 rounded px-3 py-2">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="font-semibold text-text truncate">
-                                                            {playerName}
-                                                        </span>
-                                                        {p.count > 1 && (
-                                                            <span className="text-[11px] font-bold text-danger font-mono">
-                                                                ×{p.count}
+                                        {/* Center Axis Node */}
+                                        <div className="relative flex items-center justify-center z-10">
+                                            <div
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm border ${
+                                                    isGoal
+                                                        ? 'bg-primary/20 text-primary border-primary/40'
+                                                        : 'bg-danger/20 text-danger border-danger/40'
+                                                }`}
+                                            >
+                                                {isGoal ? (
+                                                    <HockeyIcon size={13} />
+                                                ) : (
+                                                    <WarningOctagonIcon size={13} />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Right Side (Away) */}
+                                        <div className="flex justify-start min-w-0">
+                                            {!isHome ? (
+                                                <div className="bg-surface border border-border/80 rounded-lg p-2.5 max-w-[260px] w-full text-left shadow-sm flex flex-col items-start">
+                                                    <div className="flex items-center gap-1.5 font-bold text-text">
+                                                        <span>{ev.title}</span>
+                                                        {ev.count > 1 && (
+                                                            <span className="text-[11px] font-mono font-bold text-primary">
+                                                                ×{ev.count}
+                                                            </span>
+                                                        )}
+                                                        {ev.goalType === 'PowerPlay' && (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                                PP
+                                                            </span>
+                                                        )}
+                                                        {ev.goalType === 'ShortHanded' && (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                                SH
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-[11px] text-text-muted truncate flex-shrink-0">
-                                                        {userName}
+                                                    <span className="text-[10px] text-text-muted truncate mt-0.5">
+                                                        {ev.userName}
                                                     </span>
-                                                </li>
-                                            )
-                                        })}
-                                    </ul>
-                                )}
-                            </div>
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     )}
                 </div>

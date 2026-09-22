@@ -36,7 +36,7 @@ describe('PlayoffBracket', () => {
         expect(screen.getByText(/no playoff rounds/i)).toBeInTheDocument()
     })
 
-    test('NHL season: renders 4 rounds in one row and shows series winner once a team reaches 4 wins', () => {
+    test('NHL season: renders only created rounds in one row and hides uncreated rounds, without Winner label or trophy', () => {
         const round1: Match[] = Array.from({ length: 4 }, (_, i) =>
             makeMatch({
                 id: 100 + i,
@@ -58,22 +58,24 @@ describe('PlayoffBracket', () => {
             </MemoryRouter>
         )
 
-        // All 4 rounds are displayed in the row for NHL
+        // Only Round 1 is created, so Round 1 is displayed
         expect(screen.getByText('1st Round')).toBeInTheDocument()
-        expect(screen.getByText('2nd Round')).toBeInTheDocument()
-        expect(screen.getByText('Conference Final')).toBeInTheDocument()
-        expect(screen.getByText('Stanley Cup Final')).toBeInTheDocument()
+
+        // Uncreated rounds (2nd, Conference Final, Stanley Cup Final) are NOT shown
+        expect(screen.queryByText('2nd Round')).not.toBeInTheDocument()
+        expect(screen.queryByText('Conference Final')).not.toBeInTheDocument()
+        expect(screen.queryByText('Stanley Cup Final')).not.toBeInTheDocument()
 
         // Matchup details for Round 1
         expect(screen.getAllByText('HOM')[0]).toBeInTheDocument()
         expect(screen.getAllByText('AWY')[0]).toBeInTheDocument()
         expect(screen.getByText('4–0')).toBeInTheDocument()
 
-        // Winner is visibly indicated
-        expect(screen.getAllByText(/winner/i).length).toBeGreaterThan(0)
+        // "Winner" / "Víťaz" label and trophy are removed
+        expect(screen.queryByText(/^winner$/i)).not.toBeInTheDocument()
     })
 
-    test('NHL season: clicking a round displays matches of that round below with the winner visible', async () => {
+    test('NHL season: renders multiple created rounds in one row and clicking a round updates matches below', async () => {
         const user = userEvent.setup()
         const matches: Match[] = [
             makeMatch({
@@ -120,6 +122,13 @@ describe('PlayoffBracket', () => {
             </MemoryRouter>
         )
 
+        // Both created rounds (1 and 2) are displayed in the row
+        expect(screen.getByText('1st Round')).toBeInTheDocument()
+        expect(screen.getByText('2nd Round')).toBeInTheDocument()
+        // Uncreated rounds are NOT shown
+        expect(screen.queryByText('Conference Final')).not.toBeInTheDocument()
+        expect(screen.queryByText('Stanley Cup Final')).not.toBeInTheDocument()
+
         // Initially displays round 1 matches below
         expect(screen.getByText('Game 1')).toBeInTheDocument()
         expect(screen.getByText('Game 2')).toBeInTheDocument()
@@ -134,7 +143,7 @@ describe('PlayoffBracket', () => {
         expect(screen.getAllByText('BOS').length).toBeGreaterThan(0)
     })
 
-    test('NHL season: clicking a match opens the match modal with score and events (goals, fouls)', async () => {
+    test('NHL season: clicking a match opens the match modal with event history timeline', async () => {
         const user = userEvent.setup()
         const round1: Match[] = [
             makeMatch({
@@ -163,15 +172,17 @@ describe('PlayoffBracket', () => {
 
         // Modal should open with dialog role
         expect(screen.getByRole('dialog')).toBeInTheDocument()
-        expect(screen.getByText('Goals')).toBeInTheDocument()
-        expect(screen.getByText('Fouls & Penalties')).toBeInTheDocument()
+        expect(screen.getByText(/event history/i)).toBeInTheDocument()
+
+        // Ensure "Winner" badge is removed from modal
+        expect(screen.queryByText(/^winner$/i)).not.toBeInTheDocument()
 
         // Close button works
         await user.click(screen.getByLabelText(/close/i))
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
-    test('IIHF season: renders 3 rounds in one row and clicking a round directly opens the modal without displaying matches below', async () => {
+    test('IIHF season: renders only created rounds and clicking a round directly opens the modal without displaying matches below', async () => {
         const user = userEvent.setup()
         const iihfMatches: Match[] = [
             makeMatch({
@@ -194,11 +205,11 @@ describe('PlayoffBracket', () => {
             </MemoryRouter>
         )
 
-        // 3 rounds in row for IIHF
+        // Quarterfinals is created, so it appears
         expect(screen.getByText('Quarterfinals')).toBeInTheDocument()
-        expect(screen.getByText('Semifinals')).toBeInTheDocument()
-        expect(screen.getByText('Finals')).toBeInTheDocument()
-        expect(screen.queryByText('Stanley Cup Final')).not.toBeInTheDocument()
+        // Uncreated rounds (Semifinals, Finals) do NOT appear
+        expect(screen.queryByText('Semifinals')).not.toBeInTheDocument()
+        expect(screen.queryByText('Finals')).not.toBeInTheDocument()
 
         // In IIHF, "Matches of Quarterfinals" section below does NOT exist (skipped)
         expect(screen.queryByText(/matches of quarterfinals/i)).not.toBeInTheDocument()
@@ -208,7 +219,6 @@ describe('PlayoffBracket', () => {
         await user.click(screen.getByText('Quarterfinals'))
 
         expect(screen.getByRole('dialog')).toBeInTheDocument()
-        expect(screen.getByText('Goals')).toBeInTheDocument()
-        expect(screen.getByText('Fouls & Penalties')).toBeInTheDocument()
+        expect(screen.getByText(/event history/i)).toBeInTheDocument()
     })
 })

@@ -235,7 +235,11 @@
         "playoffGoToMatch": "Open Match Page",
         "playoffSeriesScore": "Series: {{teamA}} {{scoreA}} – {{scoreB}} {{teamB}}",
         "playoffBestOf7": "Best of 7",
-        "playoffBestOf1": "Best of 1"
+        "playoffBestOf1": "Best of 1",
+        "playoffEventHistory": "Event History",
+        "playoffNoEvents": "No events recorded for this match.",
+        "playoffGoal": "Goal",
+        "playoffPenalty": "Penalty"
     },
     "match": {
         "matchNotFound": "Match not found",

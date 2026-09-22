@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TrophyIcon, CaretRightIcon, ArrowRightIcon } from '@phosphor-icons/react'
+import { CaretRightIcon, ArrowRightIcon } from '@phosphor-icons/react'
 import type { Match } from '../../types/match'
 import { MatchPhase, CompletionType } from '../../types/match'
 import type { LeagueTypeValue } from '../../types/team'
@@ -122,30 +122,27 @@ export default function PlayoffBracket({
         [matches]
     )
 
-    const totalRounds = leagueType === 'IIHF' ? 3 : 4
+    // Only include rounds that are actually created in the season (have playoff matches)
     const roundSlots = useMemo(() => {
-        const slots: { round: number; name: string; duel: DuelRound | null }[] = []
-        for (let r = 1; r <= totalRounds; r++) {
-            slots.push({
+        const distinctRounds = Array.from(
+            new Set(playoffMatches.map((m) => m.playoffRound as number).filter((r) => r != null && r > 0))
+        ).sort((a, b) => a - b)
+
+        return distinctRounds
+            .map((r) => ({
                 round: r,
                 name: getRoundName(r, leagueType, t),
                 duel: buildRoundData(r, playoffMatches, leagueType),
-            })
-        }
-        return slots
-    }, [totalRounds, leagueType, t, playoffMatches])
+            }))
+            .filter((slot): slot is { round: number; name: string; duel: DuelRound } => slot.duel != null && slot.duel.matches.length > 0)
+    }, [playoffMatches, leagueType, t])
 
-    // Find first round with matches, or default to 1
-    const initialRound = useMemo(() => {
-        const found = roundSlots.find((s) => s.duel != null)
-        return found ? found.round : 1
-    }, [roundSlots])
-
+    const initialRound = roundSlots.length > 0 ? roundSlots[0].round : 1
     const [selectedRound, setSelectedRound] = useState<number>(initialRound)
     const [modalMatch, setModalMatch] = useState<Match | null>(null)
     const [modalGameLabel, setModalGameLabel] = useState<string | undefined>(undefined)
 
-    if (playoffMatches.length === 0) {
+    if (roundSlots.length === 0) {
         return <p className="text-text-muted text-sm py-8 text-center">{t('season.playoffNoRounds')}</p>
     }
 
@@ -153,10 +150,10 @@ export default function PlayoffBracket({
     const activeSlot = roundSlots.find((s) => s.round === selectedRound) ?? roundSlots[0]
     const isIIHF = leagueType === 'IIHF'
 
-    const handleRoundClick = (slot: { round: number; name: string; duel: DuelRound | null }) => {
+    const handleRoundClick = (slot: { round: number; name: string; duel: DuelRound }) => {
         if (isIIHF) {
             // In IIHF, single match playoffs (best of 1), clicking the round directly opens the match modal
-            if (slot.duel && slot.duel.matches.length > 0) {
+            if (slot.duel.matches.length > 0) {
                 setModalMatch(slot.duel.matches[0])
                 setModalGameLabel(slot.name)
             }
@@ -177,16 +174,15 @@ export default function PlayoffBracket({
 
     return (
         <div className="space-y-6 py-2" aria-label="Playoff bracket">
-            {/* Top Row: All rounds in ONE row */}
+            {/* Top Row: Created rounds in ONE row */}
             <div className="w-full overflow-x-auto pb-3 pt-1 no-scrollbar">
-                <div className="flex items-stretch gap-3 sm:gap-4 min-w-[720px] lg:min-w-0">
+                <div className="flex items-stretch gap-3 sm:gap-4 min-w-fit">
                     {roundSlots.map((slot, index) => {
                         const { round, name, duel } = slot
                         const isSelected = !isIIHF && selectedRound === round
-                        const hasMatches = duel != null && duel.matches.length > 0
 
                         return (
-                            <div key={round} className="flex-1 flex items-center min-w-[200px]">
+                            <div key={round} className="flex items-center min-w-[220px]">
                                 <div
                                     role="button"
                                     tabIndex={0}
@@ -200,9 +196,7 @@ export default function PlayoffBracket({
                                     className={`w-full rounded-xl border p-4 transition-all text-left flex flex-col justify-between cursor-pointer select-none ${
                                         isSelected
                                             ? 'bg-surface border-primary ring-2 ring-primary/40 shadow-lg'
-                                            : hasMatches
-                                            ? 'bg-surface/90 hover:bg-surface border-border hover:border-border-hover shadow-card'
-                                            : 'bg-surface/40 border-border/40 text-text-muted'
+                                            : 'bg-surface/90 hover:bg-surface border-border hover:border-border-hover shadow-card'
                                     }`}
                                 >
                                     {/* Round Header */}
@@ -210,108 +204,83 @@ export default function PlayoffBracket({
                                         <span className={`text-xs font-bold uppercase tracking-wider truncate ${isSelected ? 'text-primary' : 'text-text'}`}>
                                             {name}
                                         </span>
-                                        {hasMatches && duel.winner && (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-warning bg-warning/10 border border-warning/30 px-1.5 py-0.5 rounded flex-shrink-0">
-                                                <TrophyIcon size={11} weight="fill" />
-                                                <span className="hidden sm:inline">{t('season.playoffWinner')}</span>
-                                            </span>
-                                        )}
-                                        {!hasMatches && (
-                                            <span className="text-[10px] uppercase tracking-wider font-semibold text-text-muted/70 bg-bg px-1.5 py-0.5 rounded border border-border/40">
-                                                {t('season.playoffUpcoming')}
-                                            </span>
-                                        )}
                                     </div>
 
                                     {/* Matchup Duel Body */}
-                                    {hasMatches && duel ? (
-                                        <div className="space-y-2.5">
-                                            {/* Team A Row */}
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <img
-                                                        src={teamLogoUrl(duel.teamA.shortName)}
-                                                        alt={duel.teamA.shortName}
-                                                        className="w-6 h-6 object-contain flex-shrink-0"
-                                                        onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
-                                                    />
-                                                    <span className={`text-sm truncate ${
-                                                        duel.winner?.teamId === duel.teamA.teamId
-                                                            ? 'font-bold text-text'
-                                                            : duel.winner
-                                                            ? 'text-text-muted opacity-70 font-medium'
-                                                            : 'font-semibold text-text'
-                                                    }`}>
-                                                        {duel.teamA.shortName || duel.teamA.name}
-                                                    </span>
-                                                    {duel.winner?.teamId === duel.teamA.teamId && (
-                                                        <TrophyIcon size={13} weight="fill" className="text-warning flex-shrink-0" />
-                                                    )}
-                                                </div>
-                                                <span className={`text-sm font-bold tabular-nums px-1.5 py-0.5 rounded ${
+                                    <div className="space-y-2.5">
+                                        {/* Team A Row */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img
+                                                    src={teamLogoUrl(duel.teamA.shortName)}
+                                                    alt={duel.teamA.shortName}
+                                                    className="w-6 h-6 object-contain flex-shrink-0"
+                                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                />
+                                                <span className={`text-sm truncate ${
                                                     duel.winner?.teamId === duel.teamA.teamId
-                                                        ? 'bg-primary/10 text-primary font-black'
-                                                        : 'text-text-muted'
+                                                        ? 'font-bold text-text'
+                                                        : duel.winner
+                                                        ? 'text-text-muted opacity-70 font-medium'
+                                                        : 'font-semibold text-text'
                                                 }`}>
-                                                    {isIIHF && duel.matches[0]
-                                                        ? (duel.matches[0].homeTeamId === duel.teamA.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
-                                                        : duel.teamA.wins}
+                                                    {duel.teamA.shortName || duel.teamA.name}
                                                 </span>
                                             </div>
+                                            <span className={`text-sm font-bold tabular-nums px-1.5 py-0.5 rounded ${
+                                                duel.winner?.teamId === duel.teamA.teamId
+                                                    ? 'bg-primary/10 text-primary font-black'
+                                                    : 'text-text-muted'
+                                            }`}>
+                                                {isIIHF && duel.matches[0]
+                                                    ? (duel.matches[0].homeTeamId === duel.teamA.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
+                                                    : duel.teamA.wins}
+                                            </span>
+                                        </div>
 
-                                            {/* Team B Row */}
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <img
-                                                        src={teamLogoUrl(duel.teamB.shortName)}
-                                                        alt={duel.teamB.shortName}
-                                                        className="w-6 h-6 object-contain flex-shrink-0"
-                                                        onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
-                                                    />
-                                                    <span className={`text-sm truncate ${
-                                                        duel.winner?.teamId === duel.teamB.teamId
-                                                            ? 'font-bold text-text'
-                                                            : duel.winner
-                                                            ? 'text-text-muted opacity-70 font-medium'
-                                                            : 'font-semibold text-text'
-                                                    }`}>
-                                                        {duel.teamB.shortName || duel.teamB.name}
-                                                    </span>
-                                                    {duel.winner?.teamId === duel.teamB.teamId && (
-                                                        <TrophyIcon size={13} weight="fill" className="text-warning flex-shrink-0" />
-                                                    )}
-                                                </div>
-                                                <span className={`text-sm font-bold tabular-nums px-1.5 py-0.5 rounded ${
+                                        {/* Team B Row */}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img
+                                                    src={teamLogoUrl(duel.teamB.shortName)}
+                                                    alt={duel.teamB.shortName}
+                                                    className="w-6 h-6 object-contain flex-shrink-0"
+                                                    onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                                                />
+                                                <span className={`text-sm truncate ${
                                                     duel.winner?.teamId === duel.teamB.teamId
-                                                        ? 'bg-primary/10 text-primary font-black'
-                                                        : 'text-text-muted'
+                                                        ? 'font-bold text-text'
+                                                        : duel.winner
+                                                        ? 'text-text-muted opacity-70 font-medium'
+                                                        : 'font-semibold text-text'
                                                 }`}>
-                                                    {isIIHF && duel.matches[0]
-                                                        ? (duel.matches[0].homeTeamId === duel.teamB.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
-                                                        : duel.teamB.wins}
+                                                    {duel.teamB.shortName || duel.teamB.name}
                                                 </span>
                                             </div>
+                                            <span className={`text-sm font-bold tabular-nums px-1.5 py-0.5 rounded ${
+                                                duel.winner?.teamId === duel.teamB.teamId
+                                                    ? 'bg-primary/10 text-primary font-black'
+                                                    : 'text-text-muted'
+                                            }`}>
+                                                {isIIHF && duel.matches[0]
+                                                    ? (duel.matches[0].homeTeamId === duel.teamB.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
+                                                    : duel.teamB.wins}
+                                            </span>
+                                        </div>
 
-                                            {/* Series/Match status line */}
-                                            <div className="pt-2 mt-1 border-t border-border/40 flex items-center justify-between text-[11px] text-text-muted">
-                                                <span>
-                                                    {isIIHF
-                                                        ? t('season.playoffBestOf1')
-                                                        : `${duel.teamA.wins}–${duel.teamB.wins}`}
-                                                </span>
-                                                <span className="text-primary font-medium flex items-center gap-0.5">
-                                                    {isIIHF ? t('season.playoffMatchDetails') : t('common.showMore')}
-                                                    <CaretRightIcon size={12} />
-                                                </span>
-                                            </div>
+                                        {/* Series/Match status line */}
+                                        <div className="pt-2 mt-1 border-t border-border/40 flex items-center justify-between text-[11px] text-text-muted">
+                                            <span>
+                                                {isIIHF
+                                                    ? t('season.playoffBestOf1')
+                                                    : `${duel.teamA.wins}–${duel.teamB.wins}`}
+                                            </span>
+                                            <span className="text-primary font-medium flex items-center gap-0.5">
+                                                {isIIHF ? t('season.playoffMatchDetails') : t('common.showMore')}
+                                                <CaretRightIcon size={12} />
+                                            </span>
                                         </div>
-                                    ) : (
-                                        <div className="py-4 text-center">
-                                            <p className="text-xs text-text-muted/60 font-medium">
-                                                {t('season.playoffAwaiting')}
-                                            </p>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* Step Connector Arrow between rounds */}
@@ -334,9 +303,6 @@ export default function PlayoffBracket({
                             <h3 className="text-base sm:text-lg font-bold text-text">
                                 {t('season.playoffRoundMatches', { round: activeSlot.name })}
                             </h3>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted bg-bg px-2.5 py-0.5 rounded-full border border-border">
-                                {t('season.playoffBestOf7')}
-                            </span>
                         </div>
                         {activeSlot.duel && (
                             <span className="text-xs font-semibold tabular-nums text-text-muted">
@@ -383,7 +349,7 @@ export default function PlayoffBracket({
                                             </div>
                                         </div>
 
-                                        {/* Match Teams & Scores with Prominent Winner Visibility */}
+                                        {/* Match Teams & Scores with Clean Winner Highlighting (no trophy/Vitaz label) */}
                                         <div className="grid grid-cols-7 items-center gap-2 py-1">
                                             {/* Home Team */}
                                             <div className={`col-span-3 flex items-center gap-2 min-w-0 ${homeWon ? '' : awayWon ? 'opacity-60' : ''}`}>
@@ -393,16 +359,9 @@ export default function PlayoffBracket({
                                                     className="w-7 h-7 object-contain flex-shrink-0"
                                                     onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
-                                                <div className="min-w-0">
-                                                    <span className={`text-sm truncate block ${homeWon ? 'font-bold text-text' : 'font-medium text-text-muted'}`}>
-                                                        {m.homeTeamShortName || m.homeTeamName}
-                                                    </span>
-                                                    {homeWon && (
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-warning flex items-center gap-0.5">
-                                                            <TrophyIcon size={10} weight="fill" /> {t('season.playoffWinner')}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <span className={`text-sm truncate block ${homeWon ? 'font-bold text-text' : 'font-medium text-text-muted'}`}>
+                                                    {m.homeTeamShortName || m.homeTeamName}
+                                                </span>
                                             </div>
 
                                             {/* Score */}
@@ -414,16 +373,9 @@ export default function PlayoffBracket({
 
                                             {/* Away Team */}
                                             <div className={`col-span-3 flex items-center justify-end gap-2 text-right min-w-0 ${awayWon ? '' : homeWon ? 'opacity-60' : ''}`}>
-                                                <div className="min-w-0">
-                                                    <span className={`text-sm truncate block ${awayWon ? 'font-bold text-text' : 'font-medium text-text-muted'}`}>
-                                                        {m.awayTeamShortName || m.awayTeamName}
-                                                    </span>
-                                                    {awayWon && (
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-warning flex items-center justify-end gap-0.5">
-                                                            <TrophyIcon size={10} weight="fill" /> {t('season.playoffWinner')}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <span className={`text-sm truncate block ${awayWon ? 'font-bold text-text' : 'font-medium text-text-muted'}`}>
+                                                    {m.awayTeamShortName || m.awayTeamName}
+                                                </span>
                                                 <img
                                                     src={teamLogoUrl(m.awayTeamShortName)}
                                                     alt={m.awayTeamShortName ?? ''}
@@ -445,7 +397,7 @@ export default function PlayoffBracket({
                         </div>
                     ) : (
                         <p className="text-sm text-text-muted italic py-6 text-center">
-                            {t('season.playoffAwaiting')}
+                            {t('season.playoffNoRounds')}
                         </p>
                     )}
                 </div>
