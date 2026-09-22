@@ -59,10 +59,11 @@ public class RealSeasonMatchImportServiceTests : IDisposable
     [Fact]
     public async Task ImportAsync_CreatesMatchesForMappedTeamsAndSkipsUnmappedOnes()
     {
-        var edm = new Team { Name = "Edmonton Oilers", ShortName = "EDM" };
-        var tor = new Team { Name = "Toronto Maple Leafs", ShortName = "TOR" };
+        // EnsureCreated() seeds the real 32 NHL teams, so reuse those instead of adding
+        // duplicate "EDM"/"TOR" rows (which would collide when the service groups teams by ShortName).
+        var edm = await _db.Teams.SingleAsync(t => t.ShortName == "EDM");
+        var tor = await _db.Teams.SingleAsync(t => t.ShortName == "TOR");
         var season = new Season { Name = "NHL 26 Season", StartedOn = DateTime.UtcNow, NhlYear = 26 };
-        _db.Teams.AddRange(edm, tor);
         _db.Seasons.Add(season);
         await _db.SaveChangesAsync();
 
@@ -96,10 +97,11 @@ public class RealSeasonMatchImportServiceTests : IDisposable
     [Fact]
     public async Task ImportAsync_RunTwice_DoesNotDuplicateAlreadyImportedGames()
     {
-        var edm = new Team { Name = "Edmonton Oilers", ShortName = "EDM" };
-        var tor = new Team { Name = "Toronto Maple Leafs", ShortName = "TOR" };
+        // EnsureCreated() seeds the real 32 NHL teams, so reuse those instead of adding
+        // duplicate "EDM"/"TOR" rows (which would collide when the service groups teams by ShortName).
+        await _db.Teams.SingleAsync(t => t.ShortName == "EDM");
+        await _db.Teams.SingleAsync(t => t.ShortName == "TOR");
         var season = new Season { Name = "NHL 26 Season", StartedOn = DateTime.UtcNow, NhlYear = 26 };
-        _db.Teams.AddRange(edm, tor);
         _db.Seasons.Add(season);
         await _db.SaveChangesAsync();
 
