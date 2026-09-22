@@ -22,6 +22,7 @@ export interface Match {
     awayScore: number
     matchDate: string | null
     completionType: CompletionType
+    isPlayoff: boolean
 }
 
 export interface FutureMatch {
@@ -34,6 +35,7 @@ export interface FutureMatch {
     awayTeamId: number
     awayTeamName: string | null
     hostedTeamId: number | null
+    isPlayoff: boolean
     userMatches: UserMatchInfo[] | null
 }
 

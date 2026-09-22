@@ -197,6 +197,18 @@ public class MatchesTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Create_match_within_regular_season_is_not_playoff()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Match Regular Season");
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+
+        created.GetProperty("matchNumber").GetInt32().Should().Be(1);
+        created.GetProperty("isPlayoff").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Create_match_unauthenticated_returns_401()
     {
         var client = Factory.CreateClient();
@@ -327,6 +339,27 @@ public class MatchesTests : ApiTestBase
         body[0].GetProperty("matchNumber").GetInt32().Should().Be(1);
         body[1].GetProperty("matchNumber").GetInt32().Should().Be(2);
         body[2].GetProperty("matchNumber").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task BatchCreate_marks_matches_past_82_as_playoff()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Batch Playoff Boundary Season");
+
+        var dtos = Enumerable.Range(0, 83)
+            .Select(_ => new { homeTeamId = 1, awayTeamId = 2 })
+            .ToArray();
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/batch", dtos);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(83);
+        body[81].GetProperty("matchNumber").GetInt32().Should().Be(82);
+        body[81].GetProperty("isPlayoff").GetBoolean().Should().BeFalse();
+        body[82].GetProperty("matchNumber").GetInt32().Should().Be(83);
+        body[82].GetProperty("isPlayoff").GetBoolean().Should().BeTrue();
     }
 
     // ── POST /api/seasons/{seasonId}/matches/{id}/reset ─────────────────────
@@ -519,6 +552,7 @@ public class MatchesTests : ApiTestBase
         {
             var m = body[i];
             m.GetProperty("matchNumber").GetInt32().Should().Be(i + 1);
+            m.GetProperty("isPlayoff").GetBoolean().Should().BeTrue();
             if (expectedHostedIsHome[i])
             {
                 m.GetProperty("homeTeamId").GetInt32().Should().Be(1);

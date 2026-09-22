@@ -257,6 +257,11 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
                                         >
                                             {m.homeTeamName} vs {m.awayTeamName}
                                         </Link>
+                                        {m.isPlayoff && (
+                                            <span className="ml-2 text-xs px-2 py-0.5 rounded font-medium bg-secondary/20 text-secondary">
+                                                {t('admin.matches.playoff')}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 font-mono">
                                         {m.matchDate

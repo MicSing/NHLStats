@@ -49,6 +49,11 @@ public class MatchService : IMatchService
         }
     }
 
+    // NHL regular season is 82 games; any match numbered beyond that within a season is a playoff match.
+    private const int RegularSeasonMatchCount = 82;
+
+    private static bool IsPlayoffMatchNumber(int matchNumber) => matchNumber > RegularSeasonMatchCount;
+
     private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
         completionType == CompletionType.None ? null : matchDate;
 
@@ -56,7 +61,7 @@ public class MatchService : IMatchService
         m.Id, m.SeasonId, m.MatchNumber,
         m.HomeTeamId, m.HomeTeam?.Name, m.HomeTeam?.ShortName,
         m.AwayTeamId, m.AwayTeam?.Name, m.AwayTeam?.ShortName,
-        m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType);
+        m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType, m.IsPlayoff);
 
     private static FutureMatchDto ToFutureDto(Match m) => new(
         m.Id,
@@ -68,6 +73,7 @@ public class MatchService : IMatchService
         m.AwayTeamId,
         m.AwayTeam?.Name,
         m.Season?.HostedTeamId,
+        m.IsPlayoff,
         m.UserMatches?.Select(um => new UserMatchInfoDto(um.UserId, um.User?.Name)) ?? Enumerable.Empty<UserMatchInfoDto>());
 
     public async Task<IEnumerable<FutureMatchDto>> GetFutureMatchesAsync(int count = 10, string? loginId = null)
@@ -117,16 +123,18 @@ public class MatchService : IMatchService
             .Where(m => m.SeasonId == seasonId)
             .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
 
+        var matchNumber = maxNumber + 1;
         var match = new Match
         {
             SeasonId = seasonId,
-            MatchNumber = maxNumber + 1,
+            MatchNumber = matchNumber,
             HomeTeamId = dto.HomeTeamId,
             AwayTeamId = dto.AwayTeamId,
             HomeScore = 0,
             AwayScore = 0,
             MatchDate = null,
-            CompletionType = CompletionType.None
+            CompletionType = CompletionType.None,
+            IsPlayoff = IsPlayoffMatchNumber(matchNumber)
         };
         _db.Matches.Add(match);
         await _db.SaveChangesAsync();
@@ -264,16 +272,21 @@ public class MatchService : IMatchService
             .Where(m => m.SeasonId == seasonId)
             .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
 
-        var matches = dtoList.Select((dto, i) => new Match
+        var matches = dtoList.Select((dto, i) =>
         {
-            SeasonId = seasonId,
-            MatchNumber = startNumber + i + 1,
-            HomeTeamId = dto.HomeTeamId,
-            AwayTeamId = dto.AwayTeamId,
-            HomeScore = dto.HomeScore,
-            AwayScore = dto.AwayScore,
-            CompletionType = dto.CompletionType,
-            MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType)
+            var matchNumber = startNumber + i + 1;
+            return new Match
+            {
+                SeasonId = seasonId,
+                MatchNumber = matchNumber,
+                HomeTeamId = dto.HomeTeamId,
+                AwayTeamId = dto.AwayTeamId,
+                HomeScore = dto.HomeScore,
+                AwayScore = dto.AwayScore,
+                CompletionType = dto.CompletionType,
+                MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType),
+                IsPlayoff = IsPlayoffMatchNumber(matchNumber)
+            };
         }).ToList();
 
         _db.Matches.AddRange(matches);
@@ -362,16 +375,18 @@ public class MatchService : IMatchService
         var matches = PlayoffSeriesHostedIsHomePattern.Select((baseHostedIsHome, i) =>
         {
             var hostedIsHome = dto.StartsHome ? baseHostedIsHome : !baseHostedIsHome;
+            var matchNumber = startNumber + i + 1;
             return new Match
             {
                 SeasonId = seasonId,
-                MatchNumber = startNumber + i + 1,
+                MatchNumber = matchNumber,
                 HomeTeamId = hostedIsHome ? hostedTeamId : dto.OpponentTeamId,
                 AwayTeamId = hostedIsHome ? dto.OpponentTeamId : hostedTeamId,
                 HomeScore = 0,
                 AwayScore = 0,
                 MatchDate = null,
-                CompletionType = CompletionType.None
+                CompletionType = CompletionType.None,
+                IsPlayoff = true
             };
         }).ToList();
 

@@ -15,7 +15,8 @@ public record MatchDto(
     int HomeScore,
     int AwayScore,
     DateTime? MatchDate,
-    CompletionType CompletionType);
+    CompletionType CompletionType,
+    bool IsPlayoff);
 
 public record FutureMatchDto(
     int Id,
@@ -27,6 +28,7 @@ public record FutureMatchDto(
     int AwayTeamId,
     string? AwayTeamName,
     int? HostedTeamId,
+    bool IsPlayoff,
     IEnumerable<UserMatchInfoDto>? UserMatches);
 
 public record UserMatchInfoDto(

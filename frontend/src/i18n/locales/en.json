@@ -820,6 +820,7 @@
             "initializeAllConfirm": "Initialize all season users into every unplayed match?",
             "initializeAllSuccess": "Initialized {{count}} user-match entries.",
             "initializeAllNone": "All users are already initialized.",
+            "playoff": "Playoff",
             "createPlayoffSeries": "Create Playoff Series",
             "opponentTeam": "Opponent Team",
             "playoffSeriesDescription": "Creates 7 matches following the standard 2-2-1-1-1 playoff format and recalculates upcoming odds.",
