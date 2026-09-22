@@ -343,7 +343,7 @@ public class MatchesTests : ApiTestBase
     }
 
     [Fact]
-    public async Task BatchCreate_marks_matches_past_82_as_playoff()
+    public async Task BatchCreate_does_not_infer_playoff_phase_from_match_number()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Batch Playoff Boundary Season");
@@ -359,9 +359,10 @@ public class MatchesTests : ApiTestBase
         body.GetArrayLength().Should().Be(83);
         body[81].GetProperty("matchNumber").GetInt32().Should().Be(82);
         body[81].GetProperty("phase").GetString().Should().Be("RegularSeason");
+        // Phase is only ever Playoff when created via the dedicated playoff-series endpoint,
+        // never inferred from match number alone.
         body[82].GetProperty("matchNumber").GetInt32().Should().Be(83);
-        body[82].GetProperty("phase").GetString().Should().Be("Playoff");
-        // Round is only tracked for series created via the dedicated playoff-series endpoint.
+        body[82].GetProperty("phase").GetString().Should().Be("RegularSeason");
         body[82].GetProperty("playoffRound").ValueKind.Should().Be(JsonValueKind.Null);
     }
 

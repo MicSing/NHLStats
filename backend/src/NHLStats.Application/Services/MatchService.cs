@@ -49,12 +49,6 @@ public class MatchService : IMatchService
         }
     }
 
-    // NHL regular season is 82 games; any match numbered beyond that within a season is a playoff match.
-    private const int RegularSeasonMatchCount = 82;
-
-    private static MatchPhase GetMatchPhase(int matchNumber) =>
-        matchNumber > RegularSeasonMatchCount ? MatchPhase.Playoff : MatchPhase.RegularSeason;
-
     private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
         completionType == CompletionType.None ? null : matchDate;
 
@@ -125,18 +119,16 @@ public class MatchService : IMatchService
             .Where(m => m.SeasonId == seasonId)
             .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
 
-        var matchNumber = maxNumber + 1;
         var match = new Match
         {
             SeasonId = seasonId,
-            MatchNumber = matchNumber,
+            MatchNumber = maxNumber + 1,
             HomeTeamId = dto.HomeTeamId,
             AwayTeamId = dto.AwayTeamId,
             HomeScore = 0,
             AwayScore = 0,
             MatchDate = null,
-            CompletionType = CompletionType.None,
-            Phase = GetMatchPhase(matchNumber)
+            CompletionType = CompletionType.None
         };
         _db.Matches.Add(match);
         await _db.SaveChangesAsync();
@@ -274,21 +266,16 @@ public class MatchService : IMatchService
             .Where(m => m.SeasonId == seasonId)
             .MaxAsync(m => (int?)m.MatchNumber) ?? 0;
 
-        var matches = dtoList.Select((dto, i) =>
+        var matches = dtoList.Select((dto, i) => new Match
         {
-            var matchNumber = startNumber + i + 1;
-            return new Match
-            {
-                SeasonId = seasonId,
-                MatchNumber = matchNumber,
-                HomeTeamId = dto.HomeTeamId,
-                AwayTeamId = dto.AwayTeamId,
-                HomeScore = dto.HomeScore,
-                AwayScore = dto.AwayScore,
-                CompletionType = dto.CompletionType,
-                MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType),
-                Phase = GetMatchPhase(matchNumber)
-            };
+            SeasonId = seasonId,
+            MatchNumber = startNumber + i + 1,
+            HomeTeamId = dto.HomeTeamId,
+            AwayTeamId = dto.AwayTeamId,
+            HomeScore = dto.HomeScore,
+            AwayScore = dto.AwayScore,
+            CompletionType = dto.CompletionType,
+            MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType)
         }).ToList();
 
         _db.Matches.AddRange(matches);
