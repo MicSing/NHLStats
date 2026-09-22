@@ -816,7 +816,13 @@
             "initializeAll": "Initialize All Users",
             "initializeAllConfirm": "Initialize all season users into every unplayed match?",
             "initializeAllSuccess": "Initialized {{count}} user-match entries.",
-            "initializeAllNone": "All users are already initialized."
+            "initializeAllNone": "All users are already initialized.",
+            "createPlayoffSeries": "Create Playoff Series",
+            "opponentTeam": "Opponent Team",
+            "playoffSeriesDescription": "Creates 7 matches following the standard 2-2-1-1-1 playoff format and recalculates upcoming odds.",
+            "playoffStartsHome": "{{team}} starts the series at home",
+            "playoffSeriesPreview": "Preview",
+            "playoffSeriesNoHostedTeam": "This season has no hosted team configured, so a playoff series can't be created."
         },
         "pointReasons": {
             "title": "Point Reasons",

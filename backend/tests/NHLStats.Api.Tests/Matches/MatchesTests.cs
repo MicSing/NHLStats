@@ -495,4 +495,139 @@ public class MatchesTests : ApiTestBase
         var matches = await getResp.Content.ReadFromJsonAsync<JsonElement>();
         matches.GetArrayLength().Should().Be(0);
     }
+
+    // ── POST /api/seasons/{seasonId}/matches/playoff-series ─────────────────
+
+    [Fact]
+    public async Task CreatePlayoffSeries_creates_7_matches_in_2_2_1_1_1_pattern_when_starting_home()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Home Season"); // hostedTeamId = 1
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 2,
+            startsHome = true
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(7);
+
+        var expectedHostedIsHome = new[] { true, true, false, false, true, false, true };
+        for (var i = 0; i < 7; i++)
+        {
+            var m = body[i];
+            m.GetProperty("matchNumber").GetInt32().Should().Be(i + 1);
+            if (expectedHostedIsHome[i])
+            {
+                m.GetProperty("homeTeamId").GetInt32().Should().Be(1);
+                m.GetProperty("awayTeamId").GetInt32().Should().Be(2);
+            }
+            else
+            {
+                m.GetProperty("homeTeamId").GetInt32().Should().Be(2);
+                m.GetProperty("awayTeamId").GetInt32().Should().Be(1);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_inverts_pattern_when_starting_away()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Away Season"); // hostedTeamId = 1
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 2,
+            startsHome = false
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(7);
+
+        var expectedHostedIsHome = new[] { false, false, true, true, false, true, false };
+        for (var i = 0; i < 7; i++)
+        {
+            var m = body[i];
+            if (expectedHostedIsHome[i])
+            {
+                m.GetProperty("homeTeamId").GetInt32().Should().Be(1);
+                m.GetProperty("awayTeamId").GetInt32().Should().Be(2);
+            }
+            else
+            {
+                m.GetProperty("homeTeamId").GetInt32().Should().Be(2);
+                m.GetProperty("awayTeamId").GetInt32().Should().Be(1);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_appends_after_existing_matches_with_sequential_numbers()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Sequential Season");
+        await CreateMatchAsync(client, seasonId, 1, 2);
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 2,
+            startsHome = true
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetArrayLength().Should().Be(7);
+        body[0].GetProperty("matchNumber").GetInt32().Should().Be(2);
+        body[6].GetProperty("matchNumber").GetInt32().Should().Be(8);
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_returns_400_for_invalid_opponent_team()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Invalid Opponent Season");
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 99999,
+            startsHome = true
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var getResp = await client.GetAsync($"/api/seasons/{seasonId}/matches");
+        var matches = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        matches.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_returns_400_when_opponent_equals_hosted_team()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Series Same Team Season"); // hostedTeamId = 1
+
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId = 1,
+            startsHome = true
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_unauthenticated_returns_401()
+    {
+        var client = Factory.CreateClient();
+        var resp = await client.PostAsJsonAsync("/api/seasons/1/matches/playoff-series", new
+        {
+            opponentTeamId = 2,
+            startsHome = true
+        });
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

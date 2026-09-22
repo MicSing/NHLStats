@@ -274,6 +274,7 @@ export default function SeasonManagementPage() {
                             seasonId={activeSeason.id}
                             teams={teams}
                             seasonUsers={seasonDetail?.users ?? []}
+                            hostedTeamId={activeSeason.hostedTeamId}
                         />
                     )}
                     {activeTab === 'points' && (

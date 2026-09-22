@@ -61,6 +61,22 @@ public class MatchesController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost("playoff-series")]
+    public async Task<IActionResult> CreatePlayoffSeries(int seasonId, CreatePlayoffSeriesDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        try
+        {
+            var created = await _service.CreatePlayoffSeriesAsync(seasonId, dto);
+            return Ok(created);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int seasonId, int id, UpdateMatchDto dto)
     {

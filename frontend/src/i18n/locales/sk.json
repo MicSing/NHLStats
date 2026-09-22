@@ -848,7 +848,13 @@
             "initializeAll": "Inicializovať všetkých hráčov",
             "initializeAllConfirm": "Inicializovať všetkých hráčov sezóny do každého neodohraného zápasu?",
             "initializeAllSuccess": "Inicializovaných {{count}} záznamov.",
-            "initializeAllNone": "Všetci hráči sú už inicializovaní."
+            "initializeAllNone": "Všetci hráči sú už inicializovaní.",
+            "createPlayoffSeries": "Vytvoriť playoff sériu",
+            "opponentTeam": "Súperov tím",
+            "playoffSeriesDescription": "Vytvorí 7 zápasov podľa štandardného playoff formátu 2-2-1-1-1 a prepočíta kurzy nadchádzajúcich zápasov.",
+            "playoffStartsHome": "{{team}} začína sériu doma",
+            "playoffSeriesPreview": "Náhľad",
+            "playoffSeriesNoHostedTeam": "Táto sezóna nemá nastavený domáci tím, preto nie je možné vytvoriť playoff sériu."
         },
         "pointReasons": {
             "title": "Dôvody bodov",
