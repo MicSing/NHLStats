@@ -205,7 +205,7 @@ public class MatchesTests : ApiTestBase
         var created = await CreateMatchAsync(client, seasonId, 1, 2);
 
         created.GetProperty("matchNumber").GetInt32().Should().Be(1);
-        created.GetProperty("isPlayoff").GetBoolean().Should().BeFalse();
+        created.GetProperty("phase").GetString().Should().Be("RegularSeason");
     }
 
     [Fact]
@@ -357,9 +357,9 @@ public class MatchesTests : ApiTestBase
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
         body.GetArrayLength().Should().Be(83);
         body[81].GetProperty("matchNumber").GetInt32().Should().Be(82);
-        body[81].GetProperty("isPlayoff").GetBoolean().Should().BeFalse();
+        body[81].GetProperty("phase").GetString().Should().Be("RegularSeason");
         body[82].GetProperty("matchNumber").GetInt32().Should().Be(83);
-        body[82].GetProperty("isPlayoff").GetBoolean().Should().BeTrue();
+        body[82].GetProperty("phase").GetString().Should().Be("Playoff");
     }
 
     // ── POST /api/seasons/{seasonId}/matches/{id}/reset ─────────────────────
@@ -552,7 +552,7 @@ public class MatchesTests : ApiTestBase
         {
             var m = body[i];
             m.GetProperty("matchNumber").GetInt32().Should().Be(i + 1);
-            m.GetProperty("isPlayoff").GetBoolean().Should().BeTrue();
+            m.GetProperty("phase").GetString().Should().Be("Playoff");
             if (expectedHostedIsHome[i])
             {
                 m.GetProperty("homeTeamId").GetInt32().Should().Be(1);

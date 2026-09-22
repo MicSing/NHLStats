@@ -249,15 +249,13 @@ namespace NHLStats.Domain.Migrations
                     b.Property<int>("HomeTeamId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsPlayoff")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime?>("MatchDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("MatchNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Phase")
                         .HasColumnType("int");
 
                     b.Property<int>("SeasonId")

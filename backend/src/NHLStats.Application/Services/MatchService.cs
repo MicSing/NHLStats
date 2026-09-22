@@ -52,7 +52,8 @@ public class MatchService : IMatchService
     // NHL regular season is 82 games; any match numbered beyond that within a season is a playoff match.
     private const int RegularSeasonMatchCount = 82;
 
-    private static bool IsPlayoffMatchNumber(int matchNumber) => matchNumber > RegularSeasonMatchCount;
+    private static MatchPhase GetMatchPhase(int matchNumber) =>
+        matchNumber > RegularSeasonMatchCount ? MatchPhase.Playoff : MatchPhase.RegularSeason;
 
     private static DateTime? NormalizeMatchDate(DateTime? matchDate, CompletionType completionType) =>
         completionType == CompletionType.None ? null : matchDate;
@@ -61,7 +62,7 @@ public class MatchService : IMatchService
         m.Id, m.SeasonId, m.MatchNumber,
         m.HomeTeamId, m.HomeTeam?.Name, m.HomeTeam?.ShortName,
         m.AwayTeamId, m.AwayTeam?.Name, m.AwayTeam?.ShortName,
-        m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType, m.IsPlayoff);
+        m.HomeScore, m.AwayScore, m.MatchDate, m.CompletionType, m.Phase);
 
     private static FutureMatchDto ToFutureDto(Match m) => new(
         m.Id,
@@ -73,7 +74,7 @@ public class MatchService : IMatchService
         m.AwayTeamId,
         m.AwayTeam?.Name,
         m.Season?.HostedTeamId,
-        m.IsPlayoff,
+        m.Phase,
         m.UserMatches?.Select(um => new UserMatchInfoDto(um.UserId, um.User?.Name)) ?? Enumerable.Empty<UserMatchInfoDto>());
 
     public async Task<IEnumerable<FutureMatchDto>> GetFutureMatchesAsync(int count = 10, string? loginId = null)
@@ -134,7 +135,7 @@ public class MatchService : IMatchService
             AwayScore = 0,
             MatchDate = null,
             CompletionType = CompletionType.None,
-            IsPlayoff = IsPlayoffMatchNumber(matchNumber)
+            Phase = GetMatchPhase(matchNumber)
         };
         _db.Matches.Add(match);
         await _db.SaveChangesAsync();
@@ -285,7 +286,7 @@ public class MatchService : IMatchService
                 AwayScore = dto.AwayScore,
                 CompletionType = dto.CompletionType,
                 MatchDate = NormalizeMatchDate(dto.MatchDate, dto.CompletionType),
-                IsPlayoff = IsPlayoffMatchNumber(matchNumber)
+                Phase = GetMatchPhase(matchNumber)
             };
         }).ToList();
 
@@ -386,7 +387,7 @@ public class MatchService : IMatchService
                 AwayScore = 0,
                 MatchDate = null,
                 CompletionType = CompletionType.None,
-                IsPlayoff = true
+                Phase = MatchPhase.Playoff
             };
         }).ToList();
 

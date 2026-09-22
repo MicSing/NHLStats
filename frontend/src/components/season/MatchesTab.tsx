@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Plus, DownloadSimpleIcon, UsersThreeIcon } from '@phosphor-icons/react'
-import { CompletionType } from '../../types/match'
+import { CompletionType, MatchPhase } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
 import type { Team } from '../../types/team'
 import type { User } from '../../types/user'
@@ -257,7 +257,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
                                         >
                                             {m.homeTeamName} vs {m.awayTeamName}
                                         </Link>
-                                        {m.isPlayoff && (
+                                        {m.phase === MatchPhase.Playoff && (
                                             <span className="ml-2 text-xs px-2 py-0.5 rounded font-medium bg-secondary/20 text-secondary">
                                                 {t('admin.matches.playoff')}
                                             </span>

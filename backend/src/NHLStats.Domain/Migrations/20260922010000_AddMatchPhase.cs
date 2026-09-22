@@ -5,23 +5,23 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace NHLStats.Domain.Migrations
 {
     /// <inheritdoc />
-    public partial class AddMatchIsPlayoff : Migration
+    public partial class AddMatchPhase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IsPlayoff",
+            migrationBuilder.AddColumn<int>(
+                name: "Phase",
                 table: "Matches",
-                type: "bit",
+                type: "int",
                 nullable: false,
-                defaultValue: false);
+                defaultValue: 0);
 
             // Backfill: NHL regular seasons are 82 games, so any existing match numbered
-            // beyond that within its season is a playoff match.
+            // beyond that within its season is a playoff match. 1 = MatchPhase.Playoff.
             migrationBuilder.Sql(@"
                 UPDATE Matches
-                SET IsPlayoff = 1
+                SET Phase = 1
                 WHERE MatchNumber > 82;
             ");
         }
@@ -30,7 +30,7 @@ namespace NHLStats.Domain.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsPlayoff",
+                name: "Phase",
                 table: "Matches");
         }
     }
