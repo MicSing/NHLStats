@@ -153,7 +153,10 @@ public class AchievementService : IAchievementService
                 g.RosterPlayerId,
                 PlayerFirst   = g.RosterPlayer!.FirstName,
                 PlayerSurname = g.RosterPlayer.Surname,
-                Position      = g.RosterPlayer.Position,
+                Position      = g.RosterPlayer.SeasonRosterPlayers
+                    .Where(srp => srp.SeasonId == g.UserMatch.SeasonId)
+                    .Select(srp => srp.Position)
+                    .FirstOrDefault() ?? g.RosterPlayer.Position,
                 g.GoalType,
                 g.Count
             })
