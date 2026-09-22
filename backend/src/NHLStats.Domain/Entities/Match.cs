@@ -13,6 +13,7 @@ public class Match
     public CompletionType CompletionType { get; set; } = CompletionType.None;
     public MatchPhase Phase { get; set; } = MatchPhase.RegularSeason;
     public int? PlayoffRound { get; set; }
+    public long? NhlGameId { get; set; }
 
     public Season? Season { get; set; }
     public Team? HomeTeam { get; set; }

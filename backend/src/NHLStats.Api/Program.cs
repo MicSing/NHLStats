@@ -130,6 +130,12 @@ builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 builder.Services.AddScoped<ISeasonEventBroadcaster, SignalRSeasonEventBroadcaster>();
 builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvider>();
+builder.Services.AddScoped<IRealSeasonMatchImportService, RealSeasonMatchImportService>();
+builder.Services.AddHttpClient<INhlScheduleClient, NhlScheduleClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api-web.nhle.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 var sqlConn = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

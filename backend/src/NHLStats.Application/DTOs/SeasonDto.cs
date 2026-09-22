@@ -11,7 +11,9 @@ public record SeasonDto(
     DateTime StartedOn,
     SeasonStatus Status,
     int? ParentSeasonId,
-    LeagueType LeagueType);
+    LeagueType LeagueType,
+    int? NhlYear,
+    GamingConsole? Console);
 
 public record SeasonDetailDto(
     int Id,
@@ -22,7 +24,9 @@ public record SeasonDetailDto(
     SeasonStatus Status,
     int? ParentSeasonId,
     List<SeasonUserDto> Users,
-    LeagueType LeagueType);
+    LeagueType LeagueType,
+    int? NhlYear,
+    GamingConsole? Console);
 
 public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position);
 
@@ -36,7 +40,9 @@ public record CreateSeasonDto(
     DateTime StartedOn,
     SeasonStatus Status = SeasonStatus.Active,
     int? ParentSeasonId = null,
-    LeagueType LeagueType = LeagueType.NHL);
+    LeagueType LeagueType = LeagueType.NHL,
+    int? NhlYear = null,
+    GamingConsole? Console = null);
 
 public record UpdateSeasonDto(
     [Required] string Name,
@@ -44,4 +50,6 @@ public record UpdateSeasonDto(
     DateTime StartedOn,
     SeasonStatus Status = SeasonStatus.Active,
     int? ParentSeasonId = null,
-    LeagueType LeagueType = LeagueType.NHL);
+    LeagueType LeagueType = LeagueType.NHL,
+    int? NhlYear = null,
+    GamingConsole? Console = null);

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Plus, DownloadSimpleIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { CompletionType, MatchPhase } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
+import type { ImportRealSeasonMatchesResult } from '../../types/season'
 import type { Team } from '../../types/team'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
@@ -27,9 +28,10 @@ export interface MatchesTabProps {
     teams: Team[]
     seasonUsers: User[]
     hostedTeamId: number | null
+    nhlYear: number | null
 }
 
-export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId }: MatchesTabProps) {
+export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId, nhlYear }: MatchesTabProps) {
     const { t } = useTranslation()
     const toast = useToast()
     const [matches, setMatches] = useState<Match[]>([])
@@ -40,6 +42,8 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
     const [showPlayoffModal, setShowPlayoffModal] = useState(false)
     const [showExportModal, setShowExportModal] = useState(false)
     const [initializingAll, setInitializingAll] = useState(false)
+    const [importingRealSeason, setImportingRealSeason] = useState(false)
+    const [importResult, setImportResult] = useState<ImportRealSeasonMatchesResult | null>(null)
     const [createForm, setCreateForm] = useState<CreateMatchDto>({ homeTeamId: 0, awayTeamId: 0 })
     const [editForm, setEditForm] = useState<UpdateMatchDto>({
         homeTeamId: 0,
@@ -173,6 +177,30 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
         }
     }
 
+    const handleImportRealSeason = async () => {
+        if (nhlYear == null) return
+        if (!window.confirm(t('admin.seasons.importRealSeasonConfirm', { year: nhlYear }))) return
+        setImportingRealSeason(true)
+        try {
+            const result = await apiClient.post<ImportRealSeasonMatchesResult>(
+                `/api/seasons/${seasonId}/matches/import-real-season`,
+                {},
+            )
+            setImportResult(result)
+            toast.success(
+                t('admin.seasons.importRealSeasonSuccess', {
+                    imported: result.imported,
+                    skipped: result.skipped,
+                }),
+            )
+            await loadMatches(seasonId)
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setImportingRealSeason(false)
+        }
+    }
+
     const handleInitializeAll = async () => {
         if (!window.confirm(t('admin.matches.initializeAllConfirm'))) return
         setInitializingAll(true)
@@ -217,6 +245,13 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
                         label={t('admin.matches.createPlayoffSeries')}
                         onClick={() => setShowPlayoffModal(true)}
                     />
+                    {nhlYear != null && (
+                        <SecondaryButton
+                            label={t('admin.seasons.importRealSeason')}
+                            onClick={() => void handleImportRealSeason()}
+                            disabled={importingRealSeason}
+                        />
+                    )}
                     <PrimaryButton
                         icon={<Plus size={16} />}
                         label={t('admin.matches.newMatch')}
@@ -224,6 +259,21 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId 
                     />
                 </div>
             </div>
+
+            {importResult && (
+                <p className="text-sm text-success">
+                    {t('admin.seasons.importRealSeasonSuccess', {
+                        imported: importResult.imported,
+                        skipped: importResult.skipped,
+                    })}
+                    {importResult.errors.length > 0 && (
+                        <span className="text-warning">
+                            {' '}
+                            {t('admin.seasons.importRealSeasonErrors')} {importResult.errors.join('; ')}
+                        </span>
+                    )}
+                </p>
+            )}
 
             {loading ? (
                 <LoadingSpinner size="sm" inline />

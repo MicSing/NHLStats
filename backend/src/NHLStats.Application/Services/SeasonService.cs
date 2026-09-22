@@ -16,7 +16,7 @@ public class SeasonService : ISeasonService
         s.Id, s.Name, s.HostedTeamId,
         s.HostedTeam?.Name,
         s.StartedOn, s.Status, s.ParentSeasonId,
-        s.LeagueType);
+        s.LeagueType, s.NhlYear, s.Console);
 
     private static SeasonDetailDto ToDetailDto(Season s) => new(
         s.Id, s.Name, s.HostedTeamId,
@@ -25,7 +25,7 @@ public class SeasonService : ISeasonService
         s.SeasonUsers?
             .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position))
             .ToList() ?? [],
-        s.LeagueType);
+        s.LeagueType, s.NhlYear, s.Console);
 
     public async Task<IEnumerable<SeasonDto>> GetAllAsync() =>
         await _db.Seasons
@@ -54,7 +54,9 @@ public class SeasonService : ISeasonService
             StartedOn = dto.StartedOn,
             Status = dto.Status,
             ParentSeasonId = dto.ParentSeasonId,
-            LeagueType = dto.LeagueType
+            LeagueType = dto.LeagueType,
+            NhlYear = dto.NhlYear,
+            Console = dto.Console
         };
         _db.Seasons.Add(season);
         await _db.SaveChangesAsync();
@@ -72,6 +74,8 @@ public class SeasonService : ISeasonService
         season.Status = dto.Status;
         season.ParentSeasonId = dto.ParentSeasonId;
         season.LeagueType = dto.LeagueType;
+        season.NhlYear = dto.NhlYear;
+        season.Console = dto.Console;
         await _db.SaveChangesAsync();
         return ToDto(season);
     }

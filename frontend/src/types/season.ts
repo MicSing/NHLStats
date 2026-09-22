@@ -1,6 +1,7 @@
 import type { User } from './user'
 import type { LeagueTypeValue } from './team'
 import type { SeasonUserPositionCode } from './seasonUserPosition'
+import type { GamingConsoleValue } from './gamingConsole'
 
 export type SeasonStatus = 'Active' | 'Complete'
 
@@ -13,6 +14,8 @@ export interface Season {
     status: SeasonStatus
     parentSeasonId: number | null
     leagueType: LeagueTypeValue
+    nhlYear: number | null
+    console: GamingConsoleValue | null
 }
 
 export interface SeasonUser extends User {
@@ -30,6 +33,14 @@ export interface CreateSeasonDto {
     status?: string | null
     parentSeasonId?: number | null
     leagueType: LeagueTypeValue
+    nhlYear?: number | null
+    console?: GamingConsoleValue | null
 }
 
 export type UpdateSeasonDto = CreateSeasonDto
+
+export interface ImportRealSeasonMatchesResult {
+    imported: number
+    skipped: number
+    errors: string[]
+}
