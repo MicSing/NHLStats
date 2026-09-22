@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NHLStats.Application.Interfaces;
+using NHLStats.Domain.Entities;
 
 namespace NHLStats.Api.Controllers;
 
@@ -190,11 +191,12 @@ public class StatsController : ControllerBase
     /// <summary>
     /// GET /api/stats/season
     /// Returns total season stats including total goals, penalties, matches, earnings and top roster players for a season.
+    /// Optionally filtered by match phase via query parameter (RegularSeason or Playoff); omitted returns combined totals.
     /// </summary>
     [HttpGet("season")]
-    public async Task<IActionResult> GetSeasonTotals()
+    public async Task<IActionResult> GetSeasonTotals([FromQuery] MatchPhase? phase = null)
     {
-        var result = await _stats.GetSeasonTotalsAsync();
+        var result = await _stats.GetSeasonTotalsAsync(phase);
         return Ok(result);
     }
 

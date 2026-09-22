@@ -207,7 +207,15 @@
         "reEvaluateError": "Nepodarilo sa prehodnotiť stávky",
         "bet": "Stávka",
         "viewTickets": "Zobraziť tikety",
-        "tickets": "Tikety"
+        "tickets": "Tikety",
+        "tabOverview": "Prehľad",
+        "tabPlayoff": "Playoff",
+        "statsFilterAll": "Všetko",
+        "statsFilterSeason": "Sezóna",
+        "statsFilterPlayoff": "Playoff",
+        "playoffRound": "Kolo {{number}}",
+        "playoffNoRounds": "Zatiaľ nie sú žiadne playoff kolá na zobrazenie.",
+        "playoffWinner": "Víťaz"
     },
     "match": {
         "matchNotFound": "Zápas nebol nájdený",

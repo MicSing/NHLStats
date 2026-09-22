@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BellRinging } from '@phosphor-icons/react'
 import type { Season } from '../types/season'
-import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, SeasonTotals } from '../types/stats'
-import { CompletionType } from '../types/match'
+import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, SeasonTotals, SeasonalUserData } from '../types/stats'
+import { CompletionType, MatchPhase } from '../types/match'
 import type { Match } from '../types/match'
 import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../types/userMatch'
 import type { BetDto } from '../types/bet'
@@ -22,11 +22,13 @@ import { normalizeCompletionType } from '../components/season/seasonUtils'
 import type { MatchExpandDetail } from '../components/season/ExpandedMatchSection'
 import type { AggEntry } from '../components/season/AggregatedEntriesTable'
 import SeasonStatsTable from '../components/season/SeasonStatsTable'
+import type { StatsPhaseFilter } from '../components/season/SeasonStatsTable'
 import HostedTeamRecord from '../components/season/HostedTeamRecord'
 import AggregatedEntriesTable from '../components/season/AggregatedEntriesTable'
 import TopPlayersGrid from '../components/season/TopPlayersGrid'
 import WeeklyMatches from '../components/season/WeeklyMatches'
 import UpNextPanel from '../components/season/UpNextPanel'
+import PlayoffBracket from '../components/season/PlayoffBracket'
 import { Tab } from '../components/season/SeasonPrimitives'
 import type { LeagueTypeValue } from '../types/team'
 
@@ -42,8 +44,7 @@ export default function SeasonPage() {
 
     const [seasons, setSeasons] = useState<Season[]>([])
     const [weekGroups, setWeekGroups] = useState<WeekGroup[]>([])
-    const [stats, setStats] = useState<UserSeasonStats[]>([])
-    const [userTotals, setUserTotals] = useState<UserSeasonTotals[]>([])
+    const [userNameById, setUserNameById] = useState<Map<number, string>>(new Map())
     const [topScorer, setTopScorer] = useState<TopRosterPlayer | null>(null)
     const [topPenalized, setTopPenalized] = useState<TopRosterPlayer | null>(null)
     const [topPpScorer, setTopPpScorer] = useState<TopRosterPlayer | null>(null)
@@ -56,6 +57,10 @@ export default function SeasonPage() {
     const [reEvaluatingMatchId, setReEvaluatingMatchId] = useState<number | null>(null)
     const [aggregatedEntries, setAggregatedEntries] = useState<AggEntry[]>([])
     const [allBets, setAllBets] = useState<BetDto[]>([])
+    const [contentTab, setContentTab] = useState<'overview' | 'playoff'>('overview')
+    const [statsPhase, setStatsPhase] = useState<StatsPhaseFilter>('All')
+    const [seasonTotalsByPhase, setSeasonTotalsByPhase] = useState<Partial<Record<StatsPhaseFilter, SeasonTotals>>>({})
+    const [loadingPhaseStats, setLoadingPhaseStats] = useState(false)
     const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
         useSeasonEventNotifications(seasonId)
     const isDesktop = useIsDesktop()
@@ -63,7 +68,10 @@ export default function SeasonPage() {
     useEffect(() => {
         apiClient
             .get<SeasonTotals>('/api/stats/season')
-            .then(data => setSeasonTotals(data))
+            .then(data => {
+                setSeasonTotals(data)
+                setSeasonTotalsByPhase(prev => ({ ...prev, All: data }))
+            })
             .catch(err => console.error('Failed to fetch season totals:', err))
             .finally(() => setLoadingTotals(false))
         bettingService.listAll().then(setAllBets).catch(() => {})
@@ -86,12 +94,26 @@ export default function SeasonPage() {
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
+        setContentTab('overview')
+        setStatsPhase('All')
+    }, [seasonId])
+
+    useEffect(() => {
+        if (!seasonId || statsPhase === 'All' || seasonTotalsByPhase[statsPhase]) return
+        setLoadingPhaseStats(true)
+        apiClient
+            .get<SeasonTotals>(`/api/stats/season?phase=${statsPhase}`)
+            .then(data => setSeasonTotalsByPhase(prev => ({ ...prev, [statsPhase]: data })))
+            .catch(err => console.error('Failed to fetch phase-filtered season stats:', err))
+            .finally(() => setLoadingPhaseStats(false))
+    }, [seasonId, statsPhase, seasonTotalsByPhase])
+
+    useEffect(() => {
         if (!seasonId || !seasonTotals) return
 
         setLoadingData(true)
         setExpandedMatchId(null)
         setMatchDetailCache(new Map())
-        const seasonUserData = seasonTotals.usersData.find(s => s.seasonId === seasonId)
         const seasonTopPlayers = seasonTotals.topRosterPlayers.find(s => s.seasonId === seasonId)
 
         Promise.all([
@@ -102,22 +124,7 @@ export default function SeasonPage() {
         ])
             .then(([weeks, users, matches, aggData]) => {
                 const userNameById = new Map(users.map(u => [u.id, u.name]))
-
-                const seasonStats: UserSeasonStats[] = (seasonUserData?.usersData ?? []).map(ud => ({
-                    userId: ud.userId,
-                    userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
-                    totalPlus: ud.totalPlus,
-                    totalMinus: ud.totalMinus,
-                    earnings: ud.earnings,
-                    bettingBalance: ud.bettingBalance,
-                }))
-
-                const totals: UserSeasonTotals[] = (seasonUserData?.usersData ?? []).map(ud => ({
-                    userId: ud.userId,
-                    userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
-                    totalGoals: ud.totalGoals,
-                    totalPenalties: ud.totalPenalties,
-                }))
+                setUserNameById(userNameById)
 
                 const scorer: TopRosterPlayer | null = seasonTopPlayers?.topScorer
                     ? {
@@ -165,17 +172,38 @@ export default function SeasonPage() {
                 }))
 
                 setWeekGroups(weeks)
-                setStats(seasonStats)
                 setTopScorer(scorer)
                 setTopPenalized(penalized)
                 setTopPpScorer(ppScorer)
                 setTopShScorer(shScorer)
                 setAllMatches(matches)
-                setUserTotals(totals)
                 setAggregatedEntries(aggEntries)
             })
             .finally(() => setLoadingData(false))
     }, [seasonId, seasonTotals])
+
+    const activePhaseTotals = seasonTotalsByPhase[statsPhase]
+    const { stats, userTotals } = useMemo(() => {
+        if (!seasonId || !activePhaseTotals) return { stats: [] as UserSeasonStats[], userTotals: [] as UserSeasonTotals[] }
+        const seasonUserData: SeasonalUserData | undefined = activePhaseTotals.usersData.find(s => s.seasonId === seasonId)
+        const seasonStats: UserSeasonStats[] = (seasonUserData?.usersData ?? []).map(ud => ({
+            userId: ud.userId,
+            userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
+            totalPlus: ud.totalPlus,
+            totalMinus: ud.totalMinus,
+            earnings: ud.earnings,
+            bettingBalance: ud.bettingBalance,
+        }))
+        const totals: UserSeasonTotals[] = (seasonUserData?.usersData ?? []).map(ud => ({
+            userId: ud.userId,
+            userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
+            totalGoals: ud.totalGoals,
+            totalPenalties: ud.totalPenalties,
+        }))
+        return { stats: seasonStats, userTotals: totals }
+    }, [seasonId, activePhaseTotals, userNameById])
+
+    const hasPlayoffMatches = allMatches.some(m => m.phase === MatchPhase.Playoff)
 
     const fetchMatchDetail = async (matchId: number) => {
         if (!seasonId || matchDetailCache.has(matchId)) return
@@ -340,45 +368,75 @@ export default function SeasonPage() {
 
                 {seasonId && !loadingTotals && !loadingData && (
                     <>
-                        <SeasonStatsTable stats={stats} userTotals={userTotals} />
-                        <HostedTeamRecord
-                            currentSeason={currentSeason}
-                            hostedTeamShortName={hostedTeamShortName ?? null}
-                            hostedStats={hostedStats}
-                        />
-                        <AggregatedEntriesTable entries={aggregatedEntries} />
-                        <TopPlayersGrid
-                            topScorer={topScorer}
-                            topPenalized={topPenalized}
-                            topPpScorer={topPpScorer}
-                            topShScorer={topShScorer}
-                        />
-
-                        {/* Main 2-col grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                            <div className="lg:col-span-7 space-y-6">
-                                <WeeklyMatches
-                                    weekGroups={weekGroups}
-                                    allMatches={allMatches}
-                                    seasonId={seasonId}
-                                    seasons={seasons}
-                                    expandedMatchId={expandedMatchId}
-                                    matchDetailCache={matchDetailCache}
-                                    reEvaluatingMatchId={reEvaluatingMatchId}
-                                    isAdmin={isAdmin}
-                                    allBets={allBets}
-                                    onToggleExpand={(matchId) => { void toggleExpand(matchId) }}
-                                    onReEvaluateBets={(matchId) => { void reEvaluateBets(matchId) }}
-                                />
-                            </div>
-                            <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
-                                <UpNextPanel
-                                    allMatches={allMatches}
-                                    seasonId={seasonId}
-                                    seasons={seasons}
-                                />
-                            </div>
+                        <div className={loadingPhaseStats ? 'opacity-60 pointer-events-none transition-opacity' : 'transition-opacity'}>
+                            <SeasonStatsTable
+                                stats={stats}
+                                userTotals={userTotals}
+                                showPhaseSwitch={hasPlayoffMatches}
+                                phase={statsPhase}
+                                onPhaseChange={setStatsPhase}
+                            />
                         </div>
+
+                        {hasPlayoffMatches && (
+                            <div className="flex gap-2 sm:gap-6 border-b border-border mb-6 overflow-x-auto no-scrollbar">
+                                <Tab
+                                    label={t('season.tabOverview')}
+                                    active={contentTab === 'overview'}
+                                    onClick={() => setContentTab('overview')}
+                                />
+                                <Tab
+                                    label={t('season.tabPlayoff')}
+                                    active={contentTab === 'playoff'}
+                                    onClick={() => setContentTab('playoff')}
+                                />
+                            </div>
+                        )}
+
+                        {contentTab === 'playoff' && hasPlayoffMatches ? (
+                            <PlayoffBracket matches={allMatches} isDesktop={isDesktop} />
+                        ) : (
+                            <>
+                                <HostedTeamRecord
+                                    currentSeason={currentSeason}
+                                    hostedTeamShortName={hostedTeamShortName ?? null}
+                                    hostedStats={hostedStats}
+                                />
+                                <AggregatedEntriesTable entries={aggregatedEntries} />
+                                <TopPlayersGrid
+                                    topScorer={topScorer}
+                                    topPenalized={topPenalized}
+                                    topPpScorer={topPpScorer}
+                                    topShScorer={topShScorer}
+                                />
+
+                                {/* Main 2-col grid */}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                    <div className="lg:col-span-7 space-y-6">
+                                        <WeeklyMatches
+                                            weekGroups={weekGroups}
+                                            allMatches={allMatches}
+                                            seasonId={seasonId}
+                                            seasons={seasons}
+                                            expandedMatchId={expandedMatchId}
+                                            matchDetailCache={matchDetailCache}
+                                            reEvaluatingMatchId={reEvaluatingMatchId}
+                                            isAdmin={isAdmin}
+                                            allBets={allBets}
+                                            onToggleExpand={(matchId) => { void toggleExpand(matchId) }}
+                                            onReEvaluateBets={(matchId) => { void reEvaluateBets(matchId) }}
+                                        />
+                                    </div>
+                                    <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
+                                        <UpNextPanel
+                                            allMatches={allMatches}
+                                            seasonId={seasonId}
+                                            seasons={seasons}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </>
                 )}
             </div>
