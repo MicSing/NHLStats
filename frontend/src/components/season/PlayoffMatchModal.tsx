@@ -1,8 +1,17 @@
 import { useEffect, useState, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { HockeyIcon, WarningOctagonIcon, MinusCircleIcon, PlusCircleIcon, XIcon, ArrowSquareOutIcon } from '@phosphor-icons/react'
-import type { Match } from '../../types/match'
+import {
+    HockeyIcon,
+    WarningOctagonIcon,
+    MinusCircleIcon,
+    PlusCircleIcon,
+    XIcon,
+    ArrowSquareOutIcon,
+    ListBulletsIcon,
+    SquaresFourIcon,
+} from '@phosphor-icons/react'
+import type { Match, MatchEvent } from '../../types/match'
 import { CompletionType } from '../../types/match'
 import type { UserMatch, UserMatchGoal, UserMatchPenalty, UserMatchPoint } from '../../types/userMatch'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
@@ -10,12 +19,14 @@ import apiClient from '../../services/apiClient'
 import CompletionBadge from '../CompletionBadge'
 import LoadingSpinner from '../LoadingSpinner'
 import { normalizeCompletionType } from './seasonUtils'
+import PlayoffEventTimeline from './PlayoffEventTimeline'
 
 interface Props {
     match: Match | null
     seasonId: number
     roundName?: string
     gameLabel?: string
+    hostedTeamId?: number | null
     onClose: () => void
 }
 
@@ -29,10 +40,12 @@ function isDecisive(match: Match): boolean {
     return ct === CompletionType.RegularTime || ct === CompletionType.Overtime || ct === CompletionType.Shootout
 }
 
-export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, onClose }: Props) {
+export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, hostedTeamId, onClose }: Props) {
     const { t } = useTranslation()
     const titleId = useId()
     const [loading, setLoading] = useState(false)
+    const [events, setEvents] = useState<MatchEvent[]>([])
+    const [activeTab, setActiveTab] = useState<'timeline' | 'stats'>('timeline')
     const [goals, setGoals] = useState<EnrichedItem<UserMatchGoal>[]>([])
     const [penalties, setPenalties] = useState<EnrichedItem<UserMatchPenalty>[]>([])
     const [plusPoints, setPlusPoints] = useState<EnrichedItem<UserMatchPoint>[]>([])
@@ -53,15 +66,25 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
 
         let cancelled = false
         setLoading(true)
+        setEvents([])
         setGoals([])
         setPenalties([])
         setPlusPoints([])
         setMinusPoints([])
 
-        apiClient
-            .get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`)
-            .then(async (userMatches) => {
+        Promise.all([
+            apiClient.get<MatchEvent[]>(`/api/matches/${match.id}/events`).catch(() => []),
+            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`).catch(() => []),
+        ])
+            .then(async ([matchEvents, userMatches]) => {
                 if (cancelled) return
+
+                setEvents(matchEvents)
+                if (matchEvents.length > 0) {
+                    setActiveTab('timeline')
+                } else {
+                    setActiveTab('stats')
+                }
 
                 const allGoals: EnrichedItem<UserMatchGoal>[] = []
                 const allPenalties: EnrichedItem<UserMatchPenalty>[] = []
@@ -225,12 +248,51 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     </div>
                 </div>
 
-                {/* 4 Columns Section: Góly, Fauly, Mínus body, Plus body */}
+                {/* Tab Switcher (when events exist) */}
+                {events.length > 0 && (
+                    <div className="flex items-center gap-1 sm:gap-2 px-5 pt-2.5 pb-0 border-b border-border bg-bg/40">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('timeline')}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
+                                activeTab === 'timeline'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-text-muted hover:text-text'
+                            }`}
+                        >
+                            <ListBulletsIcon size={16} weight={activeTab === 'timeline' ? 'bold' : 'regular'} />
+                            <span>{t('season.playoffTimeline')}</span>
+                            <span className="text-[10px] font-mono bg-bg text-text-muted px-1.5 py-0.2 rounded border border-border">
+                                {events.length}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('stats')}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
+                                activeTab === 'stats'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-text-muted hover:text-text'
+                            }`}
+                        >
+                            <SquaresFourIcon size={16} weight={activeTab === 'stats' ? 'bold' : 'regular'} />
+                            <span>{t('season.playoffStatsSummary')}</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Main Content: Timeline or 4 Columns */}
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                     {loading ? (
                         <div className="py-8">
                             <LoadingSpinner />
                         </div>
+                    ) : activeTab === 'timeline' && events.length > 0 ? (
+                        <PlayoffEventTimeline
+                            events={events}
+                            match={match}
+                            hostedTeamId={hostedTeamId}
+                        />
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Column 1: Góly (Goals) */}

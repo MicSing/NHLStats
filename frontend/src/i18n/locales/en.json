@@ -239,7 +239,10 @@
         "playoffGoToMatch": "Open Match Page",
         "playoffSeriesScore": "Series: {{teamA}} {{scoreA}} – {{scoreB}} {{teamB}}",
         "playoffBestOf7": "Best of 7",
-        "playoffBestOf1": "Best of 1"
+        "playoffBestOf1": "Best of 1",
+        "playoffTimeline": "Timeline",
+        "playoffStatsSummary": "Stats Summary",
+        "playoffNoEventsNotice": "No event timeline recorded for this match."
     },
     "match": {
         "matchNotFound": "Match not found",

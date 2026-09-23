@@ -29,6 +29,7 @@ interface Props {
     seasonId?: number
     leagueType?: LeagueTypeValue
     isDesktop?: boolean
+    hostedTeamId?: number | null
 }
 
 function isDecisive(match: Match): boolean {
@@ -114,6 +115,7 @@ export default function PlayoffBracket({
     matches,
     seasonId,
     leagueType = 'NHL',
+    hostedTeamId,
 }: Props) {
     const { t } = useTranslation()
 
@@ -410,6 +412,7 @@ export default function PlayoffBracket({
                     seasonId={currentSeasonId}
                     roundName={activeSlot.name}
                     gameLabel={modalGameLabel}
+                    hostedTeamId={hostedTeamId}
                     onClose={() => setModalMatch(null)}
                 />
             )}

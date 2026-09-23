@@ -399,6 +399,7 @@ export default function SeasonPage() {
                                 seasonId={seasonId}
                                 leagueType={activeLeague}
                                 isDesktop={isDesktop}
+                                hostedTeamId={currentSeason?.hostedTeamId ?? null}
                             />
                         ) : (
                             <>

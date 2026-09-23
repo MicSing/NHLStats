@@ -239,7 +239,10 @@
         "playoffGoToMatch": "Prejsť na stránku zápasu",
         "playoffSeriesScore": "Séria: {{teamA}} {{scoreA}} – {{scoreB}} {{teamB}}",
         "playoffBestOf7": "Na 4 víťazné zápasy",
-        "playoffBestOf1": "Na 1 víťazný zápas"
+        "playoffBestOf1": "Na 1 víťazný zápas",
+        "playoffTimeline": "Časová os",
+        "playoffStatsSummary": "Súhrn štatistík",
+        "playoffNoEventsNotice": "Pre tento zápas nie je zaznamenaná časová os."
     },
     "match": {
         "matchNotFound": "Zápas nebol nájdený",
