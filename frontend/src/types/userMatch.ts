@@ -1,6 +1,6 @@
 import type { PointType } from './pointReason'
 
-export type GoalType = 'Regular' | 'PowerPlay' | 'ShortHanded'
+export type GoalType = 'Regular' | 'PowerPlay' | 'ShortHanded' | 'Shootout'
 
 export interface UserMatch {
     id: number

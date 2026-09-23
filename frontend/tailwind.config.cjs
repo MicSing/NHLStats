@@ -1,3 +1,12 @@
+function withOpacity(variableName) {
+    return ({ opacityValue }) => {
+        if (opacityValue !== undefined) {
+            return `color-mix(in srgb, var(${variableName}) calc(100% * ${opacityValue}), transparent)`
+        }
+        return `var(${variableName})`
+    }
+}
+
 module.exports = {
     content: [
         './index.html',
@@ -9,26 +18,26 @@ module.exports = {
             colors: {
                 // ── Brand palette ──────────────────────────────────────────
                 primary: {
-                    DEFAULT: 'var(--color-primary)',
-                    hover: 'var(--color-primary-hover)',
+                    DEFAULT: withOpacity('--color-primary'),
+                    hover: withOpacity('--color-primary-hover'),
                 },
                 secondary: {
-                    DEFAULT: 'var(--color-secondary)',
-                    hover: 'var(--color-secondary-hover)',
+                    DEFAULT: withOpacity('--color-secondary'),
+                    hover: withOpacity('--color-secondary-hover'),
                 },
                 // ── Surface tokens ─────────────────────────────────────────
-                bg: 'var(--color-bg)',
-                surface: 'var(--color-surface)',
-                border: 'var(--color-border)',
+                bg: withOpacity('--color-bg'),
+                surface: withOpacity('--color-surface'),
+                border: withOpacity('--color-border'),
                 // ── Text tokens ────────────────────────────────────────────
                 text: {
-                    DEFAULT: 'var(--color-text)',
-                    muted: 'var(--color-text-muted)',
+                    DEFAULT: withOpacity('--color-text'),
+                    muted: withOpacity('--color-text-muted'),
                 },
                 // ── Semantic status ────────────────────────────────────────
-                success: 'var(--color-success)',
-                warning: 'var(--color-warning)',
-                danger: 'var(--color-danger)',
+                success: withOpacity('--color-success'),
+                warning: withOpacity('--color-warning'),
+                danger: withOpacity('--color-danger'),
             },
             fontFamily: {
                 sans: ['Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],

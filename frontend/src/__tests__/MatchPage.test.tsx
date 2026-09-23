@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
 import { ToastProvider } from '../context/ToastContext'
+import apiClient from '../services/apiClient'
 import MatchPage from '../pages/MatchPage'
 
 function renderMatchPage({ authenticated = true } = {}) {
@@ -40,9 +41,9 @@ describe('MatchPage', () => {
         // Team names are always shown in the header
         expect(await screen.findByText('Boston Bruins')).toBeInTheDocument()
         expect(screen.getByText('Edmonton Oilers')).toBeInTheDocument()
-        // In auth mode, score is rendered as a label with +/− buttons
-        expect(screen.getByLabelText(/increase home score/i)).toBeInTheDocument()
-        expect(screen.getByLabelText(/increase away score/i)).toBeInTheDocument()
+        // Score is displayed directly
+        expect(screen.getByText('3')).toBeInTheDocument()
+        expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     })
 
     test('renders all user entries for match', async () => {
@@ -70,7 +71,7 @@ describe('MatchPage', () => {
     test('goal quick-action button is visible when authenticated', async () => {
         renderMatchPage()
         expect(await screen.findByText('Player One')).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /^goal$/i })).toBeInTheDocument()
+        expect(screen.getAllByRole('button', { name: /^goal$/i }).length).toBeGreaterThan(0)
     })
 
     test('penalty quick-action button is visible when authenticated', async () => {
@@ -175,5 +176,28 @@ describe('MatchPage', () => {
         const shBtn = screen.getByRole('button', { name: /^sh$/i })
         await user.click(shBtn)
         expect(await screen.findByText('Add Shorthanded Goal')).toBeInTheDocument()
+    })
+
+    test('clicking Penalty negative point chip triggers opponent goal event', async () => {
+        const user = userEvent.setup()
+        const postSpy = vi.spyOn(apiClient, 'post')
+        renderMatchPage()
+        await screen.findByText('Player One')
+
+        // Find the Negative section and its Penalty chip
+        const negativeLabel = screen.getByText('Negative')
+        const negativeContainer = negativeLabel.closest('.bg-surface\\/50') || negativeLabel.parentElement?.parentElement
+        const penaltyChip = within(negativeContainer as HTMLElement).getByRole('button', { name: /^penalty$/i })
+        await user.click(penaltyChip)
+
+        expect(postSpy).toHaveBeenCalledWith(
+            expect.stringContaining('/api/usermatches/'),
+            expect.objectContaining({ pointReasonId: 1, count: 1 })
+        )
+        expect(postSpy).toHaveBeenCalledWith(
+            expect.stringContaining('/api/matches/10/events'),
+            expect.objectContaining({ eventType: 'Goal', isOpponent: true })
+        )
+        postSpy.mockRestore()
     })
 })

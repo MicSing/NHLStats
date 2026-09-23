@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowCounterClockwise, UserPlus } from '@phosphor-icons/react'
-import type { Match } from '../types/match'
+import type { Match, MatchEvent } from '../types/match'
+import { CompletionType } from '../types/match'
 import type {
     UserMatch,
     UserMatchPoint,
@@ -18,6 +19,8 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import PageLayout from '../components/PageLayout'
 import { useTranslation } from 'react-i18next'
 import MatchHeaderEditor from '../components/MatchHeaderEditor'
+import MatchQuickActionsBar from '../components/MatchQuickActionsBar'
+import MatchEventTimeline from '../components/MatchEventTimeline'
 import UserMatchCard from '../components/UserMatchCard'
 
 interface UserMatchData {
@@ -25,6 +28,24 @@ interface UserMatchData {
     points: UserMatchPoint[]
     goals: UserMatchGoal[]
     penalties: UserMatchPenalty[]
+}
+
+function getCurrentPeriod(m: Match, evts: MatchEvent[]): string {
+    const raw = (m.completionType as unknown) as string | number | null | undefined
+    if (
+        raw === CompletionType.RegularTime || raw === 'RegularTime' || raw === 'REG' || raw === 'reg' ||
+        raw === CompletionType.Overtime || raw === 'Overtime' || raw === 'OT' || raw === 'ot' ||
+        raw === CompletionType.Shootout || raw === 'Shootout' || raw === 'SO' || raw === 'so'
+    ) {
+        return 'Finished'
+    }
+    if (raw === CompletionType.None || raw === 'None' || raw === 'none' || raw === null || raw === undefined) {
+        return 'None'
+    }
+    const periodEvents = evts.filter((e) => e.eventType === 'PeriodChange')
+    if (periodEvents.length === 0) return 'P1'
+    const last = periodEvents[periodEvents.length - 1]
+    return last.eventSubtype ?? 'P1'
 }
 
 export default function MatchPage() {
@@ -35,22 +56,24 @@ export default function MatchPage() {
 
     const [match, setMatch] = useState<Match | null>(null)
     const [season, setSeason] = useState<Season | null>(null)
+    const [events, setEvents] = useState<MatchEvent[]>([])
     const [userMatchData, setUserMatchData] = useState<UserMatchData[]>([])
     const [roster, setRoster] = useState<RosterPlayer[]>([])
     const [pointReasons, setPointReasons] = useState<PointReason[]>([])
     const [loading, setLoading] = useState(true)
     const [resetting, setResetting] = useState(false)
 
-
     const loadUserMatchData = async (userMatchId: number) => {
         if (!seasonId || !matchId) return
-        const [points, goals, penalties, updatedMatch] = await Promise.all([
+        const [points, goals, penalties, updatedMatch, updatedEvents] = await Promise.all([
             apiClient.get<UserMatchPoint[]>(`/api/usermatches/${userMatchId}/points`),
             apiClient.get<UserMatchGoal[]>(`/api/usermatches/${userMatchId}/goals`),
             apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${userMatchId}/penalties`),
             apiClient.get<Match>(`/api/seasons/${seasonId}/matches/${matchId}`),
+            apiClient.get<MatchEvent[]>(`/api/matches/${matchId}/events`),
         ])
         setMatch(updatedMatch)
+        setEvents(updatedEvents)
         setUserMatchData((prev) =>
             prev.map((d) =>
                 d.userMatch.id === userMatchId ? { ...d, points, goals, penalties } : d,
@@ -61,7 +84,7 @@ export default function MatchPage() {
     const loadAll = async () => {
         if (!seasonId || !matchId) return
         try {
-            const [matchData, seasonData, userMatches, rosterData, reasons] = await Promise.all([
+            const [matchData, seasonData, userMatches, rosterData, reasons, eventsData] = await Promise.all([
                 apiClient.get<Match>(`/api/seasons/${seasonId}/matches/${matchId}`),
                 apiClient.get<Season>(`/api/seasons/${seasonId}`),
                 apiClient.get<UserMatch[]>(
@@ -69,12 +92,14 @@ export default function MatchPage() {
                 ),
                 apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`),
                 apiClient.get<PointReason[]>('/api/pointreasons'),
+                apiClient.get<MatchEvent[]>(`/api/matches/${matchId}/events`),
             ])
 
             setMatch(matchData)
             setSeason(seasonData)
             setRoster(rosterData)
             setPointReasons(reasons)
+            setEvents(eventsData)
 
             const enriched = await Promise.all(
                 userMatches.map(async (um) => {
@@ -133,6 +158,8 @@ export default function MatchPage() {
                 awayScore,
                 completionType: match.completionType,
                 matchDate: match.matchDate,
+                phase: match.phase,
+                playoffRound: match.playoffRound,
             },
         )
         setMatch(updated)
@@ -145,18 +172,88 @@ export default function MatchPage() {
         } else {
             await saveMatchScore(match.homeScore, match.awayScore + 1)
         }
+        await loadAll()
     }
 
-    const EXCLUDED_NEG_REASON_IDS = [2, 3, 4, 5, 19, 20]
+    const handleGoalRemoved = async () => {
+        if (!match) return
+        if (isHomeHosted(match)) {
+            await saveMatchScore(Math.max(0, match.homeScore - 1), match.awayScore)
+        } else {
+            await saveMatchScore(match.homeScore, Math.max(0, match.awayScore - 1))
+        }
+        await loadAll()
+    }
+
+    const handleDefensiveBlunder = async () => {
+        if (!matchId) return
+        await apiClient.post(`/api/matches/${matchId}/events`, {
+            eventType: 'Goal',
+            isOpponent: true,
+        })
+        await loadAll()
+    }
+
+    const handleTransitionPeriod = async (targetPeriod: string) => {
+        if (!matchId) return
+        await apiClient.post(`/api/matches/${matchId}/events`, {
+            eventType: 'PeriodChange',
+            eventSubtype: targetPeriod,
+        })
+        await loadAll()
+    }
+
+    const handleEndMatch = async (subtype: 'REG' | 'OT') => {
+        if (!matchId) return
+        await apiClient.post(`/api/matches/${matchId}/events`, {
+            eventType: 'MatchEnd',
+            eventSubtype: subtype,
+        })
+        await loadAll()
+        toast.success(t('match.endMatchSuccess', 'Zápas bol úspešne ukončený'))
+    }
+
+    const handleEndShootout = async () => {
+        if (!matchId) return
+        try {
+            await apiClient.post(`/api/matches/${matchId}/events/end-shootout`, {})
+            await loadAll()
+            toast.success(t('match.endMatchSuccess', 'Zápas bol úspešne ukončený'))
+        } catch (err: unknown) {
+            const apiError = (err as { response?: { data?: { error?: string; message?: string } } })?.response?.data
+            const msg = apiError?.error || apiError?.message || t('match.shootoutTieError')
+            toast.error(msg)
+        }
+    }
+
+    const handleReopenMatch = async () => {
+        if (!seasonId || !matchId) return
+        const endEvent = [...events].reverse().find((e) => e.eventType === 'MatchEnd')
+        if (endEvent) {
+            await apiClient.delete(`/api/matches/${matchId}/events/${endEvent.id}`)
+        } else if (match) {
+            let hs = match.homeScore
+            let as_ = match.awayScore
+            if (match.completionType === CompletionType.Shootout) {
+                const minScore = Math.min(hs, as_)
+                hs = minScore
+                as_ = minScore
+            }
+            await apiClient.put(`/api/seasons/${seasonId}/matches/${matchId}`, {
+                ...match,
+                homeScore: hs,
+                awayScore: as_,
+                completionType: CompletionType.InProgress,
+            })
+        }
+        await loadAll()
+        toast.success(t('match.reopenedSuccess', 'Zápas bol opäť otvorený'))
+    }
+
     const NEUTRAL_TO_NEGATIVE_MAP: Record<number, number> = { 21: 19, 22: 20 }
 
-    const handleNegativePointAdded = async (pointReasonId: number) => {
-        if (!match || EXCLUDED_NEG_REASON_IDS.includes(pointReasonId)) return
-        if (isHomeHosted(match)) {
-            await saveMatchScore(match.homeScore, match.awayScore + 1)
-        } else {
-            await saveMatchScore(match.homeScore + 1, match.awayScore)
-        }
+    const handleNegativePointAdded = async (_pointReasonId: number) => {
+        // Goal against events are handled strictly via handleDefensiveBlunder
     }
 
     const handleNeutralPointAdded = async (userMatchId: number, pointReasonId: number) => {
@@ -184,8 +281,6 @@ export default function MatchPage() {
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
-
-
     if (loading)
         return (
             <PageLayout>
@@ -198,6 +293,8 @@ export default function MatchPage() {
                 <p className="text-text-muted">{t('match.matchNotFound')}</p>
             </PageLayout>
         )
+
+    const currentPeriod = getCurrentPeriod(match, events)
 
     return (
         <PageLayout>
@@ -215,7 +312,24 @@ export default function MatchPage() {
                     seasonId={seasonId!}
                     match={match}
                     isAuth={!!token}
+                    currentPeriod={currentPeriod}
                     onSaved={setMatch}
+                    onTransitionPeriod={handleTransitionPeriod}
+                    onEndMatch={handleEndMatch}
+                    onEndShootout={handleEndShootout}
+                    onReopenMatch={handleReopenMatch}
+                />
+
+                {/* Quick actions for teams */}
+                <MatchQuickActionsBar
+                    matchId={Number(matchId)}
+                    isHomeHosted={isHomeHosted(match)}
+                    homeTeamName={match.homeTeamName}
+                    awayTeamName={match.awayTeamName}
+                    isShootout={currentPeriod === 'SO'}
+                    isMatchFinished={currentPeriod === 'Finished'}
+                    isAuth={!!token}
+                    onEventAdded={loadAll}
                 />
 
                 {/* Action bar */}
@@ -276,8 +390,10 @@ export default function MatchPage() {
                             }}
                             onDeleted={() => void loadAll()}
                             onGoalAdded={handleGoalAdded}
+                            onGoalRemoved={handleGoalRemoved}
                             onNegativePointAdded={handleNegativePointAdded}
                             onNeutralPointAdded={handleNeutralPointAdded}
+                            onDefensiveBlunder={handleDefensiveBlunder}
                         />
                     ))}
 
@@ -285,6 +401,17 @@ export default function MatchPage() {
                         <p className="text-text-muted mt-4">{t('match.noUserEntries')}</p>
                     )}
                 </div>
+
+                {/* Match Event Timeline */}
+                <MatchEventTimeline
+                    matchId={Number(matchId)}
+                    events={events}
+                    isAuth={!!token}
+                    homeTeamName={match.homeTeamName}
+                    awayTeamName={match.awayTeamName}
+                    isHomeHosted={isHomeHosted(match)}
+                    onEventsChanged={loadAll}
+                />
             </div>
         </PageLayout>
     )

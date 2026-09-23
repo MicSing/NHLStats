@@ -120,6 +120,20 @@ public class UserMatchService : IUserMatchService
         if (um == null) return false;
         if (_betService != null)
             await _betService.CancelBetsForPlayerInMatchAsync(um.MatchId, um.UserId);
+
+        var pointIds = await _db.UserMatchPoints.Where(p => p.UserMatchId == id).Select(p => p.Id).ToListAsync();
+        var goalIds = await _db.UserMatchGoals.Where(g => g.UserMatchId == id).Select(g => g.Id).ToListAsync();
+        var penaltyIds = await _db.UserMatchPenalties.Where(p => p.UserMatchId == id).Select(p => p.Id).ToListAsync();
+
+        var eventsToRemove = await _db.MatchEvents
+            .Where(e => (e.UserMatchPointId.HasValue && pointIds.Contains(e.UserMatchPointId.Value)) ||
+                        (e.UserMatchGoalId.HasValue && goalIds.Contains(e.UserMatchGoalId.Value)) ||
+                        (e.UserMatchPenaltyId.HasValue && penaltyIds.Contains(e.UserMatchPenaltyId.Value)))
+            .ToListAsync();
+
+        if (eventsToRemove.Any())
+            _db.MatchEvents.RemoveRange(eventsToRemove);
+
         _db.UserMatches.Remove(um);
         await _db.SaveChangesAsync();
         return true;
@@ -213,10 +227,12 @@ public class UserMatchService : IUserMatchService
         var points = await _db.UserMatchPoints.Where(p => userMatchIds.Contains(p.UserMatchId)).ToListAsync();
         var goals = await _db.UserMatchGoals.Where(g => userMatchIds.Contains(g.UserMatchId)).ToListAsync();
         var penalties = await _db.UserMatchPenalties.Where(p => userMatchIds.Contains(p.UserMatchId)).ToListAsync();
+        var events = await _db.MatchEvents.Where(e => e.MatchId == matchId).ToListAsync();
 
         _db.UserMatchPoints.RemoveRange(points);
         _db.UserMatchGoals.RemoveRange(goals);
         _db.UserMatchPenalties.RemoveRange(penalties);
+        _db.MatchEvents.RemoveRange(events);
 
         await _db.SaveChangesAsync();
     }
@@ -357,6 +373,22 @@ public class UserMatchService : IUserMatchService
             .Include(p => p.PointReason)
             .FirstAsync(p => p.Id == point.Id);
 
+        var maxOrder = await _db.MatchEvents
+            .Where(e => e.MatchId == userMatch.MatchId)
+            .Select(e => (int?)e.OrderIndex)
+            .MaxAsync() ?? 0;
+
+        _db.MatchEvents.Add(new MatchEvent
+        {
+            MatchId = userMatch.MatchId,
+            OrderIndex = maxOrder + 1,
+            EventType = MatchEventType.Point,
+            IsOpponent = false,
+            UserMatchPointId = point.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
         await TryBroadcastAsync(new SeasonEventNotificationDto(
             SeasonId: userMatch.SeasonId,
             MatchId: userMatch.MatchId,
@@ -407,6 +439,9 @@ public class UserMatchService : IUserMatchService
             .Include(p => p.PointReason)
             .FirstOrDefaultAsync(p => p.Id == pointId && p.UserMatchId == userMatchId);
         if (point == null) return false;
+
+        var evt = await _db.MatchEvents.FirstOrDefaultAsync(e => e.UserMatchPointId == pointId);
+        if (evt != null) _db.MatchEvents.Remove(evt);
 
         _db.UserMatchPoints.Remove(point);
         await _db.SaveChangesAsync();
@@ -501,6 +536,23 @@ public class UserMatchService : IUserMatchService
             .Include(g => g.RosterPlayer)
             .FirstAsync(g => g.Id == goal.Id);
 
+        var maxOrder = await _db.MatchEvents
+            .Where(e => e.MatchId == userMatch.MatchId)
+            .Select(e => (int?)e.OrderIndex)
+            .MaxAsync() ?? 0;
+
+        _db.MatchEvents.Add(new MatchEvent
+        {
+            MatchId = userMatch.MatchId,
+            OrderIndex = maxOrder + 1,
+            EventType = dto.GoalType == GoalType.Shootout ? MatchEventType.ShootoutGoal : MatchEventType.Goal,
+            IsOpponent = false,
+            EventSubtype = dto.GoalType.ToString(),
+            UserMatchGoalId = goal.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
         await TryBroadcastAsync(new SeasonEventNotificationDto(
             SeasonId: userMatch.SeasonId,
             MatchId: userMatch.MatchId,
@@ -554,6 +606,9 @@ public class UserMatchService : IUserMatchService
             .FirstOrDefaultAsync(g => g.Id == goalId && g.UserMatchId == userMatchId);
         if (goal == null) return false;
 
+        var evt = await _db.MatchEvents.FirstOrDefaultAsync(e => e.UserMatchGoalId == goalId);
+        if (evt != null) _db.MatchEvents.Remove(evt);
+
         _db.UserMatchGoals.Remove(goal);
         await _db.SaveChangesAsync();
         return true;
@@ -598,6 +653,22 @@ public class UserMatchService : IUserMatchService
         var loaded = await _db.UserMatchPenalties
             .Include(p => p.RosterPlayer)
             .FirstAsync(p => p.Id == penalty.Id);
+
+        var maxOrder = await _db.MatchEvents
+            .Where(e => e.MatchId == userMatch.MatchId)
+            .Select(e => (int?)e.OrderIndex)
+            .MaxAsync() ?? 0;
+
+        _db.MatchEvents.Add(new MatchEvent
+        {
+            MatchId = userMatch.MatchId,
+            OrderIndex = maxOrder + 1,
+            EventType = MatchEventType.Penalty,
+            IsOpponent = false,
+            UserMatchPenaltyId = penalty.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
 
         await TryBroadcastAsync(new SeasonEventNotificationDto(
             SeasonId: userMatch.SeasonId,
@@ -650,6 +721,9 @@ public class UserMatchService : IUserMatchService
         var penalty = await _db.UserMatchPenalties
             .FirstOrDefaultAsync(p => p.Id == penaltyId && p.UserMatchId == userMatchId);
         if (penalty == null) return false;
+
+        var evt = await _db.MatchEvents.FirstOrDefaultAsync(e => e.UserMatchPenaltyId == penaltyId);
+        if (evt != null) _db.MatchEvents.Remove(evt);
 
         _db.UserMatchPenalties.Remove(penalty);
         await _db.SaveChangesAsync();

@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace NHLStats.Domain.Entities;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CompletionType
 {
     None = 0,

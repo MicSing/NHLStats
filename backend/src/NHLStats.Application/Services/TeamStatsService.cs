@@ -59,7 +59,7 @@ public class TeamStatsService : ITeamStatsService
         }
 
         var goalRows = await _db.UserMatchGoals
-            .Where(g => matchIds.Contains(g.UserMatch!.MatchId) && g.RosterPlayer!.TeamId == hostedTeamId)
+            .Where(g => matchIds.Contains(g.UserMatch!.MatchId) && g.RosterPlayer!.TeamId == hostedTeamId && g.GoalType != GoalType.Shootout)
             .Select(g => new { g.UserMatch!.UserId, g.RosterPlayerId, g.Count })
             .ToListAsync();
 

@@ -1,27 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarBlankIcon } from '@phosphor-icons/react'
+import {
+    CalendarBlankIcon,
+    PlayIcon,
+    CaretRightIcon,
+    CheckCircleIcon,
+    ArrowCounterClockwiseIcon,
+} from '@phosphor-icons/react'
 import type { Match, UpdateMatchDto } from '../types/match'
 import { CompletionType } from '../types/match'
 import apiClient from '../services/apiClient'
 import { useTranslation } from 'react-i18next'
 
-function isFinishedType(t: CompletionType): boolean {
-    return t === CompletionType.RegularTime || t === CompletionType.Overtime || t === CompletionType.Shootout
-}
-
-function getAllowedTransitions(current: CompletionType): CompletionType[] {
-    switch (current) {
-        case CompletionType.None:       return [CompletionType.InProgress]
-        case CompletionType.InProgress: return [CompletionType.RegularTime, CompletionType.Overtime, CompletionType.Shootout]
-        default:                        return []
+function isFinishedType(t: CompletionType | string): boolean {
+    if (typeof t === 'string') {
+        const s = t.toLowerCase()
+        return s === 'regulartime' || s === 'reg' || s === 'overtime' || s === 'ot' || s === 'shootout' || s === 'so'
     }
-}
-
-interface Props {
-    seasonId: string
-    match: Match
-    isAuth: boolean
-    onSaved: (updated: Match) => void
+    return t === CompletionType.RegularTime || t === CompletionType.Overtime || t === CompletionType.Shootout
 }
 
 function normalizeCompletionType(value: CompletionType | string | null | undefined): CompletionType {
@@ -50,8 +45,9 @@ function normalizeCompletionType(value: CompletionType | string | null | undefin
     }
 }
 
-function completionTypeLabel(ct: CompletionType, t: (key: string) => string): string {
-    switch (ct) {
+function completionTypeLabel(ct: CompletionType | string, t: (key: string) => string): string {
+    const norm = normalizeCompletionType(ct)
+    switch (norm) {
         case CompletionType.None: return t('match.notPlayed')
         case CompletionType.RegularTime: return t('match.reg')
         case CompletionType.Overtime: return t('match.ot')
@@ -61,60 +57,57 @@ function completionTypeLabel(ct: CompletionType, t: (key: string) => string): st
     }
 }
 
-export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: Props) {
+interface Props {
+    seasonId: string
+    match: Match
+    isAuth: boolean
+    currentPeriod: string // 'None' | 'P1' | 'P2' | 'P3' | 'OT' | 'SO' | 'Finished'
+    onSaved: (updated: Match) => void
+    onTransitionPeriod: (periodSubtype: string) => Promise<void>
+    onEndMatch: (endSubtype: 'REG' | 'OT') => Promise<void>
+    onEndShootout: () => Promise<void>
+    onReopenMatch?: () => Promise<void>
+}
+
+export default function MatchHeaderEditor({
+    seasonId,
+    match,
+    isAuth,
+    currentPeriod,
+    onSaved,
+    onTransitionPeriod,
+    onEndMatch,
+    onEndShootout,
+    onReopenMatch,
+}: Props) {
     const { t } = useTranslation()
-    const [homeScore, setHomeScore] = useState(match.homeScore)
-    const [awayScore, setAwayScore] = useState(match.awayScore)
-    const [completionType, setCompletionType] = useState<CompletionType>(
-        normalizeCompletionType(match.completionType),
-    )
     const [matchDate, setMatchDate] = useState<string>(
         match.matchDate ? match.matchDate.split('T')[0] : '',
     )
-    const [saving, setSaving] = useState(false)
+    const [busy, setBusy] = useState(false)
     const [saved, setSaved] = useState(false)
     const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const lastSavedCompletionTypeRef = useRef(normalizeCompletionType(match.completionType))
-    const isFirstRender = useRef(true)
 
-    // Keep refs in sync so score click handlers always read latest values
-    const homeScoreRef = useRef(homeScore)
-    const awayScoreRef = useRef(awayScore)
-    homeScoreRef.current = homeScore
-    awayScoreRef.current = awayScore
-
-    // Save-queue refs: guarantee rapid clicks always persist the final state
-    const pendingSaveRef = useRef<{ home: number; away: number } | null>(null)
-    const saveInFlightRef = useRef(false)
-    // Stash latest ct/date for queue drain (score saves use values from click time)
-    const completionTypeRef = useRef(completionType)
-    const matchDateRef = useRef(matchDate)
-    completionTypeRef.current = completionType
-    matchDateRef.current = matchDate
+    useEffect(() => {
+        setMatchDate(match.matchDate ? match.matchDate.split('T')[0] : '')
+    }, [match.matchDate])
 
     useEffect(() => () => {
         if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     }, [])
 
-    // Only sync from parent prop when not actively saving — prevents overwriting in-progress clicks
-    useEffect(() => {
-        if (!saveInFlightRef.current) {
-            setHomeScore(match.homeScore)
-            setAwayScore(match.awayScore)
-        }
-    }, [match.homeScore, match.awayScore])
-
-    const handleSave = async (scores: { home: number; away: number }, ct: CompletionType, date: string) => {
-        setSaving(true)
+    const handleDateChange = async (newDate: string) => {
+        setMatchDate(newDate)
+        if (!isAuth) return
+        setBusy(true)
         try {
-            const normalizedMatchDate = ct === CompletionType.None ? null : date || null
             const dto: UpdateMatchDto = {
                 homeTeamId: match.homeTeamId,
                 awayTeamId: match.awayTeamId,
-                homeScore: scores.home,
-                awayScore: scores.away,
-                completionType: ct,
-                matchDate: normalizedMatchDate,
+                homeScore: match.homeScore,
+                awayScore: match.awayScore,
+                completionType: match.completionType,
+                matchDate: newDate ? newDate : null,
                 phase: match.phase,
                 playoffRound: match.playoffRound,
             }
@@ -122,69 +115,68 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                 `/api/seasons/${seasonId}/matches/${match.id}`,
                 dto,
             )
-            lastSavedCompletionTypeRef.current = ct
             onSaved(updated)
             if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
             setSaved(true)
             savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
         } finally {
-            setSaving(false)
+            setBusy(false)
         }
     }
 
-    // Queue-draining save: if a save is in-flight, stores the latest scores and
-    // re-saves after the in-flight one completes — so the final value is always persisted.
-    const triggerScoreSave = (scores: { home: number; away: number }) => {
-        pendingSaveRef.current = scores
-        if (saveInFlightRef.current) return
-
-        const drain = async () => {
-            while (pendingSaveRef.current) {
-                const toSave = pendingSaveRef.current
-                pendingSaveRef.current = null
-                saveInFlightRef.current = true
-                try {
-                    await handleSave(toSave, completionTypeRef.current, matchDateRef.current)
-                } finally {
-                    saveInFlightRef.current = false
-                }
-            }
-        }
-        void drain()
-    }
-
-    const handleScoreChange = (field: 'home' | 'away', delta: number) => {
-        const newHome = field === 'home' ? Math.max(0, homeScoreRef.current + delta) : homeScoreRef.current
-        const newAway = field === 'away' ? Math.max(0, awayScoreRef.current + delta) : awayScoreRef.current
-        setHomeScore(newHome)
-        setAwayScore(newAway)
-        triggerScoreSave({ home: newHome, away: newAway })
-    }
-
-    // Debounce only for completionType / matchDate changes (dropdown + date picker)
-    useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false
-            return
-        }
-        if (!isAuth) return
-        const timer = setTimeout(() => {
-            void handleSave({ home: homeScoreRef.current, away: awayScoreRef.current }, completionType, matchDate)
-        }, 600)
-        return () => clearTimeout(timer)
-    }, [completionType, matchDate]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleCompletionTypeChange = (newType: CompletionType) => {
-        if (!getAllowedTransitions(completionType).includes(newType)) return
-        setCompletionType(newType)
-        if (newType === CompletionType.InProgress) {
-            setMatchDate(new Date().toISOString().split('T')[0])
+    const handleTransition = async (targetPeriod: string) => {
+        if (busy) return
+        setBusy(true)
+        try {
+            await onTransitionPeriod(targetPeriod)
+        } finally {
+            setBusy(false)
         }
     }
 
-    const scoreButtonClass =
-        'w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-border hover:bg-surface-alt active:bg-primary active:text-white flex items-center justify-center ' +
-        'text-xl font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation'
+    const handleEnd = async (subtype: 'REG' | 'OT') => {
+        if (busy) return
+        setBusy(true)
+        try {
+            await onEndMatch(subtype)
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const handleEndShootoutClick = async () => {
+        if (busy) return
+        setBusy(true)
+        try {
+            await onEndShootout()
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const handleReopen = async () => {
+        if (busy || !onReopenMatch) return
+        setBusy(true)
+        try {
+            await onReopenMatch()
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const normCt = normalizeCompletionType(match.completionType)
+    const isFinished = isFinishedType(normCt)
+
+    const periodDisplayLabel = () => {
+        switch (currentPeriod) {
+            case 'P1': return t('match.period1Title')
+            case 'P2': return t('match.period2Title')
+            case 'P3': return t('match.period3Title')
+            case 'OT': return t('match.overtimeTitle')
+            case 'SO': return t('match.shootoutTitle')
+            default: return t('match.inProgress')
+        }
+    }
 
     return (
         <div className="card p-4 sm:p-6 md:p-8 mb-6">
@@ -195,66 +187,141 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                 </div>
 
                 {/* Central score / controls */}
-                <div className="flex flex-col items-center flex-shrink-0 min-w-[200px] gap-2.5 sm:gap-3 w-full sm:w-auto">
+                <div className="flex flex-col items-center flex-shrink-0 min-w-[220px] gap-2.5 sm:gap-3 w-full sm:w-auto">
                     <span className="text-[10px] sm:text-xs text-text-muted font-bold uppercase tracking-wider bg-bg px-2.5 py-0.5 rounded border border-border">
                         {t('match.matchNumber', { number: match.matchNumber })}
                     </span>
 
+                    {/* Score display (read-only, strictly driven by events) */}
+                    <div className="flex items-center gap-3 sm:gap-4 my-0.5">
+                        <span className="w-12 sm:w-16 text-center text-3xl sm:text-4xl md:text-5xl font-mono font-bold tabular-nums">
+                            {match.homeScore}
+                        </span>
+                        <span className="text-2xl sm:text-3xl text-text-muted font-light select-none">—</span>
+                        <span className="w-12 sm:w-16 text-center text-3xl sm:text-4xl md:text-5xl font-mono font-bold tabular-nums">
+                            {match.awayScore}
+                        </span>
+                    </div>
+
                     {isAuth ? (
                         <>
-                            <div className="flex items-center gap-2 sm:gap-4">
-                                <div className="flex items-center gap-1.5 sm:gap-2">
-                                    <button
-                                        aria-label={t('match.decrementHomeScore')}
-                                        onClick={() => handleScoreChange('home', -1)}
-                                        disabled={homeScore === 0}
-                                        className={scoreButtonClass}
-                                    >−</button>
-                                    <span className="w-9 sm:w-10 text-center text-3xl sm:text-4xl font-bold tabular-nums">{homeScore}</span>
-                                    <button
-                                        aria-label={t('match.incrementHomeScore')}
-                                        onClick={() => handleScoreChange('home', 1)}
-                                        className={scoreButtonClass}
-                                    >+</button>
-                                </div>
-                                <span className="text-2xl sm:text-3xl text-text-muted font-light select-none">—</span>
-                                <div className="flex items-center gap-1.5 sm:gap-2">
-                                    <button
-                                        aria-label={t('match.decrementAwayScore')}
-                                        onClick={() => handleScoreChange('away', -1)}
-                                        disabled={awayScore === 0}
-                                        className={scoreButtonClass}
-                                    >−</button>
-                                    <span className="w-9 sm:w-10 text-center text-3xl sm:text-4xl font-bold tabular-nums">{awayScore}</span>
-                                    <button
-                                        aria-label={t('match.incrementAwayScore')}
-                                        onClick={() => handleScoreChange('away', 1)}
-                                        className={scoreButtonClass}
-                                    >+</button>
-                                </div>
-                            </div>
-
+                            {/* Workflow action buttons */}
                             <div className="flex flex-wrap items-center justify-center gap-2">
-                                {isFinishedType(completionType) ? (
-                                    <span className="text-xs px-2.5 py-1 rounded font-semibold uppercase bg-border text-text-muted">
-                                        {completionTypeLabel(completionType, t)}
-                                    </span>
-                                ) : (
-                                    <select
-                                        aria-label={t('match.completionType')}
-                                        value={completionType}
-                                        onChange={(e) => handleCompletionTypeChange(Number(e.target.value) as CompletionType)}
-                                        className="input !py-1 !px-2 !w-auto text-xs font-semibold uppercase bg-border border-transparent"
+                                {isFinished ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs px-2.5 py-1 rounded font-semibold uppercase bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
+                                            {completionTypeLabel(normCt, t)} · {t('match.finished')}
+                                        </span>
+                                        {onReopenMatch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleReopen()}
+                                                disabled={busy}
+                                                className="flex items-center gap-1 text-xs text-text-muted hover:text-text underline transition-colors disabled:opacity-50"
+                                            >
+                                                <ArrowCounterClockwiseIcon size={12} />
+                                                <span>{t('match.reopenMatch')}</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : normCt === CompletionType.None ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleTransition('P1')}
+                                        disabled={busy}
+                                        className="btn-primary text-xs sm:text-sm py-1.5 px-3.5 flex items-center gap-1.5 font-bold shadow-md shadow-primary/20 disabled:opacity-50"
                                     >
-                                        <option value={completionType} disabled>
-                                            {completionTypeLabel(completionType, t)}
-                                        </option>
-                                        {getAllowedTransitions(completionType).map(ct => (
-                                            <option key={ct} value={ct}>{completionTypeLabel(ct, t)}</option>
-                                        ))}
-                                    </select>
+                                        <PlayIcon size={14} weight="fill" />
+                                        <span>{t('match.startMatch')}</span>
+                                    </button>
+                                ) : (
+                                    /* InProgress transitions */
+                                    <div className="flex flex-wrap items-center justify-center gap-2">
+                                        {(currentPeriod === 'None' || currentPeriod === 'P1') && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleTransition('P2')}
+                                                disabled={busy}
+                                                className="btn-primary text-xs sm:text-sm py-1.5 px-3 flex items-center gap-1.5 font-bold disabled:opacity-50"
+                                            >
+                                                <span>{t('match.period2')}</span>
+                                                <CaretRightIcon size={14} weight="bold" />
+                                            </button>
+                                        )}
+
+                                        {currentPeriod === 'P2' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleTransition('P3')}
+                                                disabled={busy}
+                                                className="btn-primary text-xs sm:text-sm py-1.5 px-3 flex items-center gap-1.5 font-bold disabled:opacity-50"
+                                            >
+                                                <span>{t('match.period3')}</span>
+                                                <CaretRightIcon size={14} weight="bold" />
+                                            </button>
+                                        )}
+
+                                        {currentPeriod === 'P3' && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleEnd('REG')}
+                                                    disabled={busy}
+                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm py-1.5 px-3 rounded-lg flex items-center gap-1.5 font-bold shadow-md shadow-emerald-900/30 disabled:opacity-50 transition-colors"
+                                                >
+                                                    <CheckCircleIcon size={15} weight="bold" />
+                                                    <span>{t('match.endMatchReg')}</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleTransition('OT')}
+                                                    disabled={busy}
+                                                    className="border border-amber-500/70 text-amber-400 hover:bg-amber-500/10 text-xs sm:text-sm py-1.5 px-3 rounded-lg flex items-center gap-1.5 font-bold disabled:opacity-50 transition-colors"
+                                                >
+                                                    <span>{t('match.overtime')}</span>
+                                                    <CaretRightIcon size={14} weight="bold" />
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {currentPeriod === 'OT' && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleEnd('OT')}
+                                                    disabled={busy}
+                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm py-1.5 px-3 rounded-lg flex items-center gap-1.5 font-bold shadow-md shadow-emerald-900/30 disabled:opacity-50 transition-colors"
+                                                >
+                                                    <CheckCircleIcon size={15} weight="bold" />
+                                                    <span>{t('match.endMatchOt')}</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleTransition('SO')}
+                                                    disabled={busy}
+                                                    className="border border-purple-500/70 text-purple-400 hover:bg-purple-500/10 text-xs sm:text-sm py-1.5 px-3 rounded-lg flex items-center gap-1.5 font-bold disabled:opacity-50 transition-colors"
+                                                >
+                                                    <span>{t('match.shootout')}</span>
+                                                    <CaretRightIcon size={14} weight="bold" />
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {currentPeriod === 'SO' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleEndShootoutClick()}
+                                                disabled={busy}
+                                                className="bg-purple-600 hover:bg-purple-500 text-white text-xs sm:text-sm py-1.5 px-3 rounded-lg flex items-center gap-1.5 font-bold shadow-md shadow-purple-900/30 disabled:opacity-50 transition-colors"
+                                            >
+                                                <CheckCircleIcon size={15} weight="bold" />
+                                                <span>{t('match.endMatchSo')}</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
 
+                                {/* Date picker */}
                                 <div className="relative flex items-center">
                                     <CalendarBlankIcon
                                         size={16}
@@ -264,13 +331,13 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                                         type="date"
                                         aria-label={t('match.matchDate')}
                                         value={matchDate}
-                                        onChange={(e) => setMatchDate(e.target.value)}
+                                        onChange={(e) => void handleDateChange(e.target.value)}
                                         className="input !py-1 !pl-9 !pr-3 text-xs !w-auto"
                                     />
                                 </div>
                             </div>
 
-                            {saving ? (
+                            {busy ? (
                                 <span className="text-xs text-text-muted animate-pulse">
                                     {t('common.saving')}
                                 </span>
@@ -281,21 +348,20 @@ export default function MatchHeaderEditor({ seasonId, match, isAuth, onSaved }: 
                             ) : null}
                         </>
                     ) : (
-                        <>
-                            <p className="text-3xl sm:text-4xl font-mono font-bold">
-                                {match.homeScore} — {match.awayScore}
-                            </p>
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                <span className="text-xs px-2.5 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
-                                    {completionTypeLabel(normalizeCompletionType(match.completionType), t)}
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                            <span className="text-xs px-2.5 py-0.5 rounded font-semibold uppercase bg-border text-text-muted">
+                                {isFinished
+                                    ? completionTypeLabel(normCt, t)
+                                    : normCt === CompletionType.InProgress
+                                      ? `LIVE · ${periodDisplayLabel()}`
+                                      : t('match.notPlayed')}
+                            </span>
+                            {match.matchDate && (
+                                <span className="text-xs text-text-muted">
+                                    {new Date(match.matchDate).toLocaleDateString()}
                                 </span>
-                                {match.matchDate && (
-                                    <span className="text-xs text-text-muted">
-                                        {new Date(match.matchDate).toLocaleDateString()}
-                                    </span>
-                                )}
-                            </div>
-                        </>
+                            )}
+                        </div>
                     )}
                 </div>
 

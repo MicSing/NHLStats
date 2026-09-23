@@ -1,3 +1,47 @@
+import type { GoalType } from './userMatch'
+import type { PointType } from './pointReason'
+
+export const MatchEventType = {
+    Goal: 'Goal',
+    Penalty: 'Penalty',
+    Point: 'Point',
+    PeriodChange: 'PeriodChange',
+    MatchEnd: 'MatchEnd',
+    ShootoutGoal: 'ShootoutGoal',
+} as const
+
+export type MatchEventType = (typeof MatchEventType)[keyof typeof MatchEventType]
+
+export interface MatchEvent {
+    id: number
+    matchId: number
+    orderIndex: number
+    eventType: MatchEventType
+    isOpponent: boolean
+    eventSubtype: string | null
+    userMatchGoalId: number | null
+    userMatchPenaltyId: number | null
+    userMatchPointId: number | null
+    rosterPlayerId: number | null
+    playerName: string | null
+    userMatchId: number | null
+    userName: string | null
+    pointReasonName: string | null
+    pointType: PointType | null
+    goalType: GoalType | null
+    createdAt: string
+}
+
+export interface CreateTeamMatchEventDto {
+    eventType: MatchEventType
+    isOpponent: boolean
+    eventSubtype?: string | null
+}
+
+export interface ReorderMatchEventsDto {
+    eventIds: number[]
+}
+
 export const CompletionType = {
     None: 0,
     RegularTime: 1,

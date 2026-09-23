@@ -78,7 +78,9 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                         const userName = um.userName ?? `User ${um.userId}`
 
                         for (const g of userGoals) {
-                            allGoals.push({ item: g, userName })
+                            if (g.goalType !== 'Shootout') {
+                                allGoals.push({ item: g, userName })
+                            }
                         }
                         for (const p of userPenalties) {
                             allPenalties.push({ item: p, userName })
@@ -232,7 +234,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Column 1: Góly (Goals) */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                            <div className="bg-bg/40 border border-border rounded-lg p-3.5 flex flex-col">
                                 <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
@@ -288,7 +290,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                             </div>
 
                             {/* Column 2: Fauly (Fouls) */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                            <div className="bg-bg/40 border border-border rounded-lg p-3.5 flex flex-col">
                                 <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-5 h-5 rounded bg-warning/10 text-warning flex items-center justify-center flex-shrink-0">
@@ -332,7 +334,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                             </div>
 
                             {/* Column 3: Mínus body (Minus Points) */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                            <div className="bg-bg/40 border border-border rounded-lg p-3.5 flex flex-col">
                                 <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-5 h-5 rounded bg-danger/10 text-danger flex items-center justify-center flex-shrink-0">
@@ -374,7 +376,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                             </div>
 
                             {/* Column 4: Plus body (Plus Points) */}
-                            <div className="bg-bg/40 border border-border/80 rounded-lg p-3.5 flex flex-col">
+                            <div className="bg-bg/40 border border-border rounded-lg p-3.5 flex flex-col">
                                 <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-5 h-5 rounded bg-success/10 text-success flex items-center justify-center flex-shrink-0">

@@ -20,4 +20,5 @@ public class Match
     public Team? AwayTeam { get; set; }
     public ICollection<UserMatch>? UserMatches { get; set; }
     public ICollection<BetLeg>? BetLegs { get; set; }
+    public ICollection<MatchEvent> Events { get; set; } = new List<MatchEvent>();
 }

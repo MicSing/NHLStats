@@ -79,7 +79,7 @@ public class SeasonStatsService : ISeasonStatsService
     {
         var goalsByUserAndSeason = await _db.UserMatchGoals
             .AsNoTracking()
-            .Where(g => g.UserMatch != null && (!phase.HasValue || (g.UserMatch.Match != null && g.UserMatch.Match.Phase == phase.Value)))
+            .Where(g => g.UserMatch != null && (!phase.HasValue || (g.UserMatch.Match != null && g.UserMatch.Match.Phase == phase.Value)) && g.GoalType != GoalType.Shootout)
             .GroupBy(g => new { g.UserMatch!.SeasonId, g.UserMatch.UserId })
             .Select(g => new { g.Key.SeasonId, g.Key.UserId, TotalGoals = g.Sum(x => x.Count) })
             .ToListAsync();
@@ -120,7 +120,7 @@ public class SeasonStatsService : ISeasonStatsService
         var users = await _db.Users.ToDictionaryAsync(u => u.Id, u => u.Name);
 
         var goalsByUser = await _db.UserMatchGoals
-            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .Where(g => g.UserMatch!.SeasonId == seasonId && g.GoalType != GoalType.Shootout)
             .GroupBy(g => g.UserMatch!.UserId)
             .Select(g => new { UserId = g.Key, Total = g.Sum(x => x.Count) })
             .ToListAsync();

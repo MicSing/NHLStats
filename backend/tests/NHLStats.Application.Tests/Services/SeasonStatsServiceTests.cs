@@ -158,4 +158,26 @@ public class SeasonStatsServiceTests : IDisposable
         regular.Should().BeEmpty("the penalty was taken in the playoff match only");
         playoff.Single(s => s.SeasonId == _season.Id).UserStats.Single(u => u.UserId == _user.Id).TotalPenalties.Should().Be(1);
     }
+
+    [Fact]
+    public async Task GoalsStatistics_ExcludesShootoutGoals()
+    {
+        var rosterPlayer = await _db.RosterPlayers.FirstAsync();
+        var regularUserMatch = await _db.UserMatches.FirstAsync(um => um.MatchId == _regularMatch.Id);
+        _db.UserMatchGoals.Add(new UserMatchGoal
+        {
+            UserMatchId = regularUserMatch.Id,
+            RosterPlayerId = rosterPlayer.Id,
+            Count = 2,
+            GoalType = GoalType.Shootout
+        });
+        await _db.SaveChangesAsync();
+
+        var allGoalStats = await _service.FetchSeasonGoalStatisicsAsync();
+        var userTotals = await _service.GetUserSeasonTotalsAsync(_season.Id);
+
+        allGoalStats.Single(s => s.SeasonId == _season.Id).UserStats.Single(u => u.UserId == _user.Id).TotalGoals.Should().Be(1);
+        userTotals.Single(u => u.UserId == _user.Id).TotalGoals.Should().Be(1);
+    }
 }
+

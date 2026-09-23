@@ -46,8 +46,10 @@ interface Props {
     onChanged: (extraUserMatchId?: number) => void
     onDeleted?: () => void
     onGoalAdded?: () => Promise<void>
+    onGoalRemoved?: () => Promise<void>
     onNegativePointAdded?: (pointReasonId: number) => Promise<void>
     onNeutralPointAdded?: (userMatchId: number, pointReasonId: number) => Promise<void>
+    onDefensiveBlunder?: () => Promise<void>
 }
 
 export default function UserMatchCard({
@@ -62,8 +64,10 @@ export default function UserMatchCard({
     onChanged,
     onDeleted,
     onGoalAdded,
+    onGoalRemoved,
     onNegativePointAdded,
     onNeutralPointAdded,
+    onDefensiveBlunder,
 }: Props) {
     const { t } = useTranslation()
     const toast = useToast()
@@ -71,6 +75,7 @@ export default function UserMatchCard({
     const [selectedRosterId, setSelectedRosterId] = useState<number | ''>('')
     const [playerSearch, setPlayerSearch] = useState('')
     const [goalModal, setGoalModal] = useState<GoalModal | null>(null)
+    const [actionInProgress, setActionInProgress] = useState(false)
     const [showMore, setShowMore] = useState<Record<PointType, boolean>>({
         Negative: false,
         Positive: false,
@@ -96,36 +101,69 @@ export default function UserMatchCard({
         : []
 
     const handleAddPoint = async (reasonId: number) => {
-        await apiClient.post<UserMatchPoint>(`/api/usermatches/${um.id}/points`, {
-            pointReasonId: reasonId,
-            count: 1,
-        } as CreateUserMatchPointDto)
-        const reason = pointReasons.find((r) => r.id === reasonId)
-        if (reason?.pointType === 'Negative') {
-            await onNegativePointAdded?.(reasonId)
+        if (actionInProgress) return
+        setActionInProgress(true)
+        try {
+            await apiClient.post<UserMatchPoint>(`/api/usermatches/${um.id}/points`, {
+                pointReasonId: reasonId,
+                count: 1,
+            } as CreateUserMatchPointDto)
+            const reason = pointReasons.find((r) => r.id === reasonId)
+            const isOpponentGoalReason =
+                reasonId === 1 ||
+                reasonId === 6 ||
+                reasonId === 7 ||
+                (reason?.pointType === 'Negative' && reason?.name.toLowerCase() === 'penalty') ||
+                reason?.name.toLowerCase().includes('defense') ||
+                reason?.name.toLowerCase().includes('own goal')
+            if (isOpponentGoalReason && onDefensiveBlunder) {
+                await onDefensiveBlunder()
+            } else if (reason?.pointType === 'Negative') {
+                await onNegativePointAdded?.(reasonId)
+            }
+            if (reason?.pointType === 'Neutral') {
+                await onNeutralPointAdded?.(um.id, reasonId)
+            }
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
         }
-        if (reason?.pointType === 'Neutral') {
-            await onNeutralPointAdded?.(um.id, reasonId)
-        }
-        onChanged()
     }
 
     const handleDeletePointsByReason = async (ids: number[]) => {
-        for (const id of ids) {
-            await apiClient.delete(`/api/usermatches/${um.id}/points/${id}`)
+        if (actionInProgress || ids.length === 0) return
+        setActionInProgress(true)
+        try {
+            const lastId = ids[ids.length - 1]
+            await apiClient.delete(`/api/usermatches/${um.id}/points/${lastId}`)
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
         }
-        onChanged()
     }
 
     const handleAddGoal = async (goalType: GoalType = 'Regular') => {
-        if (selectedRosterId === '') return
-        await apiClient.post<UserMatchGoal>(`/api/usermatches/${um.id}/goals`, {
-            rosterPlayerId: selectedRosterId,
-            count: 1,
-            goalType,
-        } as CreateUserMatchGoalDto)
-        await onGoalAdded?.()
-        onChanged()
+        if (selectedRosterId === '' || actionInProgress) return
+        setActionInProgress(true)
+        try {
+            await apiClient.post<UserMatchGoal>(`/api/usermatches/${um.id}/goals`, {
+                rosterPlayerId: selectedRosterId,
+                count: 1,
+                goalType,
+            } as CreateUserMatchGoalDto)
+            if (goalType !== 'Shootout') {
+                await onGoalAdded?.()
+            }
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
+        }
     }
 
     const handleOpenGoalModal = (goalType: GoalType) => {
@@ -142,7 +180,8 @@ export default function UserMatchCard({
 
     const handleGoalModalConfirm = async () => {
         if (!goalModal || goalModal.pointRecipientUserMatchId === '' || goalModal.pointReasonId === '') return
-        if (selectedRosterId === '') return
+        if (selectedRosterId === '' || actionInProgress) return
+        setActionInProgress(true)
         try {
             await apiClient.post(`/api/usermatches/${goalModal.pointRecipientUserMatchId}/points`, {
                 pointReasonId: goalModal.pointReasonId,
@@ -153,35 +192,63 @@ export default function UserMatchCard({
                 count: 1,
                 goalType: goalModal.goalType,
             } as CreateUserMatchGoalDto)
-            await onGoalAdded?.()
+            if (goalModal.goalType !== 'Shootout') {
+                await onGoalAdded?.()
+            }
             setGoalModal(null)
             onChanged(goalModal.pointRecipientUserMatchId as number)
         } catch {
             toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
         }
     }
 
-    const handleDeleteGoal = async (goalIds: number[]) => {
-        for (const id of goalIds) {
-            await apiClient.delete(`/api/usermatches/${um.id}/goals/${id}`)
+    const handleDeleteGoal = async (goalIds: number[], goalType: GoalType) => {
+        if (actionInProgress || goalIds.length === 0) return
+        setActionInProgress(true)
+        try {
+            const lastId = goalIds[goalIds.length - 1]
+            await apiClient.delete(`/api/usermatches/${um.id}/goals/${lastId}`)
+            if (goalType !== 'Shootout') {
+                await onGoalRemoved?.()
+            }
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
         }
-        onChanged()
     }
 
     const handleAddPenalty = async () => {
-        if (selectedRosterId === '') return
-        await apiClient.post<UserMatchPenalty>(`/api/usermatches/${um.id}/penalties`, {
-            rosterPlayerId: selectedRosterId,
-            count: 1,
-        } as CreateUserMatchPenaltyDto)
-        onChanged()
+        if (selectedRosterId === '' || actionInProgress) return
+        setActionInProgress(true)
+        try {
+            await apiClient.post<UserMatchPenalty>(`/api/usermatches/${um.id}/penalties`, {
+                rosterPlayerId: selectedRosterId,
+                count: 1,
+            } as CreateUserMatchPenaltyDto)
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
+        }
     }
 
     const handleDeletePenalty = async (penaltyIds: number[]) => {
-        for (const id of penaltyIds) {
-            await apiClient.delete(`/api/usermatches/${um.id}/penalties/${id}`)
+        if (actionInProgress || penaltyIds.length === 0) return
+        setActionInProgress(true)
+        try {
+            const lastId = penaltyIds[penaltyIds.length - 1]
+            await apiClient.delete(`/api/usermatches/${um.id}/penalties/${lastId}`)
+            onChanged()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        } finally {
+            setActionInProgress(false)
         }
-        onChanged()
     }
 
     const handleDeleteUserMatch = async () => {
@@ -342,7 +409,7 @@ export default function UserMatchCard({
                                     {g.firstName} {g.surname}
                                     {g.goalType !== 'Regular' && (
                                         <span className="font-bold ml-0.5">
-                                            {g.goalType === 'PowerPlay' ? 'PP' : 'SH'}
+                                            {g.goalType === 'PowerPlay' ? 'PP' : g.goalType === 'ShortHanded' ? 'SH' : 'SO'}
                                         </span>
                                     )}
                                     <span className="opacity-60 mx-0.5">·</span>
@@ -350,8 +417,9 @@ export default function UserMatchCard({
                                     {isAuth && (
                                         <button
                                             aria-label={`delete goal for player ${g.rosterPlayerId}`}
-                                            onClick={() => void handleDeleteGoal(g.ids)}
-                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                            disabled={actionInProgress}
+                                            onClick={() => void handleDeleteGoal(g.ids, g.goalType)}
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity disabled:opacity-30"
                                         >
                                             <XIcon size={11} />
                                         </button>
@@ -369,8 +437,9 @@ export default function UserMatchCard({
                                     {isAuth && (
                                         <button
                                             aria-label={`delete penalty for player ${p.rosterPlayerId}`}
+                                            disabled={actionInProgress}
                                             onClick={() => void handleDeletePenalty(p.ids)}
-                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity disabled:opacity-30"
                                         >
                                             <XIcon size={11} />
                                         </button>
@@ -394,8 +463,9 @@ export default function UserMatchCard({
                                     {isAuth && (
                                         <button
                                             aria-label={`delete point reason ${g.pointReasonId}`}
+                                            disabled={actionInProgress}
                                             onClick={() => void handleDeletePointsByReason(g.ids)}
-                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                                            className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity disabled:opacity-30"
                                         >
                                             <XIcon size={11} />
                                         </button>
@@ -453,8 +523,8 @@ export default function UserMatchCard({
                                                         key={player.id}
                                                         type="button"
                                                         onClick={() => {
-                                                            setSelectedRosterId(player.id)
-                                                            setPlayerSearch('')
+                                                             setSelectedRosterId(player.id)
+                                                             setPlayerSearch('')
                                                         }}
                                                         className="w-full text-left px-3 py-2 text-sm hover:bg-bg transition-colors flex items-center justify-between"
                                                     >
@@ -475,36 +545,48 @@ export default function UserMatchCard({
 
                         {/* Quick action buttons */}
                         <div
-                            className={`grid grid-cols-4 gap-1.5 sm:gap-2 transition-opacity duration-200 ${
+                            className={`grid grid-cols-5 gap-1.5 sm:gap-2 transition-opacity duration-200 ${
                                 !selectedRosterId ? 'opacity-30 pointer-events-none' : ''
                             }`}
                         >
                             <button
                                 type="button"
+                                disabled={actionInProgress}
                                 onClick={() => void handleAddGoal('Regular')}
-                                className="btn-primary text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5"
+                                className="btn-primary text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5 disabled:opacity-50"
                             >
                                 <CheckIcon size={12} weight="bold" />
                                 <span>{t('userMatchCard.goal')}</span>
                             </button>
                             <button
                                 type="button"
+                                disabled={actionInProgress}
                                 onClick={() => handleOpenGoalModal('PowerPlay')}
-                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors"
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
                             >
                                 PP
                             </button>
                             <button
                                 type="button"
+                                disabled={actionInProgress}
                                 onClick={() => handleOpenGoalModal('ShortHanded')}
-                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors"
+                                className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
                             >
                                 SH
                             </button>
                             <button
                                 type="button"
+                                disabled={actionInProgress}
+                                onClick={() => void handleAddGoal('Shootout')}
+                                className="bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border border-purple-800/50 text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                            >
+                                SO
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actionInProgress}
                                 onClick={() => void handleAddPenalty()}
-                                className="btn-warning text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5"
+                                className="btn-warning text-[11px] sm:text-xs py-2 font-semibold flex items-center justify-center gap-1 sm:gap-1.5 disabled:opacity-50"
                             >
                                 <WarningIcon size={12} weight="bold" />
                                 <span>{t('userMatchCard.penalty')}</span>
@@ -530,8 +612,9 @@ export default function UserMatchCard({
                                         <button
                                             key={reason.id}
                                             type="button"
+                                            disabled={actionInProgress}
                                             onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Negative')}`}
+                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Negative')}`}
                                         >
                                             {reason.name}
                                         </button>
@@ -560,8 +643,9 @@ export default function UserMatchCard({
                                         <button
                                             key={reason.id}
                                             type="button"
+                                            disabled={actionInProgress}
                                             onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Positive')}`}
+                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Positive')}`}
                                         >
                                             {reason.name}
                                         </button>
@@ -590,8 +674,9 @@ export default function UserMatchCard({
                                         <button
                                             key={reason.id}
                                             type="button"
+                                            disabled={actionInProgress}
                                             onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border ${reasonChipClass('Neutral')}`}
+                                            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Neutral')}`}
                                         >
                                             {reason.name}
                                         </button>

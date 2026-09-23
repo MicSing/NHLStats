@@ -722,7 +722,7 @@ public class BettingOddsService : IBettingOddsService
     private async Task<int> CountUserMatchesWithGoalAsync(List<int> userMatchIds)
     {
         return await _db.UserMatchGoals
-            .Where(g => userMatchIds.Contains(g.UserMatchId))
+            .Where(g => userMatchIds.Contains(g.UserMatchId) && g.GoalType != GoalType.Shootout)
             .SumAsync(g => (int?)g.Count) ?? 0;
     }
 
@@ -824,7 +824,7 @@ public class BettingOddsService : IBettingOddsService
     {
         if (userMatchIds.Count == 0) return [];
         var dict = await _db.UserMatchGoals
-            .Where(g => userMatchIds.Contains(g.UserMatchId))
+            .Where(g => userMatchIds.Contains(g.UserMatchId) && g.GoalType != GoalType.Shootout)
             .GroupBy(g => g.UserMatchId)
             .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Count) })
             .ToDictionaryAsync(x => x.Id, x => x.Total);

@@ -115,6 +115,7 @@ builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 builder.Services.AddScoped<IUserMatchService, UserMatchService>();
+builder.Services.AddScoped<IMatchEventService, MatchEventService>();
 builder.Services.AddScoped<IBettingCalculator, BettingCalculator>();
 builder.Services.AddScoped<IBettingBalanceService, BettingBalanceService>();
 builder.Services.AddScoped<IBettingOddsService, BettingOddsService>();

@@ -18,7 +18,7 @@ public class RosterStatsService : IRosterStatsService
     public async Task<TopRosterPlayerDto?> GetTopGoalScorerAsync(int seasonId)
     {
         var top = await _db.UserMatchGoals
-            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .Where(g => g.UserMatch!.SeasonId == seasonId && g.GoalType != GoalType.Shootout)
             .GroupBy(g => g.RosterPlayerId)
             .Select(g => new { RosterPlayerId = g.Key, Total = g.Sum(x => x.Count) })
             .OrderByDescending(x => x.Total)
@@ -58,7 +58,7 @@ public class RosterStatsService : IRosterStatsService
     public async Task<IEnumerable<TopRosterPlayerDto>> GetAllGoalScorersAsync(int seasonId)
     {
         var totals = await _db.UserMatchGoals
-            .Where(g => g.UserMatch!.SeasonId == seasonId)
+            .Where(g => g.UserMatch!.SeasonId == seasonId && g.GoalType != GoalType.Shootout)
             .GroupBy(g => g.RosterPlayerId)
             .Select(g => new { RosterPlayerId = g.Key, Total = g.Sum(x => x.Count) })
             .OrderByDescending(x => x.Total)
@@ -86,7 +86,7 @@ public class RosterStatsService : IRosterStatsService
     {
         var rawData = await _db.UserMatchGoals
             .AsNoTracking()
-            .Where(g => g.UserMatch != null)
+            .Where(g => g.UserMatch != null && g.GoalType != GoalType.Shootout)
             .GroupBy(g => new { g.RosterPlayerId, g.UserMatch!.UserId, g.UserMatch.SeasonId })
             .Select(g => new { g.Key.RosterPlayerId, g.Key.UserId, g.Key.SeasonId, Total = g.Sum(x => x.Count) })
             .ToListAsync();
@@ -202,7 +202,7 @@ public class RosterStatsService : IRosterStatsService
     public async Task<IEnumerable<SeasonTopRosterPlayersDto>> GetTopRosterPlayersAsync()
     {
         var goalsBySeasonAndPlayer = await _db.UserMatchGoals
-            .Where(g => g.UserMatch != null)
+            .Where(g => g.UserMatch != null && g.GoalType != GoalType.Shootout)
             .GroupBy(g => new { g.UserMatch!.SeasonId, g.RosterPlayerId })
             .Select(g => new
             {

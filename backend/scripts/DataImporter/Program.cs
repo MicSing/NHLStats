@@ -43,6 +43,7 @@ namespace DataImporter
                 "UserMatchPoints",
                 "UserMatchGoals",
                 "UserMatchPenalties",
+                "MatchEvents",
                 "AppRoles",
                 "AspNetUsers",
                 "LoginRoleRelations"

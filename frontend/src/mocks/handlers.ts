@@ -603,6 +603,37 @@ export const handlers = [
         return res(ctx.json({ ...match, homeScore: 0, awayScore: 0, matchDate: null, completionType: 0 }))
     }),
 
+    // Match Events
+    rest.get(`${BASE}/api/matches/:matchId/events`, (_req, res, ctx) => {
+        return res(ctx.json([]))
+    }),
+
+    rest.post(`${BASE}/api/matches/:matchId/events`, async (req, res, ctx) => {
+        const body = (await req.json()) as Record<string, unknown>
+        return res(
+            ctx.status(201),
+            ctx.json({
+                id: 101,
+                matchId: Number(req.params.matchId),
+                orderIndex: 1,
+                ...body,
+                createdAt: new Date().toISOString(),
+            }),
+        )
+    }),
+
+    rest.put(`${BASE}/api/matches/:matchId/events/reorder`, async (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    rest.delete(`${BASE}/api/matches/:matchId/events/:id`, (_req, res, ctx) => {
+        return res(ctx.status(204))
+    }),
+
+    rest.post(`${BASE}/api/matches/:matchId/events/end-shootout`, (req, res, ctx) => {
+        return res(ctx.json({ id: Number(req.params.matchId), completionType: 3 }))
+    }),
+
     // ── Season Stats ──────────────────────────────────────────────────────────
     // NOTE: more-specific paths first so they don't get swallowed by the generic :id handler
 

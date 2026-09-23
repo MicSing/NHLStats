@@ -331,7 +331,7 @@ export default function PlayoffBracket({
                                                 openMatchModal(m, idx)
                                             }
                                         }}
-                                        className="group bg-bg/50 hover:bg-bg border border-border/80 hover:border-primary/50 rounded-lg p-3 sm:p-4 transition-all cursor-pointer flex flex-col justify-between gap-3 shadow-sm hover:shadow-md"
+                                        className="group bg-bg/50 hover:bg-bg border border-border hover:border-primary/60 rounded-lg p-3 sm:p-4 transition-all cursor-pointer flex flex-col justify-between gap-3 shadow-sm hover:shadow-md"
                                     >
                                         <div className="flex items-center justify-between text-xs text-text-muted">
                                             <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">

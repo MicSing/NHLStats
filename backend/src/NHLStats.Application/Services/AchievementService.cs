@@ -143,7 +143,8 @@ public class AchievementService : IAchievementService
             .AsNoTracking()
             .Where(g => g.UserMatch!.UserId == userId
                      && g.UserMatch.Match!.CompletionType != CompletionType.None
-                     && g.UserMatch.Match.CompletionType != CompletionType.InProgress)
+                     && g.UserMatch.Match.CompletionType != CompletionType.InProgress
+                     && g.GoalType != GoalType.Shootout)
             .Select(g => new
             {
                 MatchId       = g.UserMatch!.MatchId,
@@ -319,7 +320,8 @@ public class AchievementService : IAchievementService
             .AsNoTracking()
             .Where(g => g.UserMatch!.Match!.CompletionType != CompletionType.None
                      && g.UserMatch.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(g.UserMatch.SeasonId))
+                     && completeSeasonIds.Contains(g.UserMatch.SeasonId)
+                     && g.GoalType != GoalType.Shootout)
             .Select(g => new { UserId = g.UserMatch!.UserId, SeasonId = g.UserMatch!.SeasonId, g.Count })
             .ToListAsync();
         var allGoalTotals = allGoalRows

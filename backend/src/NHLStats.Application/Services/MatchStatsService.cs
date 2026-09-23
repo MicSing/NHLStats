@@ -58,7 +58,7 @@ public class MatchStatsService : IMatchStatsService
 
         var goalRows = await _db.UserMatchGoals
             .AsNoTracking()
-            .Where(g => g.UserMatch != null && matchIds.Contains(g.UserMatch.MatchId))
+            .Where(g => g.UserMatch != null && matchIds.Contains(g.UserMatch.MatchId) && g.GoalType != GoalType.Shootout)
             .Select(g => new { g.UserMatch!.MatchId, g.UserMatch.UserId, g.Count })
             .ToListAsync();
 
@@ -378,7 +378,9 @@ public class MatchStatsService : IMatchStatsService
                 opponentShortName = match.AwayTeam?.ShortName ?? "";
             }
 
-            var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>()).Sum(g => g.Count);
+            var goalCount = (um.Goals ?? Enumerable.Empty<UserMatchGoal>())
+                .Where(g => g.GoalType != GoalType.Shootout)
+                .Sum(g => g.Count);
             var penaltyCount = (um.Penalties ?? Enumerable.Empty<UserMatchPenalty>()).Sum(p => p.Count);
             var totals = StatsCalculationHelpers.GetTotalsFromPoints(um.Points ?? Enumerable.Empty<UserMatchPoint>());
 

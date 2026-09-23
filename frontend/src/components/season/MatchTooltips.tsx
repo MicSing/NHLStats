@@ -17,9 +17,10 @@ export function PointsTooltip({ points }: { points: UserMatchPoint[] }) {
 }
 
 export function GoalsTooltip({ goals }: { goals: UserMatchGoal[] }) {
-    if (goals.length === 0) return null
+    const regularGoals = goals.filter((g) => g.goalType !== 'Shootout')
+    if (regularGoals.length === 0) return null
     const aggregated = Array.from(
-        goals.reduce((map, g) => {
+        regularGoals.reduce((map, g) => {
             const key = g.rosterPlayerId
             const existing = map.get(key)
             if (existing) {

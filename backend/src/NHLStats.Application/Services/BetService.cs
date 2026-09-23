@@ -520,7 +520,7 @@ public class BetService : IBetService
 
         var userGoalCounts = await _db.UserMatchGoals
             .Include(g => g.UserMatch)
-            .Where(g => g.UserMatch!.MatchId == matchId)
+            .Where(g => g.UserMatch!.MatchId == matchId && g.GoalType != GoalType.Shootout)
             .GroupBy(g => g.UserMatch!.UserId)
             .Select(g => new { UserId = g.Key, Count = g.Sum(x => x.Count) })
             .ToDictionaryAsync(x => x.UserId, x => x.Count);
