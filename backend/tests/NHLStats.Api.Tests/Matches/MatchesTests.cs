@@ -605,7 +605,7 @@ public class MatchesTests : ApiTestBase
     // ── POST /api/seasons/{seasonId}/matches/playoff-series ─────────────────
 
     [Fact]
-    public async Task CreatePlayoffSeries_creates_7_matches_in_2_2_1_1_1_pattern_when_starting_home()
+    public async Task CreatePlayoffSeries_creates_first_4_matches_in_2_2_1_1_1_pattern_when_starting_home()
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, "Playoff Series Home Season"); // hostedTeamId = 1
@@ -618,10 +618,10 @@ public class MatchesTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(7);
+        body.GetArrayLength().Should().Be(4);
 
-        var expectedHostedIsHome = new[] { true, true, false, false, true, false, true };
-        for (var i = 0; i < 7; i++)
+        var expectedHostedIsHome = new[] { true, true, false, false };
+        for (var i = 0; i < 4; i++)
         {
             var m = body[i];
             m.GetProperty("matchNumber").GetInt32().Should().Be(i + 1);
@@ -654,10 +654,10 @@ public class MatchesTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(7);
+        body.GetArrayLength().Should().Be(4);
 
-        var expectedHostedIsHome = new[] { false, false, true, true, false, true, false };
-        for (var i = 0; i < 7; i++)
+        var expectedHostedIsHome = new[] { false, false, true, true };
+        for (var i = 0; i < 4; i++)
         {
             var m = body[i];
             if (expectedHostedIsHome[i])
@@ -688,9 +688,9 @@ public class MatchesTests : ApiTestBase
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetArrayLength().Should().Be(7);
+        body.GetArrayLength().Should().Be(4);
         body[0].GetProperty("matchNumber").GetInt32().Should().Be(2);
-        body[6].GetProperty("matchNumber").GetInt32().Should().Be(8);
+        body[3].GetProperty("matchNumber").GetInt32().Should().Be(5);
     }
 
     [Fact]
@@ -764,5 +764,376 @@ public class MatchesTests : ApiTestBase
             startsHome = true
         });
         resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // ── Playoff series: games appended on demand ────────────────────────────
+
+    private async Task<int> CreateSeasonWithLeagueAsync(HttpClient client, string name, string leagueType)
+    {
+        var resp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name,
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1,
+            leagueType
+        });
+        resp.EnsureSuccessStatusCode();
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("id").GetInt32();
+    }
+
+    private static async Task<JsonElement> CreateSeriesAsync(HttpClient client, int seasonId, int opponentTeamId = 2, bool startsHome = true)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/playoff-series", new
+        {
+            opponentTeamId,
+            startsHome
+        });
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private static async Task<JsonElement[]> GetPlayoffRoundAsync(HttpClient client, int seasonId, int round)
+    {
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/matches");
+        resp.EnsureSuccessStatusCode();
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        return body.EnumerateArray()
+            .Where(m => m.GetProperty("phase").GetString() == "Playoff"
+                        && m.GetProperty("playoffRound").ValueKind == JsonValueKind.Number
+                        && m.GetProperty("playoffRound").GetInt32() == round)
+            .OrderBy(m => m.GetProperty("matchNumber").GetInt32())
+            .ToArray();
+    }
+
+    // Plays a playoff match to completion (None → InProgress → RegularTime), giving the win to the
+    // hosted team (id 1) or to its opponent.
+    private static async Task PlayPlayoffMatchAsync(HttpClient client, int seasonId, JsonElement match, bool hostedWins)
+    {
+        var id = match.GetProperty("id").GetInt32();
+        var homeTeamId = match.GetProperty("homeTeamId").GetInt32();
+        var awayTeamId = match.GetProperty("awayTeamId").GetInt32();
+        var round = match.GetProperty("playoffRound").GetInt32();
+        var hostedIsHome = homeTeamId == 1;
+        var homeWins = hostedWins == hostedIsHome;
+
+        var startResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{id}", new
+        {
+            homeTeamId, awayTeamId, homeScore = 0, awayScore = 0, matchDate = (DateTime?)null,
+            completionType = "InProgress", phase = "Playoff", playoffRound = round
+        });
+        startResp.EnsureSuccessStatusCode();
+
+        var endResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{id}", new
+        {
+            homeTeamId, awayTeamId,
+            homeScore = homeWins ? 3 : 1,
+            awayScore = homeWins ? 1 : 3,
+            matchDate = DateTime.UtcNow.AddDays(-1).ToString("O"),
+            completionType = "RegularTime", phase = "Playoff", playoffRound = round
+        });
+        endResp.EnsureSuccessStatusCode();
+    }
+
+    // Plays the round's games in order, following the given results, fetching the round again
+    // after each game so that automatically appended games are picked up.
+    private static async Task PlayRoundAsync(HttpClient client, int seasonId, int round, params bool[] hostedWinsPerGame)
+    {
+        for (var i = 0; i < hostedWinsPerGame.Length; i++)
+        {
+            var games = await GetPlayoffRoundAsync(client, seasonId, round);
+            games.Length.Should().BeGreaterThan(i, $"game {i + 1} of round {round} should exist");
+            await PlayPlayoffMatchAsync(client, seasonId, games[i], hostedWinsPerGame[i]);
+        }
+    }
+
+    private static void AssertHostedIsHome(JsonElement match, bool expectedHostedIsHome, int opponentTeamId = 2)
+    {
+        match.GetProperty("homeTeamId").GetInt32().Should().Be(expectedHostedIsHome ? 1 : opponentTeamId);
+        match.GetProperty("awayTeamId").GetInt32().Should().Be(expectedHostedIsHome ? opponentTeamId : 1);
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_creates_a_single_match_for_IIHF_season()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonWithLeagueAsync(client, "IIHF Playoff Single Season", "IIHF");
+
+        var body = await CreateSeriesAsync(client, seasonId);
+
+        body.GetArrayLength().Should().Be(1);
+        body[0].GetProperty("playoffRound").GetInt32().Should().Be(1);
+        AssertHostedIsHome(body[0], true);
+    }
+
+    [Fact]
+    public async Task Completing_game_4_at_2_2_appends_game_5_following_the_2_2_1_1_1_pattern()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Append Game 5 Season");
+        await CreateSeriesAsync(client, seasonId, startsHome: true);
+
+        await PlayRoundAsync(client, seasonId, 1, true, false, true, false);
+
+        var games = await GetPlayoffRoundAsync(client, seasonId, 1);
+        games.Length.Should().Be(5);
+        games[4].GetProperty("matchNumber").GetInt32().Should().Be(5);
+        games[4].GetProperty("completionType").GetString().Should().Be("None");
+        AssertHostedIsHome(games[4], true);
+    }
+
+    [Fact]
+    public async Task Series_at_3_3_gets_game_7_and_nothing_is_appended_after_game_7()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Append Game 7 Season");
+        await CreateSeriesAsync(client, seasonId, startsHome: false);
+
+        await PlayRoundAsync(client, seasonId, 1, true, false, true, false, true, false);
+
+        var games = await GetPlayoffRoundAsync(client, seasonId, 1);
+        games.Length.Should().Be(7);
+        // Starting away inverts the 2-2-1-1-1 pattern: games 5 and 7 are away for the hosted team, game 6 at home.
+        AssertHostedIsHome(games[4], false);
+        AssertHostedIsHome(games[5], true);
+        AssertHostedIsHome(games[6], false);
+
+        await PlayPlayoffMatchAsync(client, seasonId, games[6], hostedWins: true);
+
+        (await GetPlayoffRoundAsync(client, seasonId, 1)).Length.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task Sweep_does_not_append_any_game()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Sweep Season");
+        await CreateSeriesAsync(client, seasonId);
+
+        await PlayRoundAsync(client, seasonId, 1, true, true, true, true);
+
+        (await GetPlayoffRoundAsync(client, seasonId, 1)).Length.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Existing_7_game_series_is_not_extended()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Legacy 7 Game Season");
+        for (var i = 0; i < 7; i++)
+        {
+            var created = await CreateMatchAsync(client, seasonId, 1, 2);
+            var resp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{created.GetProperty("id").GetInt32()}", new
+            {
+                homeTeamId = 1, awayTeamId = 2, homeScore = 0, awayScore = 0, matchDate = (DateTime?)null,
+                completionType = "None", phase = "Playoff", playoffRound = 1
+            });
+            resp.EnsureSuccessStatusCode();
+        }
+
+        await PlayRoundAsync(client, seasonId, 1, true, false, true, false);
+
+        (await GetPlayoffRoundAsync(client, seasonId, 1)).Length.Should().Be(7);
+    }
+
+    // ── GET /api/seasons/{seasonId}/matches/playoff-status ──────────────────
+
+    private static async Task<JsonElement> GetPlayoffStatusAsync(HttpClient client, int seasonId)
+    {
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/matches/playoff-status");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_without_playoff_matches_cannot_create_next_series()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Status Empty Season");
+
+        var status = await GetPlayoffStatusAsync(client, seasonId);
+
+        status.GetProperty("lastRound").ValueKind.Should().Be(JsonValueKind.Null);
+        status.GetProperty("canCreateNextSeries").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_for_ongoing_series_reports_score_and_cannot_create_next_series()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Status Ongoing Season");
+        await CreateSeriesAsync(client, seasonId);
+        await PlayRoundAsync(client, seasonId, 1, true, true, false);
+
+        var status = await GetPlayoffStatusAsync(client, seasonId);
+
+        status.GetProperty("lastRound").GetInt32().Should().Be(1);
+        status.GetProperty("hostedWins").GetInt32().Should().Be(2);
+        status.GetProperty("opponentWins").GetInt32().Should().Be(1);
+        status.GetProperty("seriesDecided").GetBoolean().Should().BeFalse();
+        status.GetProperty("canCreateNextSeries").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_after_hosted_team_wins_round_1_allows_round_2()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Status Won Season");
+        await CreateSeriesAsync(client, seasonId);
+        await PlayRoundAsync(client, seasonId, 1, true, false, true, true, true);
+
+        var status = await GetPlayoffStatusAsync(client, seasonId);
+
+        status.GetProperty("seriesDecided").GetBoolean().Should().BeTrue();
+        status.GetProperty("hostedTeamWon").GetBoolean().Should().BeTrue();
+        status.GetProperty("canCreateNextSeries").GetBoolean().Should().BeTrue();
+        status.GetProperty("nextRound").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_after_hosted_team_loses_cannot_create_next_series()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Status Lost Season");
+        await CreateSeriesAsync(client, seasonId);
+        await PlayRoundAsync(client, seasonId, 1, false, false, false, false);
+
+        var status = await GetPlayoffStatusAsync(client, seasonId);
+
+        status.GetProperty("seriesDecided").GetBoolean().Should().BeTrue();
+        status.GetProperty("hostedTeamWon").GetBoolean().Should().BeFalse();
+        status.GetProperty("canCreateNextSeries").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_after_winning_the_NHL_final_cannot_create_next_series()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Status NHL Final Season");
+        for (var round = 1; round <= 4; round++)
+        {
+            await CreateSeriesAsync(client, seasonId, opponentTeamId: round + 1);
+            await PlayRoundAsync(client, seasonId, round, true, true, true, true);
+        }
+
+        var status = await GetPlayoffStatusAsync(client, seasonId);
+
+        status.GetProperty("lastRound").GetInt32().Should().Be(4);
+        status.GetProperty("hostedTeamWon").GetBoolean().Should().BeTrue();
+        status.GetProperty("canCreateNextSeries").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PlayoffStatus_for_IIHF_allows_next_round_after_a_single_win_until_round_3()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonWithLeagueAsync(client, "Playoff Status IIHF Season", "IIHF");
+
+        for (var round = 1; round <= 3; round++)
+        {
+            await CreateSeriesAsync(client, seasonId, opponentTeamId: round + 1);
+            await PlayRoundAsync(client, seasonId, round, true);
+
+            (await GetPlayoffRoundAsync(client, seasonId, round)).Length.Should().Be(1);
+            var status = await GetPlayoffStatusAsync(client, seasonId);
+            status.GetProperty("hostedTeamWon").GetBoolean().Should().BeTrue();
+            status.GetProperty("canCreateNextSeries").GetBoolean().Should().Be(round < 3);
+        }
+    }
+
+    // ── Odds calculation for generated playoff games ────────────────────────
+
+    private static async Task<JsonElement> WaitForOddsStatusAsync(HttpClient client, int seasonId)
+    {
+        JsonElement status = default;
+        for (var i = 0; i < 100; i++)
+        {
+            var resp = await client.GetAsync($"/api/admin/seasons/{seasonId}/odds-status");
+            resp.StatusCode.Should().Be(HttpStatusCode.OK);
+            status = await resp.Content.ReadFromJsonAsync<JsonElement>();
+            if (!status.GetProperty("inProgress").GetBoolean()) return status;
+            await Task.Delay(100);
+        }
+        throw new TimeoutException("Odds calculation did not finish in time");
+    }
+
+    [Fact]
+    public async Task CreatePlayoffSeries_calculates_odds_for_every_created_game()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Odds Series Season");
+        var created = await CreateSeriesAsync(client, seasonId);
+
+        var status = await WaitForOddsStatusAsync(client, seasonId);
+
+        status.GetProperty("completed").GetInt32().Should().Be(4);
+        status.GetProperty("failed").GetInt32().Should().Be(0);
+        status.GetProperty("pendingMatchIds").GetArrayLength().Should().Be(0);
+        var createdIds = created.EnumerateArray().Select(m => m.GetProperty("id").GetInt32());
+        status.GetProperty("completedMatchIds").EnumerateArray().Select(e => e.GetInt32())
+            .Should().BeEquivalentTo(createdIds);
+    }
+
+    [Fact]
+    public async Task Appended_game_gets_its_odds_calculated()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Odds Appended Season");
+        await CreateSeriesAsync(client, seasonId);
+        await PlayRoundAsync(client, seasonId, 1, true, false, true, false);
+
+        var status = await WaitForOddsStatusAsync(client, seasonId);
+
+        var game5Id = (await GetPlayoffRoundAsync(client, seasonId, 1))[4].GetProperty("id").GetInt32();
+        status.GetProperty("completedMatchIds").EnumerateArray().Select(e => e.GetInt32())
+            .Should().Contain(game5Id);
+        status.GetProperty("failed").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task OddsStatus_unauthenticated_returns_401()
+    {
+        var client = Factory.CreateClient();
+        var resp = await client.GetAsync("/api/admin/seasons/1/odds-status");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // Plays a playoff match the way the match page does: period start, one goal, then a MatchEnd event.
+    private static async Task PlayPlayoffMatchViaEventsAsync(HttpClient client, JsonElement match, bool hostedWins)
+    {
+        var id = match.GetProperty("id").GetInt32();
+        foreach (var evt in new object[]
+        {
+            new { eventType = "PeriodChange", isOpponent = false, eventSubtype = "1" },
+            new { eventType = "Goal", isOpponent = !hostedWins },
+            new { eventType = "MatchEnd", isOpponent = false, eventSubtype = "REG" },
+        })
+        {
+            var resp = await client.PostAsJsonAsync($"/api/matches/{id}/events", evt);
+            resp.EnsureSuccessStatusCode();
+        }
+    }
+
+    [Fact]
+    public async Task Ending_game_4_at_2_2_via_match_events_appends_game_5_and_calculates_its_odds()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Playoff Append Via Events Season");
+        await CreateSeriesAsync(client, seasonId);
+
+        var results = new[] { true, false, false, true };
+        for (var i = 0; i < results.Length; i++)
+        {
+            var games = await GetPlayoffRoundAsync(client, seasonId, 1);
+            await PlayPlayoffMatchViaEventsAsync(client, games[i], results[i]);
+        }
+
+        var round = await GetPlayoffRoundAsync(client, seasonId, 1);
+        round.Length.Should().Be(5);
+        AssertHostedIsHome(round[4], true);
+
+        var status = await WaitForOddsStatusAsync(client, seasonId);
+        status.GetProperty("completedMatchIds").EnumerateArray().Select(e => e.GetInt32())
+            .Should().Contain(round[4].GetProperty("id").GetInt32());
     }
 }

@@ -158,6 +158,12 @@ Core features and functionality of NHL Stats 2.0.
 - Assign home/away teams
 - Set match status
 
+**Playoff Series** — Admin can:
+- Create a playoff series for the hosted team (2-2-1-1-1 home/away pattern): the first 4 games for NHL, a single game for IIHF
+- Games 5–7 are appended automatically while the series is undecided (after each finished game, if no unplayed game is left)
+- Once the hosted team wins a round and another round exists, the season page's Playoff tab asks the admin for the next opponent and generates that series
+- Betting odds for generated games are calculated in the background; admins see the progress on the Playoff tab
+
 **Edit Matches** — Admin can:
 - Change home/away teams (before match starts)
 - Update match date/time

@@ -29,6 +29,8 @@ import TopPlayersGrid from '../components/season/TopPlayersGrid'
 import WeeklyMatches from '../components/season/WeeklyMatches'
 import UpNextPanel from '../components/season/UpNextPanel'
 import PlayoffBracket from '../components/season/PlayoffBracket'
+import NextPlayoffSeriesPrompt from '../components/season/NextPlayoffSeriesPrompt'
+import OddsRecalculationStatus from '../components/season/OddsRecalculationStatus'
 import { Tab } from '../components/season/SeasonPrimitives'
 import type { LeagueTypeValue } from '../types/team'
 
@@ -61,6 +63,9 @@ export default function SeasonPage() {
     const [statsPhase, setStatsPhase] = useState<StatsPhaseFilter>('All')
     const [seasonTotalsByPhase, setSeasonTotalsByPhase] = useState<Partial<Record<StatsPhaseFilter, SeasonTotals>>>({})
     const [loadingPhaseStats, setLoadingPhaseStats] = useState(false)
+    // Bumped after an admin generates playoff matches, so the status widgets re-check the backend
+    const [playoffRefreshKey, setPlayoffRefreshKey] = useState(0)
+    const [pendingOddsMatchIds, setPendingOddsMatchIds] = useState<number[]>([])
     const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
         useSeasonEventNotifications(seasonId)
     const isDesktop = useIsDesktop()
@@ -204,6 +209,21 @@ export default function SeasonPage() {
     }, [seasonId, activePhaseTotals, userNameById])
 
     const hasPlayoffMatches = allMatches.some(m => m.phase === MatchPhase.Playoff)
+
+    const reloadMatches = async () => {
+        if (!seasonId) return
+        try {
+            setAllMatches(await apiClient.get<Match[]>(`/api/seasons/${seasonId}/matches`))
+        } catch {
+            // keep the current list; the next page load will refresh it
+        }
+    }
+
+    const handlePlayoffSeriesCreated = () => {
+        toast.success(t('toast.createSuccess'))
+        setPlayoffRefreshKey((k) => k + 1)
+        void reloadMatches()
+    }
 
     const fetchMatchDetail = async (matchId: number) => {
         if (!seasonId || matchDetailCache.has(matchId)) return
@@ -394,13 +414,32 @@ export default function SeasonPage() {
                         )}
 
                         {contentTab === 'playoff' && hasPlayoffMatches ? (
-                            <PlayoffBracket
-                                matches={allMatches}
-                                seasonId={seasonId}
-                                leagueType={activeLeague}
-                                isDesktop={isDesktop}
-                                hostedTeamId={currentSeason?.hostedTeamId ?? null}
-                            />
+                            <div className="space-y-4">
+                                {isAdmin && (
+                                    <OddsRecalculationStatus
+                                        seasonId={seasonId}
+                                        refreshKey={playoffRefreshKey}
+                                        onPendingChange={setPendingOddsMatchIds}
+                                    />
+                                )}
+                                {isAdmin && currentSeason?.hostedTeamId != null && (
+                                    <NextPlayoffSeriesPrompt
+                                        seasonId={seasonId}
+                                        hostedTeamId={currentSeason.hostedTeamId}
+                                        leagueType={activeLeague}
+                                        refreshKey={playoffRefreshKey}
+                                        onCreated={handlePlayoffSeriesCreated}
+                                    />
+                                )}
+                                <PlayoffBracket
+                                    matches={allMatches}
+                                    seasonId={seasonId}
+                                    leagueType={activeLeague}
+                                    isDesktop={isDesktop}
+                                    hostedTeamId={currentSeason?.hostedTeamId ?? null}
+                                    pendingOddsMatchIds={isAdmin ? pendingOddsMatchIds : []}
+                                />
+                            </div>
                         ) : (
                             <>
                                 <HostedTeamRecord

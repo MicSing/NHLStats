@@ -88,6 +88,7 @@ no tracking flag. Admin UI: Finance page → Betting tab.
 | `DELETE` | `/api/betting/bets/{betId}` | Cancel a pending ticket |
 | `POST` | `/api/admin/matches/{matchId}/re-evaluate-bets` | Admin: re-run evaluation for a match |
 | `POST` | `/api/admin/bets/recalculate-correlated-odds` | Admin: global retroactive recalculation |
+| `GET` | `/api/admin/seasons/{seasonId}/odds-status` | Admin: progress of the background odds calculation for newly generated matches |
 
 ---
 

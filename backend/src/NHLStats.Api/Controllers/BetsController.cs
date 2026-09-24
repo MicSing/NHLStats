@@ -16,12 +16,14 @@ public class BetsController : ControllerBase
     private readonly IBetService _betService;
     private readonly IBettingBalanceService _balanceService;
     private readonly IBettingOddsService _oddsService;
+    private readonly IOddsRecalculationTracker _oddsTracker;
 
-    public BetsController(IBetService betService, IBettingBalanceService balanceService, IBettingOddsService oddsService)
+    public BetsController(IBetService betService, IBettingBalanceService balanceService, IBettingOddsService oddsService, IOddsRecalculationTracker oddsTracker)
     {
         _betService = betService;
         _balanceService = balanceService;
         _oddsService = oddsService;
+        _oddsTracker = oddsTracker;
     }
 
     // GET /api/betting/balance
@@ -131,6 +133,13 @@ public class BetsController : ControllerBase
         var count = await _oddsService.RecalculateAllUpcomingAsync();
         return Ok(new { message = "Upcoming match odds recalculated.", matchesUpdated = count });
     }
+
+    // GET /api/admin/seasons/{seasonId}/odds-status (admin only)
+    // Progress of the background odds calculation for the season's newly generated matches.
+    [HttpGet("api/admin/seasons/{seasonId:int}/odds-status")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult GetOddsStatus(int seasonId) =>
+        Ok(_oddsTracker.GetSeasonStatus(seasonId));
 
     // POST /api/admin/bets/recalculate-historical-odds (admin only)
     // Reprices already-evaluated (Won/Lost) tickets not already on the chosen target formula

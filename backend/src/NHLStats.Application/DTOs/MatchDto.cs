@@ -68,3 +68,29 @@ public record BatchCreateMatchDto(
 public record CreatePlayoffSeriesDto(
     int OpponentTeamId,
     bool StartsHome);
+
+/// <summary>
+/// State of the hosted team's latest playoff round, used to decide whether an admin should be
+/// prompted to pick the opponent for the next series.
+/// </summary>
+public record PlayoffStatusDto(
+    int? LastRound,
+    int HostedWins,
+    int OpponentWins,
+    bool SeriesDecided,
+    bool HostedTeamWon,
+    bool CanCreateNextSeries,
+    int? NextRound);
+
+/// <summary>
+/// Progress of the background odds calculation for a season's newly generated matches.
+/// </summary>
+public record OddsRecalculationStatusDto(
+    bool InProgress,
+    int Pending,
+    int Completed,
+    int Failed,
+    IEnumerable<int> PendingMatchIds,
+    IEnumerable<int> CompletedMatchIds,
+    DateTime? StartedAt,
+    string? LastError);

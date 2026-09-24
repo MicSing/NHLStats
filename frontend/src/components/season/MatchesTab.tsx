@@ -5,7 +5,7 @@ import { Plus, DownloadSimpleIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { CompletionType, MatchPhase } from '../../types/match'
 import type { Match, CreateMatchDto, UpdateMatchDto } from '../../types/match'
 import type { ImportRealSeasonMatchesResult } from '../../types/season'
-import type { Team } from '../../types/team'
+import type { LeagueTypeValue, Team } from '../../types/team'
 import type { User } from '../../types/user'
 import apiClient from '../../services/apiClient'
 import { useToast } from '../../context/ToastContext'
@@ -29,9 +29,10 @@ export interface MatchesTabProps {
     seasonUsers: User[]
     hostedTeamId: number | null
     nhlYear: number | null
+    leagueType?: LeagueTypeValue
 }
 
-export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId, nhlYear }: MatchesTabProps) {
+export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId, nhlYear, leagueType = 'NHL' }: MatchesTabProps) {
     const { t } = useTranslation()
     const toast = useToast()
     const [matches, setMatches] = useState<Match[]>([])
@@ -428,6 +429,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
                         seasonId={seasonId}
                         teams={teams}
                         hostedTeamId={hostedTeamId}
+                        leagueType={leagueType}
                         onSuccess={() => {
                             setShowPlayoffModal(false)
                             toast.success(t('toast.createSuccess'))
