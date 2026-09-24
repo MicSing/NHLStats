@@ -141,11 +141,12 @@ export default function PlayoffBracket({
     const activeSlot = roundSlots.find((s) => s.round === selectedRound) ?? roundSlots[roundSlots.length - 1]
     const isIIHF = leagueType === 'IIHF'
 
-    // Keep played matches, but only the closest upcoming one; game numbers follow the full series order
+    // Played matches and the closest upcoming one get full cards; later upcoming ones are listed compactly.
+    // Game numbers follow the full series order.
     const firstUpcomingId = activeSlot.duel.matches.find(isUpcoming)?.id
-    const visibleMatches = activeSlot.duel.matches
-        .map((m, idx) => ({ match: m, gameIndex: idx }))
-        .filter(({ match }) => !isUpcoming(match) || match.id === firstUpcomingId)
+    const seriesMatches = activeSlot.duel.matches.map((m, idx) => ({ match: m, gameIndex: idx }))
+    const visibleMatches = seriesMatches.filter(({ match }) => !isUpcoming(match) || match.id === firstUpcomingId)
+    const laterUpcomingMatches = seriesMatches.filter(({ match }) => isUpcoming(match) && match.id !== firstUpcomingId)
 
     const handleRoundClick = (slot: { round: number; name: string; duel: DuelRound }) => {
         if (isIIHF) {
@@ -414,6 +415,35 @@ export default function PlayoffBracket({
                         <p className="text-sm text-text-muted italic py-6 text-center">
                             {t('season.playoffNoRounds')}
                         </p>
+                    )}
+
+                    {laterUpcomingMatches.length > 0 && (
+                        <div>
+                            <h4 id="playoff-later-upcoming" className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                                {t('season.upcomingMatches')}
+                            </h4>
+                            <ul aria-labelledby="playoff-later-upcoming" className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {laterUpcomingMatches.map(({ match: m, gameIndex: idx }) => (
+                                    <li key={m.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => openMatchModal(m, idx)}
+                                            className="group w-full flex items-center gap-3 bg-surface border border-border rounded p-2.5 text-left hover:border-primary/50 transition-colors"
+                                        >
+                                            <span className="text-[11px] font-bold text-text-muted shrink-0">
+                                                {t('season.playoffGameNumber', { number: idx + 1 })}
+                                            </span>
+                                            <span className="text-sm font-medium text-text-muted group-hover:text-text transition-colors truncate">
+                                                {m.homeTeamShortName || m.homeTeamName} {t('season.playoffVs')} {m.awayTeamShortName || m.awayTeamName}
+                                            </span>
+                                            {pendingOddsMatchIds.includes(m.id) && (
+                                                <Spinner className="w-3 h-3 ml-auto text-primary shrink-0" />
+                                            )}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
                 </div>
             )}

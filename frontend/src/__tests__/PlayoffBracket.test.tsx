@@ -144,7 +144,8 @@ describe('PlayoffBracket', () => {
         expect(screen.getByText('4')).toBeInTheDocument()
     })
 
-    test('NHL season: shows played matches and only the closest upcoming match, without a score', () => {
+    test('NHL season: shows played matches and the next upcoming match as full cards, later upcoming matches as compact rows', async () => {
+        const user = userEvent.setup()
         const base = {
             phase: MatchPhase.Playoff,
             playoffRound: 1,
@@ -164,16 +165,24 @@ describe('PlayoffBracket', () => {
             </MemoryRouter>
         )
 
-        expect(screen.getByText('Game 1')).toBeInTheDocument()
-        expect(screen.getByText('Game 2')).toBeInTheDocument()
-        expect(screen.queryByText('Game 3')).not.toBeInTheDocument()
-        expect(screen.queryByText('Game 4')).not.toBeInTheDocument()
-
-        // Played match shows its score, upcoming match shows no 0:0 score
+        // Played match shows its score, the next upcoming match is a full card with no 0:0 score
         expect(screen.getByText('5')).toBeInTheDocument()
         const upcomingCard = screen.getByText('Game 2').closest('[role="button"]') as HTMLElement
         expect(within(upcomingCard).queryByText('0')).not.toBeInTheDocument()
         expect(within(upcomingCard).getByText('vs')).toBeInTheDocument()
+        expect(within(upcomingCard).getByText('Match Details')).toBeInTheDocument()
+
+        // Later upcoming matches are listed as compact rows
+        const laterList = screen.getByRole('list', { name: 'Upcoming Matches' })
+        const rows = within(laterList).getAllByRole('button')
+        expect(rows).toHaveLength(2)
+        expect(within(rows[0]).getByText('Game 3')).toBeInTheDocument()
+        expect(within(rows[1]).getByText('Game 4')).toBeInTheDocument()
+        expect(within(rows[0]).queryByText('Match Details')).not.toBeInTheDocument()
+
+        // Compact rows still open the match modal
+        await user.click(rows[0])
+        expect(await screen.findByRole('dialog')).toBeInTheDocument()
     })
 
     test('NHL season: clicking a match opens the match modal with event history timeline', async () => {
