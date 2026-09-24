@@ -144,7 +144,7 @@ describe('PlayoffBracket', () => {
         expect(screen.getByText('4')).toBeInTheDocument()
     })
 
-    test('NHL season: shows played matches and only the closest upcoming match, without a score', () => {
+    test('NHL season: shows played matches and all upcoming matches, without a score', () => {
         const base = {
             phase: MatchPhase.Playoff,
             playoffRound: 1,
@@ -166,14 +166,15 @@ describe('PlayoffBracket', () => {
 
         expect(screen.getByText('Game 1')).toBeInTheDocument()
         expect(screen.getByText('Game 2')).toBeInTheDocument()
-        expect(screen.queryByText('Game 3')).not.toBeInTheDocument()
-        expect(screen.queryByText('Game 4')).not.toBeInTheDocument()
+        expect(screen.getByText('Game 3')).toBeInTheDocument()
+        expect(screen.getByText('Game 4')).toBeInTheDocument()
 
-        // Played match shows its score, upcoming match shows no 0:0 score
+        // Played match shows its score, upcoming matches show no 0:0 score
         expect(screen.getByText('5')).toBeInTheDocument()
         const upcomingCard = screen.getByText('Game 2').closest('[role="button"]') as HTMLElement
         expect(within(upcomingCard).queryByText('0')).not.toBeInTheDocument()
         expect(within(upcomingCard).getByText('vs')).toBeInTheDocument()
+        expect(screen.getAllByText('vs')).toHaveLength(3)
     })
 
     test('NHL season: clicking a match opens the match modal with event history timeline', async () => {

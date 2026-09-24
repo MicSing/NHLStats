@@ -141,11 +141,8 @@ export default function PlayoffBracket({
     const activeSlot = roundSlots.find((s) => s.round === selectedRound) ?? roundSlots[roundSlots.length - 1]
     const isIIHF = leagueType === 'IIHF'
 
-    // Keep played matches, but only the closest upcoming one; game numbers follow the full series order
-    const firstUpcomingId = activeSlot.duel.matches.find(isUpcoming)?.id
-    const visibleMatches = activeSlot.duel.matches
-        .map((m, idx) => ({ match: m, gameIndex: idx }))
-        .filter(({ match }) => !isUpcoming(match) || match.id === firstUpcomingId)
+    // Show every match in the series (played and upcoming); game numbers follow the full series order
+    const visibleMatches = activeSlot.duel.matches.map((m, idx) => ({ match: m, gameIndex: idx }))
 
     const handleRoundClick = (slot: { round: number; name: string; duel: DuelRound }) => {
         if (isIIHF) {
