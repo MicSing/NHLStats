@@ -553,6 +553,31 @@ export const handlers = [
         )
     }),
 
+    rest.get(`${BASE}/api/seasons/:seasonId/matches/playoff-status`, (_req, res, ctx) => {
+        return res(ctx.json({
+            lastRound: null,
+            hostedWins: 0,
+            opponentWins: 0,
+            seriesDecided: false,
+            hostedTeamWon: false,
+            canCreateNextSeries: false,
+            nextRound: null,
+        }))
+    }),
+
+    rest.get(`${BASE}/api/admin/seasons/:seasonId/odds-status`, (_req, res, ctx) => {
+        return res(ctx.json({
+            inProgress: false,
+            pending: 0,
+            completed: 0,
+            failed: 0,
+            pendingMatchIds: [],
+            completedMatchIds: [],
+            startedAt: null,
+            lastError: null,
+        }))
+    }),
+
     rest.get(`${BASE}/api/seasons/:seasonId/matches/:id`, (req, res, ctx) => {
         const match = mockMatches.find((m) => m.id === Number(req.params.id))
         return match ? res(ctx.json(match)) : res(ctx.status(404))

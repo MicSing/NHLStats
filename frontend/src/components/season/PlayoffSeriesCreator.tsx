@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CreatePlayoffSeriesDto } from '../../types/match'
-import type { Team } from '../../types/team'
+import type { LeagueTypeValue, Team } from '../../types/team'
 import apiClient from '../../services/apiClient'
 import SearchableSelect from '../SearchableSelect'
+import { initialPlayoffGames } from './seasonUtils'
 
 // Standard 2-2-1-1-1 playoff format, expressed as whether the hosted team is home in each game.
 const BASE_HOSTED_IS_HOME_PATTERN = [true, true, false, false, true, false, true]
@@ -12,16 +13,20 @@ export interface PlayoffSeriesCreatorProps {
     seasonId: number
     teams: Team[]
     hostedTeamId: number | null
+    leagueType?: LeagueTypeValue
     onSuccess: () => void
-    onClose: () => void
+    onClose?: () => void
+    submitLabel?: string
 }
 
 export default function PlayoffSeriesCreator({
     seasonId,
     teams,
     hostedTeamId,
+    leagueType = 'NHL',
     onSuccess,
     onClose,
+    submitLabel,
 }: PlayoffSeriesCreatorProps) {
     const { t } = useTranslation()
     const [opponentTeamId, setOpponentTeamId] = useState<number | ''>('')
@@ -35,7 +40,8 @@ export default function PlayoffSeriesCreator({
         .filter((tm) => tm.id !== hostedTeamId)
         .map((tm) => ({ value: tm.id, label: tm.name }))
 
-    const pattern = BASE_HOSTED_IS_HOME_PATTERN.map((baseHostedIsHome) =>
+    const initialGames = initialPlayoffGames(leagueType)
+    const pattern = BASE_HOSTED_IS_HOME_PATTERN.slice(0, initialGames).map((baseHostedIsHome) =>
         startsHome ? baseHostedIsHome : !baseHostedIsHome,
     )
 
@@ -61,22 +67,28 @@ export default function PlayoffSeriesCreator({
 
     if (!hostedTeamId) {
         return (
-            <div className="space-y-4 min-w-[420px]">
+            <div className="space-y-4 sm:min-w-[420px]">
                 <p className="text-danger text-sm">{t('admin.matches.playoffSeriesNoHostedTeam')}</p>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
-                >
-                    {t('common.cancel')}
-                </button>
+                {onClose && (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                )}
             </div>
         )
     }
 
     return (
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 min-w-[420px]">
-            <p className="text-xs text-text-muted">{t('admin.matches.playoffSeriesDescription')}</p>
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 sm:min-w-[420px]">
+            <p className="text-xs text-text-muted">
+                {leagueType === 'IIHF'
+                    ? t('admin.matches.playoffSeriesDescriptionSingle')
+                    : t('admin.matches.playoffSeriesDescription')}
+            </p>
 
             <div>
                 <label className="label">{t('admin.matches.opponentTeam')}</label>
@@ -116,6 +128,9 @@ export default function PlayoffSeriesCreator({
                             </li>
                         ))}
                     </ol>
+                    {initialGames > 1 && (
+                        <p className="text-xs text-text-muted mt-1">{t('admin.matches.playoffSeriesMoreGames')}</p>
+                    )}
                 </div>
             )}
 
@@ -127,15 +142,17 @@ export default function PlayoffSeriesCreator({
                     disabled={submitting || opponentTeamId === ''}
                     className="bg-primary hover:bg-primary-hover px-4 py-2 rounded text-sm disabled:opacity-50"
                 >
-                    {t('admin.matches.createPlayoffSeries')}
+                    {submitLabel ?? t('admin.matches.createPlayoffSeries')}
                 </button>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
-                >
-                    {t('common.cancel')}
-                </button>
+                {onClose && (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="bg-border hover:bg-border/80 px-4 py-2 rounded text-sm"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                )}
             </div>
         </form>
     )

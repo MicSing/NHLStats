@@ -20,8 +20,21 @@ public interface IMatchService
     Task<IEnumerable<MatchDto>> BatchCreateAsync(int seasonId, IEnumerable<BatchCreateMatchDto> dtos);
 
     /// <summary>
-    /// Creates a 7-match playoff series for the season's hosted team against an opponent,
-    /// following the standard 2-2-1-1-1 home/away pattern, then recalculates upcoming odds.
+    /// Creates a playoff series for the season's hosted team against an opponent, following the
+    /// standard 2-2-1-1-1 home/away pattern: the first 4 games for NHL (games 5-7 are appended
+    /// automatically while the series is undecided) or a single game for IIHF. Odds for the new
+    /// games are calculated in the background.
     /// </summary>
     Task<IEnumerable<MatchDto>> CreatePlayoffSeriesAsync(int seasonId, CreatePlayoffSeriesDto dto);
+
+    /// <summary>
+    /// Summarises the hosted team's latest playoff round and whether a next series can be created.
+    /// </summary>
+    Task<PlayoffStatusDto> GetPlayoffStatusAsync(int seasonId);
+
+    /// <summary>
+    /// Follow-up work once a match has finished (however it was finished): appends the next game
+    /// of an undecided playoff series and recalculates upcoming odds, including the new game's.
+    /// </summary>
+    Task HandleMatchCompletedAsync(int matchId);
 }

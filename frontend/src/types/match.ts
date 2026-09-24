@@ -133,3 +133,24 @@ export interface CreatePlayoffSeriesDto {
     opponentTeamId: number
     startsHome: boolean
 }
+
+export interface PlayoffStatus {
+    lastRound: number | null
+    hostedWins: number
+    opponentWins: number
+    seriesDecided: boolean
+    hostedTeamWon: boolean
+    canCreateNextSeries: boolean
+    nextRound: number | null
+}
+
+export interface OddsRecalculationStatus {
+    inProgress: boolean
+    pending: number
+    completed: number
+    failed: number
+    pendingMatchIds: number[]
+    completedMatchIds: number[]
+    startedAt: string | null
+    lastError: string | null
+}

@@ -94,6 +94,10 @@ public class MatchesController : ControllerBase
         }
     }
 
+    [HttpGet("playoff-status")]
+    public async Task<IActionResult> GetPlayoffStatus(int seasonId) =>
+        Ok(await _service.GetPlayoffStatusAsync(seasonId));
+
     [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int seasonId, int id, UpdateMatchDto dto)

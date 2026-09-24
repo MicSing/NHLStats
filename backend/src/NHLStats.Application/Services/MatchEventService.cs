@@ -11,15 +11,18 @@ public class MatchEventService : IMatchEventService
     private readonly NhlStatsDbContext _db;
     private readonly IUserMatchService _userMatchService;
     private readonly IBetService _betService;
+    private readonly IMatchService _matchService;
 
     public MatchEventService(
         NhlStatsDbContext db,
         IUserMatchService userMatchService,
-        IBetService betService)
+        IBetService betService,
+        IMatchService matchService)
     {
         _db = db;
         _userMatchService = userMatchService;
         _betService = betService;
+        _matchService = matchService;
     }
 
     private static MatchEventDto ToDto(MatchEvent e)
@@ -175,6 +178,7 @@ public class MatchEventService : IMatchEventService
                 matchId, match.HomeScore, match.AwayScore,
                 match.Season?.HostedTeamId, match.HomeTeamId);
             await _betService.EvaluateMatchBetsAsync(matchId);
+            await _matchService.HandleMatchCompletedAsync(matchId);
             return (ToDto(matchEvent), null);
         }
 
@@ -352,6 +356,7 @@ public class MatchEventService : IMatchEventService
             matchId, match.HomeScore, match.AwayScore,
             match.Season?.HostedTeamId, match.HomeTeamId);
         await _betService.EvaluateMatchBetsAsync(matchId);
+        await _matchService.HandleMatchCompletedAsync(matchId);
 
         var matchDto = new MatchDto(
             match.Id,

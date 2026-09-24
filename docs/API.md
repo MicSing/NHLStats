@@ -511,6 +511,68 @@ Authorization: Bearer <token>
 }
 ```
 
+### Create Playoff Series
+
+Creates the hosted team's next playoff round against an opponent, following the 2-2-1-1-1
+home/away pattern. NHL seasons get the first 4 games; games 5–7 are appended automatically, one at
+a time, when a game finishes and neither team has 4 wins yet. IIHF rounds are a single game.
+Betting odds for the new games are calculated in the background (see *Odds Status*).
+
+```
+POST /api/seasons/{seasonId}/matches/playoff-series
+Authorization: Bearer <token>   (Admin)
+
+{ "opponentTeamId": 2, "startsHome": true }
+```
+
+**Response:** `200 OK` with the created matches.
+
+### Playoff Status
+
+Summarises the latest playoff round. `canCreateNextSeries` is `true` once the hosted team has won
+the round and another round exists (NHL: 4 rounds, IIHF: 3).
+
+```
+GET /api/seasons/{seasonId}/matches/playoff-status
+```
+
+**Response:** `200 OK`
+```json
+{
+  "lastRound": 1,
+  "hostedWins": 4,
+  "opponentWins": 2,
+  "seriesDecided": true,
+  "hostedTeamWon": true,
+  "canCreateNextSeries": true,
+  "nextRound": 2
+}
+```
+
+### Odds Status
+
+Progress of the background odds calculation for a season's newly generated matches (kept for
+10 minutes after finishing).
+
+```
+GET /api/admin/seasons/{seasonId}/odds-status
+Authorization: Bearer <token>   (Admin)
+```
+
+**Response:** `200 OK`
+```json
+{
+  "inProgress": true,
+  "pending": 2,
+  "completed": 2,
+  "failed": 0,
+  "pendingMatchIds": [7, 8],
+  "completedMatchIds": [5, 6],
+  "startedAt": "2026-09-24T08:00:00Z",
+  "lastError": null
+}
+```
+
 ## User Matches Endpoints
 
 ### Get User's Matches for Season

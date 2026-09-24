@@ -6,8 +6,9 @@ import { MatchPhase, CompletionType } from '../../types/match'
 import type { LeagueTypeValue } from '../../types/team'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import CompletionBadge from '../CompletionBadge'
+import Spinner from '../Spinner'
 import PlayoffMatchModal from './PlayoffMatchModal'
-import { normalizeCompletionType } from './seasonUtils'
+import { getPlayoffRoundName, normalizeCompletionType } from './seasonUtils'
 
 interface TeamSide {
     teamId: number
@@ -30,6 +31,8 @@ interface Props {
     leagueType?: LeagueTypeValue
     isDesktop?: boolean
     hostedTeamId?: number | null
+    /** Ids of matches whose betting odds are still being calculated (admin view only). */
+    pendingOddsMatchIds?: number[]
 }
 
 function isDecisive(match: Match): boolean {
@@ -39,25 +42,6 @@ function isDecisive(match: Match): boolean {
 
 function isUpcoming(match: Match): boolean {
     return normalizeCompletionType(match.completionType) === CompletionType.None
-}
-
-function getRoundName(round: number, leagueType: LeagueTypeValue, t: (key: string, options?: Record<string, unknown>) => string): string {
-    if (leagueType === 'IIHF') {
-        switch (round) {
-            case 1: return t('season.playoffRoundIihf1')
-            case 2: return t('season.playoffRoundIihf2')
-            case 3: return t('season.playoffRoundIihf3')
-            default: return t('season.playoffRound', { number: round })
-        }
-    } else {
-        switch (round) {
-            case 1: return t('season.playoffRoundNhl1')
-            case 2: return t('season.playoffRoundNhl2')
-            case 3: return t('season.playoffRoundNhl3')
-            case 4: return t('season.playoffRoundNhl4')
-            default: return t('season.playoffRound', { number: round })
-        }
-    }
 }
 
 function buildRoundData(round: number, matches: Match[], leagueType: LeagueTypeValue): DuelRound | null {
@@ -120,6 +104,7 @@ export default function PlayoffBracket({
     seasonId,
     leagueType = 'NHL',
     hostedTeamId,
+    pendingOddsMatchIds = [],
 }: Props) {
     const { t } = useTranslation()
 
@@ -137,7 +122,7 @@ export default function PlayoffBracket({
         return distinctRounds
             .map((r) => ({
                 round: r,
-                name: getRoundName(r, leagueType, t),
+                name: getPlayoffRoundName(r, leagueType, t),
                 duel: buildRoundData(r, playoffMatches, leagueType),
             }))
             .filter((slot): slot is { round: number; name: string; duel: DuelRound } => slot.duel != null && slot.duel.matches.length > 0)
@@ -356,6 +341,12 @@ export default function PlayoffBracket({
                                                 {t('season.playoffGameNumber', { number: idx + 1 })}
                                             </span>
                                             <div className="flex items-center gap-2">
+                                                {upcoming && pendingOddsMatchIds.includes(m.id) && (
+                                                    <span className="flex items-center gap-1 text-primary" data-testid="odds-pending">
+                                                        <Spinner className="w-3 h-3" />
+                                                        {t('season.playoffOddsPending')}
+                                                    </span>
+                                                )}
                                                 {m.matchDate ? (
                                                     <span>{new Date(m.matchDate).toLocaleDateString()}</span>
                                                 ) : (
