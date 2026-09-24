@@ -240,6 +240,7 @@
         "playoffSeriesScore": "Series: {{teamA}} {{scoreA}} – {{scoreB}} {{teamB}}",
         "playoffBestOf7": "Best of 7",
         "playoffBestOf1": "Best of 1",
+        "playoffVs": "vs",
         "playoffTimeline": "Timeline",
         "playoffStatsSummary": "Stats Summary",
         "playoffNoEventsNotice": "No event timeline recorded for this match."

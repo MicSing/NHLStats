@@ -37,6 +37,10 @@ function isDecisive(match: Match): boolean {
     return ct === CompletionType.RegularTime || ct === CompletionType.Overtime || ct === CompletionType.Shootout
 }
 
+function isUpcoming(match: Match): boolean {
+    return normalizeCompletionType(match.completionType) === CompletionType.None
+}
+
 function getRoundName(round: number, leagueType: LeagueTypeValue, t: (key: string, options?: Record<string, unknown>) => string): string {
     if (leagueType === 'IIHF') {
         switch (round) {
@@ -139,8 +143,8 @@ export default function PlayoffBracket({
             .filter((slot): slot is { round: number; name: string; duel: DuelRound } => slot.duel != null && slot.duel.matches.length > 0)
     }, [playoffMatches, leagueType, t])
 
-    const initialRound = roundSlots.length > 0 ? roundSlots[0].round : 1
-    const [selectedRound, setSelectedRound] = useState<number>(initialRound)
+    // null = no explicit choice yet, so default to the latest created round
+    const [selectedRound, setSelectedRound] = useState<number | null>(null)
     const [modalMatch, setModalMatch] = useState<Match | null>(null)
     const [modalGameLabel, setModalGameLabel] = useState<string | undefined>(undefined)
 
@@ -149,8 +153,14 @@ export default function PlayoffBracket({
     }
 
     const currentSeasonId = seasonId ?? (matches[0]?.seasonId ?? 0)
-    const activeSlot = roundSlots.find((s) => s.round === selectedRound) ?? roundSlots[0]
+    const activeSlot = roundSlots.find((s) => s.round === selectedRound) ?? roundSlots[roundSlots.length - 1]
     const isIIHF = leagueType === 'IIHF'
+
+    // Keep played matches, but only the closest upcoming one; game numbers follow the full series order
+    const firstUpcomingId = activeSlot.duel.matches.find(isUpcoming)?.id
+    const visibleMatches = activeSlot.duel.matches
+        .map((m, idx) => ({ match: m, gameIndex: idx }))
+        .filter(({ match }) => !isUpcoming(match) || match.id === firstUpcomingId)
 
     const handleRoundClick = (slot: { round: number; name: string; duel: DuelRound }) => {
         if (isIIHF) {
@@ -181,7 +191,8 @@ export default function PlayoffBracket({
                 <div className="flex items-stretch gap-3 sm:gap-4 min-w-fit">
                     {roundSlots.map((slot, index) => {
                         const { round, name, duel } = slot
-                        const isSelected = !isIIHF && selectedRound === round
+                        const isSelected = !isIIHF && activeSlot.round === round
+                        const iihfMatch = isIIHF && duel.matches[0] && !isUpcoming(duel.matches[0]) ? duel.matches[0] : null
 
                         return (
                             <div key={round} className="flex items-center min-w-[220px]">
@@ -234,8 +245,10 @@ export default function PlayoffBracket({
                                                     ? 'bg-primary/10 text-primary font-black'
                                                     : 'text-text-muted'
                                             }`}>
-                                                {isIIHF && duel.matches[0]
-                                                    ? (duel.matches[0].homeTeamId === duel.teamA.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
+                                                {isIIHF
+                                                    ? (iihfMatch
+                                                        ? (iihfMatch.homeTeamId === duel.teamA.teamId ? iihfMatch.homeScore : iihfMatch.awayScore)
+                                                        : '–')
                                                     : duel.teamA.wins}
                                             </span>
                                         </div>
@@ -264,8 +277,10 @@ export default function PlayoffBracket({
                                                     ? 'bg-primary/10 text-primary font-black'
                                                     : 'text-text-muted'
                                             }`}>
-                                                {isIIHF && duel.matches[0]
-                                                    ? (duel.matches[0].homeTeamId === duel.teamB.teamId ? duel.matches[0].homeScore : duel.matches[0].awayScore)
+                                                {isIIHF
+                                                    ? (iihfMatch
+                                                        ? (iihfMatch.homeTeamId === duel.teamB.teamId ? iihfMatch.homeScore : iihfMatch.awayScore)
+                                                        : '–')
                                                     : duel.teamB.wins}
                                             </span>
                                         </div>
@@ -313,9 +328,10 @@ export default function PlayoffBracket({
                         )}
                     </div>
 
-                    {activeSlot.duel && activeSlot.duel.matches.length > 0 ? (
+                    {visibleMatches.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            {activeSlot.duel.matches.map((m, idx) => {
+                            {visibleMatches.map(({ match: m, gameIndex: idx }) => {
+                                const upcoming = isUpcoming(m)
                                 const decisive = isDecisive(m)
                                 const homeWon = decisive && m.homeScore > m.awayScore
                                 const awayWon = decisive && m.awayScore > m.homeScore
@@ -367,11 +383,17 @@ export default function PlayoffBracket({
                                             </div>
 
                                             {/* Score */}
-                                            <div className="col-span-1 text-center font-bold tabular-nums text-base">
-                                                <span className={homeWon ? 'text-primary font-black' : 'text-text'}>{m.homeScore}</span>
-                                                <span className="text-text-muted mx-1">:</span>
-                                                <span className={awayWon ? 'text-primary font-black' : 'text-text'}>{m.awayScore}</span>
-                                            </div>
+                                            {upcoming ? (
+                                                <div className="col-span-1 text-center text-xs font-semibold uppercase text-text-muted">
+                                                    {t('season.playoffVs')}
+                                                </div>
+                                            ) : (
+                                                <div className="col-span-1 text-center font-bold tabular-nums text-base">
+                                                    <span className={homeWon ? 'text-primary font-black' : 'text-text'}>{m.homeScore}</span>
+                                                    <span className="text-text-muted mx-1">:</span>
+                                                    <span className={awayWon ? 'text-primary font-black' : 'text-text'}>{m.awayScore}</span>
+                                                </div>
+                                            )}
 
                                             {/* Away Team */}
                                             <div className={`col-span-3 flex items-center justify-end gap-2 text-right min-w-0 ${awayWon ? '' : homeWon ? 'opacity-60' : ''}`}>
