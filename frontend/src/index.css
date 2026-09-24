@@ -219,3 +219,9 @@ a:hover {
     display: none;
   }
 }
+/* Recharts renders the legend after the tooltip, so without a z-index the
+   legend text paints over an open tooltip (notably on phones, where tall
+   tooltips reach the legend area). Keep tooltips above every chart overlay. */
+.recharts-tooltip-wrapper {
+  z-index: 10;
+}
