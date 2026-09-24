@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { Match } from '../types/match'
@@ -129,18 +129,51 @@ describe('PlayoffBracket', () => {
         expect(screen.queryByText('Conference Final')).not.toBeInTheDocument()
         expect(screen.queryByText('Stanley Cup Final')).not.toBeInTheDocument()
 
-        // Initially displays round 1 matches below
+        // Initially displays the latest round (round 2) matches below
+        expect(screen.getByText('Matches of 2nd Round')).toBeInTheDocument()
+        expect(screen.getAllByText('BOS').length).toBeGreaterThan(0)
+
+        // Click 1st Round in the row
+        await user.click(screen.getByText('1st Round'))
+
+        // Now displays round 1 matches
+        expect(screen.getByText('Matches of 1st Round')).toBeInTheDocument()
         expect(screen.getByText('Game 1')).toBeInTheDocument()
         expect(screen.getByText('Game 2')).toBeInTheDocument()
         expect(screen.getByText('3')).toBeInTheDocument()
         expect(screen.getByText('4')).toBeInTheDocument()
+    })
 
-        // Click 2nd Round in the row
-        await user.click(screen.getByText('2nd Round'))
+    test('NHL season: shows played matches and only the closest upcoming match, without a score', () => {
+        const base = {
+            phase: MatchPhase.Playoff,
+            playoffRound: 1,
+            homeTeamId: 10,
+            awayTeamId: 20,
+        }
+        const matches: Match[] = [
+            makeMatch({ ...base, id: 1, matchNumber: 1, homeScore: 5, awayScore: 2 }),
+            makeMatch({ ...base, id: 2, matchNumber: 2, homeScore: 0, awayScore: 0, matchDate: null, completionType: CompletionType.None }),
+            makeMatch({ ...base, id: 3, matchNumber: 3, homeScore: 0, awayScore: 0, matchDate: null, completionType: CompletionType.None }),
+            makeMatch({ ...base, id: 4, matchNumber: 4, homeScore: 0, awayScore: 0, matchDate: null, completionType: CompletionType.None }),
+        ]
 
-        // Now displays round 2 matches
-        expect(screen.getByText('Matches of 2nd Round')).toBeInTheDocument()
-        expect(screen.getAllByText('BOS').length).toBeGreaterThan(0)
+        render(
+            <MemoryRouter>
+                <PlayoffBracket matches={matches} leagueType="NHL" />
+            </MemoryRouter>
+        )
+
+        expect(screen.getByText('Game 1')).toBeInTheDocument()
+        expect(screen.getByText('Game 2')).toBeInTheDocument()
+        expect(screen.queryByText('Game 3')).not.toBeInTheDocument()
+        expect(screen.queryByText('Game 4')).not.toBeInTheDocument()
+
+        // Played match shows its score, upcoming match shows no 0:0 score
+        expect(screen.getByText('5')).toBeInTheDocument()
+        const upcomingCard = screen.getByText('Game 2').closest('[role="button"]') as HTMLElement
+        expect(within(upcomingCard).queryByText('0')).not.toBeInTheDocument()
+        expect(within(upcomingCard).getByText('vs')).toBeInTheDocument()
     })
 
     test('NHL season: clicking a match opens the match modal with event history timeline', async () => {
