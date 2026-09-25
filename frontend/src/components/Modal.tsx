@@ -5,9 +5,10 @@ interface ModalProps {
     title: string
     onClose: () => void
     children: ReactNode
+    closeOnBackdropClick?: boolean
 }
 
-export default function Modal({ title, onClose, children }: ModalProps) {
+export default function Modal({ title, onClose, children, closeOnBackdropClick = false }: ModalProps) {
     const { t } = useTranslation()
 
     return (
@@ -16,6 +17,7 @@ export default function Modal({ title, onClose, children }: ModalProps) {
             aria-modal="true"
             aria-labelledby="modal-title"
             className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={closeOnBackdropClick ? (e) => { if (e.target === e.currentTarget) onClose() } : undefined}
         >
             <div className="card w-full max-w-2xl shadow-card-hover flex flex-col max-h-[92vh] mx-3 sm:mx-4">
                 <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border shrink-0">

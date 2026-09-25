@@ -15,11 +15,12 @@ function names(users: UserMatchInfo[], fallback: string): string {
     return users.length === 0 ? '—' : users.map((u) => u.userName ?? fallback).join(', ')
 }
 
-function hostedTeamClass(m: MatchupResult, hostedTeamId: number | null, side: 'home' | 'away'): string {
-    const teamId = side === 'home' ? m.homeTeamId : m.awayTeamId
-    if (hostedTeamId == null || teamId !== hostedTeamId || m.homeScore === m.awayScore) return ''
-    const won = side === 'home' ? m.homeScore > m.awayScore : m.awayScore > m.homeScore
-    return won ? 'font-semibold text-success' : 'font-semibold text-danger'
+function resultBorderClass(m: MatchupResult, hostedTeamId: number | null): string {
+    const isHome = hostedTeamId != null && m.homeTeamId === hostedTeamId
+    const isAway = hostedTeamId != null && m.awayTeamId === hostedTeamId
+    if ((!isHome && !isAway) || m.homeScore === m.awayScore) return 'border-l-transparent'
+    const won = isHome ? m.homeScore > m.awayScore : m.awayScore > m.homeScore
+    return won ? 'border-l-success' : 'border-l-danger'
 }
 
 export default function MatchupModal({ match, onClose }: MatchupModalProps) {
@@ -50,7 +51,7 @@ export default function MatchupModal({ match, onClose }: MatchupModalProps) {
         : []
 
     return (
-        <Modal title={`${home} vs ${away}`} onClose={onClose}>
+        <Modal title={`${home} vs ${away}`} onClose={onClose} closeOnBackdropClick>
             {failed ? (
                 <p className="text-sm text-danger">{t('betting.matchupLoadError')}</p>
             ) : !matchup ? (
@@ -67,18 +68,18 @@ export default function MatchupModal({ match, onClose }: MatchupModalProps) {
                             {matchup.lastMatches.map((m) => (
                                 <li
                                     key={m.id}
-                                    className="flex items-center gap-3 px-3 py-2 border border-border rounded bg-bg text-sm"
+                                    className={`flex items-center gap-3 px-3 py-2 border border-border border-l-4 ${resultBorderClass(m, match.hostedTeamId)} rounded bg-bg text-sm`}
                                 >
                                     <span className="text-[10px] font-mono text-text-muted uppercase w-14 shrink-0">
                                         {t('betting.matchNumber', { number: m.matchNumber })}
                                     </span>
-                                    <span className={`flex-1 min-w-0 truncate text-right ${hostedTeamClass(m, match.hostedTeamId, 'home')}`}>
+                                    <span className="flex-1 min-w-0 truncate text-right">
                                         {m.homeTeamName ?? t('betting.unknownTeam')}
                                     </span>
                                     <strong className="shrink-0 tabular-nums">
                                         {m.homeScore} : {m.awayScore}
                                     </strong>
-                                    <span className={`flex-1 min-w-0 truncate ${hostedTeamClass(m, match.hostedTeamId, 'away')}`}>
+                                    <span className="flex-1 min-w-0 truncate">
                                         {m.awayTeamName ?? t('betting.unknownTeam')}
                                     </span>
                                     <CompletionBadge type={m.completionType} />
