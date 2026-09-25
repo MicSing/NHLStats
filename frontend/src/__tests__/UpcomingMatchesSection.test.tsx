@@ -78,6 +78,10 @@ describe('UpcomingMatchesSection', () => {
                 id: 5, matchNumber: 3, homeTeamId: 2, homeTeamName: 'Toronto Maple Leafs',
                 awayTeamId: 1, awayTeamName: 'Boston Bruins', homeScore: 2, awayScore: 4,
                 matchDate: null, completionType: 2, phase: 'RegularSeason',
+            }, {
+                id: 6, matchNumber: 1, homeTeamId: 1, homeTeamName: 'Boston Bruins',
+                awayTeamId: 2, awayTeamName: 'Toronto Maple Leafs', homeScore: 1, awayScore: 3,
+                matchDate: null, completionType: 0, phase: 'RegularSeason',
             }],
             topScorers: [{ userId: 1, userName: 'Alice' }],
             mostPenalized: [{ userId: 2, userName: 'Bob' }],
@@ -91,6 +95,13 @@ describe('UpcomingMatchesSection', () => {
 
         expect(await within(dialog).findByText('2 : 4')).toBeInTheDocument()
         expect(within(dialog).getByText('OT')).toBeInTheDocument()
+        expect(within(dialog).queryByText('N/A')).not.toBeInTheDocument()
+
+        const [won, lost] = within(dialog).getAllByText('Boston Bruins', { selector: 'li span' })
+        expect(won).toHaveClass('text-success')
+        expect(lost).toHaveClass('text-danger')
+        within(dialog).getAllByText('Toronto Maple Leafs', { selector: 'li span' })
+            .forEach((el) => expect(el).not.toHaveClass('text-success', 'text-danger'))
         expect(within(dialog).getByText('Best scorer').nextSibling).toHaveTextContent(/^Alice$/)
         expect(within(dialog).getByText('Most penalized').nextSibling).toHaveTextContent(/^Bob$/)
         expect(within(dialog).getByText('Most plus points').nextSibling).toHaveTextContent(/^Alice, Bob$/)
