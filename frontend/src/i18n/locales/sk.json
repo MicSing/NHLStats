@@ -1090,6 +1090,11 @@
         "penaltyPts": "Trest (−body)",
         "secPenaltyPts": "Druhotný trest (−body)"
     },
+    "bettingBalanceChart": {
+        "bets": "Stávky",
+        "positive": "Kladné body",
+        "negative": "Záporné body"
+    },
     "trendChart": {
         "noData": "Žiadne údaje",
         "nextPredicted": "Ďalší (predikcia)",

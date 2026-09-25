@@ -1058,6 +1058,11 @@
         "penaltyPts": "Penalty (\u2212pts)",
         "secPenaltyPts": "Secondary Penalty (\u2212pts)"
     },
+    "bettingBalanceChart": {
+        "bets": "Bets",
+        "positive": "Positive points",
+        "negative": "Negative points"
+    },
     "trendChart": {
         "noData": "No data available",
         "nextPredicted": "Next (predicted)",

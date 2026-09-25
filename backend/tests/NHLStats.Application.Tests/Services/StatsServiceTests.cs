@@ -303,4 +303,135 @@ public class StatsServiceTests : IDisposable
         allTimeBalance[0].Users.First(u => u.UserId == user.Id).Balance.Should().Be(5.00m);
         allTimeBalance[1].Users.First(u => u.UserId == user.Id).Balance.Should().Be(5.00m);
     }
+
+    [Fact]
+    public async Task GetDashboardDataAsync_BalanceTrend_ExposesBetsPositiveAndNegativeComponents()
+    {
+        // Arrange
+        var user = new User { Id = 1, Name = "Carol" };
+        _db.Users.Add(user);
+
+        var appUser = new ApplicationUser
+        {
+            Id = "carol-identity-id",
+            UserName = "carol@example.com",
+            Email = "carol@example.com",
+            UserId = user.Id
+        };
+        _db.Set<ApplicationUser>().Add(appUser);
+
+        var homeTeam = new Team { Name = "Home", ShortName = "HOM" };
+        var awayTeam = new Team { Name = "Away", ShortName = "AWY" };
+        _db.Teams.AddRange(homeTeam, awayTeam);
+
+        var positiveReason = new PointReason { Id = 900, Name = "Test plus", PointType = PointType.Positive };
+        var negativeReason = new PointReason { Id = 901, Name = "Test minus", PointType = PointType.Negative };
+        _db.PointReasons.AddRange(positiveReason, negativeReason);
+
+        var season = new Season
+        {
+            Id = 1,
+            Name = "Season 1",
+            StartedOn = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+        _db.Seasons.Add(season);
+        await _db.SaveChangesAsync();
+
+        _db.SeasonUsers.Add(new SeasonUser { SeasonId = season.Id, UserId = user.Id });
+
+        // Aggregated history: 4 plus (4 * 0.25 = 1€), 2 minus (2 * 0.50 = 1€)
+        _db.UserSeasonAggregatedData.Add(new UserSeasonAggregatedData
+        {
+            UserId = user.Id,
+            SeasonId = season.Id,
+            TotalPlus = 4,
+            TotalMinus = 2
+        });
+
+        var match1 = new Match
+        {
+            SeasonId = season.Id,
+            MatchNumber = 1,
+            HomeTeamId = homeTeam.Id,
+            AwayTeamId = awayTeam.Id,
+            HomeScore = 3,
+            AwayScore = 1,
+            MatchDate = new DateTime(2026, 1, 2, 18, 0, 0, DateTimeKind.Utc),
+            CompletionType = CompletionType.RegularTime
+        };
+        var match2 = new Match
+        {
+            SeasonId = season.Id,
+            MatchNumber = 2,
+            HomeTeamId = homeTeam.Id,
+            AwayTeamId = awayTeam.Id,
+            HomeScore = 2,
+            AwayScore = 2,
+            MatchDate = new DateTime(2026, 1, 9, 18, 0, 0, DateTimeKind.Utc),
+            CompletionType = CompletionType.RegularTime
+        };
+        _db.Matches.AddRange(match1, match2);
+        await _db.SaveChangesAsync();
+
+        var userMatch1 = new UserMatch { MatchId = match1.Id, UserId = user.Id, SeasonId = season.Id };
+        var userMatch2 = new UserMatch { MatchId = match2.Id, UserId = user.Id, SeasonId = season.Id };
+        _db.UserMatches.AddRange(userMatch1, userMatch2);
+        await _db.SaveChangesAsync();
+
+        _db.UserMatchPoints.AddRange(
+            new UserMatchPoint { UserMatchId = userMatch1.Id, PointReasonId = positiveReason.Id, Count = 1, Amount = 2m },
+            new UserMatchPoint { UserMatchId = userMatch2.Id, PointReasonId = negativeReason.Id, Count = 1, Amount = 1.5m }
+        );
+
+        // Lost bet on Match 2 (stake 3€)
+        _db.Bets.Add(new Bet
+        {
+            Id = Guid.NewGuid(),
+            CreatedBy = appUser.Id,
+            Stake = 3m,
+            TotalOdds = 2m,
+            Status = BetStatus.Lost,
+            CreatedOn = match2.MatchDate!.Value,
+            Legs = new List<BetLeg>
+            {
+                new()
+                {
+                    MatchId = match2.Id,
+                    BetType = BetType.TeamWin,
+                    TeamId = homeTeam.Id,
+                    Odds = 2m,
+                    Status = BetLegStatus.Lost
+                }
+            }
+        });
+        await _db.SaveChangesAsync();
+
+        // Act
+        var result = await _service.GetDashboardDataAsync();
+
+        // Assert — weekly (per season)
+        var weekly = result.BettingTrendsBySeason.First(s => s.SeasonId == season.Id).BettingBalanceTrend.ToList();
+        weekly.Should().HaveCount(2);
+
+        var week1 = weekly[0].Users.First(u => u.UserId == user.Id);
+        week1.PositivePoints.Should().Be(3.00m);   // 1€ aggregated + 2€
+        week1.NegativePoints.Should().Be(-1.00m);  // 1€ aggregated
+        week1.Bets.Should().Be(0.00m);
+        week1.Balance.Should().Be(3.00m);
+
+        var week2 = weekly[1].Users.First(u => u.UserId == user.Id);
+        week2.PositivePoints.Should().Be(3.00m);
+        week2.NegativePoints.Should().Be(-2.50m);
+        week2.Bets.Should().Be(-3.00m);
+        week2.Balance.Should().Be(0.00m, "balance stays bets + positive points");
+
+        // Assert — all-time (per season)
+        var allTime = result.AllTimeBettingBalanceTrend.ToList();
+        allTime.Should().HaveCount(1);
+        var season1 = allTime[0].Users.First(u => u.UserId == user.Id);
+        season1.PositivePoints.Should().Be(3.00m);
+        season1.NegativePoints.Should().Be(-2.50m);
+        season1.Bets.Should().Be(-3.00m);
+        season1.Balance.Should().Be(0.00m);
+    }
 }

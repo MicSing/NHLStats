@@ -260,7 +260,16 @@ export interface SeasonMatchHistory {
     weeks: WeekMatchHistory[]
 }
 
-export interface UserWeeklyBettingBalance { userId: number; userName: string; balance: number }
+export interface UserWeeklyBettingBalance {
+    userId: number
+    userName: string
+    /** Bets + positive points */
+    balance: number
+    bets?: number
+    positivePoints?: number
+    /** Cumulative negative points in €, ≤ 0 */
+    negativePoints?: number
+}
 export interface WeeklyBettingBalancePeriod { label: string; users: UserWeeklyBettingBalance[] }
 export interface UserWeeklyBetDelta { userId: number; userName: string; delta: number }
 export interface WeeklyBetDeltaPeriod { label: string; users: UserWeeklyBetDelta[] }

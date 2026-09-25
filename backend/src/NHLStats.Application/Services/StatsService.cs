@@ -234,11 +234,26 @@ public class StatsService : IStatsService
             .Select(p => new { p.UserId, p.Amount, Date = matchDatesLookup[p.MatchId] })
             .ToList();
 
-        var aggregatedPlusByUser = (await _db.UserSeasonAggregatedData
+        var negativePointRows = await _db.UserMatchPoints
+            .AsNoTracking()
+            .Where(p => p.UserMatch != null
+                     && p.UserMatch!.SeasonId == seasonId
+                     && p.PointReason != null
+                     && p.PointReason!.PointType == PointType.Negative)
+            .Select(p => new { p.UserMatch!.UserId, p.Amount, p.UserMatch.MatchId })
+            .ToListAsync();
+
+        var negativeAmountsByDate = negativePointRows
+            .Where(p => matchDatesLookup.ContainsKey(p.MatchId))
+            .Select(p => new { p.UserId, p.Amount, Date = matchDatesLookup[p.MatchId] })
+            .ToList();
+
+        var aggregatedData = await _db.UserSeasonAggregatedData
             .AsNoTracking()
             .Where(a => a.SeasonId == seasonId)
-            .ToListAsync())
-            .ToDictionary(a => a.UserId, a => a.TotalPlus);
+            .ToListAsync();
+        var aggregatedPlusByUser = aggregatedData.ToDictionary(a => a.UserId, a => a.TotalPlus);
+        var aggregatedMinusByUser = aggregatedData.ToDictionary(a => a.UserId, a => a.TotalMinus);
 
         var allBets = await _db.Bets
             .AsNoTracking()
@@ -297,9 +312,15 @@ public class StatsService : IStatsService
         var userIds = userMap.Keys.ToList();
         var positiveCash = userIds.ToDictionary(id => id, _ => 0m);
 
+        var negativeCash = userIds.ToDictionary(id => id, _ => 0m);
+
         foreach (var (userId, aggPlus) in aggregatedPlusByUser)
             if (positiveCash.ContainsKey(userId))
                 positiveCash[userId] += aggPlus * BettingConstants.AggregatedPositiveValue;
+
+        foreach (var (userId, aggMinus) in aggregatedMinusByUser)
+            if (negativeCash.ContainsKey(userId))
+                negativeCash[userId] += aggMinus * BettingConstants.AggregatedNegativeValue;
 
         var balancePeriods = new List<WeeklyBettingBalancePeriodDto>();
         var deltaPeriods = new List<WeeklyBetDeltaPeriodDto>();
@@ -316,6 +337,13 @@ public class StatsService : IStatsService
                 positiveCash[pt.UserId] += pt.Amount;
             }
 
+            foreach (var pt in negativeAmountsByDate.Where(p => p.Date == weekDate))
+            {
+                if (!negativeCash.ContainsKey(pt.UserId))
+                    negativeCash[pt.UserId] = 0m;
+                negativeCash[pt.UserId] += pt.Amount;
+            }
+
             var betsUpToWeek = betsResolved
                 .Where(b => b.MatchDate <= weekDate)
                 .GroupBy(b => b.UserId)
@@ -327,7 +355,9 @@ public class StatsService : IStatsService
             {
                 betsUpToWeek.TryGetValue(uid, out var bet);
                 var cash = positiveCash.TryGetValue(uid, out var pc) ? pc : 0m;
-                return new UserWeeklyBettingBalanceDto(uid, userMap[uid], cash + bet.WonProfit - bet.LostStake);
+                var negCash = negativeCash.TryGetValue(uid, out var nc) ? nc : 0m;
+                var betNet = bet.WonProfit - bet.LostStake;
+                return new UserWeeklyBettingBalanceDto(uid, userMap[uid], cash + betNet, betNet, cash, -negCash);
             }).ToList();
             balancePeriods.Add(new WeeklyBettingBalancePeriodDto(currentWeeks[i].Label, balanceUsers));
 
@@ -369,6 +399,16 @@ public class StatsService : IStatsService
             .Where(p => p.UserMatch != null
                      && p.PointReason != null
                      && p.PointReason!.PointType == PointType.Positive)
+            .Select(p => new { p.UserMatch!.UserId, p.Amount, p.UserMatch.SeasonId })
+            .ToListAsync())
+            .GroupBy(p => p.SeasonId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var negativePointsBySeason = (await _db.UserMatchPoints
+            .AsNoTracking()
+            .Where(p => p.UserMatch != null
+                     && p.PointReason != null
+                     && p.PointReason!.PointType == PointType.Negative)
             .Select(p => new { p.UserMatch!.UserId, p.Amount, p.UserMatch.SeasonId })
             .ToListAsync())
             .GroupBy(p => p.SeasonId)
@@ -424,6 +464,7 @@ public class StatsService : IStatsService
             .ToHashSet();
 
         var positiveCash = allUserIds.ToDictionary(id => id, _ => 0m);
+        var negativeCash = allUserIds.ToDictionary(id => id, _ => 0m);
         var balancePeriods = new List<WeeklyBettingBalancePeriodDto>();
         var deltaPeriods = new List<WeeklyBetDeltaPeriodDto>();
         var processedSeasonIds = new HashSet<int>();
@@ -437,6 +478,8 @@ public class StatsService : IStatsService
                 {
                     positiveCash.TryAdd(agg.UserId, 0m);
                     positiveCash[agg.UserId] += agg.TotalPlus * BettingConstants.AggregatedPositiveValue;
+                    negativeCash.TryAdd(agg.UserId, 0m);
+                    negativeCash[agg.UserId] += agg.TotalMinus * BettingConstants.AggregatedNegativeValue;
                 }
 
             if (positivePointsBySeason.TryGetValue(season.Id, out var pointsList))
@@ -444,6 +487,13 @@ public class StatsService : IStatsService
                 {
                     positiveCash.TryAdd(pt.UserId, 0m);
                     positiveCash[pt.UserId] += pt.Amount;
+                }
+
+            if (negativePointsBySeason.TryGetValue(season.Id, out var negativeList))
+                foreach (var pt in negativeList)
+                {
+                    negativeCash.TryAdd(pt.UserId, 0m);
+                    negativeCash[pt.UserId] += pt.Amount;
                 }
 
             var betsUpToSeason = betsResolved
@@ -459,8 +509,10 @@ public class StatsService : IStatsService
             {
                 betsUpToSeason.TryGetValue(uid, out var bet);
                 var cash = positiveCash.TryGetValue(uid, out var pc) ? pc : 0m;
+                var negCash = negativeCash.TryGetValue(uid, out var nc) ? nc : 0m;
                 var name = userNames.TryGetValue(uid, out var n) ? n : $"User {uid}";
-                return new UserWeeklyBettingBalanceDto(uid, name, cash + bet.WonProfit - bet.LostStake);
+                var betNet = bet.WonProfit - bet.LostStake;
+                return new UserWeeklyBettingBalanceDto(uid, name, cash + betNet, betNet, cash, -negCash);
             }).ToList();
             balancePeriods.Add(new WeeklyBettingBalancePeriodDto(season.Name, balanceUsers));
 
