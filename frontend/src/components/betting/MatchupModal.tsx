@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { bettingService } from '../../services/bettingService'
-import { CompletionType } from '../../types/match'
 import type { FutureMatch, Matchup, MatchupResult, UserMatchInfo } from '../../types/match'
 import CompletionBadge from '../CompletionBadge'
 import LoadingSpinner from '../LoadingSpinner'
@@ -82,7 +81,7 @@ export default function MatchupModal({ match, onClose }: MatchupModalProps) {
                                     <span className={`flex-1 min-w-0 truncate ${hostedTeamClass(m, match.hostedTeamId, 'away')}`}>
                                         {m.awayTeamName ?? t('betting.unknownTeam')}
                                     </span>
-                                    {m.completionType !== CompletionType.None && <CompletionBadge type={m.completionType} />}
+                                    <CompletionBadge type={m.completionType} />
                                 </li>
                             ))}
                         </ul>

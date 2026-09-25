@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { rest } from 'msw'
 import UpcomingMatchesSection from '../components/betting/UpcomingMatchesSection'
 import { server } from '../mocks/server'
-import type { FutureMatch, Matchup } from '../types/match'
+import type { CompletionType, FutureMatch, Matchup } from '../types/match'
 
 const BASE = 'http://localhost:5000'
 
@@ -77,11 +77,11 @@ describe('UpcomingMatchesSection', () => {
             lastMatches: [{
                 id: 5, matchNumber: 3, homeTeamId: 2, homeTeamName: 'Toronto Maple Leafs',
                 awayTeamId: 1, awayTeamName: 'Boston Bruins', homeScore: 2, awayScore: 4,
-                matchDate: null, completionType: 2, phase: 'RegularSeason',
+                matchDate: null, completionType: 'Overtime' as unknown as CompletionType, phase: 'RegularSeason',
             }, {
                 id: 6, matchNumber: 1, homeTeamId: 1, homeTeamName: 'Boston Bruins',
                 awayTeamId: 2, awayTeamName: 'Toronto Maple Leafs', homeScore: 1, awayScore: 3,
-                matchDate: null, completionType: 0, phase: 'RegularSeason',
+                matchDate: null, completionType: 'RegularTime' as unknown as CompletionType, phase: 'RegularSeason',
             }],
             topScorers: [{ userId: 1, userName: 'Alice' }],
             mostPenalized: [{ userId: 2, userName: 'Bob' }],
@@ -95,6 +95,7 @@ describe('UpcomingMatchesSection', () => {
 
         expect(await within(dialog).findByText('2 : 4')).toBeInTheDocument()
         expect(within(dialog).getByText('OT')).toBeInTheDocument()
+        expect(within(dialog).getByText('REG')).toBeInTheDocument()
         expect(within(dialog).queryByText('N/A')).not.toBeInTheDocument()
 
         const [won, lost] = within(dialog).getAllByText('Boston Bruins', { selector: 'li span' })
