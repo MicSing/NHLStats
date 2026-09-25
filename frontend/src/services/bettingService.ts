@@ -1,6 +1,6 @@
 import apiClient from './apiClient'
 import type { ApiBetType, BetDto, BettingBalanceDto, CreateBetDto, MatchOddsDto } from '../types/bet'
-import type { FutureMatch } from '../types/match'
+import type { FutureMatch, Matchup } from '../types/match'
 
 const OCCASIONS_CACHE_TTL = 5 * 60 * 1000
 const occasionsCache = new Map<string, { odds: number; maxOccasions: number; fetchedAt: number }>()
@@ -43,6 +43,10 @@ export const bettingService = {
 
     async getUpcoming(count = 7): Promise<FutureMatch[]> {
         return apiClient.get<FutureMatch[]>(`/api/matches/future?count=${count}`)
+    },
+
+    async getMatchup(matchId: number): Promise<Matchup> {
+        return apiClient.get<Matchup>(`/api/matches/${matchId}/matchup`)
     },
 
     async getUserEventOddsForOccasions(
