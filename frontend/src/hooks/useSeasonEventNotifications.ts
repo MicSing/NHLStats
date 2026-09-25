@@ -22,7 +22,7 @@ export interface SeasonEventNotificationsApi {
 
 export function useSeasonEventNotifications(
     seasonId: number | null | undefined,
-    options?: { onMatchCompleted?: () => void },
+    options?: { onMatchCompleted?: () => void; onOddsUpdated?: (matchId: number) => void },
 ): SeasonEventNotificationsApi {
     const { user } = useAuth()
     const { t } = useTranslation()
@@ -31,11 +31,13 @@ export function useSeasonEventNotifications(
     const userIdRef = useRef<string | null>(user?.id ?? null)
     const tRef = useRef(t)
     const onMatchCompletedRef = useRef(options?.onMatchCompleted)
+    const onOddsUpdatedRef = useRef(options?.onOddsUpdated)
 
     useEffect(() => { permissionRef.current = permission }, [permission])
     useEffect(() => { userIdRef.current = user?.id ?? null }, [user?.id])
     useEffect(() => { tRef.current = t }, [t])
     useEffect(() => { onMatchCompletedRef.current = options?.onMatchCompleted }, [options?.onMatchCompleted])
+    useEffect(() => { onOddsUpdatedRef.current = options?.onOddsUpdated }, [options?.onOddsUpdated])
 
     const requestPermission = useCallback(async (): Promise<NotificationStatus> => {
         if (typeof Notification === 'undefined') return 'unsupported'
@@ -51,6 +53,12 @@ export function useSeasonEventNotifications(
 
         const handler = (evt: SeasonEvent) => {
             if (evt.seasonId !== seasonId) return
+
+            // Background data signal only — never shown as a browser notification.
+            if (evt.eventType === 'OddsUpdated') {
+                onOddsUpdatedRef.current?.(evt.matchId)
+                return
+            }
 
             if (evt.eventType === 'MatchCompleted') {
                 onMatchCompletedRef.current?.()

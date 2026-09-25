@@ -1,6 +1,6 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr'
 
-export type SeasonEventType = 'Goal' | 'Penalty' | 'Point' | 'MatchCompleted'
+export type SeasonEventType = 'Goal' | 'Penalty' | 'Point' | 'MatchCompleted' | 'OddsUpdated'
 
 export interface SeasonEvent {
     seasonId: number
