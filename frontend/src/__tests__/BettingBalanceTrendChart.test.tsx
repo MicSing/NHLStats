@@ -12,6 +12,7 @@ const user: UserWeeklyBettingBalance = {
     bets: 2,
     positivePoints: 3,
     negativePoints: -4,
+    payouts: 6,
 }
 
 const data: WeeklyBettingBalancePeriod[] = [{ label: 'Week 1', users: [user] }]
@@ -23,6 +24,8 @@ describe('combineBalance', () => {
         expect(combineBalance(user, { bets: false, positive: false, negative: true })).toBe(-4)
         expect(combineBalance(user, { bets: true, positive: false, negative: false })).toBe(2)
         expect(combineBalance(user, { bets: false, positive: false, negative: false })).toBe(0)
+        expect(combineBalance(user, { bets: false, positive: false, negative: true, payouts: true })).toBe(2)
+        expect(combineBalance(user, { bets: true, positive: true, negative: false, payouts: false })).toBe(5)
     })
 
     it('treats missing components as zero', () => {
@@ -51,5 +54,20 @@ describe('BettingBalanceTrendChart', () => {
         const bets = screen.getByRole('checkbox', { name: 'Bets' })
         await u.click(bets)
         expect(bets).not.toBeChecked()
+    })
+
+    it('hides the payouts option unless showPayouts is set', () => {
+        render(<ThemeProvider><BettingBalanceTrendChart data={data} /></ThemeProvider>)
+        expect(screen.queryByRole('checkbox', { name: 'Paid' })).not.toBeInTheDocument()
+    })
+
+    it('shows the payouts option unchecked for the all-seasons view', async () => {
+        const u = userEvent.setup()
+        render(<ThemeProvider><BettingBalanceTrendChart data={data} showPayouts /></ThemeProvider>)
+
+        const payouts = screen.getByRole('checkbox', { name: 'Paid' })
+        expect(payouts).not.toBeChecked()
+        await u.click(payouts)
+        expect(payouts).toBeChecked()
     })
 })

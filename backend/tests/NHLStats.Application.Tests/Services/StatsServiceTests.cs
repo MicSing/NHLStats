@@ -404,6 +404,12 @@ public class StatsServiceTests : IDisposable
                 }
             }
         });
+
+        // Payouts the user paid in (only surfaced on the all-time trend)
+        _db.UserPayouts.AddRange(
+            new UserPayout { UserId = user.Id, SeasonId = season.Id, Amount = 1.25m, PaidOn = match1.MatchDate!.Value },
+            new UserPayout { UserId = user.Id, SeasonId = season.Id, Amount = 0.75m, PaidOn = match2.MatchDate!.Value }
+        );
         await _db.SaveChangesAsync();
 
         // Act
@@ -424,6 +430,7 @@ public class StatsServiceTests : IDisposable
         week2.NegativePoints.Should().Be(-2.50m);
         week2.Bets.Should().Be(-3.00m);
         week2.Balance.Should().Be(0.00m, "balance stays bets + positive points");
+        weekly.SelectMany(w => w.Users).Should().OnlyContain(u => u.Payouts == 0m, "payouts are all-time only");
 
         // Assert — all-time (per season)
         var allTime = result.AllTimeBettingBalanceTrend.ToList();
@@ -432,6 +439,7 @@ public class StatsServiceTests : IDisposable
         season1.PositivePoints.Should().Be(3.00m);
         season1.NegativePoints.Should().Be(-2.50m);
         season1.Bets.Should().Be(-3.00m);
+        season1.Payouts.Should().Be(2.00m);
         season1.Balance.Should().Be(0.00m);
     }
 }

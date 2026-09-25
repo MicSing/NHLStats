@@ -269,6 +269,8 @@ export interface UserWeeklyBettingBalance {
     positivePoints?: number
     /** Cumulative negative points in €, ≤ 0 */
     negativePoints?: number
+    /** Cumulative payouts in €, ≥ 0 — only filled for the all-time trend */
+    payouts?: number
 }
 export interface WeeklyBettingBalancePeriod { label: string; users: UserWeeklyBettingBalance[] }
 export interface UserWeeklyBetDelta { userId: number; userName: string; delta: number }

@@ -1061,7 +1061,8 @@
     "bettingBalanceChart": {
         "bets": "Bets",
         "positive": "Positive points",
-        "negative": "Negative points"
+        "negative": "Negative points",
+        "payouts": "Paid"
     },
     "trendChart": {
         "noData": "No data available",
