@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../context/ToastContext'
+import { ApiError } from '../../services/apiClient'
 import { bettingService } from '../../services/bettingService'
-import type { BettingBalanceDto, BetDto, CreateBetLegDto, MatchOddsDto } from '../../types/bet'
+import type { BettingBalanceDto, BetDto, CreateBetLegDto, MatchOddsDto, OddsChangedLegDto } from '../../types/bet'
 import type { FutureMatch } from '../../types/match'
 import { type DraftLeg, legKey, matchHasLegOfType, shutoutWinTypes, teamOutcomeTypes } from './bettingTypes'
 import LiveTicketsSection from './LiveTicketsSection'
@@ -362,16 +363,35 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey, oddsU
         onBalanceChanged(newBal)
     }
 
+    // The server rejected the ticket because odds moved (e.g. an OddsUpdated push was missed):
+    // re-price the draft with the current odds, reload those matches' markets and let the user
+    // confirm the ticket again.
+    const applyChangedOdds = (submittedLegs: DraftLeg[], changed: OddsChangedLegDto[]) => {
+        const newOddsByKey = new Map<string, number>()
+        for (const c of changed) {
+            const leg = submittedLegs[c.legIndex]
+            if (leg) newOddsByKey.set(leg.key, c.currentOdds)
+        }
+        setDraftLegs((prev) => prev.map((l) => (newOddsByKey.has(l.key) ? { ...l, odds: newOddsByKey.get(l.key)! } : l)))
+
+        const matchIds = [...new Set(changed.map((c) => c.matchId))]
+        void Promise.all(matchIds.map(async (id) => [id, await bettingService.getMatchOdds(id)] as const))
+            .then((entries) => setOddsByMatch((prev) => ({ ...prev, ...Object.fromEntries(entries) })))
+        warning(t('betting.oddsChangedOnPlace'))
+    }
+
     const placeBet = async () => {
         if (draftLegs.length === 0 || !stakeValid) return
+        const submittedLegs = draftLegs
         const payload = {
             stake,
-            legs: draftLegs.map<CreateBetLegDto>((l) => ({
+            legs: submittedLegs.map<CreateBetLegDto>((l) => ({
                 matchId: l.matchId,
                 betType: l.betType,
                 userId: l.userId ?? undefined,
                 teamId: l.teamId ?? undefined,
                 occasions: l.occasions,
+                expectedOdds: l.odds,
             })),
         }
         try {
@@ -379,8 +399,12 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey, oddsU
             success(t('betting.betPlaced'))
             clearDraft()
             await refreshAfterMutation()
-        } catch {
-            error(t('betting.betError'))
+        } catch (err) {
+            const changed = err instanceof ApiError && err.status === 409
+                ? (err.body as { oddsChanged?: OddsChangedLegDto[] } | null)?.oddsChanged
+                : undefined
+            if (changed && changed.length > 0) applyChangedOdds(submittedLegs, changed)
+            else error(t('betting.betError'))
         }
     }
 

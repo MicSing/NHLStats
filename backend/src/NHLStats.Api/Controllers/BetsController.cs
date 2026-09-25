@@ -88,7 +88,8 @@ public class BetsController : ControllerBase
     {
         var loginId = GetLoginId();
         if (loginId == null) return Unauthorized();
-        var (bet, error) = await _betService.PlaceBetAsync(loginId, dto);
+        var (bet, error, oddsChanged) = await _betService.PlaceBetAsync(loginId, dto);
+        if (oddsChanged is { Count: > 0 }) return Conflict(new { error, oddsChanged });
         if (error != null) return BadRequest(new { error });
         return CreatedAtAction(nameof(GetActive), null, bet);
     }

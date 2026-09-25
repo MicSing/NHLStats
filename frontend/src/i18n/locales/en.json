@@ -604,6 +604,7 @@
         "draftOddsUpdated": "Odds on your ticket draft have been updated according to latest results.",
         "oddsAutoRefreshed": "Match completed. Upcoming matches refreshed; odds are being recalculated.",
         "oddsRecalculated": "Odds for the selected match have been recalculated.",
+        "oddsChangedOnPlace": "Odds changed since you built this ticket. It was not placed — the ticket now shows the current odds, review it and place it again.",
         "loginRequired": "Please log in to place bets.",
         "unknownTeam": "Unknown Team",
         "unknownUser": "Unknown User",

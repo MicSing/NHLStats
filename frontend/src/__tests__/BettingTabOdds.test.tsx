@@ -2,16 +2,19 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BettingTab, { type OddsUpdate } from '../components/betting/BettingTab'
 import { ToastProvider } from '../context/ToastContext'
+import { ApiError } from '../services/apiClient'
 import type { MatchOddsDto } from '../types/bet'
 import type { FutureMatch } from '../types/match'
 
 const getMatchOdds = vi.fn()
+const placeBet = vi.fn()
 vi.mock('../services/bettingService', () => ({
     bettingService: {
         getUpcoming: () => Promise.resolve(matches),
         listActive: () => Promise.resolve([]),
         getBalance: () => Promise.resolve({ availableBalance: 10, maxWinCap: 0, totalPositiveCash: 0, totalWonProfit: 0, totalPendingStake: 0 }),
         getMatchOdds: (id: number) => getMatchOdds(id),
+        placeBet: (payload: unknown) => placeBet(payload),
     },
 }))
 
@@ -93,5 +96,59 @@ describe('BettingTab odds loading', () => {
         await screen.findByRole('button', { name: /Home 1/ })
 
         expect(getMatchOdds).toHaveBeenCalledTimes(1)
+    })
+})
+
+describe('BettingTab placing a ticket', () => {
+    const oddsWithTeamWin = (homeOdds: number): MatchOddsDto => ({
+        ...emptyOdds,
+        teamWin: { homeTeamId: 10, homeOdds, awayTeamId: 20, awayOdds: 3, drawOdds: null, home1XOdds: null, away1XOdds: null },
+    })
+
+    beforeEach(() => {
+        getMatchOdds.mockReset()
+        placeBet.mockReset()
+        getMatchOdds.mockResolvedValue(oddsWithTeamWin(2))
+    })
+
+    async function buildTicket() {
+        const user = userEvent.setup()
+        renderTab()
+        await user.click(await screen.findByRole('button', { name: /×2\.00/ }))
+        const stake = screen.getByRole('spinbutton')
+        await user.clear(stake)
+        await user.type(stake, '1')
+        return user
+    }
+
+    it('sends the displayed odds as expectedOdds', async () => {
+        placeBet.mockResolvedValue({})
+        const user = await buildTicket()
+
+        await user.click(screen.getByRole('button', { name: 'Create Bet' }))
+
+        await waitFor(() => expect(placeBet).toHaveBeenCalled())
+        expect(placeBet.mock.calls[0][0].legs[0]).toMatchObject({ matchId: 1, betType: 'TeamWin', teamId: 10, expectedOdds: 2 })
+    })
+
+    it('updates the draft with the current odds and warns when the server reports changed odds', async () => {
+        const user = await buildTicket()
+        placeBet.mockRejectedValue(new ApiError('Odds have changed', 409, {
+            error: 'Odds have changed',
+            oddsChanged: [{ legIndex: 0, matchId: 1, betType: 'TeamWin', userId: null, teamId: 10, occasions: 1, expectedOdds: 2, currentOdds: 2.4 }],
+        }))
+        getMatchOdds.mockResolvedValue(oddsWithTeamWin(2.4))
+
+        await user.click(screen.getByRole('button', { name: 'Create Bet' }))
+
+        expect(await screen.findByText(/Odds changed since you built this ticket/)).toBeInTheDocument()
+        await waitFor(() => expect(screen.getAllByText(/2\.40/).length).toBeGreaterThan(0))
+        expect(screen.getByRole('button', { name: 'Create Bet' })).toBeInTheDocument()
+
+        // Placing again sends the updated odds.
+        placeBet.mockResolvedValue({})
+        await user.click(screen.getByRole('button', { name: 'Create Bet' }))
+        await waitFor(() => expect(placeBet).toHaveBeenCalledTimes(2))
+        expect(placeBet.mock.calls[1][0].legs[0].expectedOdds).toBe(2.4)
     })
 })

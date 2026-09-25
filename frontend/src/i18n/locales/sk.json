@@ -634,6 +634,7 @@
         "draftOddsUpdated": "Kurzy na vašom rozpísanom tikete boli aktualizované podľa najnovších výsledkov.",
         "oddsAutoRefreshed": "Zápas sa skončil. Nadchádzajúce zápasy boli obnovené, kurzy sa prepočítavajú.",
         "oddsRecalculated": "Kurzy pre vybraný zápas boli prepočítané.",
+        "oddsChangedOnPlace": "Kurzy sa zmenili, odkedy ste tiket zostavili. Tiket nebol podaný — teraz zobrazuje aktuálne kurzy, skontrolujte ho a podajte znova.",
         "loginRequired": "Pre tipovanie sa musíš prihlásiť.",
         "unknownTeam": "Neznámy tím",
         "unknownUser": "Neznámy používateľ",

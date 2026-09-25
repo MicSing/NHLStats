@@ -597,6 +597,59 @@ public class BetsTests : ApiTestBase
         totalOdds.Should().Be(Math.Floor(leg0Odds * leg1Odds * 100m) / 100m);
     }
 
+    private async Task<(HttpClient Client, int MatchId, decimal HomeOdds)> SetUpTeamWinMarketAsync(string seasonName)
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, seasonName);
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+        var odds = await client.GetFromJsonAsync<JsonElement>($"/api/betting/matches/{matchId}/odds");
+        var homeOdds = odds.GetProperty("teamWin").GetProperty("homeOdds").GetDecimal();
+        return (client, matchId, homeOdds);
+    }
+
+    [Fact]
+    public async Task Place_bet_with_matching_expected_odds_returns_201()
+    {
+        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Match Season");
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1, expectedOdds = homeOdds } }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("legs")[0].GetProperty("odds").GetDecimal().Should().Be(homeOdds);
+
+        // Tests share the admin user; don't leave an active ticket behind for others.
+        (await client.DeleteAsync($"/api/betting/bets/{body.GetProperty("id").GetString()}")).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Place_bet_with_stale_expected_odds_returns_409_with_current_odds_and_creates_nothing()
+    {
+        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Stale Season");
+        var activeBefore = (await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/active")).GetArrayLength();
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1, expectedOdds = homeOdds + 0.5m } }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var changed = body.GetProperty("oddsChanged");
+        changed.GetArrayLength().Should().Be(1);
+        changed[0].GetProperty("legIndex").GetInt32().Should().Be(0);
+        changed[0].GetProperty("expectedOdds").GetDecimal().Should().Be(homeOdds + 0.5m);
+        changed[0].GetProperty("currentOdds").GetDecimal().Should().Be(homeOdds);
+        (await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/active")).GetArrayLength().Should().Be(activeBefore);
+    }
+
     [Fact]
     public async Task Cancel_bet_returns_204_and_removes_ticket()
     {
