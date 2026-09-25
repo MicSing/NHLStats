@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import type { PeriodPlusMinus } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
+import { useHighlightedUsers } from './useHighlightedUsers'
 import { useTranslation } from 'react-i18next'
 
 import { getUserColor } from '../../utils/userColors'
@@ -83,6 +84,9 @@ function calculateLastNPeriodsPace(
 export default function TrendChart({ data, mode, isWeekly }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
+    const { lineProps, legendProps, isHighlighted } = useHighlightedUsers(
+        new Set(data.flatMap((p) => p.users.map((u) => u.userId))).size
+    )
     const ariaLabel = mode === 'plus' ? 'plus trend chart' : 'minus trend chart'
 
     if (data.length === 0) {
@@ -223,7 +227,7 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                                 color: ct.tooltipText,
                             }}
                         />
-                        <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
+                        <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} {...legendProps} />
 
                         {allUsers.map((user) => (
                             <Line
@@ -231,7 +235,7 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                                 type="monotone"
                                 dataKey={user.userName}
                                 stroke={getUserColor(user.userId)}
-                                strokeWidth={2}
+                                {...lineProps(user.userName)}
                                 dot={(props: Record<string, unknown>) => {
                                     const { cx, cy, index } = props as {
                                         cx: number
@@ -249,13 +253,14 @@ export default function TrendChart({ data, mode, isWeekly }: Props) {
                                                 stroke={getUserColor(user.userId)}
                                                 strokeWidth={2}
                                                 strokeDasharray="3 2"
+                                                strokeOpacity={isHighlighted(user.userName) ? 1 : 0.15}
                                             />
                                         )
                                     }
                                     // Regular dots hidden; only prediction dot shown
                                     return <g key={`dot-${cx}-${cy}`} />
                                 }}
-                                activeDot={{ r: 6 }}
+                                activeDot={isHighlighted(user.userName) ? { r: 6 } : false}
                                 connectNulls
                             />
                         ))}
