@@ -136,6 +136,7 @@ export interface UserSeasonTotals {
     userName: string
     totalGoals: number
     totalPenalties: number
+    gamesPlayed: number
 }
 
 // --- Season Totals from /api/stats/season endpoint ---
@@ -148,6 +149,7 @@ export interface SeasonUserData {
     totalPenalties: number
     earnings: number
     bettingBalance: number
+    gamesPlayed: number
 }
 
 export interface SeasonalUserData {

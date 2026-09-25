@@ -93,13 +93,13 @@ const mockSeasonTotals = {
         {
             seasonId: 1,
             usersData: [
-                { userId: 1, totalPlus: 5, totalMinus: 3, totalGoals: 3, totalPenalties: 3, earnings: 0.75, bettingBalance: 0 },
+                { userId: 1, totalPlus: 5, totalMinus: 3, totalGoals: 3, totalPenalties: 3, earnings: 0.75, bettingBalance: 0, gamesPlayed: 2 },
             ],
         },
         {
             seasonId: 2,
             usersData: [
-                { userId: 1, totalPlus: 4, totalMinus: 1, totalGoals: 2, totalPenalties: 1, earnings: 0.75, bettingBalance: 0 },
+                { userId: 1, totalPlus: 4, totalMinus: 1, totalGoals: 2, totalPenalties: 1, earnings: 0.75, bettingBalance: 0, gamesPlayed: 2 },
             ],
         },
     ],

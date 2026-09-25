@@ -7,10 +7,17 @@ const stats: UserSeasonStats[] = [
     { userId: 1, userName: 'Alice', totalPlus: 5, totalMinus: 1, earnings: 10, bettingBalance: 0 },
 ]
 const userTotals: UserSeasonTotals[] = [
-    { userId: 1, userName: 'Alice', totalGoals: 2, totalPenalties: 1 },
+    { userId: 1, userName: 'Alice', totalGoals: 2, totalPenalties: 1, gamesPlayed: 7 },
 ]
 
 describe('SeasonStatsTable', () => {
+    test('renders a games played column with the player count', () => {
+        render(<SeasonStatsTable stats={stats} userTotals={userTotals} />)
+        expect(screen.getByRole('columnheader', { name: 'GP' })).toHaveAttribute('title', 'Games played')
+        const row = screen.getByRole('row', { name: /alice/i })
+        expect(row.querySelectorAll('td')[1]).toHaveTextContent('7')
+    })
+
     test('does not render the phase switch when showPhaseSwitch is false', () => {
         render(<SeasonStatsTable stats={stats} userTotals={userTotals} />)
         expect(screen.queryByRole('button', { name: /playoff/i })).not.toBeInTheDocument()

@@ -204,6 +204,7 @@ export default function SeasonPage() {
             userName: userNameById.get(ud.userId) ?? `User ${ud.userId}`,
             totalGoals: ud.totalGoals,
             totalPenalties: ud.totalPenalties,
+            gamesPlayed: ud.gamesPlayed ?? 0,
         }))
         return { stats: seasonStats, userTotals: totals }
     }, [seasonId, activePhaseTotals, userNameById])

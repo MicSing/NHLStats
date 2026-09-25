@@ -172,6 +172,8 @@
         "selectSeason": "Select a season to view details.",
         "playerStats": "Player Stats",
         "player": "Player",
+        "gamesPlayed": "GP",
+        "gamesPlayedFull": "Games played",
         "goals": "Goals",
         "penalties": "Penalties",
         "earnings": "Earnings",

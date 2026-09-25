@@ -206,6 +206,44 @@ public class StatsTests : ApiTestBase
         userStat.GetProperty("totalMinus").GetInt32().Should().Be(5);  // 2 + 3
     }
 
+    // ─── GET /api/stats/season — games played ─────────────────────────────────
+
+    [Fact]
+    public async Task SeasonTotals_includes_games_played_per_user()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Games Played Season");
+        var playerA = await CreateUserAsync(client, "Games Played A");
+        var playerB = await CreateUserAsync(client, "Games Played B");
+        var playerC = await CreateUserAsync(client, "Games Played C");
+        await AssignUserAsync(client, seasonId, playerA);
+        await AssignUserAsync(client, seasonId, playerB);
+        await AssignUserAsync(client, seasonId, playerC);
+
+        var m1 = await CreateMatchAsync(client, seasonId, "2024-02-01T20:00:00");
+        var m2 = await CreateMatchAsync(client, seasonId, "2024-02-08T20:00:00");
+        await CreateUserMatchAsync(client, seasonId, m1, playerA);
+        await CreateUserMatchAsync(client, seasonId, m2, playerA);
+        await CreateUserMatchAsync(client, seasonId, m1, playerB);
+
+        // Legacy aggregated entry adds its matches to the count
+        await CreateAggregatedDataAsync(client, playerB, seasonId, totalPlus: 0, totalMinus: 0, matchesPlayed: 4);
+
+        var resp = await client.GetAsync("/api/stats/season");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var seasonData = body.GetProperty("usersData").EnumerateArray()
+            .Single(s => s.GetProperty("seasonId").GetInt32() == seasonId);
+        int GamesPlayed(int userId) => seasonData.GetProperty("usersData").EnumerateArray()
+            .Single(u => u.GetProperty("userId").GetInt32() == userId)
+            .GetProperty("gamesPlayed").GetInt32();
+
+        GamesPlayed(playerA).Should().Be(2);
+        GamesPlayed(playerB).Should().Be(5); // 1 match + 4 aggregated
+        GamesPlayed(playerC).Should().Be(0);
+    }
+
     // ─── Money calculation — effective rate by date ───────────────────────────
 
     [Fact]
