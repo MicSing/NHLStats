@@ -58,14 +58,14 @@ describe('BettingBalanceTrendChart', () => {
 
     it('hides the payouts option unless showPayouts is set', () => {
         render(<ThemeProvider><BettingBalanceTrendChart data={data} /></ThemeProvider>)
-        expect(screen.queryByRole('checkbox', { name: 'Payouts' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('checkbox', { name: 'Paid' })).not.toBeInTheDocument()
     })
 
     it('shows the payouts option unchecked for the all-seasons view', async () => {
         const u = userEvent.setup()
         render(<ThemeProvider><BettingBalanceTrendChart data={data} showPayouts /></ThemeProvider>)
 
-        const payouts = screen.getByRole('checkbox', { name: 'Payouts' })
+        const payouts = screen.getByRole('checkbox', { name: 'Paid' })
         expect(payouts).not.toBeChecked()
         await u.click(payouts)
         expect(payouts).toBeChecked()

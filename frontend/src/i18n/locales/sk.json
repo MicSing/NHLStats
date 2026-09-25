@@ -1094,7 +1094,7 @@
         "bets": "Stávky",
         "positive": "Kladné body",
         "negative": "Záporné body",
-        "payouts": "Výplaty"
+        "payouts": "Zaplatené"
     },
     "trendChart": {
         "noData": "Žiadne údaje",

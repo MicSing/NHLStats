@@ -1062,7 +1062,7 @@
         "bets": "Bets",
         "positive": "Positive points",
         "negative": "Negative points",
-        "payouts": "Payouts"
+        "payouts": "Paid"
     },
     "trendChart": {
         "noData": "No data available",
