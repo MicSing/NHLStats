@@ -24,5 +24,13 @@ public class MatchOdds
     public decimal Odds { get; set; }
     public DateTime ComputedOn { get; set; }
 
+    // User-event markets only: the lowest bettable "N+ occasions" threshold, its odds, and the
+    // highest threshold still above the probability floor. Precomputed during recalculation so
+    // reading odds never has to walk the user's match history. Null for other markets and for
+    // rows written before these columns existed.
+    public int? MinOccasions { get; set; }
+    public decimal? EffectiveOdds { get; set; }
+    public int? MaxOccasions { get; set; }
+
     public Match? Match { get; set; }
 }

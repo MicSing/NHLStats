@@ -1,9 +1,13 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using NHLStats.Application.DTOs;
+using NHLStats.Application.Interfaces;
 using NHLStats.Application.Services;
 using NHLStats.Domain;
 using NHLStats.Domain.Entities;
+using Match = NHLStats.Domain.Entities.Match;
 
 namespace NHLStats.Application.Tests.Services;
 
@@ -160,5 +164,87 @@ public class BettingOddsServiceUserMarketsTests : IDisposable
 
         odds.Should().NotBeNull();
         odds!.UserPenalty.Should().NotContain(u => u.UserId == user.Id);
+    }
+
+    [Fact]
+    public async Task RecalculateForMatch_StoresEffectiveOccasionsOnUserRows()
+    {
+        var (home, away, season, user) = SeedSeasonWithUser();
+        var player = await _db.RosterPlayers.FirstAsync();
+        SeedPenaltyHistory(season, home, away, user, player, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2);
+        var upcoming = SeedUpcomingMatch(season, home, away);
+
+        await _service.RecalculateForMatchAsync(upcoming.Id);
+
+        var row = await _db.MatchOdds.AsNoTracking()
+            .SingleAsync(o => o.MatchId == upcoming.Id && o.BetType == OddsBetType.UserPenalty && o.TargetId == user.Id);
+        row.MinOccasions.Should().Be(2);
+        row.EffectiveOdds.Should().BeGreaterThanOrEqualTo(BettingConstants.MinBettableOdds);
+        row.MaxOccasions.Should().BeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public async Task GetMatchOdds_ReadsStoredEffectiveOdds_WithoutRecalculating()
+    {
+        var (home, away, season, user) = SeedSeasonWithUser();
+        var player = await _db.RosterPlayers.FirstAsync();
+        SeedPenaltyHistory(season, home, away, user, player, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
+        var upcoming = SeedUpcomingMatch(season, home, away);
+        await _service.RecalculateForMatchAsync(upcoming.Id);
+
+        // Overwrite the stored values: if the read path recalculated, these would be replaced.
+        var row = await _db.MatchOdds
+            .SingleAsync(o => o.MatchId == upcoming.Id && o.BetType == OddsBetType.UserPenalty && o.TargetId == user.Id);
+        row.MinOccasions = 3;
+        row.EffectiveOdds = 7.77m;
+        row.MaxOccasions = 4;
+        await _db.SaveChangesAsync();
+
+        var odds = await _service.GetMatchOddsAsync(upcoming.Id);
+
+        var entry = odds!.UserPenalty.Should().ContainSingle(u => u.UserId == user.Id).Subject;
+        entry.MinOccasions.Should().Be(3);
+        entry.EffectiveOdds.Should().Be(7.77m);
+        entry.MaxOccasions.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task GetMatchOdds_RecalculatesRowsMissingStoredEffectiveOdds()
+    {
+        var (home, away, season, user) = SeedSeasonWithUser();
+        var player = await _db.RosterPlayers.FirstAsync();
+        SeedPenaltyHistory(season, home, away, user, player, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2);
+        var upcoming = SeedUpcomingMatch(season, home, away);
+        await _service.RecalculateForMatchAsync(upcoming.Id);
+
+        // Simulate rows written before the effective-odds columns existed.
+        await _db.MatchOdds.ExecuteUpdateAsync(s => s
+            .SetProperty(o => o.MinOccasions, (int?)null)
+            .SetProperty(o => o.EffectiveOdds, (decimal?)null)
+            .SetProperty(o => o.MaxOccasions, (int?)null));
+        _db.ChangeTracker.Clear();
+
+        var odds = await _service.GetMatchOddsAsync(upcoming.Id);
+
+        odds!.UserPenalty.Should().ContainSingle(u => u.UserId == user.Id).Which.MinOccasions.Should().Be(2);
+        (await _db.MatchOdds.AsNoTracking().AnyAsync(o => o.TargetId == user.Id && o.BetType == OddsBetType.UserPenalty && o.EffectiveOdds == null))
+            .Should().BeFalse("the recalculation should have stored the effective odds");
+    }
+
+    [Fact]
+    public async Task RecalculateForMatch_BroadcastsOddsUpdatedForThatMatch()
+    {
+        var (home, away, season, user) = SeedSeasonWithUser();
+        var player = await _db.RosterPlayers.FirstAsync();
+        SeedPenaltyHistory(season, home, away, user, player, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
+        var upcoming = SeedUpcomingMatch(season, home, away);
+        var broadcaster = new Mock<ISeasonEventBroadcaster>();
+        var service = new BettingOddsService(_db, broadcaster.Object);
+
+        await service.RecalculateForMatchAsync(upcoming.Id);
+
+        broadcaster.Verify(b => b.BroadcastEventAsync(
+            It.Is<SeasonEventNotificationDto>(e => e.EventType == "OddsUpdated" && e.MatchId == upcoming.Id && e.SeasonId == season.Id),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

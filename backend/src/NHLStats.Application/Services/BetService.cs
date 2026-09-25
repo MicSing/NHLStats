@@ -187,12 +187,12 @@ public class BetService : IBetService
         }).ToList();
     }
 
-    public async Task<(BetDto? Bet, string? Error)> PlaceBetAsync(string loginId, CreateBetDto dto)
+    public async Task<PlaceBetResult> PlaceBetAsync(string loginId, CreateBetDto dto)
     {
         if (dto.Legs == null || dto.Legs.Count == 0)
-            return (null, "Ticket must contain at least one leg.");
+            return new PlaceBetResult(null, "Ticket must contain at least one leg.");
         if (dto.Stake <= 0)
-            return (null, "Bet stake must be greater than 0.");
+            return new PlaceBetResult(null, "Bet stake must be greater than 0.");
 
         var matchIds = dto.Legs.Select(l => l.MatchId).Distinct().ToList();
         var matches = await _db.Matches.AsNoTracking()
@@ -222,18 +222,20 @@ public class BetService : IBetService
         var matchesWithOpponentShutoutLeg = new HashSet<int>();
         var matchesWithPlusPointOccasions1Leg = new HashSet<int>();
         var matchesWithMinusPointOccasions1Leg = new HashSet<int>();
+        var oddsChanged = new List<OddsChangedLegDto>();
 
-        foreach (var legDto in dto.Legs)
+        for (var legIndex = 0; legIndex < dto.Legs.Count; legIndex++)
         {
+            var legDto = dto.Legs[legIndex];
             if (!matches.TryGetValue(legDto.MatchId, out var match))
-                return (null, $"Match {legDto.MatchId} not found.");
+                return new PlaceBetResult(null, $"Match {legDto.MatchId} not found.");
             if (match.CompletionType == CompletionType.InProgress)
-                return (null, $"Match {legDto.MatchId} is in progress. Betting is locked.");
+                return new PlaceBetResult(null, $"Match {legDto.MatchId} is in progress. Betting is locked.");
             if (match.CompletionType != CompletionType.None)
-                return (null, $"Match {legDto.MatchId} is already completed. Betting is closed.");
+                return new PlaceBetResult(null, $"Match {legDto.MatchId} is already completed. Betting is closed.");
 
             var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId, userMatchIds.Contains(legDto.MatchId));
-            if (validationError != null) return (null, validationError);
+            if (validationError != null) return new PlaceBetResult(null, validationError);
 
             if (userMatchIds.Contains(legDto.MatchId))
             {
@@ -241,58 +243,58 @@ public class BetService : IBetService
                     legDto.BetType == BetType.UserPlusPoint ||
                     legDto.BetType == BetType.UserMinusPoint ||
                     legDto.BetType == BetType.OpponentShutoutWin)
-                    return (null, "Match participants can only bet on team win, player goals, penalties, and hosted-team shutout.");
+                    return new PlaceBetResult(null, "Match participants can only bet on team win, player goals, penalties, and hosted-team shutout.");
 
                 if ((legDto.BetType == BetType.UserGoal || legDto.BetType == BetType.UserPenalty)
                     && currentUserId.HasValue && legDto.UserId == currentUserId.Value)
-                    return (null, "You cannot bet on yourself.");
+                    return new PlaceBetResult(null, "You cannot bet on yourself.");
             }
 
             if (legDto.BetType == BetType.TeamWin || legDto.BetType == BetType.TeamWinOrDraw || legDto.BetType == BetType.TeamDraw)
             {
                 if (!matchesWithTeamOutcomeLeg.Add(legDto.MatchId))
-                    return (null, $"Only one match-result bet (1, X, 1X) is allowed per match in a single ticket.");
+                    return new PlaceBetResult(null, $"Only one match-result bet (1, X, 1X) is allowed per match in a single ticket.");
                 if (matchesWithShutoutLeg.Contains(legDto.MatchId))
-                    return (null, "Cannot combine match result and shutout win for the same match in a single ticket.");
+                    return new PlaceBetResult(null, "Cannot combine match result and shutout win for the same match in a single ticket.");
             }
 
             if (legDto.BetType == BetType.MatchTotalGoals)
             {
                 if (!matchesWithGoalTotalLeg.Add(legDto.MatchId))
-                    return (null, "Only one total-goals bet is allowed per match in a single ticket.");
+                    return new PlaceBetResult(null, "Only one total-goals bet is allowed per match in a single ticket.");
             }
 
             if (legDto.BetType == BetType.HostedShutoutWin || legDto.BetType == BetType.OpponentShutoutWin)
             {
                 if (!matchesWithShutoutLeg.Add(legDto.MatchId))
-                    return (null, "Only one shutout-win bet is allowed per match in a single ticket.");
+                    return new PlaceBetResult(null, "Only one shutout-win bet is allowed per match in a single ticket.");
                 if (matchesWithTeamOutcomeLeg.Contains(legDto.MatchId))
-                    return (null, "Cannot combine match result and shutout win for the same match in a single ticket.");
+                    return new PlaceBetResult(null, "Cannot combine match result and shutout win for the same match in a single ticket.");
 
                 if (legDto.BetType == BetType.HostedShutoutWin)
                 {
                     matchesWithHostedShutoutLeg.Add(legDto.MatchId);
                     if (matchesWithPlusPointOccasions1Leg.Contains(legDto.MatchId))
-                        return (null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
+                        return new PlaceBetResult(null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
                 }
                 else
                 {
                     matchesWithOpponentShutoutLeg.Add(legDto.MatchId);
                     if (matchesWithMinusPointOccasions1Leg.Contains(legDto.MatchId))
-                        return (null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
+                        return new PlaceBetResult(null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
                 }
             }
 
             if (legDto.BetType == BetType.UserPlusPoint)
             {
                 if (!matchesWithPlusPointLeg.Add(legDto.MatchId))
-                    return (null, "Only one plus-point bet is allowed per match in a single ticket.");
+                    return new PlaceBetResult(null, "Only one plus-point bet is allowed per match in a single ticket.");
             }
 
             if (legDto.BetType == BetType.UserMinusPoint)
             {
                 if (!matchesWithMinusPointLeg.Add(legDto.MatchId))
-                    return (null, "Only one minus-point bet is allowed per match in a single ticket.");
+                    return new PlaceBetResult(null, "Only one minus-point bet is allowed per match in a single ticket.");
             }
 
             var occasions = legDto.BetType == BetType.MatchTotalGoals ? Math.Max(BettingConstants.MinGoalThreshold, legDto.Occasions)
@@ -303,13 +305,13 @@ public class BetService : IBetService
             {
                 matchesWithPlusPointOccasions1Leg.Add(legDto.MatchId);
                 if (matchesWithHostedShutoutLeg.Contains(legDto.MatchId))
-                    return (null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
+                    return new PlaceBetResult(null, "Cannot combine hosted-team shutout win with a plus-point bet for the same match in a single ticket.");
             }
             if (legDto.BetType == BetType.UserMinusPoint && occasions == 1)
             {
                 matchesWithMinusPointOccasions1Leg.Add(legDto.MatchId);
                 if (matchesWithOpponentShutoutLeg.Contains(legDto.MatchId))
-                    return (null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
+                    return new PlaceBetResult(null, "Cannot combine opponent shutout win with a minus-point bet for the same match in a single ticket.");
             }
 
             // Odds are only (re)computed by the background job when a match finishes —
@@ -322,7 +324,7 @@ public class BetService : IBetService
                 var oddsRow = await _db.MatchOdds.FirstOrDefaultAsync(o =>
                     o.MatchId == legDto.MatchId && o.BetType == OddsBetType.MatchTotalGoals && o.TargetId == occasions);
                 if (oddsRow == null || oddsRow.Probability < BettingConstants.MinBettableProbability || oddsRow.Odds < BettingConstants.MinBettableOdds)
-                    return (null, "This total-goals threshold is not available for betting.");
+                    return new PlaceBetResult(null, "This total-goals threshold is not available for betting.");
                 lockedOdds = oddsRow.Odds;
                 lockedProbability = oddsRow.Probability;
             }
@@ -331,7 +333,7 @@ public class BetService : IBetService
                 var oddsBetType = BetTypeToOddsBetType(legDto.BetType);
                 var occasionsResult = await _oddsService.GetUserEventOddsForOccasionsAsync(legDto.MatchId, oddsBetType, legDto.UserId.Value, occasions);
                 if (occasionsResult == null)
-                    return (null, "This selection is not available for betting.");
+                    return new PlaceBetResult(null, "This selection is not available for betting.");
                 lockedOdds = occasionsResult.Odds;
                 lockedProbability = occasionsResult.Probability;
             }
@@ -339,13 +341,16 @@ public class BetService : IBetService
             {
                 var oddsRow = await GetOddsForLegAsync(legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId);
                 if (oddsRow != null && oddsRow.Probability < BettingConstants.MinBettableProbability)
-                    return (null, "Probability too low — this selection is not available for betting.");
+                    return new PlaceBetResult(null, "Probability too low — this selection is not available for betting.");
                 lockedOdds = oddsRow?.Odds ?? 1.0m;
                 lockedProbability = oddsRow?.Probability;
             }
 
             if (lockedOdds < BettingConstants.MinBettableOdds)
-                return (null, "Odds for this bet are too low and cannot be placed.");
+                return new PlaceBetResult(null, "Odds for this bet are too low and cannot be placed.");
+
+            if (legDto.ExpectedOdds is decimal expected && Math.Round(expected, 2) != Math.Round(lockedOdds, 2))
+                oddsChanged.Add(new OddsChangedLegDto(legIndex, legDto.MatchId, legDto.BetType, legDto.UserId, legDto.TeamId, occasions, expected, lockedOdds));
             totalOdds = Math.Floor(totalOdds * lockedOdds * 100m) / 100m;
 
             legsToInsert.Add(new BetLeg
@@ -366,11 +371,16 @@ public class BetService : IBetService
             });
         }
 
+        // Odds moved since the client loaded them (e.g. it missed an OddsUpdated push): don't place
+        // the ticket at a price the user never saw — hand back the current odds to confirm again.
+        if (oddsChanged.Count > 0)
+            return new PlaceBetResult(null, "Odds have changed since the ticket was built.", oddsChanged);
+
         var balance = await _balanceService.GetBalanceAsync(loginId);
         if (dto.Stake > balance.AvailableBalance)
-            return (null, "Insufficient betting balance.");
+            return new PlaceBetResult(null, "Insufficient betting balance.");
         if (balance.MaxWinCap > 0 && dto.Stake * totalOdds > balance.MaxWinCap)
-            return (null, $"Potential winnings exceed max win cap of {balance.MaxWinCap:F2}€.");
+            return new PlaceBetResult(null, $"Potential winnings exceed max win cap of {balance.MaxWinCap:F2}€.");
 
         var bet = new Bet
         {
@@ -388,7 +398,7 @@ public class BetService : IBetService
 
         var saved = await BetsWithLegsQuery(loginId).FirstAsync(b => b.Id == bet.Id);
         var name = await ResolveNameAsync(loginId);
-        return (ToDto(saved, saved.Legs, name), null);
+        return new PlaceBetResult(ToDto(saved, saved.Legs, name), null);
     }
 
     public async Task<(bool Success, string? Error)> CancelBetAsync(Guid betId, string loginId)

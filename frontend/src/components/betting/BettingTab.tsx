@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../context/ToastContext'
+import { ApiError } from '../../services/apiClient'
 import { bettingService } from '../../services/bettingService'
-import type { BettingBalanceDto, BetDto, CreateBetLegDto, MatchOddsDto } from '../../types/bet'
+import type { BettingBalanceDto, BetDto, CreateBetLegDto, MatchOddsDto, OddsChangedLegDto } from '../../types/bet'
 import type { FutureMatch } from '../../types/match'
 import { type DraftLeg, legKey, matchHasLegOfType, shutoutWinTypes, teamOutcomeTypes } from './bettingTypes'
 import LiveTicketsSection from './LiveTicketsSection'
@@ -10,10 +11,18 @@ import MarketsSection from './MarketsSection'
 import TicketDraftSection from './TicketDraftSection'
 import UpcomingMatchesSection from './UpcomingMatchesSection'
 
+/** Pushed by the backend (SignalR "OddsUpdated") once a match's odds are recalculated and stored. */
+export interface OddsUpdate {
+    matchId: number
+    /** Increments on every event so repeated updates for the same match still trigger a refetch. */
+    seq: number
+}
+
 interface BettingTabProps {
     userId: number
     onBalanceChanged: (b: BettingBalanceDto) => void
     refreshKey?: number
+    oddsUpdate?: OddsUpdate | null
 }
 
 async function resolveUpdatedLeg(
@@ -95,7 +104,7 @@ async function resolveUpdatedLeg(
     }
 }
 
-export default function BettingTab({ userId, onBalanceChanged, refreshKey }: BettingTabProps) {
+export default function BettingTab({ userId, onBalanceChanged, refreshKey, oddsUpdate }: BettingTabProps) {
     const { t } = useTranslation()
     const { success, error, warning, info } = useToast()
 
@@ -109,10 +118,17 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
 
     const draftLegsRef = useRef(draftLegs)
     const selectedMatchIdRef = useRef(selectedMatchId)
+    const matchesRef = useRef(matches)
+    const oddsByMatchRef = useRef(oddsByMatch)
     useEffect(() => { draftLegsRef.current = draftLegs }, [draftLegs])
     useEffect(() => { selectedMatchIdRef.current = selectedMatchId }, [selectedMatchId])
+    useEffect(() => { matchesRef.current = matches }, [matches])
+    useEffect(() => { oddsByMatchRef.current = oddsByMatch }, [oddsByMatch])
 
+    // Odds are precomputed and stored by the backend, which pushes an "OddsUpdated" event when
+    // they change — so once a match's odds are loaded, selecting it again reuses them.
     const ensureOdds = useCallback(async (matchId: number) => {
+        if (oddsByMatchRef.current[matchId]) return
         setOddsByMatch((prev) => {
             if (matchId in prev) return prev
             return { ...prev, [matchId]: null }
@@ -164,54 +180,21 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
                     setSelectedMatchId(currentSelectedId)
                 }
 
+                if (currentSelectedId != null) void ensureOdds(currentSelectedId)
+
+                // Odds for the remaining matches are being recalculated in the background; each
+                // one arrives through an "OddsUpdated" event. Here we only drop draft legs whose
+                // match is no longer open for betting.
+                const upcomingIds = new Set(upcoming.map((m) => m.id))
                 const currentDraft = draftLegsRef.current
-                const relevantMatchIds = new Set<number>()
-                if (currentSelectedId != null) relevantMatchIds.add(currentSelectedId)
-                currentDraft.forEach((l) => relevantMatchIds.add(l.matchId))
-                upcoming.forEach((m) => relevantMatchIds.add(m.id))
-
-                const freshOddsEntries = await Promise.all(
-                    Array.from(relevantMatchIds).map(async (mId) => {
-                        try {
-                            const o = await bettingService.getMatchOdds(mId)
-                            return [mId, o] as const
-                        } catch {
-                            return [mId, null] as const
-                        }
-                    }),
+                const keptLegs = currentDraft.filter((l) => upcomingIds.has(l.matchId))
+                setOddsByMatch((prev) =>
+                    Object.fromEntries(Object.entries(prev).filter(([id]) => upcomingIds.has(Number(id)))),
                 )
-                const freshOddsMap: Record<number, MatchOddsDto | null> = Object.fromEntries(freshOddsEntries)
-                setOddsByMatch((prev) => ({ ...prev, ...freshOddsMap }))
 
-                if (currentDraft.length > 0) {
-                    let legsRemoved = false
-                    let oddsChanged = false
-                    const nextDraftLegs: DraftLeg[] = []
-
-                    for (const leg of currentDraft) {
-                        const match = upcoming.find((m) => m.id === leg.matchId)
-                        const odds = freshOddsMap[leg.matchId] ?? null
-                        const evaluated = await resolveUpdatedLeg(leg, match, odds)
-
-                        if (!evaluated.valid || !evaluated.updatedLeg) {
-                            legsRemoved = true
-                        } else {
-                            if (evaluated.updatedLeg.odds !== leg.odds) {
-                                oddsChanged = true
-                            }
-                            nextDraftLegs.push(evaluated.updatedLeg)
-                        }
-                    }
-
-                    setDraftLegs(nextDraftLegs)
-
-                    if (legsRemoved) {
-                        warning(t('betting.draftMatchClosed'))
-                    } else if (oddsChanged) {
-                        info(t('betting.draftOddsUpdated'))
-                    } else {
-                        info(t('betting.oddsAutoRefreshed'))
-                    }
+                if (keptLegs.length !== currentDraft.length) {
+                    setDraftLegs(keptLegs)
+                    warning(t('betting.draftMatchClosed'))
                 } else {
                     info(t('betting.oddsAutoRefreshed'))
                 }
@@ -220,7 +203,55 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
             }
         }
         void refresh()
-    }, [refreshKey, onBalanceChanged, t, warning, info])
+    }, [refreshKey, ensureOdds, onBalanceChanged, t, warning, info])
+
+    useEffect(() => {
+        if (!oddsUpdate) return
+        const { matchId } = oddsUpdate
+        const isRelevant =
+            matchId in oddsByMatchRef.current ||
+            matchesRef.current.some((m) => m.id === matchId) ||
+            draftLegsRef.current.some((l) => l.matchId === matchId)
+        if (!isRelevant) return
+
+        let cancelled = false
+        const apply = async () => {
+            const odds = await bettingService.getMatchOdds(matchId)
+            if (cancelled) return
+            setOddsByMatch((prev) => ({ ...prev, [matchId]: odds }))
+
+            const currentDraft = draftLegsRef.current
+            if (!currentDraft.some((l) => l.matchId === matchId)) {
+                if (selectedMatchIdRef.current === matchId) info(t('betting.oddsRecalculated'))
+                return
+            }
+
+            const match = matchesRef.current.find((m) => m.id === matchId)
+            let legsRemoved = false
+            let oddsChanged = false
+            const nextDraftLegs: DraftLeg[] = []
+            for (const leg of currentDraft) {
+                if (leg.matchId !== matchId) {
+                    nextDraftLegs.push(leg)
+                    continue
+                }
+                const evaluated = await resolveUpdatedLeg(leg, match, odds)
+                if (!evaluated.valid || !evaluated.updatedLeg) {
+                    legsRemoved = true
+                } else {
+                    if (evaluated.updatedLeg.odds !== leg.odds) oddsChanged = true
+                    nextDraftLegs.push(evaluated.updatedLeg)
+                }
+            }
+            if (cancelled) return
+
+            setDraftLegs(nextDraftLegs)
+            if (legsRemoved) warning(t('betting.draftMatchClosed'))
+            else if (oddsChanged) info(t('betting.draftOddsUpdated'))
+        }
+        void apply()
+        return () => { cancelled = true }
+    }, [oddsUpdate, t, warning, info])
 
     const selectedMatch = matches.find((m) => m.id === selectedMatchId) ?? null
     const selectedOdds = selectedMatchId != null ? oddsByMatch[selectedMatchId] ?? null : null
@@ -332,16 +363,35 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
         onBalanceChanged(newBal)
     }
 
+    // The server rejected the ticket because odds moved (e.g. an OddsUpdated push was missed):
+    // re-price the draft with the current odds, reload those matches' markets and let the user
+    // confirm the ticket again.
+    const applyChangedOdds = (submittedLegs: DraftLeg[], changed: OddsChangedLegDto[]) => {
+        const newOddsByKey = new Map<string, number>()
+        for (const c of changed) {
+            const leg = submittedLegs[c.legIndex]
+            if (leg) newOddsByKey.set(leg.key, c.currentOdds)
+        }
+        setDraftLegs((prev) => prev.map((l) => (newOddsByKey.has(l.key) ? { ...l, odds: newOddsByKey.get(l.key)! } : l)))
+
+        const matchIds = [...new Set(changed.map((c) => c.matchId))]
+        void Promise.all(matchIds.map(async (id) => [id, await bettingService.getMatchOdds(id)] as const))
+            .then((entries) => setOddsByMatch((prev) => ({ ...prev, ...Object.fromEntries(entries) })))
+        warning(t('betting.oddsChangedOnPlace'))
+    }
+
     const placeBet = async () => {
         if (draftLegs.length === 0 || !stakeValid) return
+        const submittedLegs = draftLegs
         const payload = {
             stake,
-            legs: draftLegs.map<CreateBetLegDto>((l) => ({
+            legs: submittedLegs.map<CreateBetLegDto>((l) => ({
                 matchId: l.matchId,
                 betType: l.betType,
                 userId: l.userId ?? undefined,
                 teamId: l.teamId ?? undefined,
                 occasions: l.occasions,
+                expectedOdds: l.odds,
             })),
         }
         try {
@@ -349,8 +399,12 @@ export default function BettingTab({ userId, onBalanceChanged, refreshKey }: Bet
             success(t('betting.betPlaced'))
             clearDraft()
             await refreshAfterMutation()
-        } catch {
-            error(t('betting.betError'))
+        } catch (err) {
+            const changed = err instanceof ApiError && err.status === 409
+                ? (err.body as { oddsChanged?: OddsChangedLegDto[] } | null)?.oddsChanged
+                : undefined
+            if (changed && changed.length > 0) applyChangedOdds(submittedLegs, changed)
+            else error(t('betting.betError'))
         }
     }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import PageLayout from '../components/PageLayout'
@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSeasonEventNotifications } from '../hooks/useSeasonEventNotifications'
 import { cacheService } from '../services/cacheService'
 import type { BettingBalanceDto } from '../types/bet'
+import type { OddsUpdate } from '../components/betting/BettingTab'
 
 type Tab = 'betting' | 'archive' | 'tickets' | 'summary'
 
@@ -22,6 +23,7 @@ export default function BettingPage() {
 
     const [activeSeasonId, setActiveSeasonId] = useState<number | null>(null)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [oddsUpdate, setOddsUpdate] = useState<OddsUpdate | null>(null)
 
     useEffect(() => {
         cacheService.getSeasons().then(seasons => {
@@ -30,8 +32,13 @@ export default function BettingPage() {
         }).catch(() => { /* ignore */ })
     }, [])
 
+    const handleOddsUpdated = useCallback((matchId: number) => {
+        setOddsUpdate(prev => ({ matchId, seq: (prev?.seq ?? 0) + 1 }))
+    }, [])
+
     useSeasonEventNotifications(activeSeasonId, {
         onMatchCompleted: () => setRefreshKey(k => k + 1),
+        onOddsUpdated: handleOddsUpdated,
     })
 
     const rawTab = searchParams.get('tab')
@@ -116,7 +123,7 @@ export default function BettingPage() {
                 </div>
 
                 {tab === 'betting' && userId ? (
-                    <BettingTab userId={userId} onBalanceChanged={setBalance} refreshKey={refreshKey} />
+                    <BettingTab userId={userId} onBalanceChanged={setBalance} refreshKey={refreshKey} oddsUpdate={oddsUpdate} />
                 ) : tab === 'archive' && userId ? (
                     <ArchiveTab refreshKey={refreshKey} />
                 ) : tab === 'summary' ? (

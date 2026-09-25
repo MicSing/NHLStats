@@ -38,11 +38,30 @@ public record CreateBetLegDto(
     BetType BetType,
     int? UserId,
     int? TeamId,
-    int Occasions = 1);
+    int Occasions = 1,
+    // Odds the client showed when building the ticket. When set and the server's current odds
+    // differ, the ticket is rejected with the new odds instead of being placed at a price the
+    // user never saw.
+    decimal? ExpectedOdds = null);
 
 public record CreateBetDto(
     decimal Stake,
     IReadOnlyList<CreateBetLegDto> Legs);
+
+public record OddsChangedLegDto(
+    int LegIndex,
+    int MatchId,
+    BetType BetType,
+    int? UserId,
+    int? TeamId,
+    int Occasions,
+    decimal ExpectedOdds,
+    decimal CurrentOdds);
+
+public record PlaceBetResult(
+    BetDto? Bet,
+    string? Error,
+    IReadOnlyList<OddsChangedLegDto>? OddsChanged = null);
 
 public record BettingBalanceDto(
     decimal AvailableBalance,

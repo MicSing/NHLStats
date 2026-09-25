@@ -48,11 +48,25 @@ function getHeaders(): Record<string, string> {
     return headers
 }
 
+/** Thrown for non-2xx responses; keeps the status and parsed JSON body for callers that need them. */
+export class ApiError extends Error {
+    readonly status: number
+    readonly body: unknown
+
+    constructor(message: string, status: number, body: unknown) {
+        super(message)
+        this.name = 'ApiError'
+        this.status = status
+        this.body = body
+    }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         let message = `HTTP error ${response.status}`
+        let body: unknown = null
         try {
-            const body = await response.clone().json() as unknown
+            body = await response.clone().json() as unknown
             if (typeof body === 'string') {
                 message = body
             } else if (Array.isArray(body) && body.every((x) => typeof x === 'string')) {
@@ -71,7 +85,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
         } catch {
             // body not JSON; keep default message
         }
-        throw new Error(message)
+        throw new ApiError(message, response.status, body)
     }
     // 204 No Content — return null (typed as T, callers should use T | null)
     if (response.status === 204) {

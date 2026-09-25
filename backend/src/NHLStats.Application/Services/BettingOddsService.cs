@@ -9,11 +9,16 @@ namespace NHLStats.Application.Services;
 public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
+    private readonly ISeasonEventBroadcaster? _broadcaster;
     private const decimal AppMargin = BettingConstants.Margin;
     private const decimal TeamMargin = BettingConstants.Margin;
     private const decimal OccasionsMargin = BettingConstants.Margin;
 
-    public BettingOddsService(NhlStatsDbContext db) => _db = db;
+    public BettingOddsService(NhlStatsDbContext db, ISeasonEventBroadcaster? broadcaster = null)
+    {
+        _db = db;
+        _broadcaster = broadcaster;
+    }
 
     // Margin is applied to the profit above stake return, not to the whole payout:
     // fairOdds = 1/probability; offeredOdds = 1 + (fairOdds - 1) * margin.
@@ -99,18 +104,11 @@ public class BettingOddsService : IBettingOddsService
         foreach (var userId in activeUserIds)
         {
             if (goalBettingEnabled)
-            {
-                var goalP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Goal);
-                oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserGoal, TargetId = userId, Probability = goalP, Odds = ComputeOdds(goalP), ComputedOn = now });
-            }
+                oddsToUpsert.Add(await BuildUserOddsRowAsync(matchId, userId, OddsBetType.UserGoal, UserEventKind.Goal, now));
 
-            var penP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.Penalty);
-            var plusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.PlusPoint);
-            var minusP = await ComputeUserEventProbabilityAsync(userId, matchId, UserEventKind.MinusPoint);
-
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPenalty, TargetId = userId, Probability = penP, Odds = ComputeOdds(penP), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserPlusPoint, TargetId = userId, Probability = plusP, Odds = ComputeOdds(plusP), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.UserMinusPoint, TargetId = userId, Probability = minusP, Odds = ComputeOdds(minusP), ComputedOn = now });
+            oddsToUpsert.Add(await BuildUserOddsRowAsync(matchId, userId, OddsBetType.UserPenalty, UserEventKind.Penalty, now));
+            oddsToUpsert.Add(await BuildUserOddsRowAsync(matchId, userId, OddsBetType.UserPlusPoint, UserEventKind.PlusPoint, now));
+            oddsToUpsert.Add(await BuildUserOddsRowAsync(matchId, userId, OddsBetType.UserMinusPoint, UserEventKind.MinusPoint, now));
         }
 
         await UpsertMatchOddsAsync(matchId, oddsToUpsert);
@@ -143,6 +141,46 @@ public class BettingOddsService : IBettingOddsService
                 await _db.SaveChangesAsync();
             }
         }
+
+        await TryBroadcastOddsUpdatedAsync(match);
+    }
+
+    // Tells clients viewing the season that this match's stored odds changed, so they can
+    // refetch just this match instead of polling or recalculating on their side.
+    private async Task TryBroadcastOddsUpdatedAsync(Match match)
+    {
+        if (_broadcaster == null) return;
+        try
+        {
+            await _broadcaster.BroadcastEventAsync(new SeasonEventNotificationDto(
+                SeasonId: match.SeasonId,
+                MatchId: match.Id,
+                UserMatchId: 0,
+                ActorUserId: null,
+                ActorUserName: null,
+                EventType: "OddsUpdated",
+                EventSubType: string.Empty,
+                PlayerName: null,
+                Count: 0));
+        }
+        catch
+        {
+            // best-effort: broadcast failures must never affect the stored odds
+        }
+    }
+
+    private async Task<MatchOdds> BuildUserOddsRowAsync(int matchId, int userId, OddsBetType betType, UserEventKind kind, DateTime now)
+    {
+        var probability = await ComputeUserEventProbabilityAsync(userId, matchId, kind);
+        var odds = ComputeOdds(probability);
+        var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
+        var (minN, effectiveOdds, maxN) = ResolveEffectiveOdds(counts, odds);
+        return new MatchOdds
+        {
+            MatchId = matchId, BetType = betType, TargetId = userId,
+            Probability = probability, Odds = odds, ComputedOn = now,
+            MinOccasions = minN, EffectiveOdds = effectiveOdds, MaxOccasions = maxN,
+        };
     }
 
     public async Task<int> RecalculateAllUpcomingAsync()
@@ -241,7 +279,9 @@ public class BettingOddsService : IBettingOddsService
             .Where(o => o.MatchId == matchId)
             .ToListAsync();
 
-        if (!matchOddsRows.Any())
+        // Odds are normally precomputed when a match ends; only calculate here when this match
+        // has never been calculated, or its user rows predate the stored effective-odds columns.
+        if (!matchOddsRows.Any() || matchOddsRows.Any(o => IsUserEventBetType(o.BetType) && o.EffectiveOdds == null))
         {
             await RecalculateForMatchAsync(matchId);
             matchOddsRows = await _db.MatchOdds
@@ -288,10 +328,10 @@ public class BettingOddsService : IBettingOddsService
         var userIds = matchOddsRows.Select(o => o.TargetId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var users = await _db.Users.Where(u => userIds.Contains(u.Id)).AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name);
 
-        var userGoal = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserGoal, matchId, users);
-        var userPenalty = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserPenalty, matchId, users);
-        var userPlusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserPlusPoint, matchId, users);
-        var userMinusPoint = await BuildUserOddsDtosAsync(matchOddsRows, OddsBetType.UserMinusPoint, matchId, users);
+        var userGoal = BuildUserOddsDtos(matchOddsRows, OddsBetType.UserGoal, users);
+        var userPenalty = BuildUserOddsDtos(matchOddsRows, OddsBetType.UserPenalty, users);
+        var userPlusPoint = BuildUserOddsDtos(matchOddsRows, OddsBetType.UserPlusPoint, users);
+        var userMinusPoint = BuildUserOddsDtos(matchOddsRows, OddsBetType.UserMinusPoint, users);
 
         var matchTotalGoals = matchOddsRows
             .Where(o => o.BetType == OddsBetType.MatchTotalGoals && o.TargetId.HasValue && o.Odds >= BettingConstants.MinBettableOdds)
@@ -688,18 +728,17 @@ public class BettingOddsService : IBettingOddsService
 
             if (prevSeasonId.HasValue)
             {
-                var prevUserMatches = await _db.UserMatches
-                    .Include(um => um.Match)
-                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value
-                                 && um.Match!.CompletionType != CompletionType.None)
-                    .ToListAsync();
-                if (prevUserMatches.Count > 0)
+                var prevCounts = await LoadSeasonEventCountsAsync(userId, prevSeasonId.Value, kind);
+                if (prevCounts.Count > 0)
                 {
-                    var umIds = prevUserMatches.Select(um => um.Id).ToList();
-                    var withEvents = await CountUserMatchesWithEventAsync(umIds, kind);
+                    // Same measure as CountUserMatchesWithEventAsync: total events for goals and
+                    // penalties, matches with at least one point for plus/minus points.
+                    var withEvents = kind is UserEventKind.PlusPoint or UserEventKind.MinusPoint
+                        ? prevCounts.Count(c => c > 0)
+                        : prevCounts.Sum();
                     if (withEvents > 0)
                     {
-                        pprev = (decimal)withEvents / prevUserMatches.Count;
+                        pprev = (decimal)withEvents / prevCounts.Count;
                         hasPrev = true;
                     }
                 }
@@ -744,21 +783,21 @@ public class BettingOddsService : IBettingOddsService
 
     // ── Multi-occasion helpers ──────────────────────────────────────────────────
 
-    private async Task<List<UserOddsDto>> BuildUserOddsDtosAsync(
-        List<MatchOdds> rows, OddsBetType betType, int matchId, Dictionary<int, string> users)
+    private static List<UserOddsDto> BuildUserOddsDtos(
+        List<MatchOdds> rows, OddsBetType betType, Dictionary<int, string> users)
     {
         var result = new List<UserOddsDto>();
-        if (!TryGetUserEventKind(betType, out var kind)) return result;
         foreach (var o in rows.Where(o => o.BetType == betType && o.TargetId.HasValue))
         {
             if (o.Probability < BettingConstants.MinBettableProbability) continue;
-            // Don't reject on the raw occasions=1 odds alone — ResolveEffectiveOddsAsync already
-            // tries higher occasions thresholds (2+, 3+, ...) up to 30 before giving up, so a user
-            // whose "at least once" price is too short (odds < MinBettableOdds) still gets a shot
-            // at a bettable "N+" market instead of just disappearing from the list.
-            var (n, eo, maxN) = await ResolveEffectiveOddsAsync(o.TargetId!.Value, matchId, kind, o.Odds);
+            // Don't reject on the raw occasions=1 odds alone — the stored effective odds already
+            // tried higher occasions thresholds (2+, 3+, ...) up to 30 during recalculation, so a
+            // user whose "at least once" price is too short (odds < MinBettableOdds) still gets a
+            // shot at a bettable "N+" market instead of just disappearing from the list.
+            var eo = o.EffectiveOdds ?? o.Odds;
             if (eo < BettingConstants.MinBettableOdds) continue; // no occasions threshold clears the floor even after bumping
-            result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo, maxN));
+            var n = o.MinOccasions ?? 1;
+            result.Add(new UserOddsDto(o.TargetId!.Value, users.GetValueOrDefault(o.TargetId!.Value), o.Odds, n, eo, o.MaxOccasions ?? n));
         }
         return result;
     }
@@ -788,7 +827,7 @@ public class BettingOddsService : IBettingOddsService
             .Where(um => um.UserId == userId && um.SeasonId == currentSeasonId && um.Match!.CompletionType != CompletionType.None)
             .ToListAsync()).Select(um => um.Id).ToList();
 
-        List<int> prevIds = [];
+        List<int> prev = [];
         if (!goalKind)
         {
             var prevSeasonId = await _db.UserMatches
@@ -798,17 +837,66 @@ public class BettingOddsService : IBettingOddsService
                 .FirstOrDefaultAsync();
 
             if (prevSeasonId.HasValue)
-                prevIds = (await _db.UserMatches
-                    .Include(um => um.Match)
-                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value && um.Match!.CompletionType != CompletionType.None)
-                    .ToListAsync()).Select(um => um.Id).ToList();
+                prev = await LoadSeasonEventCountsAsync(userId, prevSeasonId.Value, kind);
         }
 
         var last10 = await GetPerMatchCountsAsync(last10Ids, kind);
         var curr = await GetPerMatchCountsAsync(currIds, kind);
-        var prev = await GetPerMatchCountsAsync(prevIds, kind);
         return new UserEventCounts(last10, curr, prev, !goalKind && prev.Any(c => c > 0));
     }
+
+    // Per-match event counts for one user in one (previous) season, served from the cached
+    // UserSeasonEventDistribution rows. Only built from raw match data the first time, or after
+    // NhlStatsDbContext dropped the cache because that season's stats changed.
+    private async Task<List<int>> LoadSeasonEventCountsAsync(int userId, int seasonId, UserEventKind kind)
+    {
+        var betType = UserEventKindToBetType(kind);
+        var distribution = await _db.UserSeasonEventDistributions
+            .AsNoTracking()
+            .Where(d => d.UserId == userId && d.SeasonId == seasonId && d.BetType == betType)
+            .ToListAsync();
+
+        if (distribution.Count == 0)
+        {
+            var userMatchIds = await _db.UserMatches
+                .Where(um => um.UserId == userId && um.SeasonId == seasonId && um.Match!.CompletionType != CompletionType.None)
+                .Select(um => um.Id)
+                .ToListAsync();
+            if (userMatchIds.Count == 0) return [];
+
+            var counts = await GetPerMatchCountsAsync(userMatchIds, kind);
+            distribution = counts
+                .GroupBy(c => c)
+                .Select(g => new UserSeasonEventDistribution
+                {
+                    UserId = userId, SeasonId = seasonId, BetType = betType,
+                    Occurrences = g.Key, MatchCount = g.Count(),
+                })
+                .ToList();
+
+            _db.UserSeasonEventDistributions.AddRange(distribution);
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent recalculation cached the same season first — the values are identical.
+            }
+            foreach (var row in distribution)
+                _db.Entry(row).State = EntityState.Detached;
+        }
+
+        return distribution.SelectMany(d => Enumerable.Repeat(d.Occurrences, d.MatchCount)).ToList();
+    }
+
+    private static OddsBetType UserEventKindToBetType(UserEventKind kind) => kind switch
+    {
+        UserEventKind.Goal => OddsBetType.UserGoal,
+        UserEventKind.Penalty => OddsBetType.UserPenalty,
+        UserEventKind.PlusPoint => OddsBetType.UserPlusPoint,
+        _ => OddsBetType.UserMinusPoint,
+    };
 
     private Task<List<int>> GetPerMatchCountsAsync(List<int> userMatchIds, UserEventKind kind) =>
         kind switch
@@ -866,11 +954,9 @@ public class BettingOddsService : IBettingOddsService
         return BlendUserEventProbability(pprev, data.HasPrev && pprev > 0, pcurr, plast10);
     }
 
-    private async Task<(int MinOccasions, decimal EffectiveOdds, int MaxOccasions)> ResolveEffectiveOddsAsync(
-        int userId, int matchId, UserEventKind kind, decimal baseOdds)
+    private static (int MinOccasions, decimal EffectiveOdds, int MaxOccasions) ResolveEffectiveOdds(
+        UserEventCounts counts, decimal baseOdds)
     {
-        var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
-
         int minN = 1;
         decimal effectiveOdds = baseOdds;
         for (int n = 1; n <= 30; n++)
@@ -891,6 +977,8 @@ public class BettingOddsService : IBettingOddsService
 
         return (minN, effectiveOdds, maxN);
     }
+
+    private static bool IsUserEventBetType(OddsBetType betType) => TryGetUserEventKind(betType, out _);
 
     private static bool TryGetUserEventKind(OddsBetType betType, out UserEventKind kind)
     {
@@ -954,6 +1042,9 @@ public class BettingOddsService : IBettingOddsService
                     existing.Probability = odds.Probability;
                     existing.Odds = odds.Odds;
                     existing.ComputedOn = odds.ComputedOn;
+                    existing.MinOccasions = odds.MinOccasions;
+                    existing.EffectiveOdds = odds.EffectiveOdds;
+                    existing.MaxOccasions = odds.MaxOccasions;
                 }
             }
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NHLStats.Domain;
 
@@ -11,9 +12,11 @@ using NHLStats.Domain;
 namespace NHLStats.Domain.Migrations
 {
     [DbContext(typeof(NhlStatsDbContext))]
-    partial class NhlStatsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925144907_AddMatchOddsEffectiveOccasions")]
+    partial class AddMatchOddsEffectiveOccasions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1154,39 +1157,6 @@ namespace NHLStats.Domain.Migrations
                     b.ToTable("UserSeasonAggregatedData");
                 });
 
-            modelBuilder.Entity("NHLStats.Domain.Entities.UserSeasonEventDistribution", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BetType")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MatchCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Occurrences")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SeasonId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SeasonId");
-
-                    b.HasIndex("UserId", "SeasonId", "BetType", "Occurrences")
-                        .IsUnique();
-
-                    b.ToTable("UserSeasonEventDistributions");
-                });
-
             modelBuilder.Entity("NHLStats.Domain.Identity.AppRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1645,17 +1615,6 @@ namespace NHLStats.Domain.Migrations
                     b.Navigation("Season");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("NHLStats.Domain.Entities.UserSeasonEventDistribution", b =>
-                {
-                    b.HasOne("NHLStats.Domain.Entities.Season", "Season")
-                        .WithMany()
-                        .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Season");
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Identity.ApplicationUser", b =>

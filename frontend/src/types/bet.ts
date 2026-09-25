@@ -88,6 +88,20 @@ export interface CreateBetLegDto {
     userId?: number | null
     teamId?: number | null
     occasions?: number
+    /** Odds shown to the user; the server rejects the ticket (409) if its current odds differ. */
+    expectedOdds?: number
+}
+
+/** One leg whose odds moved between building the ticket and placing it (409 response body). */
+export interface OddsChangedLegDto {
+    legIndex: number
+    matchId: number
+    betType: ApiBetType
+    userId: number | null
+    teamId: number | null
+    occasions: number
+    expectedOdds: number
+    currentOdds: number
 }
 
 export interface CreateBetDto {
