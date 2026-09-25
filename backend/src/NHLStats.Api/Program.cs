@@ -126,6 +126,7 @@ builder.Services.AddScoped<ISeasonStatsService, SeasonStatsService>();
 builder.Services.AddScoped<IRosterStatsService, RosterStatsService>();
 builder.Services.AddScoped<IEarningsService, EarningsService>();
 builder.Services.AddScoped<IMatchStatsService, MatchStatsService>();
+builder.Services.AddScoped<IMatchupService, MatchupService>();
 builder.Services.AddScoped<ITeamStatsService, TeamStatsService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();

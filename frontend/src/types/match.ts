@@ -154,3 +154,32 @@ export interface OddsRecalculationStatus {
     startedAt: string | null
     lastError: string | null
 }
+
+export interface MatchupResult {
+    id: number
+    matchNumber: number
+    homeTeamId: number
+    homeTeamName: string | null
+    awayTeamId: number
+    awayTeamName: string | null
+    homeScore: number
+    awayScore: number
+    matchDate: string | null
+    completionType: CompletionType
+    phase: MatchPhase
+}
+
+export interface Matchup {
+    matchId: number
+    seasonId: number
+    homeTeamId: number
+    homeTeamName: string | null
+    awayTeamId: number
+    awayTeamName: string | null
+    matchesPlayed: number
+    lastMatches: MatchupResult[]
+    topScorers: UserMatchInfo[]
+    mostPenalized: UserMatchInfo[]
+    mostPlusPoints: UserMatchInfo[]
+    mostMinusPoints: UserMatchInfo[]
+}
