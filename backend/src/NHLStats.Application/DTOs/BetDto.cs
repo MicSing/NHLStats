@@ -63,9 +63,6 @@ public record PlaceBetResult(
     string? Error,
     IReadOnlyList<OddsChangedLegDto>? OddsChanged = null);
 
-/// <summary>Optional target for the admin "recalculate historical ticket odds" action — defaults to the current formula version when omitted.</summary>
-public record RecalculateHistoricalOddsRequestDto(decimal? TargetVersion);
-
 public record BettingBalanceDto(
     decimal AvailableBalance,
     decimal MaxWinCap,

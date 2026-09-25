@@ -3,13 +3,9 @@ import { useTranslation } from 'react-i18next'
 import apiClient from '../../services/apiClient'
 import Spinner from '../Spinner'
 
-type ActionKey = 'correlated' | 'upcoming' | 'historical'
+type ActionKey = 'correlated' | 'upcoming'
 type RunningAction = ActionKey | null
 type ActionResult = { variant: 'success' | 'error'; message: string } | null
-
-const CURRENT_FORMULA_VERSION = '2.1'
-const HISTORICAL_FORMULA_VERSION = '2.0'
-const LEGACY_FORMULA_VERSION = '1.0'
 
 function ResultPanel({ result, onDismiss }: { result: ActionResult; onDismiss: () => void }) {
     if (!result) return null
@@ -38,11 +34,9 @@ export default function BettingAdminTab() {
     const { t } = useTranslation()
     const [running, setRunning] = useState<RunningAction>(null)
     const [elapsedMs, setElapsedMs] = useState(0)
-    const [targetVersion, setTargetVersion] = useState(CURRENT_FORMULA_VERSION)
     const [results, setResults] = useState<Record<ActionKey, ActionResult>>({
         correlated: null,
         upcoming: null,
-        historical: null,
     })
     const busy = running !== null
 
@@ -86,22 +80,6 @@ export default function BettingAdminTab() {
         }
     }
 
-    const recalculateHistorical = async () => {
-        if (!window.confirm(t('admin.betting.recalculateHistoricalConfirm'))) return
-        setRunning('historical')
-        setResults((r) => ({ ...r, historical: null }))
-        try {
-            const result = await apiClient.post<{ betsUpdated: number }>(
-                '/api/admin/bets/recalculate-historical-odds', { targetVersion: Number(targetVersion) },
-            )
-            setResults((r) => ({ ...r, historical: { variant: 'success', message: t('admin.betting.recalculateHistoricalSuccess', { count: result.betsUpdated }) } }))
-        } catch {
-            setResults((r) => ({ ...r, historical: { variant: 'error', message: t('admin.betting.recalculateHistoricalError') } }))
-        } finally {
-            setRunning(null)
-        }
-    }
-
     const dismiss = (key: ActionKey) => setResults((r) => ({ ...r, [key]: null }))
 
     return (
@@ -140,40 +118,6 @@ export default function BettingAdminTab() {
                     {running === 'upcoming' ? runningLabel() : t('admin.betting.recalculateUpcomingButton')}
                 </button>
                 <ResultPanel result={results.upcoming} onDismiss={() => dismiss('upcoming')} />
-            </div>
-
-            <div className="card p-4 max-w-xl space-y-3 border border-danger/40">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-danger">
-                    {t('admin.betting.recalculateHistoricalTitle')}
-                </h3>
-                <p className="text-sm text-text-muted">
-                    {t('admin.betting.recalculateHistoricalDescription')}
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                    <label htmlFor="historical-odds-formula-version" className="text-sm text-text-muted">
-                        {t('admin.betting.recalculateHistoricalFormulaLabel')}
-                    </label>
-                    <select
-                        id="historical-odds-formula-version"
-                        value={targetVersion}
-                        onChange={(e) => setTargetVersion(e.target.value)}
-                        disabled={busy}
-                        className="px-3 py-1.5 rounded border border-border bg-surface text-sm disabled:opacity-50"
-                    >
-                        <option value={CURRENT_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaCurrent')}</option>
-                        <option value={HISTORICAL_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaHistorical')}</option>
-                        <option value={LEGACY_FORMULA_VERSION}>{t('admin.betting.recalculateHistoricalFormulaLegacy')}</option>
-                    </select>
-                </div>
-                <button
-                    onClick={() => void recalculateHistorical()}
-                    disabled={busy}
-                    className="flex items-center gap-2 btn-danger text-sm"
-                >
-                    {running === 'historical' && <Spinner />}
-                    {running === 'historical' ? runningLabel() : t('admin.betting.recalculateHistoricalButton')}
-                </button>
-                <ResultPanel result={results.historical} onDismiss={() => dismiss('historical')} />
             </div>
         </div>
     )

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
-using NHLStats.Application.Services;
 using NHLStats.Domain.Entities;
 
 namespace NHLStats.Api.Controllers;
@@ -143,22 +142,13 @@ public class BetsController : ControllerBase
         Ok(_oddsTracker.GetSeasonStatus(seasonId));
 
     // POST /api/admin/bets/recalculate-historical-odds (admin only)
-    // Reprices already-evaluated (Won/Lost) tickets not already on the chosen target formula
-    // version (defaults to the current one), using each leg's stored base Probability where
-    // available or reconstructing one from its stored odds otherwise. Rewrites historical numbers
-    // users already saw — the frontend gates this behind a confirmation. Guarded by
-    // OddsFormulaVersion (see RecalculateHistoricalTicketOddsAsync), so safe to run more than once.
+    // Disabled: repricing already-settled (Won/Lost) tickets rewrote odds and payouts users had
+    // already seen. The route stays so stale clients get a clear 410 instead of a 404; the
+    // underlying BetService.RecalculateHistoricalTicketOddsAsync is kept but no longer reachable.
     [HttpPost("api/admin/bets/recalculate-historical-odds")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> RecalculateHistoricalOdds([FromBody] RecalculateHistoricalOddsRequestDto? body)
-    {
-        var targetVersion = body?.TargetVersion ?? BettingConstants.CurrentOddsFormulaVersion;
-        if (!OddsFormulaTiers.TryFromDecimal(targetVersion, out _))
-            return BadRequest(new { error = $"Unknown odds formula version {targetVersion}." });
-
-        var count = await _betService.RecalculateHistoricalTicketOddsAsync(targetVersion);
-        return Ok(new { message = "Historical ticket odds recalculated.", betsUpdated = count, targetVersion });
-    }
+    public IActionResult RecalculateHistoricalOdds() =>
+        StatusCode(StatusCodes.Status410Gone, new { error = "Historical ticket odds recalculation is disabled." });
 
     private string? GetLoginId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier) ??

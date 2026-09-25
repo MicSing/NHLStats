@@ -498,44 +498,20 @@ public class BetsTests : ApiTestBase
         body.GetProperty("matchesUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
     }
 
-    [Fact]
-    public async Task Recalculate_historical_odds_requires_admin_role_and_returns_200()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(1.0)]
+    [InlineData(2.0)]
+    [InlineData(2.1)]
+    public async Task Recalculate_historical_odds_is_disabled_and_returns_410(double? targetVersion)
     {
+        // Repricing already-settled tickets rewrote numbers users had already seen, so the
+        // action is switched off — every request is refused regardless of target version.
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null);
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_accepts_an_explicit_target_version()
-    {
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 1.0m });
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("targetVersion").GetDecimal().Should().Be(1.0m);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_accepts_the_historical_target_version()
-    {
-        // 2.0 is no longer "current" (that's 2.1 now) but must still be reachable as its own
-        // tier — the middle ground meant specifically for reconciling old settled tickets.
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 2.0m });
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("targetVersion").GetDecimal().Should().Be(2.0m);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_rejects_an_unknown_target_version()
-    {
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 3.5m });
-        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var resp = targetVersion is null
+            ? await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null)
+            : await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = (decimal)targetVersion.Value });
+        resp.StatusCode.Should().Be(HttpStatusCode.Gone);
     }
 
     [Fact]
@@ -597,12 +573,16 @@ public class BetsTests : ApiTestBase
         totalOdds.Should().Be(Math.Floor(leg0Odds * leg1Odds * 100m) / 100m);
     }
 
-    private async Task<(HttpClient Client, int MatchId, decimal HomeOdds)> SetUpTeamWinMarketAsync(string seasonName)
+    // Each caller passes its own opponent that no other test plays against: team-win odds include
+    // head-to-head results from every earlier season, so sharing the usual 1-vs-2 pairing would let
+    // tests running in parallel (and the background odds recalculation they trigger) move these
+    // odds between reading them and placing the ticket.
+    private async Task<(HttpClient Client, int MatchId, decimal HomeOdds)> SetUpTeamWinMarketAsync(string seasonName, int opponentTeamId)
     {
         var client = await CreateAuthenticatedClientAsync();
         var seasonId = await CreateSeasonAsync(client, seasonName);
-        var matchId = await CreateFutureMatchAsync(client, seasonId);
-        await SeedHostedTeamHistoryAsync(client, seasonId);
+        var matchId = await CreateFutureMatchAsync(client, seasonId, homeTeamId: 1, awayTeamId: opponentTeamId);
+        await SeedHostedTeamHistoryAsync(client, seasonId, homeTeamId: 1, awayTeamId: opponentTeamId);
         await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
         var odds = await client.GetFromJsonAsync<JsonElement>($"/api/betting/matches/{matchId}/odds");
         var homeOdds = odds.GetProperty("teamWin").GetProperty("homeOdds").GetDecimal();
@@ -612,7 +592,7 @@ public class BetsTests : ApiTestBase
     [Fact]
     public async Task Place_bet_with_matching_expected_odds_returns_201()
     {
-        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Match Season");
+        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Match Season", opponentTeamId: 31);
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
         {
@@ -631,7 +611,7 @@ public class BetsTests : ApiTestBase
     [Fact]
     public async Task Place_bet_with_stale_expected_odds_returns_409_with_current_odds_and_creates_nothing()
     {
-        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Stale Season");
+        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Stale Season", opponentTeamId: 32);
         var activeBefore = (await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/active")).GetArrayLength();
 
         var resp = await client.PostAsJsonAsync("/api/betting/bets", new
