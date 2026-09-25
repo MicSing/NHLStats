@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { bettingService } from '../../services/bettingService'
-import type { FutureMatch, Matchup, UserMatchInfo } from '../../types/match'
+import type { FutureMatch, Matchup, MatchupResult, UserMatchInfo } from '../../types/match'
 import CompletionBadge from '../CompletionBadge'
 import LoadingSpinner from '../LoadingSpinner'
 import Modal from '../Modal'
@@ -13,6 +13,13 @@ interface MatchupModalProps {
 
 function names(users: UserMatchInfo[], fallback: string): string {
     return users.length === 0 ? '—' : users.map((u) => u.userName ?? fallback).join(', ')
+}
+
+function hostedTeamClass(m: MatchupResult, hostedTeamId: number | null, side: 'home' | 'away'): string {
+    const teamId = side === 'home' ? m.homeTeamId : m.awayTeamId
+    if (hostedTeamId == null || teamId !== hostedTeamId || m.homeScore === m.awayScore) return ''
+    const won = side === 'home' ? m.homeScore > m.awayScore : m.awayScore > m.homeScore
+    return won ? 'font-semibold text-success' : 'font-semibold text-danger'
 }
 
 export default function MatchupModal({ match, onClose }: MatchupModalProps) {
@@ -65,13 +72,13 @@ export default function MatchupModal({ match, onClose }: MatchupModalProps) {
                                     <span className="text-[10px] font-mono text-text-muted uppercase w-14 shrink-0">
                                         {t('betting.matchNumber', { number: m.matchNumber })}
                                     </span>
-                                    <span className="flex-1 min-w-0 truncate text-right">
+                                    <span className={`flex-1 min-w-0 truncate text-right ${hostedTeamClass(m, match.hostedTeamId, 'home')}`}>
                                         {m.homeTeamName ?? t('betting.unknownTeam')}
                                     </span>
                                     <strong className="shrink-0 tabular-nums">
                                         {m.homeScore} : {m.awayScore}
                                     </strong>
-                                    <span className="flex-1 min-w-0 truncate">
+                                    <span className={`flex-1 min-w-0 truncate ${hostedTeamClass(m, match.hostedTeamId, 'away')}`}>
                                         {m.awayTeamName ?? t('betting.unknownTeam')}
                                     </span>
                                     <CompletionBadge type={m.completionType} />
