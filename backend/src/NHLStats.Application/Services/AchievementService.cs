@@ -458,7 +458,7 @@ public class AchievementService : IAchievementService
             var occs = goals
                 .Where(g => g.GoalType == GoalType.ShortHanded && weekMap.ContainsKey(g.MatchId))
                 .GroupBy(g => (g.SeasonId, Week: weekMap[g.MatchId]))
-                .Where(wg => wg.Sum(g => g.Count) >= 3)
+                .Where(wg => wg.Sum(g => g.Count) >= 4)
                 .Select(wg =>
                 {
                     var first = wg.OrderBy(g => g.MatchDate).First();

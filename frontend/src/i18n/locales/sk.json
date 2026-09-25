@@ -446,7 +446,7 @@
         "match": "Zápas",
         "sniper":               { "name": "Ostreľovač",           "desc": "≥3 gólov s 1 hráčom v zápase" },
         "domination":           { "name": "Dominancia",           "desc": "≥4 góly celkovo s ≥2 hráčmi v zápase" },
-        "shorty":               { "name": "Shorty",               "desc": "≥3 góly v oslabení za týždeň" },
+        "shorty":               { "name": "Shorty",               "desc": "≥4 góly v oslabení za týždeň" },
         "godMode":              { "name": "Božský mód",           "desc": "≥10 gólov útočníkov za týždeň" },
         "blueLineSnipers":      { "name": "Ostreľovači modrej",   "desc": "≥5 gólov obrancov za týždeň" },
         "massiveAttack":        { "name": "Masívny útok",         "desc": "≥100 gólov útočníkov za sezónu" },

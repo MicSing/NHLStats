@@ -446,7 +446,7 @@
         "match": "Match",
         "sniper":               { "name": "Sniper",               "desc": "≥3 goals with 1 roster player in a match" },
         "domination":           { "name": "Domination",           "desc": "≥4 total goals with ≥2 players in a match" },
-        "shorty":               { "name": "Shorty",               "desc": "≥3 shorthanded goals in a week" },
+        "shorty":               { "name": "Shorty",               "desc": "≥4 shorthanded goals in a week" },
         "godMode":              { "name": "God Mode",             "desc": "≥10 forward goals in a week" },
         "blueLineSnipers":      { "name": "Blue Line Snipers",    "desc": "≥5 defender goals in a week" },
         "massiveAttack":        { "name": "Massive Attack",       "desc": "≥100 forward goals in a season" },
