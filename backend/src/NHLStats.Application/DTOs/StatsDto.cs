@@ -240,7 +240,15 @@ public record SeasonMatchHistoryDto(
 
 // ─── Betting trend charts ─────────────────────────────────────────────────────
 
-public record UserWeeklyBettingBalanceDto(int UserId, string UserName, decimal Balance);
+// Balance = Bets + PositivePoints (kept for backwards compatibility). The components are
+// cumulative € values the dashboard can combine as the user chooses; NegativePoints is ≤ 0.
+public record UserWeeklyBettingBalanceDto(
+    int UserId,
+    string UserName,
+    decimal Balance,
+    decimal Bets = 0m,
+    decimal PositivePoints = 0m,
+    decimal NegativePoints = 0m);
 public record WeeklyBettingBalancePeriodDto(string Label, IEnumerable<UserWeeklyBettingBalanceDto> Users);
 
 public record UserWeeklyBetDeltaDto(int UserId, string UserName, decimal Delta);

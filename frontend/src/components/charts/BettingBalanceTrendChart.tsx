@@ -8,7 +8,9 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
+import { useState } from 'react'
 import type { WeeklyBettingBalancePeriod } from '../../types/stats'
+import { combineBalance, type BalanceComponents } from '../../utils/bettingBalance'
 import { useChartTheme } from './useChartTheme'
 import { useHighlightedUsers } from './useHighlightedUsers'
 import { useTranslation } from 'react-i18next'
@@ -19,9 +21,12 @@ interface Props {
     data: WeeklyBettingBalancePeriod[]
 }
 
+const COMPONENT_KEYS = ['bets', 'positive', 'negative'] as const
+
 export default function BettingBalanceTrendChart({ data }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
+    const [selected, setSelected] = useState<BalanceComponents>({ bets: true, positive: true, negative: false })
     const { lineProps, legendProps, isHighlighted } = useHighlightedUsers(
         new Set(data.flatMap((p) => p.users.map((u) => u.userId))).size
     )
@@ -48,13 +53,26 @@ export default function BettingBalanceTrendChart({ data }: Props) {
         const entry: Record<string, unknown> = { label: period.label }
         for (const user of allUsers) {
             const match = period.users.find((u) => u.userId === user.userId)
-            entry[user.userName] = match ? match.balance : 0
+            entry[user.userName] = match ? combineBalance(match, selected) : 0
         }
         return entry
     })
 
     return (
         <div className="w-full">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
+                {COMPONENT_KEYS.map((key) => (
+                    <label key={key} className="flex items-center gap-1.5 text-xs text-text cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={selected[key]}
+                            onChange={(e) => setSelected((prev) => ({ ...prev, [key]: e.target.checked }))}
+                            className="accent-[var(--color-primary)]"
+                        />
+                        {t(`bettingBalanceChart.${key}`)}
+                    </label>
+                ))}
+            </div>
             <div className="h-[200px] sm:h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={ct.margin}>
