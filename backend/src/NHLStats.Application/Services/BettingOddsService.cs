@@ -10,9 +10,6 @@ public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
     private readonly ISeasonEventBroadcaster? _broadcaster;
-    private const decimal AppMargin = BettingConstants.Margin;
-    private const decimal TeamMargin = BettingConstants.Margin;
-    private const decimal OccasionsMargin = BettingConstants.Margin;
 
     public BettingOddsService(NhlStatsDbContext db, ISeasonEventBroadcaster? broadcaster = null)
     {
@@ -25,10 +22,11 @@ public class BettingOddsService : IBettingOddsService
     // This keeps offeredOdds >= 1 for any probability in (0, 1) — a margin < 1 shaves the
     // bettor's edge rather than collapsing the whole market below 1.0 for likely outcomes.
     // BettingConstants.MinBettableOdds is the separate floor for "worth offering at all".
-    // Delegates to OddsFormula so this stays the one place the current (2.1) formula is defined —
-    // see OddsFormula for the versioned formula used to reprice historical tickets.
-    private static decimal ComputeOdds(decimal probability, decimal margin = AppMargin) =>
-        OddsFormula.Compute(OddsFormulaTier.Current, probability, margin);
+    // Delegates to OddsFormula so this stays the one place the current (2.2) formula is defined —
+    // see OddsFormula for the versioned formula used to reprice historical tickets. The margin is
+    // per match (OddsFormula.MatchMargin), so identical matchups don't get identical odds.
+    private static decimal ComputeOdds(int matchId, decimal probability) =>
+        OddsFormula.Compute(OddsFormulaTier.Current, probability, OddsFormula.MatchMargin(matchId));
 
 
     public async Task RecalculateForMatchAsync(int matchId)
@@ -53,11 +51,11 @@ public class BettingOddsService : IBettingOddsService
             decimal p1X = probs.PHosted + probs.PDraw;
             decimal p2X = probs.POpponent + probs.PDraw;
 
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.HostedTeamId, Probability = p1, Odds = ComputeOdds(p1), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.OpponentTeamId, Probability = p2, Odds = ComputeOdds(p2, TeamMargin), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.Draw, TargetId = null, Probability = probs.PDraw, Odds = ComputeOdds(probs.PDraw, TeamMargin), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.HostedTeamId, Probability = p1X, Odds = ComputeOdds(p1X, TeamMargin), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.OpponentTeamId, Probability = p2X, Odds = ComputeOdds(p2X, TeamMargin), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.HostedTeamId, Probability = p1, Odds = ComputeOdds(matchId, p1), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWin, TargetId = probs.OpponentTeamId, Probability = p2, Odds = ComputeOdds(matchId, p2), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.Draw, TargetId = null, Probability = probs.PDraw, Odds = ComputeOdds(matchId, probs.PDraw), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.HostedTeamId, Probability = p1X, Odds = ComputeOdds(matchId, p1X), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.TeamWinOrDraw, TargetId = probs.OpponentTeamId, Probability = p2X, Odds = ComputeOdds(matchId, p2X), ComputedOn = now });
         }
 
         // ── User Goal/Penalty/PlusPoint/MinusPoint Odds ─────────────────────────
@@ -78,10 +76,10 @@ public class BettingOddsService : IBettingOddsService
         if (goalBettingEnabled)
         {
             var goalsBuckets = await LoadLeagueGoalsBucketsAsync(match);
-            foreach (var n in PickGoalWindow(goalsBuckets))
+            foreach (var n in PickGoalWindow(matchId, goalsBuckets))
             {
                 var p = BlendTotalGoalsProbability(goalsBuckets, n);
-                oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.MatchTotalGoals, TargetId = n, Probability = p, Odds = ComputeOdds(p), ComputedOn = now });
+                oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.MatchTotalGoals, TargetId = n, Probability = p, Odds = ComputeOdds(matchId, p), ComputedOn = now });
             }
         }
 
@@ -97,8 +95,8 @@ public class BettingOddsService : IBettingOddsService
             var hostedBuckets = await LoadTeamShutoutBucketsAsync(match, shutoutTeams.HostedTeamId, shutoutTeams.OpponentTeamId);
             var pHostedShutout = BlendShutoutProbability(hostedBuckets, TeamWonWithShutout);
             var pOpponentShutout = BlendShutoutProbability(hostedBuckets, TeamShutOut);
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.HostedShutoutWin, TargetId = null, Probability = pHostedShutout, Odds = ComputeOdds(pHostedShutout), ComputedOn = now });
-            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.OpponentShutoutWin, TargetId = null, Probability = pOpponentShutout, Odds = ComputeOdds(pOpponentShutout), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.HostedShutoutWin, TargetId = null, Probability = pHostedShutout, Odds = ComputeOdds(matchId, pHostedShutout), ComputedOn = now });
+            oddsToUpsert.Add(new MatchOdds { MatchId = matchId, BetType = OddsBetType.OpponentShutoutWin, TargetId = null, Probability = pOpponentShutout, Odds = ComputeOdds(matchId, pOpponentShutout), ComputedOn = now });
         }
 
         foreach (var userId in activeUserIds)
@@ -172,9 +170,9 @@ public class BettingOddsService : IBettingOddsService
     private async Task<MatchOdds> BuildUserOddsRowAsync(int matchId, int userId, OddsBetType betType, UserEventKind kind, DateTime now)
     {
         var probability = await ComputeUserEventProbabilityAsync(userId, matchId, kind);
-        var odds = ComputeOdds(probability);
+        var odds = ComputeOdds(matchId, probability);
         var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
-        var (minN, effectiveOdds, maxN) = ResolveEffectiveOdds(counts, odds);
+        var (minN, effectiveOdds, maxN) = ResolveEffectiveOdds(matchId, counts, odds);
         return new MatchOdds
         {
             MatchId = matchId, BetType = betType, TargetId = userId,
@@ -237,8 +235,8 @@ public class BettingOddsService : IBettingOddsService
 
         var counts = await LoadUserEventCountsAsync(userId, matchId, kind);
 
-        static decimal OddsForN(UserEventCounts c, int n) =>
-            ComputeOdds(ComputeProbabilityForOccasions(c, n), n == 1 ? AppMargin : OccasionsMargin);
+        decimal OddsForN(UserEventCounts c, int n) =>
+            ComputeOdds(matchId, ComputeProbabilityForOccasions(c, n));
 
         var odds = OddsForN(counts, occasions);
         int effectiveN = occasions;
@@ -361,7 +359,7 @@ public class BettingOddsService : IBettingOddsService
     //   p_home_raw = 0.30*Pseason + 0.25*Pl10 + 0.25*Ph2h + 0.20*PgoalFactor
     //   p_away_raw = 0.30*Pseason + 0.25*Pl10 + 0.25*Ph2h + 0.20*PgoalFactor
     //   p_draw_raw = season_draws / season_games        (computed but not persisted)
-    // Then normalize the three so they sum to 1; odds = AppMargin / p_final.
+    // Then normalize the three so they sum to 1; odds are then priced from p_final via ComputeOdds.
 
     // User goal/penalty model retains the legacy windowed blend:
     //   With prev season data:    P = 0.10*Pprev + 0.65*Pcurr + 0.25*Plast10
@@ -601,14 +599,14 @@ public class BettingOddsService : IBettingOddsService
         return 0.65m * pSeason + 0.15m * pLast10 + 0.10m * pH2h + 0.10m * pHomeAway;
     }
 
-    private static IEnumerable<int> PickGoalWindow(LeagueGoalsBuckets b)
+    private static IEnumerable<int> PickGoalWindow(int matchId, LeagueGoalsBuckets b)
     {
         // Slide a 4-wide window of N-thresholds up until its bottom edge is bettable (odds >= 1.0).
         // Floor is fixed at BettingConstants.MinGoalThreshold — the window never drops below 3+.
         for (int start = BettingConstants.MinGoalThreshold; start <= BettingConstants.MinGoalThreshold + 30; start++)
         {
             var window = Enumerable.Range(start, BettingConstants.GoalWindowSize).ToList();
-            var bottomOdds = ComputeOdds(BlendTotalGoalsProbability(b, window[0]));
+            var bottomOdds = ComputeOdds(matchId, BlendTotalGoalsProbability(b, window[0]));
             if (bottomOdds < BettingConstants.MinBettableOdds) continue;
 
             var topProb = BlendTotalGoalsProbability(b, window[^1]);
@@ -955,14 +953,13 @@ public class BettingOddsService : IBettingOddsService
     }
 
     private static (int MinOccasions, decimal EffectiveOdds, int MaxOccasions) ResolveEffectiveOdds(
-        UserEventCounts counts, decimal baseOdds)
+        int matchId, UserEventCounts counts, decimal baseOdds)
     {
         int minN = 1;
         decimal effectiveOdds = baseOdds;
         for (int n = 1; n <= 30; n++)
         {
-            var margin = n == 1 ? AppMargin : OccasionsMargin;
-            var o = ComputeOdds(ComputeProbabilityForOccasions(counts, n), margin);
+            var o = ComputeOdds(matchId, ComputeProbabilityForOccasions(counts, n));
             if (o >= BettingConstants.MinBettableOdds) { minN = n; effectiveOdds = o; break; }
         }
 
