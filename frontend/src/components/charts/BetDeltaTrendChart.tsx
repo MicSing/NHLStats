@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import type { WeeklyBetDeltaPeriod } from '../../types/stats'
 import { useChartTheme } from './useChartTheme'
+import { useHighlightedUsers } from './useHighlightedUsers'
 import { useTranslation } from 'react-i18next'
 
 import { getUserColor } from '../../utils/userColors'
@@ -22,6 +23,9 @@ interface Props {
 export default function BetDeltaTrendChart({ data }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
+    const { lineProps, legendProps, isHighlighted } = useHighlightedUsers(
+        new Set(data.flatMap((p) => p.users.map((u) => u.userId))).size
+    )
 
     if (data.length === 0) {
         return (
@@ -77,7 +81,7 @@ export default function BetDeltaTrendChart({ data }: Props) {
                             }}
                             formatter={(value) => [`${Number(value).toFixed(2)} €`]}
                         />
-                        <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} />
+                        <Legend wrapperStyle={{ color: ct.legendText, fontSize: 12 }} {...legendProps} />
                         <ReferenceLine y={0} stroke={ct.grid} strokeDasharray="4 4" />
                         {allUsers.map((user) => (
                             <Line
@@ -85,9 +89,9 @@ export default function BetDeltaTrendChart({ data }: Props) {
                                 type="monotone"
                                 dataKey={user.userName}
                                 stroke={getUserColor(user.userId)}
-                                strokeWidth={2}
+                                {...lineProps(user.userName)}
                                 dot={false}
-                                activeDot={{ r: 6 }}
+                                activeDot={isHighlighted(user.userName) ? { r: 6 } : false}
                                 connectNulls
                             />
                         ))}
