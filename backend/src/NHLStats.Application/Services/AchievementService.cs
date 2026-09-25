@@ -451,23 +451,22 @@ public class AchievementService : IAchievementService
             return MatchResult("domination", occs);
         }
 
+        // ─── Week-level goal achievements ─────────────────────────────────────
+
         AchievementResultDto Shorty()
         {
             var occs = goals
-                .Where(g => g.GoalType == GoalType.ShortHanded)
-                .GroupBy(g => g.MatchId)
-                .Where(mg => mg.Sum(g => g.Count) >= 3)
-                .Select(mg =>
+                .Where(g => g.GoalType == GoalType.ShortHanded && weekMap.ContainsKey(g.MatchId))
+                .GroupBy(g => (g.SeasonId, Week: weekMap[g.MatchId]))
+                .Where(wg => wg.Sum(g => g.Count) >= 4)
+                .Select(wg =>
                 {
-                    weekMap.TryGetValue(mg.Key, out var w);
-                    return O(mg.Key, mg.First().MatchDate, w,
-                        mg.First().SeasonId, mg.First().SeasonName,
-                        null, mg.Sum(g => g.Count));
+                    var first = wg.OrderBy(g => g.MatchDate).First();
+                    return O(null, first.MatchDate, wg.Key.Week,
+                        wg.Key.SeasonId, first.SeasonName, null, wg.Sum(g => g.Count));
                 }).ToList();
-            return MatchResult("shorty", occs);
+            return WeekResult("shorty", occs);
         }
-
-        // ─── Week-level goal achievements ─────────────────────────────────────
 
         AchievementResultDto GodMode()
         {
@@ -507,7 +506,7 @@ public class AchievementService : IAchievementService
                 .Where(g => completeSeasonIds.Contains(g.SeasonId)
                          && PlayerPositions.ContainsAny(g.Position, ForwardPositions))
                 .GroupBy(g => g.SeasonId)
-                .Where(sg => sg.Sum(g => g.Count) >= 140)
+                .Where(sg => sg.Sum(g => g.Count) >= 100)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
             return SeasonResult("massive_attack", occs);
@@ -519,7 +518,7 @@ public class AchievementService : IAchievementService
                 .Where(g => completeSeasonIds.Contains(g.SeasonId)
                          && PlayerPositions.Contains(g.Position, PlayerPosition.D))
                 .GroupBy(g => g.SeasonId)
-                .Where(sg => sg.Sum(g => g.Count) >= 45)
+                .Where(sg => sg.Sum(g => g.Count) >= 60)
                 .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
             return SeasonResult("offensive_defenseman", occs);
@@ -532,7 +531,7 @@ public class AchievementService : IAchievementService
                 .GroupBy(g => g.SeasonId)
                 .SelectMany(sg =>
                     sg.GroupBy(g => g.RosterPlayerId)
-                        .Where(pg => pg.Sum(g => g.Count) >= 70)
+                        .Where(pg => pg.Sum(g => g.Count) >= 50)
                         .Select(pg => O(null, null, null, sg.Key, sg.First().SeasonName,
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(g => g.Count))))
@@ -1169,8 +1168,8 @@ public class AchievementService : IAchievementService
         // ─── Assemble result ──────────────────────────────────────────────────
         return new UserAchievementsDto(new[]
         {
-            Sniper(), Domination(), Shorty(),
-            GodMode(), BlueLineSnipers(),
+            Sniper(), Domination(),
+            Shorty(), GodMode(), BlueLineSnipers(),
             MassiveAttack(), OffensiveDefenseman(), PlayerLover(), GoldenStick(),
             PowerPlayMaestro(), StreakMaster(),
             SinBinVip(), BroadStreetBully(),
