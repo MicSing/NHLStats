@@ -728,18 +728,17 @@ public class BettingOddsService : IBettingOddsService
 
             if (prevSeasonId.HasValue)
             {
-                var prevUserMatches = await _db.UserMatches
-                    .Include(um => um.Match)
-                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value
-                                 && um.Match!.CompletionType != CompletionType.None)
-                    .ToListAsync();
-                if (prevUserMatches.Count > 0)
+                var prevCounts = await LoadSeasonEventCountsAsync(userId, prevSeasonId.Value, kind);
+                if (prevCounts.Count > 0)
                 {
-                    var umIds = prevUserMatches.Select(um => um.Id).ToList();
-                    var withEvents = await CountUserMatchesWithEventAsync(umIds, kind);
+                    // Same measure as CountUserMatchesWithEventAsync: total events for goals and
+                    // penalties, matches with at least one point for plus/minus points.
+                    var withEvents = kind is UserEventKind.PlusPoint or UserEventKind.MinusPoint
+                        ? prevCounts.Count(c => c > 0)
+                        : prevCounts.Sum();
                     if (withEvents > 0)
                     {
-                        pprev = (decimal)withEvents / prevUserMatches.Count;
+                        pprev = (decimal)withEvents / prevCounts.Count;
                         hasPrev = true;
                     }
                 }
@@ -828,7 +827,7 @@ public class BettingOddsService : IBettingOddsService
             .Where(um => um.UserId == userId && um.SeasonId == currentSeasonId && um.Match!.CompletionType != CompletionType.None)
             .ToListAsync()).Select(um => um.Id).ToList();
 
-        List<int> prevIds = [];
+        List<int> prev = [];
         if (!goalKind)
         {
             var prevSeasonId = await _db.UserMatches
@@ -838,17 +837,66 @@ public class BettingOddsService : IBettingOddsService
                 .FirstOrDefaultAsync();
 
             if (prevSeasonId.HasValue)
-                prevIds = (await _db.UserMatches
-                    .Include(um => um.Match)
-                    .Where(um => um.UserId == userId && um.SeasonId == prevSeasonId.Value && um.Match!.CompletionType != CompletionType.None)
-                    .ToListAsync()).Select(um => um.Id).ToList();
+                prev = await LoadSeasonEventCountsAsync(userId, prevSeasonId.Value, kind);
         }
 
         var last10 = await GetPerMatchCountsAsync(last10Ids, kind);
         var curr = await GetPerMatchCountsAsync(currIds, kind);
-        var prev = await GetPerMatchCountsAsync(prevIds, kind);
         return new UserEventCounts(last10, curr, prev, !goalKind && prev.Any(c => c > 0));
     }
+
+    // Per-match event counts for one user in one (previous) season, served from the cached
+    // UserSeasonEventDistribution rows. Only built from raw match data the first time, or after
+    // NhlStatsDbContext dropped the cache because that season's stats changed.
+    private async Task<List<int>> LoadSeasonEventCountsAsync(int userId, int seasonId, UserEventKind kind)
+    {
+        var betType = UserEventKindToBetType(kind);
+        var distribution = await _db.UserSeasonEventDistributions
+            .AsNoTracking()
+            .Where(d => d.UserId == userId && d.SeasonId == seasonId && d.BetType == betType)
+            .ToListAsync();
+
+        if (distribution.Count == 0)
+        {
+            var userMatchIds = await _db.UserMatches
+                .Where(um => um.UserId == userId && um.SeasonId == seasonId && um.Match!.CompletionType != CompletionType.None)
+                .Select(um => um.Id)
+                .ToListAsync();
+            if (userMatchIds.Count == 0) return [];
+
+            var counts = await GetPerMatchCountsAsync(userMatchIds, kind);
+            distribution = counts
+                .GroupBy(c => c)
+                .Select(g => new UserSeasonEventDistribution
+                {
+                    UserId = userId, SeasonId = seasonId, BetType = betType,
+                    Occurrences = g.Key, MatchCount = g.Count(),
+                })
+                .ToList();
+
+            _db.UserSeasonEventDistributions.AddRange(distribution);
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent recalculation cached the same season first — the values are identical.
+            }
+            foreach (var row in distribution)
+                _db.Entry(row).State = EntityState.Detached;
+        }
+
+        return distribution.SelectMany(d => Enumerable.Repeat(d.Occurrences, d.MatchCount)).ToList();
+    }
+
+    private static OddsBetType UserEventKindToBetType(UserEventKind kind) => kind switch
+    {
+        UserEventKind.Goal => OddsBetType.UserGoal,
+        UserEventKind.Penalty => OddsBetType.UserPenalty,
+        UserEventKind.PlusPoint => OddsBetType.UserPlusPoint,
+        _ => OddsBetType.UserMinusPoint,
+    };
 
     private Task<List<int>> GetPerMatchCountsAsync(List<int> userMatchIds, UserEventKind kind) =>
         kind switch

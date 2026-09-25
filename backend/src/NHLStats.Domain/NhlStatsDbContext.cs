@@ -33,6 +33,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<BetLeg> BetLegs => Set<BetLeg>();
     public DbSet<MatchOdds> MatchOdds => Set<MatchOdds>();
     public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
+    public DbSet<UserSeasonEventDistribution> UserSeasonEventDistributions => Set<UserSeasonEventDistribution>();
     public DbSet<MatchEvent> MatchEvents => Set<MatchEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -139,6 +140,15 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(x => new { x.UserId, x.SeasonId }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserSeasonEventDistribution>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BetType).HasConversion<int>();
+            b.HasIndex(x => new { x.UserId, x.SeasonId, x.BetType, x.Occurrences }).IsUnique();
+            b.HasIndex(x => x.SeasonId);
+            b.HasOne(x => x.Season).WithMany().HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserMatchPoint>(b =>
@@ -299,5 +309,80 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             PositivePointValue = 0.25m,
             EffectiveFrom = new DateTime(2000, 1, 1)
         });
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        var seasonIds = CollectSeasonsWithChangedUserEvents();
+        if (seasonIds.Count > 0)
+            UserSeasonEventDistributions.RemoveRange(
+                UserSeasonEventDistributions.Where(d => seasonIds.Contains(d.SeasonId)).ToList());
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        var seasonIds = CollectSeasonsWithChangedUserEvents();
+        if (seasonIds.Count > 0)
+            UserSeasonEventDistributions.RemoveRange(
+                await UserSeasonEventDistributions.Where(d => seasonIds.Contains(d.SeasonId)).ToListAsync(cancellationToken));
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // Seasons whose cached UserSeasonEventDistribution rows would be stale after this save:
+    // any change to a user match or its goals/penalties/points, to a match's completion state,
+    // or to a point reason's type (which affects every season).
+    private HashSet<int> CollectSeasonsWithChangedUserEvents()
+    {
+        var seasonIds = new HashSet<int>();
+        var userMatchIds = new HashSet<int>();
+        var allSeasons = false;
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)) continue;
+            switch (entry.Entity)
+            {
+                case UserMatch um:
+                    seasonIds.Add(um.SeasonId);
+                    if (entry.State == EntityState.Modified)
+                        seasonIds.Add((int)entry.Property(nameof(UserMatch.SeasonId)).OriginalValue!);
+                    break;
+                case UserMatchGoal g:
+                    userMatchIds.Add(g.UserMatchId);
+                    break;
+                case UserMatchPenalty p:
+                    userMatchIds.Add(p.UserMatchId);
+                    break;
+                case UserMatchPoint p:
+                    userMatchIds.Add(p.UserMatchId);
+                    break;
+                case Match m when entry.State != EntityState.Modified
+                                  || entry.Property(nameof(Match.CompletionType)).IsModified
+                                  || entry.Property(nameof(Match.SeasonId)).IsModified:
+                    seasonIds.Add(m.SeasonId);
+                    if (entry.State == EntityState.Modified)
+                        seasonIds.Add((int)entry.Property(nameof(Match.SeasonId)).OriginalValue!);
+                    break;
+                case PointReason when entry.State == EntityState.Modified:
+                    allSeasons = true;
+                    break;
+            }
+        }
+
+        if (allSeasons)
+            return UserSeasonEventDistributions.Select(d => d.SeasonId).Distinct().ToHashSet();
+
+        if (userMatchIds.Count > 0)
+        {
+            foreach (var um in UserMatches.Local.Where(um => userMatchIds.Contains(um.Id)))
+                seasonIds.Add(um.SeasonId);
+            seasonIds.UnionWith(UserMatches.AsNoTracking()
+                .Where(um => userMatchIds.Contains(um.Id))
+                .Select(um => um.SeasonId)
+                .ToList());
+        }
+
+        return seasonIds;
     }
 }
