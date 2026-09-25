@@ -35,61 +35,11 @@ describe('BettingAdminTab', () => {
         expect(await screen.findByRole('status')).toHaveTextContent('Recalculated odds for 4 upcoming match(es).')
     })
 
-    it('does not call the API when the historical-odds confirmation is dismissed', async () => {
-        const user = userEvent.setup()
-        vi.spyOn(window, 'confirm').mockReturnValue(false)
-
+    it('does not offer the disabled historical-odds recalculation', () => {
         renderTab()
-        await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
 
-        expect(postMock).not.toHaveBeenCalled()
-    })
-
-    it('recalculates historical ticket odds to the current formula (2.1) by default', async () => {
-        const user = userEvent.setup()
-        vi.spyOn(window, 'confirm').mockReturnValue(true)
-        postMock.mockResolvedValueOnce({ betsUpdated: 7 })
-
-        renderTab()
-        await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
-
-        expect(postMock).toHaveBeenCalledWith('/api/admin/bets/recalculate-historical-odds', { targetVersion: 2.1 })
-        expect(await screen.findByRole('status')).toHaveTextContent('Recalculated 7 historical ticket(s).')
-    })
-
-    it('sends the historical formula version (2.0) when that option is selected', async () => {
-        const user = userEvent.setup()
-        vi.spyOn(window, 'confirm').mockReturnValue(true)
-        postMock.mockResolvedValueOnce({ betsUpdated: 5 })
-
-        renderTab()
-        await user.selectOptions(screen.getByLabelText('Formula version:'), 'Historical (2.0)')
-        await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
-
-        expect(postMock).toHaveBeenCalledWith('/api/admin/bets/recalculate-historical-odds', { targetVersion: 2 })
-    })
-
-    it('sends the legacy formula version (1.0) when that option is selected', async () => {
-        const user = userEvent.setup()
-        vi.spyOn(window, 'confirm').mockReturnValue(true)
-        postMock.mockResolvedValueOnce({ betsUpdated: 3 })
-
-        renderTab()
-        await user.selectOptions(screen.getByLabelText('Formula version:'), 'Legacy (1.0)')
-        await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
-
-        expect(postMock).toHaveBeenCalledWith('/api/admin/bets/recalculate-historical-odds', { targetVersion: 1 })
-    })
-
-    it('shows a persistent error panel when the historical recalculation fails', async () => {
-        const user = userEvent.setup()
-        vi.spyOn(window, 'confirm').mockReturnValue(true)
-        postMock.mockRejectedValueOnce(new Error('boom'))
-
-        renderTab()
-        await user.click(screen.getByRole('button', { name: 'Recalculate Historical Odds' }))
-
-        expect(await screen.findByRole('status')).toHaveTextContent('Failed to recalculate historical odds. Please try again.')
+        expect(screen.queryByRole('button', { name: 'Recalculate Historical Odds' })).not.toBeInTheDocument()
+        expect(screen.queryByLabelText('Formula version:')).not.toBeInTheDocument()
     })
 
     it('shows a running label while the request is in flight and disables the other buttons', async () => {
@@ -101,10 +51,10 @@ describe('BettingAdminTab', () => {
         await user.click(screen.getByRole('button', { name: 'Recalculate Upcoming Odds' }))
 
         expect(screen.getByRole('button', { name: /Recalculating…/ })).toBeDisabled()
-        expect(screen.getByRole('button', { name: 'Recalculate Historical Odds' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Recalculate Now' })).toBeDisabled()
 
         resolvePost({ matchesUpdated: 0 })
-        expect(await screen.findByRole('button', { name: 'Recalculate Historical Odds' })).not.toBeDisabled()
+        expect(await screen.findByRole('button', { name: 'Recalculate Now' })).not.toBeDisabled()
     })
 
     it('the result panel stays visible indefinitely, unlike the toast it replaced', async () => {
