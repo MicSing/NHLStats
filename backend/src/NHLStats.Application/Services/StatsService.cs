@@ -100,6 +100,8 @@ public class StatsService : IStatsService
             .Select(m => new { m.Id, m.SeasonId })
             .ToListAsync();
 
+        var gamesPlayedBySeasonAndUser = await CountGamesPlayedAsync(phase);
+
         var seasonIds = pointStats.Select(ps => ps.SeasonId)
             .Union(goalStats.Select(gs => gs.SeasonId))
             .Union(penaltyStats.Select(ps => ps.SeasonId))
@@ -145,7 +147,8 @@ public class StatsService : IStatsService
                         goalStat?.TotalGoals ?? 0,
                         penaltyStat?.TotalPenalties ?? 0,
                         fin?.Earnings ?? 0m,
-                        fin?.AvailableBalance ?? 0m);
+                        fin?.AvailableBalance ?? 0m,
+                        gamesPlayedBySeasonAndUser.GetValueOrDefault((s.Id, su.UserId)));
                 }).ToList();
 
                 return new SeasonalUserDataDto(s.Id, userData);
@@ -157,6 +160,35 @@ public class StatsService : IStatsService
         return new SeasonTotalsDto(
             seasonalUserData,
             topRosterPlayers);
+    }
+
+    /// <summary>
+    /// Counts matches each user took part in per season. Legacy aggregated entries
+    /// contribute their MatchesPlayed, except for the Playoff filter (they predate
+    /// match-level phase tracking and represent regular-season play only).
+    /// </summary>
+    private async Task<Dictionary<(int SeasonId, int UserId), int>> CountGamesPlayedAsync(MatchPhase? phase)
+    {
+        var matchCounts = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => !phase.HasValue || (um.Match != null && um.Match.Phase == phase.Value))
+            .GroupBy(um => new { um.SeasonId, um.UserId })
+            .Select(g => new { g.Key.SeasonId, g.Key.UserId, Count = g.Select(um => um.MatchId).Distinct().Count() })
+            .ToListAsync();
+
+        var result = matchCounts.ToDictionary(x => (x.SeasonId, x.UserId), x => x.Count);
+
+        if (phase != MatchPhase.Playoff)
+        {
+            var aggregated = await _db.UserSeasonAggregatedData
+                .AsNoTracking()
+                .Select(a => new { a.SeasonId, a.UserId, a.MatchesPlayed })
+                .ToListAsync();
+            foreach (var a in aggregated)
+                result[(a.SeasonId, a.UserId)] = result.GetValueOrDefault((a.SeasonId, a.UserId)) + a.MatchesPlayed;
+        }
+
+        return result;
     }
 
     // ─── Betting balance / delta trends (private — only used by GetDashboardDataAsync) ──

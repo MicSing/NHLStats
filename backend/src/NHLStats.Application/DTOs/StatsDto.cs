@@ -284,7 +284,8 @@ public record SeasonUserDataDto(
     int TotalGoals,
     int TotalPenalties,
     decimal Earnings,
-    decimal BettingBalance);
+    decimal BettingBalance,
+    int GamesPlayed);
 
 public record SeasonalUserDataDto(
     int SeasonId,
