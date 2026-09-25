@@ -19,14 +19,18 @@ import { getUserColor } from '../../utils/userColors'
 
 interface Props {
     data: WeeklyBettingBalancePeriod[]
+    /** Payouts only make sense across all seasons, so the option is opt-in. */
+    showPayouts?: boolean
 }
 
 const COMPONENT_KEYS = ['bets', 'positive', 'negative'] as const
 
-export default function BettingBalanceTrendChart({ data }: Props) {
+export default function BettingBalanceTrendChart({ data, showPayouts = false }: Props) {
     const ct = useChartTheme()
     const { t } = useTranslation()
-    const [selected, setSelected] = useState<BalanceComponents>({ bets: true, positive: true, negative: false })
+    const [selected, setSelected] = useState<BalanceComponents>({ bets: true, positive: true, negative: false, payouts: false })
+    const componentKeys = showPayouts ? [...COMPONENT_KEYS, 'payouts' as const] : COMPONENT_KEYS
+    const effectiveSelected = showPayouts ? selected : { ...selected, payouts: false }
     const { lineProps, legendProps, isHighlighted } = useHighlightedUsers(
         new Set(data.flatMap((p) => p.users.map((u) => u.userId))).size
     )
@@ -53,7 +57,7 @@ export default function BettingBalanceTrendChart({ data }: Props) {
         const entry: Record<string, unknown> = { label: period.label }
         for (const user of allUsers) {
             const match = period.users.find((u) => u.userId === user.userId)
-            entry[user.userName] = match ? combineBalance(match, selected) : 0
+            entry[user.userName] = match ? combineBalance(match, effectiveSelected) : 0
         }
         return entry
     })
@@ -61,11 +65,11 @@ export default function BettingBalanceTrendChart({ data }: Props) {
     return (
         <div className="w-full">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
-                {COMPONENT_KEYS.map((key) => (
+                {componentKeys.map((key) => (
                     <label key={key} className="flex items-center gap-1.5 text-xs text-text cursor-pointer">
                         <input
                             type="checkbox"
-                            checked={selected[key]}
+                            checked={!!selected[key]}
                             onChange={(e) => setSelected((prev) => ({ ...prev, [key]: e.target.checked }))}
                             className="accent-[var(--color-primary)]"
                         />

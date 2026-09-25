@@ -4,11 +4,13 @@ export interface BalanceComponents {
     bets: boolean
     positive: boolean
     negative: boolean
+    payouts?: boolean
 }
 
-/** Sums the selected balance components; negativePoints is already ≤ 0. */
+/** Sums the selected balance components; negativePoints is already ≤ 0, payouts ≥ 0. */
 export function combineBalance(user: UserWeeklyBettingBalance, selected: BalanceComponents): number {
     return (selected.bets ? user.bets ?? 0 : 0)
         + (selected.positive ? user.positivePoints ?? 0 : 0)
         + (selected.negative ? user.negativePoints ?? 0 : 0)
+        + (selected.payouts ? user.payouts ?? 0 : 0)
 }

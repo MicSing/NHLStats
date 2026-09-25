@@ -1093,7 +1093,8 @@
     "bettingBalanceChart": {
         "bets": "Stávky",
         "positive": "Kladné body",
-        "negative": "Záporné body"
+        "negative": "Záporné body",
+        "payouts": "Výplaty"
     },
     "trendChart": {
         "noData": "Žiadne údaje",
