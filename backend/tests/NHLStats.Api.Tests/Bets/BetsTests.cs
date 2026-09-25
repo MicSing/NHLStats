@@ -498,44 +498,20 @@ public class BetsTests : ApiTestBase
         body.GetProperty("matchesUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
     }
 
-    [Fact]
-    public async Task Recalculate_historical_odds_requires_admin_role_and_returns_200()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(1.0)]
+    [InlineData(2.0)]
+    [InlineData(2.1)]
+    public async Task Recalculate_historical_odds_is_disabled_and_returns_410(double? targetVersion)
     {
+        // Repricing already-settled tickets rewrote numbers users had already seen, so the
+        // action is switched off — every request is refused regardless of target version.
         var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null);
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("betsUpdated").GetInt32().Should().BeGreaterThanOrEqualTo(0);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_accepts_an_explicit_target_version()
-    {
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 1.0m });
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("targetVersion").GetDecimal().Should().Be(1.0m);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_accepts_the_historical_target_version()
-    {
-        // 2.0 is no longer "current" (that's 2.1 now) but must still be reachable as its own
-        // tier — the middle ground meant specifically for reconciling old settled tickets.
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 2.0m });
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("targetVersion").GetDecimal().Should().Be(2.0m);
-    }
-
-    [Fact]
-    public async Task Recalculate_historical_odds_rejects_an_unknown_target_version()
-    {
-        var client = await CreateAuthenticatedClientAsync();
-        var resp = await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = 3.5m });
-        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var resp = targetVersion is null
+            ? await client.PostAsync("/api/admin/bets/recalculate-historical-odds", null)
+            : await client.PostAsJsonAsync("/api/admin/bets/recalculate-historical-odds", new { targetVersion = (decimal)targetVersion.Value });
+        resp.StatusCode.Should().Be(HttpStatusCode.Gone);
     }
 
     [Fact]
