@@ -729,7 +729,7 @@ public class BetService : IBetService
 
             var hostedTeamId = leg.Match?.Season?.HostedTeamId;
             var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-            var margin = OddsFormula.MarginFor(tier, leg.BetType, leg.Occasions, isHostedTeamLeg);
+            var margin = OddsFormula.MarginFor(tier, leg.BetType, leg.Occasions, isHostedTeamLeg, leg.MatchId);
             var probability = OddsFormula.Invert(tier, margin, leg.Odds);
             if (!probability.HasValue) continue; // can't safely recover — leave null, retried on the next startup
 
@@ -782,7 +782,7 @@ public class BetService : IBetService
 
                 var hostedTeamId = leg.Match?.Season?.HostedTeamId;
                 var isHostedTeamLeg = leg.BetType == BetType.TeamWin && leg.TeamId.HasValue && leg.TeamId == hostedTeamId;
-                var targetMargin = OddsFormula.MarginFor(targetTier, leg.BetType, leg.Occasions, isHostedTeamLeg);
+                var targetMargin = OddsFormula.MarginFor(targetTier, leg.BetType, leg.Occasions, isHostedTeamLeg, leg.MatchId);
                 leg.Odds = OddsFormula.Compute(targetTier, probability, targetMargin);
                 leg.OddsFormulaVersion = targetVersion;
                 changed = true;

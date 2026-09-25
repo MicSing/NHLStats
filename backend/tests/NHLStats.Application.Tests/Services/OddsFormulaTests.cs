@@ -19,25 +19,25 @@ public class OddsFormulaTests
     [Fact]
     public void MarginFor_V1_SingleOccasionUserBet_IsLegacyAppMargin()
     {
-        OddsFormula.MarginFor(V1, BetType.UserPlusPoint, occasions: 1, isHostedTeamLeg: false).Should().Be(0.80m);
+        OddsFormula.MarginFor(V1, BetType.UserPlusPoint, occasions: 1, isHostedTeamLeg: false, matchId: 1).Should().Be(0.80m);
     }
 
     [Fact]
     public void MarginFor_V1_MultiOccasionUserBet_IsLegacyOccasionsMargin()
     {
-        OddsFormula.MarginFor(V1, BetType.UserPlusPoint, occasions: 3, isHostedTeamLeg: false).Should().Be(0.70m);
+        OddsFormula.MarginFor(V1, BetType.UserPlusPoint, occasions: 3, isHostedTeamLeg: false, matchId: 1).Should().Be(0.70m);
     }
 
     [Fact]
     public void MarginFor_V1_HostedTeamWin_IsLegacyAppMargin_NotTeamMargin()
     {
-        OddsFormula.MarginFor(V1, BetType.TeamWin, occasions: 1, isHostedTeamLeg: true).Should().Be(0.80m);
+        OddsFormula.MarginFor(V1, BetType.TeamWin, occasions: 1, isHostedTeamLeg: true, matchId: 1).Should().Be(0.80m);
     }
 
     [Fact]
     public void MarginFor_V1_OpponentTeamWin_IsLegacyTeamMargin()
     {
-        OddsFormula.MarginFor(V1, BetType.TeamWin, occasions: 1, isHostedTeamLeg: false).Should().Be(0.75m);
+        OddsFormula.MarginFor(V1, BetType.TeamWin, occasions: 1, isHostedTeamLeg: false, matchId: 1).Should().Be(0.75m);
     }
 
     [Theory]
@@ -45,7 +45,7 @@ public class OddsFormulaTests
     [InlineData(BetType.TeamDraw)]
     public void MarginFor_V1_DrawMarkets_AreLegacyTeamMargin(BetType betType)
     {
-        OddsFormula.MarginFor(V1, betType, occasions: 1, isHostedTeamLeg: false).Should().Be(0.75m);
+        OddsFormula.MarginFor(V1, betType, occasions: 1, isHostedTeamLeg: false, matchId: 1).Should().Be(0.75m);
     }
 
     [Theory]
@@ -54,7 +54,7 @@ public class OddsFormulaTests
     [InlineData(BetType.OpponentShutoutWin)]
     public void MarginFor_V1_OtherMarkets_FallBackToLegacyAppMargin(BetType betType)
     {
-        OddsFormula.MarginFor(V1, betType, occasions: 1, isHostedTeamLeg: false).Should().Be(0.80m);
+        OddsFormula.MarginFor(V1, betType, occasions: 1, isHostedTeamLeg: false, matchId: 1).Should().Be(0.80m);
     }
 
     [Theory]
@@ -66,7 +66,7 @@ public class OddsFormulaTests
     {
         // V2 (2.0) is the historical tier — a single margin for every bet type, no
         // hosted/opponent split (unlike legacy), and deliberately distinct from the live Margin.
-        OddsFormula.MarginFor(V2, betType, occasions: 1, isHostedTeamLeg).Should().Be(BettingConstants.HistoricalMargin);
+        OddsFormula.MarginFor(V2, betType, occasions: 1, isHostedTeamLeg, matchId: 1).Should().Be(BettingConstants.HistoricalMargin);
         BettingConstants.HistoricalMargin.Should().NotBe(BettingConstants.Margin, "the two tiers must actually differ for this test to mean anything");
     }
 
@@ -75,10 +75,60 @@ public class OddsFormulaTests
     [InlineData(BetType.TeamWin, false)]
     [InlineData(BetType.UserPlusPoint, false)]
     [InlineData(BetType.TeamDraw, false)]
-    public void MarginFor_Current_IsAlwaysTheUniformLiveMargin(BetType betType, bool isHostedTeamLeg)
+    public void MarginFor_Uniform_IsAlwaysTheUniformLiveMargin(BetType betType, bool isHostedTeamLeg)
     {
-        OddsFormula.MarginFor(OddsFormulaTier.Current, betType, occasions: 1, isHostedTeamLeg)
+        OddsFormula.MarginFor(OddsFormulaTier.Uniform, betType, occasions: 1, isHostedTeamLeg, matchId: 1)
             .Should().Be(BettingConstants.Margin);
+    }
+
+    [Theory]
+    [InlineData(BetType.TeamWin, true)]
+    [InlineData(BetType.UserPlusPoint, false)]
+    [InlineData(BetType.TeamDraw, false)]
+    public void MarginFor_Current_IsTheMatchMargin(BetType betType, bool isHostedTeamLeg)
+    {
+        OddsFormula.MarginFor(OddsFormulaTier.Current, betType, occasions: 1, isHostedTeamLeg, matchId: 42)
+            .Should().Be(OddsFormula.MatchMargin(42));
+    }
+
+    // ── MatchMargin ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MatchMargin_IsMarginReducedByAtMostMaxReduction_ForEveryMatch()
+    {
+        for (var matchId = 1; matchId <= 5000; matchId++)
+        {
+            OddsFormula.MatchMargin(matchId).Should().BeInRange(
+                BettingConstants.Margin - BettingConstants.MaxMatchMarginReduction, BettingConstants.Margin);
+        }
+    }
+
+    [Fact]
+    public void MatchMargin_IsStableForTheSameMatch()
+    {
+        OddsFormula.MatchMargin(123).Should().Be(OddsFormula.MatchMargin(123));
+    }
+
+    [Fact]
+    public void MatchMargin_VariesAcrossMatches()
+    {
+        // The whole point of 2.2: matches with identical inputs (e.g. the same opponent) must not
+        // all price identically.
+        var margins = Enumerable.Range(1, 100).Select(OddsFormula.MatchMargin).ToList();
+        margins.Distinct().Count().Should().BeGreaterThan(50);
+        margins.Min().Should().BeLessThan(BettingConstants.Margin - 0.04m);
+        margins.Max().Should().BeGreaterThan(BettingConstants.Margin - 0.01m);
+    }
+
+    [Fact]
+    public void CurrentVersion_Is22_AndRoundTripsThroughTier()
+    {
+        BettingConstants.CurrentOddsFormulaVersion.Should().Be(2.2m);
+        OddsFormulaTiers.TryFromDecimal(2.2m, out var current).Should().BeTrue();
+        current.Should().Be(OddsFormulaTier.Current);
+        OddsFormulaTiers.TryFromDecimal(2.1m, out var uniform).Should().BeTrue();
+        uniform.Should().Be(OddsFormulaTier.Uniform);
+        uniform.ToDecimal().Should().Be(2.1m);
     }
 
     // ── Compute ─────────────────────────────────────────────────────────────

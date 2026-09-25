@@ -134,7 +134,9 @@ public class BettingOddsServiceNewMarketsTests : IDisposable
         var (hosted, opp) = SeedTeams();
         var season = SeedSeason(hosted.Id);
         // Varied totals give a realistic gradient: high rate at low N, tapering off at high N.
-        Seed10CompletedMatchesVaried(season.Id, hosted.Id, opp.Id, [3, 4, 5, 6, 4, 5, 3, 7, 4, 5]);
+        // P(4+) = 0.7 keeps 4+ bettable across the whole 2.2 per-match margin range, so the window
+        // is [4..7] regardless of which margin this match draws.
+        Seed10CompletedMatchesVaried(season.Id, hosted.Id, opp.Id, [3, 4, 5, 6, 3, 5, 3, 7, 4, 5]);
         var upcoming = AddUpcomingMatch(season.Id, hosted.Id, opp.Id);
 
         await _service.RecalculateForMatchAsync(upcoming.Id);

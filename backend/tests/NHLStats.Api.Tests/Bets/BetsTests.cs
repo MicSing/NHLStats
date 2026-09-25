@@ -503,6 +503,7 @@ public class BetsTests : ApiTestBase
     [InlineData(1.0)]
     [InlineData(2.0)]
     [InlineData(2.1)]
+    [InlineData(2.2)]
     public async Task Recalculate_historical_odds_is_disabled_and_returns_410(double? targetVersion)
     {
         // Repricing already-settled tickets rewrote numbers users had already seen, so the

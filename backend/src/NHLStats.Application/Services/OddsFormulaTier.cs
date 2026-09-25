@@ -1,7 +1,7 @@
 namespace NHLStats.Application.Services;
 
 /// <summary>
-/// Typed view over BetLeg.OddsFormulaVersion's three known decimal values, used wherever code
+/// Typed view over BetLeg.OddsFormulaVersion's known decimal values, used wherever code
 /// actually branches on "which formula version is this" (OddsFormula's dispatch, and the
 /// recalculate-historical-odds endpoint's validation). BetLeg.OddsFormulaVersion itself, and the
 /// API/frontend wire format, stay decimal — this enum never touches the DB or JSON, it just
@@ -15,7 +15,13 @@ public enum OddsFormulaTier
     /// <summary>2.0 — additive formula, uniform HistoricalMargin (0.6), for repricing old tickets gently.</summary>
     Historical,
 
-    /// <summary>2.1 — additive formula, uniform Margin (0.35), what new bets and live/upcoming odds use.</summary>
+    /// <summary>2.1 — additive formula, uniform Margin (0.35).</summary>
+    Uniform,
+
+    /// <summary>
+    /// 2.2 — additive formula, Margin (0.35) minus a per-match random reduction in [0, 0.05] (see
+    /// OddsFormula.MatchMargin), what new bets and live/upcoming odds use.
+    /// </summary>
     Current
 }
 
@@ -26,6 +32,7 @@ public static class OddsFormulaTiers
     {
         OddsFormulaTier.Legacy => BettingConstants.LegacyOddsFormulaVersion,
         OddsFormulaTier.Historical => BettingConstants.HistoricalOddsFormulaVersion,
+        OddsFormulaTier.Uniform => BettingConstants.UniformOddsFormulaVersion,
         OddsFormulaTier.Current => BettingConstants.CurrentOddsFormulaVersion,
         _ => throw new ArgumentOutOfRangeException(nameof(tier))
     };
@@ -35,6 +42,7 @@ public static class OddsFormulaTiers
     {
         if (value == BettingConstants.LegacyOddsFormulaVersion) { tier = OddsFormulaTier.Legacy; return true; }
         if (value == BettingConstants.HistoricalOddsFormulaVersion) { tier = OddsFormulaTier.Historical; return true; }
+        if (value == BettingConstants.UniformOddsFormulaVersion) { tier = OddsFormulaTier.Uniform; return true; }
         if (value == BettingConstants.CurrentOddsFormulaVersion) { tier = OddsFormulaTier.Current; return true; }
         tier = default;
         return false;

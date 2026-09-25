@@ -105,7 +105,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin);
+        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, OddsFormula.MatchMargin(match.Id));
         var repricedLeg = reloaded.Legs.Single();
         repricedLeg.Odds.Should().Be(expected);
         reloaded.TotalOdds.Should().Be(expected);
@@ -144,7 +144,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.80m / 2.00m, BettingConstants.Margin);
+        var expected = OddsFormula.Compute(OddsFormulaTier.Current, 0.80m / 2.00m, OddsFormula.MatchMargin(match.Id));
         reloaded.Legs.Single().Odds.Should().Be(expected);
     }
 
@@ -174,7 +174,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        reloaded.Legs.Single().Odds.Should().Be(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin));
+        reloaded.Legs.Single().Odds.Should().Be(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, OddsFormula.MatchMargin(match.Id)));
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         // The whole point of the historical (2.0) tier: repricing an old ticket to it uses
         // BettingConstants.HistoricalMargin, not the live BettingConstants.Margin — a gentler
         // reconciliation for tickets placed before the margin change, distinct from what new
-        // bets and the "current" (2.1) tier use.
+        // bets and the "current" (2.2) tier use.
         var (_, _, match) = SeedMatch();
         var bet = SeedBet(BetStatus.Won, (BetType.UserPlusPoint, match.Id, 2.00m, 1, null, 0.40m));
 
@@ -249,7 +249,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
         var repricedLeg = reloaded.Legs.Single();
         var expected = OddsFormula.Compute(OddsFormulaTier.Historical, 0.40m, BettingConstants.HistoricalMargin);
         repricedLeg.Odds.Should().Be(expected);
-        repricedLeg.Odds.Should().NotBe(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin),
+        repricedLeg.Odds.Should().NotBe(OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, OddsFormula.MatchMargin(match.Id)),
             "historical and current repricing must actually diverge for this test to mean anything");
         repricedLeg.OddsFormulaVersion.Should().Be(BettingConstants.HistoricalOddsFormulaVersion);
     }
@@ -266,7 +266,7 @@ public class BetServiceHistoricalOddsRecalculationTests : IDisposable
 
         count.Should().Be(1);
         var reloaded = await _db.Bets.Include(b => b.Legs).AsNoTracking().FirstAsync(b => b.Id == bet.Id);
-        var perLeg = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, BettingConstants.Margin);
+        var perLeg = OddsFormula.Compute(OddsFormulaTier.Current, 0.40m, OddsFormula.MatchMargin(match.Id));
         reloaded.TotalOdds.Should().Be(Math.Floor(perLeg * perLeg * 100m) / 100m);
     }
 

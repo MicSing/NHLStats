@@ -6,16 +6,18 @@ namespace NHLStats.Application.Services;
 /// Computes and inverts odds for a specific BetLeg.OddsFormulaVersion, so historical tickets can
 /// be (re)priced under any formula version the admin picks — not just always "the current one".
 ///
-/// Three versions exist today, all sharing one of two formula *shapes*:
+/// Four versions exist today, all sharing one of two formula *shapes*:
 ///  - 1.0 (legacy): offeredOdds = margin / probability, with per-bet-type margins
 ///    0.80/0.75/0.70 — the only formula/margin combination that was ever actually live before
 ///    this file existed. Pinned here as historical fact, independent of whatever
 ///    BettingConstants.Margin/HistoricalMargin are set to today or in the future.
-///  - 2.0 (historical) and 2.1 (current) both use the additive shape,
-///    offeredOdds = 1 + (1/probability - 1) * margin, with a single margin for every bet type —
-///    2.0 uses BettingConstants.HistoricalMargin (deliberately gentler, meant only for repricing
-///    old settled tickets), 2.1 uses BettingConstants.Margin (what BettingOddsService.ComputeOdds
-///    uses for all new/upcoming odds — see that method — and what new BetLegs are stamped with).
+///  - 2.0 (historical), 2.1 (uniform) and 2.2 (current) all use the additive shape,
+///    offeredOdds = 1 + (1/probability - 1) * margin — 2.0 uses BettingConstants.HistoricalMargin
+///    (deliberately gentler, meant only for repricing old settled tickets), 2.1 uses
+///    BettingConstants.Margin for every bet type, and 2.2 uses MatchMargin(matchId): Margin minus a
+///    per-match random reduction in [0, MaxMatchMarginReduction]. 2.2 is what
+///    BettingOddsService.ComputeOdds uses for all new/upcoming odds and what new BetLegs are
+///    stamped with — it keeps matches against the same opponent from all getting identical odds.
 ///
 /// A BetLeg placed since BetLeg.Probability was introduced always has its true base probability
 /// on hand, so repricing it to any version is an exact forward computation via Compute(). Only
@@ -35,10 +37,12 @@ public static class OddsFormula
     /// priced the hosted team's TeamWin leg with the default (App) margin and the opponent's
     /// with TeamMargin — an asymmetry that predates this file and must be preserved.
     /// </param>
-    public static decimal MarginFor(OddsFormulaTier version, BetType betType, int occasions, bool isHostedTeamLeg)
+    /// <param name="matchId">The leg's match — only 2.2 (Current) varies the margin per match.</param>
+    public static decimal MarginFor(OddsFormulaTier version, BetType betType, int occasions, bool isHostedTeamLeg, int matchId)
     {
         if (version == OddsFormulaTier.Historical) return BettingConstants.HistoricalMargin;
-        if (version != OddsFormulaTier.Legacy) return BettingConstants.Margin;
+        if (version == OddsFormulaTier.Uniform) return BettingConstants.Margin;
+        if (version == OddsFormulaTier.Current) return MatchMargin(matchId);
 
         return betType switch
         {
@@ -50,6 +54,33 @@ public static class OddsFormula
             // MatchTotalGoals, HostedShutoutWin, OpponentShutoutWin
             _ => LegacyAppMargin
         };
+    }
+
+    /// <summary>
+    /// The 2.2 margin for a match: BettingConstants.Margin minus a reduction in
+    /// [0, BettingConstants.MaxMatchMarginReduction] (0.0001 steps). The reduction is random across
+    /// matches but seeded by the match id, so it's stable for a given match — odds don't jitter
+    /// every time they're recalculated, and odds shown to a bettor still match the ones locked in
+    /// at placement.
+    /// </summary>
+    public static decimal MatchMargin(int matchId)
+    {
+        const int steps = 10_000;
+        var maxStep = (uint)(BettingConstants.MaxMatchMarginReduction * steps);
+        var reduction = (decimal)(Mix((uint)matchId) % (maxStep + 1)) / steps;
+        return BettingConstants.Margin - reduction;
+    }
+
+    // murmur3 fmix32 finalizer — a stable (process-independent) integer hash, so consecutive
+    // match ids land on unrelated reductions.
+    private static uint Mix(uint h)
+    {
+        h ^= h >> 16;
+        h *= 0x85ebca6b;
+        h ^= h >> 13;
+        h *= 0xc2b2ae35;
+        h ^= h >> 16;
+        return h;
     }
 
     /// <summary>Computes the odds for a probability under the given formula version and margin.</summary>
