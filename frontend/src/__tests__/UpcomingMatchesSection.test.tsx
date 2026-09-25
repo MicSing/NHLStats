@@ -70,6 +70,21 @@ describe('UpcomingMatchesSection', () => {
         expect(onSelect).not.toHaveBeenCalled()
     })
 
+    it('closes the matchup modal when clicking outside of it', async () => {
+        mockMatchup(emptyMatchup)
+        render(<UpcomingMatchesSection matches={[match]} selectedMatchId={null} onSelect={() => {}} />)
+
+        await userEvent.click(screen.getByRole('button', { name: /season matchup for match #7/i }))
+        const dialog = screen.getByRole('dialog')
+        await within(dialog).findByText(/haven't played each other/i)
+
+        await userEvent.click(within(dialog).getByText('Boston Bruins vs Toronto Maple Leafs'))
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+        await userEvent.click(dialog)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
     it('shows last results and leaders without numbers', async () => {
         mockMatchup({
             ...emptyMatchup,
@@ -98,10 +113,10 @@ describe('UpcomingMatchesSection', () => {
         expect(within(dialog).getByText('REG')).toBeInTheDocument()
         expect(within(dialog).queryByText('N/A')).not.toBeInTheDocument()
 
-        const [won, lost] = within(dialog).getAllByText('Boston Bruins', { selector: 'li span' })
-        expect(won).toHaveClass('text-success')
-        expect(lost).toHaveClass('text-danger')
-        within(dialog).getAllByText('Toronto Maple Leafs', { selector: 'li span' })
+        const [won, lost] = within(dialog).getAllByRole('listitem')
+        expect(won).toHaveClass('border-l-4', 'border-l-success')
+        expect(lost).toHaveClass('border-l-4', 'border-l-danger')
+        within(dialog).getAllByText(/Boston Bruins|Toronto Maple Leafs/, { selector: 'li span' })
             .forEach((el) => expect(el).not.toHaveClass('text-success', 'text-danger'))
         expect(within(dialog).getByText('Best scorer').nextSibling).toHaveTextContent(/^Alice$/)
         expect(within(dialog).getByText('Most penalized').nextSibling).toHaveTextContent(/^Bob$/)
