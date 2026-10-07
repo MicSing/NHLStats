@@ -379,6 +379,17 @@ public class AchievementService : IAchievementService
             .Select(s => new { s.Id, s.Name })
             .ToDictionaryAsync(s => s.Id, s => s.Name);
 
+        // ─── 8b. Season end dates (last played match of each complete season) ─
+        var seasonEndDates = await _db.Matches
+            .AsNoTracking()
+            .Where(m => completeSeasonIds.Contains(m.SeasonId)
+                     && m.MatchDate.HasValue
+                     && m.CompletionType != CompletionType.None
+                     && m.CompletionType != CompletionType.InProgress)
+            .GroupBy(m => m.SeasonId)
+            .Select(g => new { SeasonId = g.Key, LastDate = g.Max(m => m.MatchDate) })
+            .ToDictionaryAsync(g => g.SeasonId, g => g.LastDate);
+
         // ─── 9. Global week map (matchId → week number within its season) ─────
         var relevantSeasonIds = goals.Select(g => g.SeasonId)
             .Concat(penalties.Select(p => p.SeasonId))
@@ -416,6 +427,10 @@ public class AchievementService : IAchievementService
         AchievementOccurrenceDto O(
             int? matchId, DateTime? on, int? week, int? sid, string? sName, string? player, int? val, int? matchNumber = null)
             => new(matchId, on, week, sid, sName, player, val, matchNumber ?? (matchId.HasValue && matchNumberMap.TryGetValue(matchId.Value, out var mn) ? mn : null));
+
+        // Season-level occurrence, dated to the season's last played match so it shows up as new.
+        AchievementOccurrenceDto SO(int sid, string? sName, string? player, int? val)
+            => O(null, seasonEndDates.GetValueOrDefault(sid), null, sid, sName, player, val);
 
         // ─── Match-level goal achievements ────────────────────────────────────
 
@@ -507,7 +522,7 @@ public class AchievementService : IAchievementService
                          && PlayerPositions.ContainsAny(g.Position, ForwardPositions))
                 .GroupBy(g => g.SeasonId)
                 .Where(sg => sg.Sum(g => g.Count) >= 100)
-                .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
+                .Select(sg => SO(sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
             return SeasonResult("massive_attack", occs);
         }
@@ -519,7 +534,7 @@ public class AchievementService : IAchievementService
                          && PlayerPositions.Contains(g.Position, PlayerPosition.D))
                 .GroupBy(g => g.SeasonId)
                 .Where(sg => sg.Sum(g => g.Count) >= 60)
-                .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
+                .Select(sg => SO(sg.Key, sg.First().SeasonName, null, sg.Sum(g => g.Count)))
                 .ToList();
             return SeasonResult("offensive_defenseman", occs);
         }
@@ -532,7 +547,7 @@ public class AchievementService : IAchievementService
                 .SelectMany(sg =>
                     sg.GroupBy(g => g.RosterPlayerId)
                         .Where(pg => pg.Sum(g => g.Count) >= 50)
-                        .Select(pg => O(null, null, null, sg.Key, sg.First().SeasonName,
+                        .Select(pg => SO(sg.Key, sg.First().SeasonName,
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(g => g.Count))))
                 .ToList();
@@ -552,7 +567,7 @@ public class AchievementService : IAchievementService
                     var entry = sg.FirstOrDefault(x => x.UserId == userId);
                     if (entry.UserId == 0 || entry.Total < max) return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
+                    return new[] { SO(sg.Key, sName, null, entry.Total) };
                 }).ToList();
             return SeasonResult("golden_stick", occs);
         }
@@ -618,7 +633,7 @@ public class AchievementService : IAchievementService
                 .SelectMany(sg =>
                     sg.GroupBy(p => p.RosterPlayerId)
                         .Where(pg => pg.Sum(p => p.Count) >= 15)
-                        .Select(pg => O(null, null, null, sg.Key, sg.First().SeasonName,
+                        .Select(pg => SO(sg.Key, sg.First().SeasonName,
                             $"{pg.First().PlayerFirst} {pg.First().PlayerSurname}",
                             pg.Sum(p => p.Count))))
                 .ToList();
@@ -631,7 +646,7 @@ public class AchievementService : IAchievementService
                 .Where(p => completeSeasonIds.Contains(p.SeasonId))
                 .GroupBy(p => p.SeasonId)
                 .Where(sg => sg.Sum(p => p.Count) >= 40)
-                .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
+                .Select(sg => SO(sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
             return SeasonResult("goon_squad", occs);
         }
@@ -649,7 +664,7 @@ public class AchievementService : IAchievementService
                     var entry = sg.FirstOrDefault(x => x.UserId == userId);
                     if (entry.UserId == 0 || entry.Total < max) return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
+                    return new[] { SO(sg.Key, sName, null, entry.Total) };
                 }).ToList();
             return SeasonResult("jailbird", occs);
         }
@@ -697,7 +712,7 @@ public class AchievementService : IAchievementService
                 .Where(p => p.PointType == PointType.Negative && completeSeasonIds.Contains(p.SeasonId))
                 .GroupBy(p => p.SeasonId)
                 .Where(sg => sg.Sum(p => p.Count) >= 36)
-                .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
+                .Select(sg => SO(sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
             return SeasonResult("vip_sponzor", occs);
         }
@@ -715,7 +730,7 @@ public class AchievementService : IAchievementService
                     var entry = sg.FirstOrDefault(x => x.UserId == userId);
                     if (entry.UserId == 0 || entry.Total < max) return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
+                    return new[] { SO(sg.Key, sName, null, entry.Total) };
                 }).ToList();
             return SeasonResult("the_atm", occs);
         }
@@ -763,7 +778,7 @@ public class AchievementService : IAchievementService
                 .Where(p => p.PointType == PointType.Positive && completeSeasonIds.Contains(p.SeasonId))
                 .GroupBy(p => p.SeasonId)
                 .Where(sg => sg.Sum(p => p.Count) >= 25)
-                .Select(sg => O(null, null, null, sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
+                .Select(sg => SO(sg.Key, sg.First().SeasonName, null, sg.Sum(p => p.Count)))
                 .ToList();
             return SeasonResult("happy_season", occs);
         }
@@ -781,7 +796,7 @@ public class AchievementService : IAchievementService
                     var entry = sg.FirstOrDefault(x => x.UserId == userId);
                     if (entry.UserId == 0 || entry.Total < max) return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, entry.Total) };
+                    return new[] { SO(sg.Key, sName, null, entry.Total) };
                 }).ToList();
             return SeasonResult("king_of_the_rink", occs);
         }
@@ -806,7 +821,7 @@ public class AchievementService : IAchievementService
                         .Select(x => x.Stake).DefaultIfEmpty(0m).Max();
                     if (userMaxStake < maxStake) return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, (int)Math.Floor(userMaxStake)) };
+                    return new[] { SO(sg.Key, sName, null, (int)Math.Floor(userMaxStake)) };
                 }).ToList();
             return SeasonResult("oracle", occs);
         }
@@ -831,7 +846,7 @@ public class AchievementService : IAchievementService
                     if (!countsByUser.TryGetValue(userCreatedBy!, out var userCount) || userCount < maxCount)
                         return Enumerable.Empty<AchievementOccurrenceDto>();
                     var sName = seasonNames.TryGetValue(sg.Key, out var n) ? n : null;
-                    return new[] { O(null, null, null, sg.Key, sName, null, userCount) };
+                    return new[] { SO(sg.Key, sName, null, userCount) };
                 }).ToList();
             return SeasonResult("the_bookie", occs);
         }
@@ -962,8 +977,7 @@ public class AchievementService : IAchievementService
                 if (userCleanWeeks.TryGetValue(userId, out var userWeeks) && userWeeks == maxCleanWeeks)
                 {
                     var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
-                    var firstMatch = userMatches.Where(um => um.SeasonId == sid).OrderBy(um => um.MatchDate).FirstOrDefault();
-                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, userWeeks));
+                    occs.Add(SO(sid, sName, null, userWeeks));
                 }
             }
             return SeasonResult("guardian_angel", occs);
@@ -999,8 +1013,7 @@ public class AchievementService : IAchievementService
                 if (userPenalties == minPenalties)
                 {
                     var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
-                    var firstMatch = userMatches.Where(um => um.SeasonId == sid).OrderBy(um => um.MatchDate).FirstOrDefault();
-                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, userPenalties));
+                    occs.Add(SO(sid, sName, null, userPenalties));
                 }
             }
             return SeasonResult("lady_byng", occs);
@@ -1158,8 +1171,7 @@ public class AchievementService : IAchievementService
                 if (userWeekCounts.TryGetValue(userId, out var userWeeks) && userWeeks == maxWeeks)
                 {
                     var sName = seasonNames.TryGetValue(sid, out var n) ? n : null;
-                    var firstMatch = userMatches.Where(um => um.SeasonId == sid).OrderBy(um => um.MatchDate).FirstOrDefault();
-                    occs.Add(O(null, firstMatch?.MatchDate, null, sid, sName, null, userWeeks));
+                    occs.Add(SO(sid, sName, null, userWeeks));
                 }
             }
             return SeasonResult("iron_man", occs);
