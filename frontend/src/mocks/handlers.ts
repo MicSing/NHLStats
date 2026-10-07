@@ -49,6 +49,14 @@ const mockSeasonDetail = {
     users: mockSeasonUsers,
 }
 
+const mockPositionWheelState = {
+    previousSeasonId: null,
+    previousSeasonName: null,
+    order: [],
+    currentSpinnerUserId: null,
+    availablePositions: ['LW', 'C', 'RW', 'LD', 'RD'],
+}
+
 const mockMatches = [
     {
         id: 10,
@@ -427,6 +435,18 @@ export const handlers = [
 
     rest.put(`${BASE}/api/seasons/:id/users/:userId/position`, (req, res, ctx) => {
         return res(ctx.json({ ...mockSeasonDetail, id: Number(req.params.id) }))
+    }),
+
+    rest.get(`${BASE}/api/seasons/:id/position-wheel`, (_req, res, ctx) => {
+        return res(ctx.json(mockPositionWheelState))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:id/position-wheel/spin`, (_req, res, ctx) => {
+        return res(ctx.json({ userId: 1, position: 'C', state: { ...mockPositionWheelState, currentSpinnerUserId: null } }))
+    }),
+
+    rest.post(`${BASE}/api/seasons/:id/position-wheel/reset`, (_req, res, ctx) => {
+        return res(ctx.json(mockPositionWheelState))
     }),
 
     // Roster

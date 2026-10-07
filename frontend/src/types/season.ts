@@ -46,3 +46,29 @@ export interface ImportRealSeasonMatchesResult {
     skipped: number
     errors: string[]
 }
+
+export interface PositionWheelEntry {
+    userId: number
+    name: string
+    position: SeasonUserPositionCode | null
+    hasPreviousStats: boolean
+    minusPoints: number
+    plusPoints: number
+    penalties: number
+    goals: number
+}
+
+export interface PositionWheelState {
+    previousSeasonId: number | null
+    previousSeasonName: string | null
+    /** Season-active players in spin order. */
+    order: PositionWheelEntry[]
+    currentSpinnerUserId: number | null
+    availablePositions: SeasonUserPositionCode[]
+}
+
+export interface PositionWheelSpinResult {
+    userId: number
+    position: SeasonUserPositionCode
+    state: PositionWheelState
+}

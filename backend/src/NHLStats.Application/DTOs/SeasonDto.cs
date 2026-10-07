@@ -55,3 +55,23 @@ public record UpdateSeasonDto(
     LeagueType LeagueType = LeagueType.NHL,
     int? NhlYear = null,
     GamingConsole? Console = null);
+
+/// <summary>A season-active player in position-wheel spin order, with the previous-season stats that ranked them.</summary>
+public record PositionWheelEntryDto(
+    int UserId,
+    string Name,
+    SeasonUserPosition? Position,
+    bool HasPreviousStats,
+    int MinusPoints,
+    int PlusPoints,
+    int Penalties,
+    int Goals);
+
+public record PositionWheelStateDto(
+    int? PreviousSeasonId,
+    string? PreviousSeasonName,
+    IReadOnlyList<PositionWheelEntryDto> Order,
+    int? CurrentSpinnerUserId,
+    IReadOnlyList<SeasonUserPosition> AvailablePositions);
+
+public record PositionWheelSpinResultDto(int UserId, SeasonUserPosition Position, PositionWheelStateDto State);

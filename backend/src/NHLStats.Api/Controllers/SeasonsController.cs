@@ -10,8 +10,13 @@ namespace NHLStats.Api.Controllers;
 public class SeasonsController : ControllerBase
 {
     private readonly ISeasonService _service;
+    private readonly IPositionWheelService _positionWheel;
 
-    public SeasonsController(ISeasonService service) => _service = service;
+    public SeasonsController(ISeasonService service, IPositionWheelService positionWheel)
+    {
+        _service = service;
+        _positionWheel = positionWheel;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll() =>
@@ -87,5 +92,36 @@ public class SeasonsController : ControllerBase
     {
         var result = await _service.SetUserActiveAsync(id, userId, dto.IsActive);
         return result == null ? NotFound() : Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("{id:int}/position-wheel")]
+    public async Task<IActionResult> GetPositionWheel(int id)
+    {
+        var state = await _positionWheel.GetStateAsync(id);
+        return state == null ? NotFound() : Ok(state);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/position-wheel/spin")]
+    public async Task<IActionResult> SpinPositionWheel(int id)
+    {
+        try
+        {
+            var result = await _positionWheel.SpinAsync(id);
+            return result == null ? NotFound() : Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/position-wheel/reset")]
+    public async Task<IActionResult> ResetPositionWheel(int id)
+    {
+        var state = await _positionWheel.ResetAsync(id);
+        return state == null ? NotFound() : Ok(state);
     }
 }
