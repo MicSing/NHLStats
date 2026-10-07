@@ -148,7 +148,7 @@ public class UserMatchService : IUserMatchService
             return (0, $"Match {matchId} does not belong to season {seasonId}.");
 
         var seasonUserIds = await _db.SeasonUsers
-            .Where(su => su.SeasonId == seasonId)
+            .Where(su => su.SeasonId == seasonId && su.IsActive)
             .Select(su => su.UserId)
             .ToListAsync();
 
@@ -183,7 +183,7 @@ public class UserMatchService : IUserMatchService
             return (0, null);
 
         var seasonUserIds = await _db.SeasonUsers
-            .Where(su => su.SeasonId == seasonId)
+            .Where(su => su.SeasonId == seasonId && su.IsActive)
             .Select(su => su.UserId)
             .ToListAsync();
 

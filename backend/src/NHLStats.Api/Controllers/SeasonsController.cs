@@ -80,4 +80,12 @@ public class SeasonsController : ControllerBase
         var result = await _service.UpdateUserPositionAsync(id, userId, dto.Position);
         return result == null ? NotFound() : Ok(result);
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id:int}/users/{userId:int}/active")]
+    public async Task<IActionResult> SetUserActive(int id, int userId, UpdateSeasonUserActiveDto dto)
+    {
+        var result = await _service.SetUserActiveAsync(id, userId, dto.IsActive);
+        return result == null ? NotFound() : Ok(result);
+    }
 }

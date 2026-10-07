@@ -169,4 +169,92 @@ public class SeasonUsersTests : ApiTestBase
             $"/api/seasons/{seasonId}/users/{userId}/position", new { position = "RD" });
         updateResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // ── Season activation ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssignUser_IsActiveInSeasonByDefault()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var (seasonId, userId) = await CreateSeasonWithUserAsync(client, "Active Default Season", "PlayerZeta");
+
+        var entry = await GetSeasonUserAsync(client, seasonId, userId);
+        entry.GetProperty("isActiveInSeason").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetUserActive_TogglesSeasonActivation()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var (seasonId, userId) = await CreateSeasonWithUserAsync(client, "Active Toggle Season", "PlayerEta");
+
+        var offResp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/active", new { isActive = false });
+        offResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetSeasonUserAsync(client, seasonId, userId))
+            .GetProperty("isActiveInSeason").GetBoolean().Should().BeFalse();
+
+        var onResp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/active", new { isActive = true });
+        onResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetSeasonUserAsync(client, seasonId, userId))
+            .GetProperty("isActiveInSeason").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetUserActive_UnassignedUser_Returns404()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Active Missing Season",
+            startedOn = "2024-07-01T00:00:00"
+        });
+        var seasonId = (await seasonResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = "PlayerTheta" });
+        var userId = (await userResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var resp = await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/active", new { isActive = false });
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task SetUserActive_Unauthenticated_Returns401()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var (seasonId, userId) = await CreateSeasonWithUserAsync(client, "Active Anon Season", "PlayerIota");
+
+        var anonClient = Factory.CreateClient();
+        var resp = await anonClient.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{userId}/active", new { isActive = false });
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private static async Task<(int seasonId, int userId)> CreateSeasonWithUserAsync(
+        HttpClient client, string seasonName, string userName)
+    {
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = seasonName,
+            startedOn = "2024-07-01T00:00:00"
+        });
+        var seasonId = (await seasonResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var userResp = await client.PostAsJsonAsync("/api/users", new { name = userName });
+        var userId = (await userResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        (await client.PostAsync($"/api/seasons/{seasonId}/users/{userId}", null)).EnsureSuccessStatusCode();
+        return (seasonId, userId);
+    }
+
+    private static async Task<JsonElement> GetSeasonUserAsync(HttpClient client, int seasonId, int userId)
+    {
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/users");
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        return Enumerable.Range(0, body.GetArrayLength())
+            .Select(i => body[i])
+            .Single(e => e.GetProperty("id").GetInt32() == userId);
+    }
 }

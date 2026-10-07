@@ -56,6 +56,15 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
         }
     }
 
+    const handleToggleActive = async (userId: number, isActive: boolean) => {
+        try {
+            await apiClient.put(`/api/seasons/${season.id}/users/${userId}/active`, { isActive })
+            onRefreshDetail()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
     const assignableUsers = allUsers.filter(
         (u) => !seasonDetail?.users.some((su) => su.id === u.id),
     )
@@ -64,25 +73,30 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
 
     return (
         <div className="max-w-xl space-y-4">
+            <p className="text-xs text-text-muted">{t('admin.seasons.activeInSeasonHint')}</p>
             <TableCard>
                 <table className="w-full text-sm">
                     <thead className="bg-surface">
                         <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
                             <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                             <th className="px-4 py-3 font-medium">{t('admin.seasons.position')}</th>
+                            <th className="px-4 py-3 font-medium">{t('admin.seasons.activeInSeason')}</th>
                             <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                         {seasonDetail.users.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted text-sm">
+                                <td colSpan={4} className="px-4 py-6 text-center text-text-muted text-sm">
                                     {t('admin.seasons.noUsersAssigned')}
                                 </td>
                             </tr>
                         ) : (
                             seasonDetail.users.map((u) => (
-                                <tr key={u.id} className="hover:bg-surface/50 transition-colors">
+                                <tr
+                                    key={u.id}
+                                    className={`hover:bg-surface/50 transition-colors ${u.isActiveInSeason ? '' : 'opacity-60'}`}
+                                >
                                     <td className="px-4 py-3">{u.name}</td>
                                     <td className="px-4 py-3">
                                         <select
@@ -103,6 +117,20 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                                                 </option>
                                             ))}
                                         </select>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                aria-label={t('admin.seasons.activeInSeasonFor', { name: u.name })}
+                                                checked={u.isActiveInSeason}
+                                                onChange={(e) => void handleToggleActive(u.id, e.target.checked)}
+                                                className="accent-[var(--color-primary)]"
+                                            />
+                                            <span className="text-xs text-text-muted">
+                                                {u.isActiveInSeason ? t('common.active') : t('common.inactive')}
+                                            </span>
+                                        </label>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <button
