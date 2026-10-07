@@ -23,7 +23,7 @@ public class SeasonService : ISeasonService
         s.HostedTeam?.Name,
         s.StartedOn, s.Status, s.ParentSeasonId,
         s.SeasonUsers?
-            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position))
+            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive))
             .ToList() ?? [],
         s.LeagueType, s.NhlYear, s.Console);
 
@@ -118,6 +118,18 @@ public class SeasonService : ISeasonService
         return await GetByIdAsync(seasonId);
     }
 
+    public async Task<SeasonDetailDto?> SetUserActiveAsync(int seasonId, int userId, bool isActive)
+    {
+        var su = await _db.SeasonUsers
+            .FirstOrDefaultAsync(x => x.SeasonId == seasonId && x.UserId == userId);
+        if (su == null) return null;
+
+        su.IsActive = isActive;
+        await _db.SaveChangesAsync();
+
+        return await GetByIdAsync(seasonId);
+    }
+
     public async Task<bool> RemoveUserAsync(int seasonId, int userId)
     {
         var su = await _db.SeasonUsers
@@ -137,7 +149,7 @@ public class SeasonService : ISeasonService
         return await _db.SeasonUsers
             .Where(su => su.SeasonId == seasonId)
             .Include(su => su.User)
-            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position))
+            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive))
             .ToListAsync();
     }
 }

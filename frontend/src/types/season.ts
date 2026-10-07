@@ -20,6 +20,8 @@ export interface Season {
 
 export interface SeasonUser extends User {
     position: SeasonUserPositionCode | null
+    /** Only season-active users are added to new matches. */
+    isActiveInSeason: boolean
 }
 
 export interface SeasonDetail extends Season {

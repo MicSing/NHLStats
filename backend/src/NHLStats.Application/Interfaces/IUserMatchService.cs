@@ -14,10 +14,10 @@ public interface IUserMatchService
 
     Task<bool> DeleteAsync(int id);
 
-    /// <summary>Creates a UserMatch for every SeasonUser not already represented in the match.</summary>
+    /// <summary>Creates a UserMatch for every season-active SeasonUser not already represented in the match.</summary>
     Task<(int created, string? error)> InitializeUsersForMatchAsync(int seasonId, int matchId);
 
-    /// <summary>Creates missing UserMatches for every SeasonUser across all unplayed matches in the season.</summary>
+    /// <summary>Creates missing UserMatches for every season-active SeasonUser across all unplayed matches in the season.</summary>
     Task<(int created, string? error)> InitializeUsersForAllUnplayedMatchesAsync(int seasonId);
 
     /// <summary>Clears all points, goals, and penalties for every player in the match, keeping the UserMatch roster entries intact.</summary>

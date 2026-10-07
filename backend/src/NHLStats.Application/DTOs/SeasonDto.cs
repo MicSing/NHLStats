@@ -28,11 +28,13 @@ public record SeasonDetailDto(
     int? NhlYear,
     GamingConsole? Console);
 
-public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position);
+public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position, bool IsActiveInSeason = true);
 
 public record AssignSeasonUserDto(SeasonUserPosition? Position = null);
 
 public record UpdateSeasonUserPositionDto(SeasonUserPosition? Position);
+
+public record UpdateSeasonUserActiveDto(bool IsActive);
 
 public record CreateSeasonDto(
     [Required] string Name,

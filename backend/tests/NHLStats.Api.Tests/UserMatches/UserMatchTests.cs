@@ -215,6 +215,57 @@ public class UserMatchTests : ApiTestBase
         body.GetProperty("created").GetInt32().Should().Be(1);
     }
 
+    [Fact]
+    public async Task InitializeUsers_skips_users_inactive_in_season()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "UM InitializeInactive");
+        var activeId = await CreateUserAsync(client, "Inactive Test Active");
+        var inactiveId = await CreateUserAsync(client, "Inactive Test Inactive");
+        await AssignUserToSeasonAsync(client, seasonId, activeId);
+        await AssignUserToSeasonAsync(client, seasonId, inactiveId);
+        (await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{inactiveId}/active", new { isActive = false }))
+            .EnsureSuccessStatusCode();
+        var matchId = await CreateMatchAsync(client, seasonId);
+
+        var resp = await client.PostAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}/usermatches/initialize", null);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("created").GetInt32().Should().Be(1);
+
+        var listResp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches");
+        var list = await listResp.Content.ReadFromJsonAsync<JsonElement>();
+        var userIds = Enumerable.Range(0, list.GetArrayLength())
+            .Select(i => list[i].GetProperty("userId").GetInt32())
+            .ToList();
+        userIds.Should().BeEquivalentTo(new[] { activeId });
+    }
+
+    [Fact]
+    public async Task InitializeAll_skips_users_inactive_in_season()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "UM InitializeAllInactive");
+        var activeId = await CreateUserAsync(client, "InitAll Active");
+        var inactiveId = await CreateUserAsync(client, "InitAll Inactive");
+        await AssignUserToSeasonAsync(client, seasonId, activeId);
+        await AssignUserToSeasonAsync(client, seasonId, inactiveId);
+        (await client.PutAsJsonAsync(
+            $"/api/seasons/{seasonId}/users/{inactiveId}/active", new { isActive = false }))
+            .EnsureSuccessStatusCode();
+        await CreateMatchAsync(client, seasonId);
+        await CreateMatchAsync(client, seasonId);
+
+        var resp = await client.PostAsync(
+            $"/api/seasons/{seasonId}/matches/usermatches/initialize-all", null);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("created").GetInt32().Should().Be(2);
+    }
+
     // ─── UserMatchPoint — Add & totals recalculation ─────────────────────────
 
     [Fact]

@@ -14,4 +14,5 @@ public interface ISeasonService
     Task<bool> RemoveUserAsync(int seasonId, int userId);
     Task<IEnumerable<SeasonUserDto>?> GetSeasonUsersAsync(int seasonId);
     Task<SeasonDetailDto?> UpdateUserPositionAsync(int seasonId, int userId, SeasonUserPosition? position);
+    Task<SeasonDetailDto?> SetUserActiveAsync(int seasonId, int userId, bool isActive);
 }

@@ -9,7 +9,7 @@ const mockUsers = [
     { id: 2, name: 'Player Two', isActive: false },
 ]
 
-const mockSeasonUsers = [{ ...mockUsers[0], position: null }]
+const mockSeasonUsers = [{ ...mockUsers[0], position: null, isActiveInSeason: true }]
 
 const mockLoginUsers = [
     { id: 'login-1', email: 'player.one@test.com', alias: null, userId: 1, isActive: true, roles: ['User'] },
