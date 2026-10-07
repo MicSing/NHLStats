@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { cacheService } from '../services/cacheService'
 import { bettingService } from '../services/bettingService'
-import type { AchievementResult } from '../types/achievement'
+import type { AchievementResult, AchievementHolder } from '../types/achievement'
 import type { BettingBalanceDto } from '../types/bet'
 import { AchievementModal } from '../components/stats/AchievementsTab'
 import type { AchievementDef } from '../components/stats/achievementDefs'
@@ -37,6 +37,7 @@ export default function ProfilePage() {
 
     const [playerName, setPlayerName] = useState<string | null>(null)
     const [achievements, setAchievements] = useState<AchievementResult[]>([])
+    const [achievementHolders, setAchievementHolders] = useState<AchievementHolder[] | null>(null)
     const [balance, setBalance] = useState<BettingBalanceDto | null>(null)
     const [activeBetsCount, setActiveBetsCount] = useState<number>(0)
     const [selectedModal, setSelectedModal] = useState<{
@@ -60,6 +61,12 @@ export default function ProfilePage() {
             cacheService.getAchievements(user.userId).then((res) => {
                 if (!isMounted) return
                 setAchievements(res.achievements ?? [])
+            }).catch(() => { /* silent */ })
+
+            // 2b. Get global achievement holders (for unique / nobody filters)
+            cacheService.getAchievementHolders().then((res) => {
+                if (!isMounted) return
+                setAchievementHolders(res.achievements ?? [])
             }).catch(() => { /* silent */ })
         }
 
@@ -201,6 +208,8 @@ export default function ProfilePage() {
                 {activeTab === 'achievements' && isAuthenticated && (
                     <ProfileAchievementsTab
                         achievements={achievements}
+                        holders={achievementHolders}
+                        userId={user?.userId ?? null}
                         onOpenAchievementModal={(def, result) =>
                             setSelectedModal({ def, result })
                         }

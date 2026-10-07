@@ -17,6 +17,7 @@ vi.mock('../services/cacheService', () => ({
         getSeasonWeeklyGroups: vi.fn().mockResolvedValue([
             { weekNumber: 1, matches: [{ matchId: 101, matchNumber: 1, matchDate: '2025-10-05' }] },
         ]),
+        getAchievementHolders: vi.fn().mockResolvedValue({ achievements: [] }),
         getAchievements: vi.fn().mockResolvedValue({
             achievements: [
                 {

@@ -1,22 +1,26 @@
 import { useTranslation } from 'react-i18next'
 import { LockSimpleIcon } from '@phosphor-icons/react'
-import type { AchievementResult } from '../../types/achievement'
+import type { AchievementResult, AchievementHolder } from '../../types/achievement'
 import type { AchievementDef } from '../stats/achievementDefs'
 import { useAchievementFilters, isRecent } from '../stats/useAchievementFilters'
 import AchievementFilterBar from '../stats/AchievementFilterBar'
 
 interface ProfileAchievementsTabProps {
     achievements: AchievementResult[]
+    holders?: AchievementHolder[] | null
+    userId?: number | null
     onOpenAchievementModal: (def: AchievementDef, result: AchievementResult) => void
 }
 
 export default function ProfileAchievementsTab({
     achievements,
+    holders,
+    userId,
     onOpenAchievementModal,
 }: ProfileAchievementsTabProps) {
     const { t } = useTranslation()
-    const filters = useAchievementFilters(achievements)
-    const { achievementMap, filteredDefs, activeFilters, clearAllFilters } = filters
+    const filters = useAchievementFilters(achievements, holders, userId)
+    const { achievementMap, filteredDefs, activeFilters, clearAllFilters, isUnique } = filters
 
     return (
         <div className="space-y-6">
@@ -46,6 +50,7 @@ export default function ProfileAchievementsTab({
                         const icon = !earned && def.disabledIcon ? def.disabledIcon : def.levelIcons[idx]
                         const name = def.levelNames[idx]
                         const hasRecent = result?.occurrences.some((occ) => isRecent(occ.occurredOn)) ?? false
+                        const unique = isUnique(def.id)
 
                         return (
                             <button
@@ -85,6 +90,11 @@ export default function ProfileAchievementsTab({
                                 {hasRecent && (
                                     <span className="absolute top-2 left-2 text-[9px] bg-amber-400 text-amber-950 font-bold rounded-full px-1.5 py-0.2">
                                         NEW
+                                    </span>
+                                )}
+                                {unique && !hasRecent && (
+                                    <span className="absolute top-2 left-2 text-[9px] bg-sky-400/20 text-sky-400 font-bold rounded-full px-1.5 py-0.5">
+                                        {t('profile.achievements.uniqueBadge')}
                                     </span>
                                 )}
                                 {earned && (

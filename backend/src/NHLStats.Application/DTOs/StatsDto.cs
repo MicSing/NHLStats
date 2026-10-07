@@ -368,3 +368,13 @@ public record AchievementResultDto(
 public record UserAchievementsDto(
     IEnumerable<AchievementResultDto> Achievements
 );
+
+/// <summary>Which users have earned a given achievement (level ≥ 1).</summary>
+public record AchievementHolderDto(
+    string           Id,
+    IEnumerable<int> HolderUserIds
+);
+
+public record AchievementHoldersDto(
+    IEnumerable<AchievementHolderDto> Achievements
+);

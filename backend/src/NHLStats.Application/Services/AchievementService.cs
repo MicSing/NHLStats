@@ -129,6 +129,40 @@ public class AchievementService : IAchievementService
 
     public AchievementService(NhlStatsDbContext db) => _db = db;
 
+    /// <summary>
+    /// Evaluates achievements for every user and returns, per achievement, the IDs
+    /// of users who have earned it. Used for "unique" / "nobody has it" filters.
+    /// </summary>
+    public async Task<AchievementHoldersDto> GetAchievementHoldersAsync()
+    {
+        var userIds = await _db.Users
+            .AsNoTracking()
+            .OrderBy(u => u.Id)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        var holders = new Dictionary<string, List<int>>();
+        var order = new List<string>();
+
+        foreach (var uid in userIds)
+        {
+            var result = await GetUserAchievementsAsync(uid);
+            foreach (var a in result.Achievements)
+            {
+                if (!holders.TryGetValue(a.Id, out var list))
+                {
+                    list = [];
+                    holders[a.Id] = list;
+                    order.Add(a.Id);
+                }
+                if (a.Earned) list.Add(uid);
+            }
+        }
+
+        return new AchievementHoldersDto(
+            order.Select(id => new AchievementHolderDto(id, holders[id])).ToList());
+    }
+
     public async Task<UserAchievementsDto> GetUserAchievementsAsync(int userId)
     {
         // ─── 0. Complete season IDs ───────────────────────────────────────────
