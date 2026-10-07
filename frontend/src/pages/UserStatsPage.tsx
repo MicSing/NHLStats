@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import type { Season } from '../types/season'
 import type { User } from '../types/user'
 import type { DashboardData, MatchHistoryItem, PointReasonBreakdownItem, RosterPenalizedByUser, RosterScorerByUser, SeasonMatchHistory } from '../types/stats'
-import type { UserAchievements } from '../types/achievement'
+import type { UserAchievements, AchievementHolder } from '../types/achievement'
 import { cacheService } from '../services/cacheService'
 import { bettingService } from '../services/bettingService'
 import type { BetDto } from '../types/bet'
@@ -41,6 +41,7 @@ export default function UserStatsPage() {
     const [allBets, setAllBets] = useState<BetDto[] | null>(null)
     const [userAchievements, setUserAchievements] = useState<UserAchievements | null>(null)
     const [loadingAchievements, setLoadingAchievements] = useState(false)
+    const [achievementHolders, setAchievementHolders] = useState<AchievementHolder[] | null>(null)
 
     useEffect(() => {
         cacheService
@@ -101,6 +102,13 @@ export default function UserStatsPage() {
             .catch(() => setUserAchievements(null))
             .finally(() => setLoadingAchievements(false))
     }, [selectedUserId])
+
+    useEffect(() => {
+        if (tab !== 'achievements' || achievementHolders != null) return
+        cacheService.getAchievementHolders()
+            .then((res) => setAchievementHolders(res.achievements ?? []))
+            .catch(() => { /* silent – unique/nobody filters stay hidden */ })
+    }, [tab, achievementHolders])
 
     useEffect(() => {
         if (selectedUserId == null) {
@@ -301,6 +309,8 @@ export default function UserStatsPage() {
                     <AchievementsTab
                         achievements={userAchievements?.achievements ?? []}
                         loading={loadingAchievements}
+                        holders={achievementHolders}
+                        userId={selectedUserId}
                     />
                 )}
 

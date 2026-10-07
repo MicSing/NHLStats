@@ -2,7 +2,7 @@ import apiClient from './apiClient'
 import type { User } from '../types/user'
 import type { Season } from '../types/season'
 import type { DashboardData, SeasonMatchHistory, UserPointReasonBreakdown, WeekGroup } from '../types/stats'
-import type { UserAchievements } from '../types/achievement'
+import type { UserAchievements, AchievementHolders } from '../types/achievement'
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 day
 const USER_STATS_CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutes
@@ -29,6 +29,8 @@ function userBreakdownKey(userId: number, seasonId?: number): string {
 function userAchievementsKey(userId: number): string {
     return `nhl-stats-user-achievements-${userId}`
 }
+
+const ACHIEVEMENT_HOLDERS_KEY = 'nhl-stats-achievement-holders'
 
 function seasonWeeklyKey(seasonId: number): string {
     return `nhl-stats-season-weekly-${seasonId}`
@@ -197,6 +199,20 @@ export const cacheService = {
         }
         const data = await apiClient.get<UserAchievements>(`/api/stats/users/${userId}/achievements`)
         setInCache(key, data)
+        return data
+    },
+
+    /**
+     * Get, for every achievement, the IDs of users who have earned it.
+     * Cache is valid for 5 minutes.
+     */
+    async getAchievementHolders(force = false): Promise<AchievementHolders> {
+        if (!force) {
+            const cached = getFromCache<AchievementHolders>(ACHIEVEMENT_HOLDERS_KEY, USER_STATS_CACHE_DURATION_MS)
+            if (cached) return cached
+        }
+        const data = await apiClient.get<AchievementHolders>('/api/stats/achievements/holders')
+        setInCache(ACHIEVEMENT_HOLDERS_KEY, data)
         return data
     },
 

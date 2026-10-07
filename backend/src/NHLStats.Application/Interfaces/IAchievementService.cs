@@ -5,4 +5,5 @@ namespace NHLStats.Application.Interfaces;
 public interface IAchievementService
 {
     Task<UserAchievementsDto> GetUserAchievementsAsync(int userId);
+    Task<AchievementHoldersDto> GetAchievementHoldersAsync();
 }

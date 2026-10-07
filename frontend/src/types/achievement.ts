@@ -22,3 +22,12 @@ export interface AchievementResult {
 export interface UserAchievements {
     achievements: AchievementResult[]
 }
+
+export interface AchievementHolder {
+    id:            string
+    holderUserIds: number[]
+}
+
+export interface AchievementHolders {
+    achievements: AchievementHolder[]
+}

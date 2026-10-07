@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { LockSimpleIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
-import type { AchievementResult, AchievementOccurrence } from '../../types/achievement'
+import type { AchievementResult, AchievementOccurrence, AchievementHolder } from '../../types/achievement'
 import type { AchievementDef } from './achievementDefs'
 import { useAchievementFilters, isRecent } from './useAchievementFilters'
 import AchievementFilterBar from './AchievementFilterBar'
@@ -20,6 +20,8 @@ const TIER_COLORS = [
 interface Props {
     achievements: AchievementResult[]
     loading: boolean
+    holders?: AchievementHolder[] | null
+    userId?: number | null
 }
 
 const LABEL_KEY_MAP: Record<string, string> = {
@@ -88,10 +90,11 @@ function formatOccurrence(
 interface BadgeCardProps {
     def: AchievementDef
     result: AchievementResult | undefined
+    unique?: boolean
     onClick: () => void
 }
 
-function BadgeCard({ def, result, onClick }: BadgeCardProps) {
+function BadgeCard({ def, result, unique = false, onClick }: BadgeCardProps) {
     const { t } = useTranslation()
     const level = result?.level ?? 0
     const earned = level > 0
@@ -121,6 +124,11 @@ function BadgeCard({ def, result, onClick }: BadgeCardProps) {
             {hasNew && (
                 <span className="absolute top-2 left-2 text-[9px] bg-amber-400/20 text-amber-400 rounded-full px-1.5 py-0.5 font-medium">
                     {t('achievements.new')}
+                </span>
+            )}
+            {unique && !hasNew && (
+                <span className="absolute top-2 left-2 text-[9px] bg-sky-400/20 text-sky-400 rounded-full px-1.5 py-0.5 font-bold">
+                    {t('profile.achievements.uniqueBadge')}
                 </span>
             )}
             {earned && (
@@ -250,10 +258,10 @@ export function AchievementModal({ def, result, onClose }: ModalProps) {
     )
 }
 
-export default function AchievementsTab({ achievements, loading }: Props) {
+export default function AchievementsTab({ achievements, loading, holders, userId }: Props) {
     const { t } = useTranslation()
-    const filters = useAchievementFilters(achievements)
-    const { achievementMap, filteredDefs, activeFilters, clearAllFilters } = filters
+    const filters = useAchievementFilters(achievements, holders, userId)
+    const { achievementMap, filteredDefs, activeFilters, clearAllFilters, isUnique } = filters
     const [selected, setSelected] = useState<{ def: AchievementDef; result: AchievementResult | undefined } | null>(null)
 
     if (loading) {
@@ -297,6 +305,7 @@ export default function AchievementsTab({ achievements, loading }: Props) {
                                 key={def.id}
                                 def={def}
                                 result={achievementMap.get(def.id)}
+                                unique={isUnique(def.id)}
                                 onClick={() => setSelected({ def, result: achievementMap.get(def.id) })}
                             />
                         ))}

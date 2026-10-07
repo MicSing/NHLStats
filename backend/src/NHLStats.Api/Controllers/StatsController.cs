@@ -206,6 +206,12 @@ public class StatsController : ControllerBase
     public async Task<IActionResult> GetUserAchievements(int userId)
         => Ok(await _achievements.GetUserAchievementsAsync(userId));
 
+    /// <summary>GET /api/stats/achievements/holders</summary>
+    /// <remarks>Returns, for every achievement, the IDs of users who have earned it.</remarks>
+    [HttpGet("achievements/holders")]
+    public async Task<IActionResult> GetAchievementHolders()
+        => Ok(await _achievements.GetAchievementHoldersAsync());
+
     [HttpGet("financial-stats")]
     public async Task<IActionResult> GetFinancialStats()
     {

@@ -9,6 +9,8 @@ import {
     WarningCircleIcon,
     TrendUpIcon,
     TicketIcon,
+    DiamondIcon,
+    ProhibitIcon,
 } from '@phosphor-icons/react'
 import { ACHIEVEMENT_DEFS } from './achievementDefs'
 import type { AchievementFilterMode, UseAchievementFiltersResult } from './useAchievementFilters'
@@ -28,6 +30,7 @@ export default function AchievementFilterBar({
     setFilterModalOpen,
     filteredDefs,
     counts,
+    hasHolders,
     categoryCounts,
     activeFilters,
     clearAllFilters,
@@ -118,6 +121,34 @@ export default function AchievementFilterBar({
                     >
                         {t('profile.achievements.filterLocked')} ({counts.locked})
                     </button>
+                    {hasHolders && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setFilter('unique')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
+                                    filter === 'unique'
+                                        ? 'bg-sky-400 text-sky-950 font-bold'
+                                        : 'bg-surface border border-border text-sky-400 hover:text-sky-300'
+                                }`}
+                            >
+                                <DiamondIcon size={12} weight="fill" />
+                                {t('profile.achievements.filterUnique')} ({counts.unique})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFilter('nobody')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
+                                    filter === 'nobody'
+                                        ? 'bg-primary text-white'
+                                        : 'bg-surface border border-border text-text-muted hover:text-text'
+                                }`}
+                            >
+                                <ProhibitIcon size={12} />
+                                {t('profile.achievements.filterNobody')} ({counts.nobody})
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -287,6 +318,12 @@ export default function AchievementFilterBar({
                                             { key: 'earned' as AchievementFilterMode, label: t('profile.achievements.filterEarned'), count: counts.earned },
                                             { key: 'locked' as AchievementFilterMode, label: t('profile.achievements.filterLocked'), count: counts.locked },
                                             { key: 'recent' as AchievementFilterMode, label: t('profile.achievements.filterRecent'), count: counts.recent },
+                                            ...(hasHolders
+                                                ? [
+                                                      { key: 'unique' as AchievementFilterMode, label: t('profile.achievements.filterUnique'), count: counts.unique },
+                                                      { key: 'nobody' as AchievementFilterMode, label: t('profile.achievements.filterNobody'), count: counts.nobody },
+                                                  ]
+                                                : []),
                                         ]
                                     ).map((s) => (
                                         <button
