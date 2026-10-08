@@ -8,6 +8,7 @@ import apiClient from '../../services/apiClient'
 import { useToast } from '../../context/ToastContext'
 import LoadingSpinner from '../LoadingSpinner'
 import { TableCard, PrimaryButton } from './SeasonPrimitives'
+import PositionWheel from './PositionWheel'
 
 export interface UsersTabProps {
     season: Season
@@ -72,119 +73,122 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
     if (!seasonDetail) return <LoadingSpinner size="sm" inline />
 
     return (
-        <div className="max-w-xl space-y-4">
-            <p className="text-xs text-text-muted">{t('admin.seasons.activeInSeasonHint')}</p>
-            <TableCard>
-                <table className="w-full text-sm">
-                    <thead className="bg-surface">
-                        <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
-                            <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                            <th className="px-4 py-3 font-medium">{t('admin.seasons.position')}</th>
-                            <th className="px-4 py-3 font-medium">{t('admin.seasons.activeInSeason')}</th>
-                            <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {seasonDetail.users.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="px-4 py-6 text-center text-text-muted text-sm">
-                                    {t('admin.seasons.noUsersAssigned')}
-                                </td>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,36rem)_minmax(0,26rem)] items-start">
+            <div className="space-y-4">
+                <p className="text-xs text-text-muted">{t('admin.seasons.activeInSeasonHint')}</p>
+                <TableCard>
+                    <table className="w-full text-sm">
+                        <thead className="bg-surface">
+                            <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
+                                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                                <th className="px-4 py-3 font-medium">{t('admin.seasons.position')}</th>
+                                <th className="px-4 py-3 font-medium">{t('admin.seasons.activeInSeason')}</th>
+                                <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                             </tr>
-                        ) : (
-                            seasonDetail.users.map((u) => (
-                                <tr
-                                    key={u.id}
-                                    className={`hover:bg-surface/50 transition-colors ${u.isActiveInSeason ? '' : 'opacity-60'}`}
-                                >
-                                    <td className="px-4 py-3">{u.name}</td>
-                                    <td className="px-4 py-3">
-                                        <select
-                                            aria-label={t('admin.seasons.positionFor', { name: u.name })}
-                                            value={u.position ?? ''}
-                                            onChange={(e) =>
-                                                void handleChangePosition(
-                                                    u.id,
-                                                    e.target.value as SeasonUserPositionCode | '',
-                                                )
-                                            }
-                                            className="bg-border border border-border rounded px-2 py-1 text-sm"
-                                        >
-                                            <option value="">{t('admin.seasons.noPosition')}</option>
-                                            {SEASON_USER_POSITIONS.map((code) => (
-                                                <option key={code} value={code}>
-                                                    {code}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                aria-label={t('admin.seasons.activeInSeasonFor', { name: u.name })}
-                                                checked={u.isActiveInSeason}
-                                                onChange={(e) => void handleToggleActive(u.id, e.target.checked)}
-                                                className="accent-[var(--color-primary)]"
-                                            />
-                                            <span className="text-xs text-text-muted">
-                                                {u.isActiveInSeason ? t('common.active') : t('common.inactive')}
-                                            </span>
-                                        </label>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            onClick={() => void handleRemoveUser(u.id)}
-                                            className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
-                                            title={t('common.remove')}
-                                        >
-                                            <TrashIcon size={15} />
-                                        </button>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {seasonDetail.users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-6 text-center text-text-muted text-sm">
+                                        {t('admin.seasons.noUsersAssigned')}
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </TableCard>
+                            ) : (
+                                seasonDetail.users.map((u) => (
+                                    <tr
+                                        key={u.id}
+                                        className={`hover:bg-surface/50 transition-colors ${u.isActiveInSeason ? '' : 'opacity-60'}`}
+                                    >
+                                        <td className="px-4 py-3">{u.name}</td>
+                                        <td className="px-4 py-3">
+                                            <select
+                                                aria-label={t('admin.seasons.positionFor', { name: u.name })}
+                                                value={u.position ?? ''}
+                                                onChange={(e) =>
+                                                    void handleChangePosition(
+                                                        u.id,
+                                                        e.target.value as SeasonUserPositionCode | '',
+                                                    )
+                                                }
+                                                className="bg-border border border-border rounded px-2 py-1 text-sm"
+                                            >
+                                                <option value="">{t('admin.seasons.noPosition')}</option>
+                                                {SEASON_USER_POSITIONS.map((code) => (
+                                                    <option key={code} value={code}>
+                                                        {code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    aria-label={t('admin.seasons.activeInSeasonFor', { name: u.name })}
+                                                    checked={u.isActiveInSeason}
+                                                    onChange={(e) => void handleToggleActive(u.id, e.target.checked)}
+                                                    className="accent-[var(--color-primary)]"
+                                                />
+                                                <span className="text-xs text-text-muted">
+                                                    {u.isActiveInSeason ? t('common.active') : t('common.inactive')}
+                                                </span>
+                                            </label>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <button
+                                                onClick={() => void handleRemoveUser(u.id)}
+                                                className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
+                                                title={t('common.remove')}
+                                            >
+                                                <TrashIcon size={15} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </TableCard>
 
-            {assignableUsers.length > 0 && (
-                <div className="flex gap-2">
-                    <select
-                        aria-label="Select user to assign"
-                        value={assignUserId}
-                        onChange={(e) =>
-                            setAssignUserId(e.target.value === '' ? '' : Number(e.target.value))
-                        }
-                        className="flex-1 bg-border border border-border rounded px-3 py-2 text-sm"
-                    >
-                        <option value="">{t('admin.seasons.selectUser')}</option>
-                        {assignableUsers.map((u) => (
-                            <option key={u.id} value={u.id}>
-                                {u.name}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        aria-label={t('admin.seasons.position')}
-                        value={assignPosition}
-                        onChange={(e) => setAssignPosition(e.target.value as SeasonUserPositionCode | '')}
-                        className="bg-border border border-border rounded px-3 py-2 text-sm"
-                    >
-                        <option value="">{t('admin.seasons.noPosition')}</option>
-                        {SEASON_USER_POSITIONS.map((code) => (
-                            <option key={code} value={code}>
-                                {code}
-                            </option>
-                        ))}
-                    </select>
-                    <PrimaryButton
-                        label={t('common.assign')}
-                        onClick={() => void handleAssignUser()}
-                        disabled={assignUserId === ''}
-                    />
-                </div>
-            )}
+                {assignableUsers.length > 0 && (
+                    <div className="flex gap-2">
+                        <select
+                            aria-label="Select user to assign"
+                            value={assignUserId}
+                            onChange={(e) =>
+                                setAssignUserId(e.target.value === '' ? '' : Number(e.target.value))
+                            }
+                            className="flex-1 bg-border border border-border rounded px-3 py-2 text-sm"
+                        >
+                            <option value="">{t('admin.seasons.selectUser')}</option>
+                            {assignableUsers.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                    {u.name}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            aria-label={t('admin.seasons.position')}
+                            value={assignPosition}
+                            onChange={(e) => setAssignPosition(e.target.value as SeasonUserPositionCode | '')}
+                            className="bg-border border border-border rounded px-3 py-2 text-sm"
+                        >
+                            <option value="">{t('admin.seasons.noPosition')}</option>
+                            {SEASON_USER_POSITIONS.map((code) => (
+                                <option key={code} value={code}>
+                                    {code}
+                                </option>
+                            ))}
+                        </select>
+                        <PrimaryButton
+                            label={t('common.assign')}
+                            onClick={() => void handleAssignUser()}
+                            disabled={assignUserId === ''}
+                        />
+                    </div>
+                )}
+            </div>
+            <PositionWheel seasonId={season.id} refreshKey={seasonDetail} onPositionsChanged={onRefreshDetail} />
         </div>
     )
 }

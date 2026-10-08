@@ -109,6 +109,7 @@ builder.Services.AddHttpContextAccessor();
 // Application services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
+builder.Services.AddScoped<IPositionWheelService, PositionWheelService>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddSingleton<IOddsRecalculationTracker>(_ => new OddsRecalculationTracker());
 builder.Services.AddScoped<IPointReasonService, PointReasonService>();
