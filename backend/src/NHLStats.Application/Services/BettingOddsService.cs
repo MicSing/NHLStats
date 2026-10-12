@@ -10,12 +10,27 @@ public class BettingOddsService : IBettingOddsService
 {
     private readonly NhlStatsDbContext _db;
     private readonly ISeasonEventBroadcaster? _broadcaster;
+    private readonly OddsRecalculationLock? _recalcLock;
 
-    public BettingOddsService(NhlStatsDbContext db, ISeasonEventBroadcaster? broadcaster = null)
+    public BettingOddsService(
+        NhlStatsDbContext db, ISeasonEventBroadcaster? broadcaster = null, OddsRecalculationLock? recalcLock = null)
     {
         _db = db;
         _broadcaster = broadcaster;
+        _recalcLock = recalcLock;
     }
+
+    // Holds the shared lock (when one is registered) for the whole recalculation, so concurrent
+    // passes queue up instead of overlapping.
+    private async Task<T> ExclusiveAsync<T>(Func<Task<T>> recalculation)
+    {
+        if (_recalcLock == null) return await recalculation();
+        using (await _recalcLock.AcquireAsync())
+            return await recalculation();
+    }
+
+    private Task ExclusiveAsync(Func<Task> recalculation) =>
+        ExclusiveAsync(async () => { await recalculation(); return true; });
 
     // Margin is applied to the profit above stake return, not to the whole payout:
     // fairOdds = 1/probability; offeredOdds = 1 + (fairOdds - 1) * margin.
@@ -30,7 +45,7 @@ public class BettingOddsService : IBettingOddsService
 
 
     public Task RecalculateForMatchAsync(int matchId) =>
-        RecalculateForMatchAsync(matchId, new UserHistoryCache(_db));
+        ExclusiveAsync(() => RecalculateForMatchAsync(matchId, new UserHistoryCache(_db)));
 
     // `history` is shared by every match of one recalculation batch, so per-player history is
     // read once per batch instead of once per player × market × match.
@@ -188,7 +203,9 @@ public class BettingOddsService : IBettingOddsService
         };
     }
 
-    public async Task<int> RecalculateAllUpcomingAsync()
+    public Task<int> RecalculateAllUpcomingAsync() => ExclusiveAsync(RecalculateAllUpcomingCoreAsync);
+
+    private async Task<int> RecalculateAllUpcomingCoreAsync()
     {
         var upcomingMatchIds = await _db.Matches
             .Where(m => m.CompletionType == CompletionType.None)
@@ -202,7 +219,9 @@ public class BettingOddsService : IBettingOddsService
         return upcomingMatchIds.Count;
     }
 
-    public async Task RecalculateUpcomingAsync(int count = 7)
+    public Task RecalculateUpcomingAsync(int count = 7) => ExclusiveAsync(() => RecalculateUpcomingCoreAsync(count));
+
+    private async Task RecalculateUpcomingCoreAsync(int count)
     {
         var normalizedCount = count <= 0 ? 7 : count;
         var now = DateTime.UtcNow;

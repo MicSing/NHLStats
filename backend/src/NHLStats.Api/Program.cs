@@ -113,6 +113,7 @@ builder.Services.AddScoped<ISeasonService, SeasonService>();
 builder.Services.AddScoped<IPositionWheelService, PositionWheelService>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddSingleton<IOddsRecalculationTracker>(_ => new OddsRecalculationTracker());
+builder.Services.AddSingleton<OddsRecalculationLock>();
 builder.Services.AddScoped<IPointReasonService, PointReasonService>();
 builder.Services.AddScoped<IMoneyConfigService, MoneyConfigService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
