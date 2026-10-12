@@ -249,20 +249,49 @@ if (!app.Environment.IsDevelopment())
 // Health endpoint: reports healthy only when the API is up AND the database
 // is actually reachable, so callers (e.g. a frontend "waking up" gate) can
 // tell a live app from one whose DB has auto-paused / is still resuming.
-app.MapGet("/health", async (NhlStatsDbContext ctx) =>
+// With ?wait=N (seconds, max 60) the request is held open and the DB retried
+// server-side until it answers or the deadline passes, so a waking client needs
+// one long request instead of polling — and learns the moment the DB is up.
+app.MapGet("/health", async (NhlStatsDbContext ctx, HttpContext http, int? wait) =>
 {
-    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-    try
+    var waitFor = TimeSpan.FromSeconds(Math.Clamp(wait ?? 0, 0, 60));
+    var deadline = DateTime.UtcNow + waitFor;
+    // The first attempt triggers the DB resume, which can't finish in under ~10s,
+    // so back off before re-trying and only then check more often.
+    TimeSpan[] retryDelays = [TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3)];
+
+    for (var attempt = 0; ; attempt++)
     {
-        var canConnect = await ctx.Database.CanConnectAsync(cts.Token);
-        return canConnect
-            ? Results.Text("{\"status\":\"Healthy\"}", "application/json")
-            : Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"Health check DB connectivity failed: {ex}");
-        return Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
+        var remaining = deadline - DateTime.UtcNow;
+        var attemptTimeout = remaining > TimeSpan.Zero && remaining < TimeSpan.FromSeconds(10)
+            ? remaining
+            : TimeSpan.FromSeconds(10);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
+        cts.CancelAfter(attemptTimeout);
+        try
+        {
+            if (await ctx.Database.CanConnectAsync(cts.Token))
+                return Results.Text("{\"status\":\"Healthy\"}", "application/json");
+        }
+        catch (Exception ex) when (!http.RequestAborted.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"Health check DB connectivity failed: {ex.Message}");
+        }
+
+        remaining = deadline - DateTime.UtcNow;
+        if (remaining <= TimeSpan.Zero || http.RequestAborted.IsCancellationRequested)
+            return Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        var delay = retryDelays[Math.Min(attempt, retryDelays.Length - 1)];
+        try
+        {
+            await Task.Delay(delay < remaining ? delay : remaining, http.RequestAborted);
+        }
+        catch (OperationCanceledException)
+        {
+            return Results.Text("{\"status\":\"Unhealthy\"}", "application/json", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
     }
 })
     .WithName("HealthCheck");
