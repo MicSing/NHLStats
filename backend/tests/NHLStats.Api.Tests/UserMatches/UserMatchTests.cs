@@ -422,6 +422,52 @@ public class UserMatchTests : ApiTestBase
         body.GetProperty("count").GetInt32().Should().Be(2);
     }
 
+    // --- UserMatch - Details (one call for a whole match) ---
+
+    [Fact]
+    public async Task GetDetailsByMatch_returns_each_usermatch_with_its_points_goals_and_penalties()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "UM Details");
+        var scorer = await CreateUserAsync(client, "Details Scorer");
+        var quiet = await CreateUserAsync(client, "Details Quiet");
+        await AssignUserToSeasonAsync(client, seasonId, scorer);
+        await AssignUserToSeasonAsync(client, seasonId, quiet);
+        var matchId = await CreateMatchAsync(client, seasonId);
+        var otherMatchId = await CreateMatchAsync(client, seasonId);
+        var rosterPlayerId = await CreateRosterPlayerAsync(client, seasonId);
+
+        async Task<int> CreateUserMatch(int mId, int uId)
+        {
+            var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches/{mId}/usermatches", new { userId = uId });
+            return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        }
+        var scorerUm = await CreateUserMatch(matchId, scorer);
+        var quietUm = await CreateUserMatch(matchId, quiet);
+        var otherUm = await CreateUserMatch(otherMatchId, scorer);
+
+        (await client.PostAsJsonAsync($"/api/usermatches/{scorerUm}/points", new { pointReasonId = 1, count = 2 })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/api/usermatches/{scorerUm}/goals", new { rosterPlayerId, count = 1, goalType = "Regular" })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/api/usermatches/{scorerUm}/penalties", new { rosterPlayerId, count = 1 })).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"/api/usermatches/{otherUm}/goals", new { rosterPlayerId, count = 3, goalType = "Regular" })).EnsureSuccessStatusCode();
+
+        var resp = await client.GetAsync($"/api/seasons/{seasonId}/matches/{matchId}/usermatches/details");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var details = (await resp.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().ToList();
+
+        details.Should().HaveCount(2);
+        var forScorer = details.Single(d => d.GetProperty("userMatch").GetProperty("id").GetInt32() == scorerUm);
+        forScorer.GetProperty("points").GetArrayLength().Should().Be(1);
+        forScorer.GetProperty("goals").GetArrayLength().Should().Be(1);
+        forScorer.GetProperty("goals")[0].GetProperty("count").GetInt32().Should().Be(1);
+        forScorer.GetProperty("penalties").GetArrayLength().Should().Be(1);
+
+        var forQuiet = details.Single(d => d.GetProperty("userMatch").GetProperty("id").GetInt32() == quietUm);
+        forQuiet.GetProperty("points").GetArrayLength().Should().Be(0);
+        forQuiet.GetProperty("goals").GetArrayLength().Should().Be(0);
+        forQuiet.GetProperty("penalties").GetArrayLength().Should().Be(0);
+    }
+
     // --- UserMatch - Delete ---
 
     [Fact]

@@ -561,6 +561,16 @@ export const handlers = [
         return res(ctx.json([]))
     }),
 
+    rest.get(`${BASE}/api/seasons/:seasonId/matches/:matchId/usermatches/details`, (req, res, ctx) => {
+        if (Number(req.params.matchId) !== 10) return res(ctx.json([]))
+        return res(ctx.json(mockUserMatchesForMatch.map((um) => ({
+            userMatch: um,
+            points: um.id === 1 ? mockPoints : [],
+            goals: um.id === 1 ? mockGoals : [],
+            penalties: um.id === 1 ? mockPenalties : [],
+        }))))
+    }),
+
     rest.post(`${BASE}/api/seasons/:seasonId/matches/:matchId/usermatches/initialize`, (_req, res, ctx) => {
         return res(ctx.json({ created: 1 }))
     }),

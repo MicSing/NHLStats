@@ -46,13 +46,6 @@ public class StatsService : IStatsService
             .OrderByDescending(s => s.StartedOn)
             .ToListAsync();
 
-        var latestSeason = allSeasons.FirstOrDefault();
-
-        IEnumerable<WeeklyBettingBalancePeriodDto> bettingBalanceTrend = Enumerable.Empty<WeeklyBettingBalancePeriodDto>();
-        IEnumerable<WeeklyBetDeltaPeriodDto> betDeltaTrend = Enumerable.Empty<WeeklyBetDeltaPeriodDto>();
-        if (latestSeason != null)
-            (bettingBalanceTrend, betDeltaTrend) = await GetWeeklyBettingTrendsAsync(latestSeason.Id);
-
         var (allTimeBettingBalanceTrend, allTimeBetDeltaTrend) = await GetAllTimeBettingTrendsAsync();
 
         var plusMinusTrendBySeason = new List<SeasonPlusMinusTrendDto>();
@@ -62,9 +55,14 @@ public class StatsService : IStatsService
             var weeklyTrend = await _matchStats.BuildWeeklyPeriodsAsync(season.Id);
             plusMinusTrendBySeason.Add(new SeasonPlusMinusTrendDto(season.Id, weeklyTrend));
 
-            var (balance, delta) = await GetWeeklyBettingTrendsAsync(season.Id);
+            var (balance, delta) = await GetWeeklyBettingTrendsAsync(season.Id, weeklyTrend);
             bettingTrendsBySeason.Add(new SeasonBettingTrendsDto(season.Id, balance, delta));
         }
+
+        // The latest season (allSeasons is newest first) is also shown on its own.
+        var latestTrends = bettingTrendsBySeason.FirstOrDefault();
+        var bettingBalanceTrend = latestTrends?.BettingBalanceTrend ?? Enumerable.Empty<WeeklyBettingBalancePeriodDto>();
+        var betDeltaTrend = latestTrends?.BetDeltaTrend ?? Enumerable.Empty<WeeklyBetDeltaPeriodDto>();
 
         return new DashboardDataDto(
             seasonStats,
@@ -194,25 +192,16 @@ public class StatsService : IStatsService
     // ─── Betting balance / delta trends (private — only used by GetDashboardDataAsync) ──
 
     private async Task<(IEnumerable<WeeklyBettingBalancePeriodDto> Balance, IEnumerable<WeeklyBetDeltaPeriodDto> Delta)>
-        GetWeeklyBettingTrendsAsync(int seasonId)
+        GetWeeklyBettingTrendsAsync(int seasonId, List<PeriodPlusMinusDto> currentWeeks)
     {
-        var matchDates = await _db.Matches
-            .AsNoTracking()
-            .Where(m => m.SeasonId == seasonId && m.MatchDate != null)
-            .Select(m => m.MatchDate!.Value.Date)
-            .Distinct()
-            .OrderBy(d => d)
-            .ToListAsync();
-
-        var currentWeeks = await _matchStats.BuildWeeklyPeriodsAsync(seasonId);
-
-        if (matchDates.Count == 0 || currentWeeks.Count == 0)
-            return (Enumerable.Empty<WeeklyBettingBalancePeriodDto>(), Enumerable.Empty<WeeklyBetDeltaPeriodDto>());
-
         var matchDatesLookup = await _db.Matches
             .AsNoTracking()
             .Where(m => m.SeasonId == seasonId && m.MatchDate != null)
             .ToDictionaryAsync(m => m.Id, m => m.MatchDate!.Value.Date);
+        var matchDates = matchDatesLookup.Values.Distinct().OrderBy(d => d).ToList();
+
+        if (matchDates.Count == 0 || currentWeeks.Count == 0)
+            return (Enumerable.Empty<WeeklyBettingBalancePeriodDto>(), Enumerable.Empty<WeeklyBetDeltaPeriodDto>());
 
         var seasonStartDate = await _db.Seasons
             .AsNoTracking()

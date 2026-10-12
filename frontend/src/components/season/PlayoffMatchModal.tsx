@@ -13,7 +13,7 @@ import {
 } from '@phosphor-icons/react'
 import type { Match, MatchEvent } from '../../types/match'
 import { CompletionType } from '../../types/match'
-import type { UserMatch, UserMatchGoal, UserMatchPenalty, UserMatchPoint } from '../../types/userMatch'
+import type { UserMatchDetails, UserMatchGoal, UserMatchPenalty, UserMatchPoint } from '../../types/userMatch'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import apiClient from '../../services/apiClient'
 import CompletionBadge from '../CompletionBadge'
@@ -74,9 +74,9 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
 
         Promise.all([
             apiClient.get<MatchEvent[]>(`/api/matches/${match.id}/events`).catch(() => []),
-            apiClient.get<UserMatch[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches`).catch(() => []),
+            apiClient.get<UserMatchDetails[]>(`/api/seasons/${seasonId}/matches/${match.id}/usermatches/details`).catch(() => []),
         ])
-            .then(async ([matchEvents, userMatches]) => {
+            .then(([matchEvents, userMatchDetails]) => {
                 if (cancelled) return
 
                 setEvents(matchEvents)
@@ -91,32 +91,25 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                 const allPlusPoints: EnrichedItem<UserMatchPoint>[] = []
                 const allMinusPoints: EnrichedItem<UserMatchPoint>[] = []
 
-                await Promise.all(
-                    userMatches.map(async (um) => {
-                        const [userGoals, userPenalties, userPoints] = await Promise.all([
-                            apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`).catch(() => []),
-                            apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`).catch(() => []),
-                            apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`).catch(() => []),
-                        ])
-                        const userName = um.userName ?? `User ${um.userId}`
+                for (const { userMatch: um, goals: userGoals, penalties: userPenalties, points: userPoints } of userMatchDetails) {
+                    const userName = um.userName ?? `User ${um.userId}`
 
-                        for (const g of userGoals) {
-                            if (g.goalType !== 'Shootout') {
-                                allGoals.push({ item: g, userName })
-                            }
+                    for (const g of userGoals) {
+                        if (g.goalType !== 'Shootout') {
+                            allGoals.push({ item: g, userName })
                         }
-                        for (const p of userPenalties) {
-                            allPenalties.push({ item: p, userName })
+                    }
+                    for (const p of userPenalties) {
+                        allPenalties.push({ item: p, userName })
+                    }
+                    for (const pt of userPoints) {
+                        if (pt.pointType === 'Positive') {
+                            allPlusPoints.push({ item: pt, userName })
+                        } else if (pt.pointType === 'Negative') {
+                            allMinusPoints.push({ item: pt, userName })
                         }
-                        for (const pt of userPoints) {
-                            if (pt.pointType === 'Positive') {
-                                allPlusPoints.push({ item: pt, userName })
-                            } else if (pt.pointType === 'Negative') {
-                                allMinusPoints.push({ item: pt, userName })
-                            }
-                        }
-                    })
-                )
+                    }
+                }
 
                 if (!cancelled) {
                     setGoals(allGoals)

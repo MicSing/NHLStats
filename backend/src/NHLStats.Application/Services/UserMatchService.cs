@@ -67,6 +67,41 @@ public class UserMatchService : IUserMatchService
             .Select(um => ToDto(um))
             .ToListAsync();
 
+    public async Task<IEnumerable<UserMatchDetailsDto>> GetDetailsByMatchAsync(int matchId)
+    {
+        var userMatches = await GetByMatchAsync(matchId);
+
+        var points = await _db.UserMatchPoints
+            .AsNoTracking()
+            .Include(p => p.PointReason)
+            .Where(p => p.UserMatch!.MatchId == matchId)
+            .OrderBy(p => p.Id)
+            .Select(p => ToPointDto(p))
+            .ToListAsync();
+        var goals = await _db.UserMatchGoals
+            .AsNoTracking()
+            .Include(g => g.RosterPlayer)
+            .Where(g => g.UserMatch!.MatchId == matchId)
+            .OrderBy(g => g.Id)
+            .Select(g => ToGoalDto(g))
+            .ToListAsync();
+        var penalties = await _db.UserMatchPenalties
+            .AsNoTracking()
+            .Include(p => p.RosterPlayer)
+            .Where(p => p.UserMatch!.MatchId == matchId)
+            .OrderBy(p => p.Id)
+            .Select(p => ToPenaltyDto(p))
+            .ToListAsync();
+
+        return userMatches
+            .Select(um => new UserMatchDetailsDto(
+                um,
+                points.Where(p => p.UserMatchId == um.Id).ToList(),
+                goals.Where(g => g.UserMatchId == um.Id).ToList(),
+                penalties.Where(p => p.UserMatchId == um.Id).ToList()))
+            .ToList();
+    }
+
     public async Task<IEnumerable<UserMatchDto>> GetBySeasonAsync(int seasonId) =>
         await _db.UserMatches
             .Include(um => um.User)

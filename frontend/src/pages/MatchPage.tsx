@@ -81,45 +81,45 @@ export default function MatchPage() {
         )
     }
 
-    const loadAll = async () => {
+    // Season, roster and point reasons don't change while the match is being played, so they are
+    // only fetched on the first load; every refresh after an in-game action fetches just the match,
+    // all user-match details (one call for everyone) and the events.
+    const load = async (includeStaticData: boolean) => {
         if (!seasonId || !matchId) return
         try {
-            const [matchData, seasonData, userMatches, rosterData, reasons, eventsData] = await Promise.all([
+            const [matchData, details, eventsData, staticData] = await Promise.all([
                 apiClient.get<Match>(`/api/seasons/${seasonId}/matches/${matchId}`),
-                apiClient.get<Season>(`/api/seasons/${seasonId}`),
-                apiClient.get<UserMatch[]>(
-                    `/api/seasons/${seasonId}/matches/${matchId}/usermatches`,
+                apiClient.get<UserMatchData[]>(
+                    `/api/seasons/${seasonId}/matches/${matchId}/usermatches/details`,
                 ),
-                apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`),
-                apiClient.get<PointReason[]>('/api/pointreasons'),
                 apiClient.get<MatchEvent[]>(`/api/matches/${matchId}/events`),
+                includeStaticData
+                    ? Promise.all([
+                        apiClient.get<Season>(`/api/seasons/${seasonId}`),
+                        apiClient.get<RosterPlayer[]>(`/api/seasons/${seasonId}/roster`),
+                        apiClient.get<PointReason[]>('/api/pointreasons'),
+                    ])
+                    : Promise.resolve(null),
             ])
 
             setMatch(matchData)
-            setSeason(seasonData)
-            setRoster(rosterData)
-            setPointReasons(reasons)
             setEvents(eventsData)
-
-            const enriched = await Promise.all(
-                userMatches.map(async (um) => {
-                    const [points, goals, penalties] = await Promise.all([
-                        apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`),
-                        apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`),
-                        apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`),
-                    ])
-                    return { userMatch: um, points, goals, penalties }
-                }),
-            )
-
-            setUserMatchData(enriched)
+            if (staticData) {
+                const [seasonData, rosterData, reasons] = staticData
+                setSeason(seasonData)
+                setRoster(rosterData)
+                setPointReasons(reasons)
+            }
+            setUserMatchData(details)
         } finally {
             setLoading(false)
         }
     }
 
+    const loadAll = () => load(false)
+
     useEffect(() => {
-        void loadAll()
+        void load(true)
     }, [seasonId, matchId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleInitializeUsers = async () => {

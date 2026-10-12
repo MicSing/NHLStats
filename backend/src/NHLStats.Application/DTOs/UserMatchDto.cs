@@ -115,3 +115,10 @@ public record PointListItemDto(
 public record BulkUpdatePointItemDto(int Id, decimal Amount);
 
 public record BulkUpdatePointsDto(IReadOnlyList<BulkUpdatePointItemDto> Items);
+
+/// <summary>A user's match entry together with its points, goals and penalties.</summary>
+public record UserMatchDetailsDto(
+    UserMatchDto UserMatch,
+    IEnumerable<UserMatchPointDto> Points,
+    IEnumerable<UserMatchGoalDto> Goals,
+    IEnumerable<UserMatchPenaltyDto> Penalties);

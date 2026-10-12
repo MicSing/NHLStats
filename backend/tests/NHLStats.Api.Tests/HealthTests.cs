@@ -40,6 +40,30 @@ public class HealthTests : IClassFixture<CustomWebApplicationFactory>
         content.Should().Contain("Unhealthy");
     }
 
+    [Fact]
+    public async Task Health_endpoint_with_wait_returns_ok_immediately_when_db_is_reachable()
+    {
+        var client = _factory.CreateClient();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var resp = await client.GetAsync("/health?wait=30");
+        sw.Stop();
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Health_endpoint_with_wait_returns_503_after_deadline_when_db_is_unreachable()
+    {
+        using var factory = new UnreachableDbWebApplicationFactory();
+        var client = factory.CreateClient();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var resp = await client.GetAsync("/health?wait=1");
+        sw.Stop();
+        resp.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        sw.Elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
+        sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
+    }
+
     /// <summary>
     /// Points the DbContext at a SQLite file whose parent directory does not exist
     /// (and cannot be created), so any connection attempt fails deterministically

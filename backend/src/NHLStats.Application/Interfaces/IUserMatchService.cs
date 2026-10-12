@@ -6,6 +6,9 @@ public interface IUserMatchService
 {
     // ── UserMatch CRUD ────────────────────────────────────────────────────────
     Task<IEnumerable<UserMatchDto>> GetByMatchAsync(int matchId);
+
+    /// <summary>All user matches of a match with their points, goals and penalties, in a fixed number of queries.</summary>
+    Task<IEnumerable<UserMatchDetailsDto>> GetDetailsByMatchAsync(int matchId);
     Task<IEnumerable<UserMatchDto>> GetBySeasonAsync(int seasonId);
     Task<UserMatchDto?> GetByIdAsync(int id);
 

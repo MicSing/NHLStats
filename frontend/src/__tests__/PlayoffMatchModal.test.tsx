@@ -131,4 +131,36 @@ describe('PlayoffMatchModal', () => {
         // No tab switcher
         expect(screen.queryByRole('button', { name: /timeline|časová os/i })).not.toBeInTheDocument()
     })
+
+    test('fills the stats columns from one user-match details request', async () => {
+        vi.mocked(apiClient.get).mockImplementation((url: string) => {
+            if (url.includes('/usermatches/details')) {
+                return Promise.resolve([{
+                    userMatch: { id: 1, userId: 5, userName: 'Scorer', matchId: sampleMatch.id, seasonId: 1 },
+                    goals: [{ id: 1, userMatchId: 1, rosterPlayerId: 97, playerFirstName: 'Leon', playerSurname: 'Draisaitl', count: 1, goalType: 'Regular' }],
+                    penalties: [],
+                    points: [],
+                }]) as never
+            }
+            return Promise.resolve([]) as never
+        })
+
+        render(
+            <MemoryRouter>
+                <PlayoffMatchModal
+                    match={sampleMatch}
+                    seasonId={1}
+                    roundName="Finále"
+                    gameLabel="1. zápas"
+                    hostedTeamId={10}
+                    onClose={vi.fn()}
+                />
+            </MemoryRouter>
+        )
+
+        expect(await screen.findByText('Leon Draisaitl')).toBeInTheDocument()
+        expect(screen.getByText('Scorer')).toBeInTheDocument()
+        const urls = vi.mocked(apiClient.get).mock.calls.map(([url]) => String(url))
+        expect(urls.some((u) => /\/api\/usermatches\/\d+\//.test(u))).toBe(false)
+    })
 })

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NHLStats.Application.Caching;
 using NHLStats.Application.Interfaces;
 using NHLStats.Domain.Entities;
 
@@ -113,17 +114,20 @@ public class StatsController : ControllerBase
     private readonly IEarningsService _earnings;
     private readonly IMatchStatsService _matchStats;
     private readonly IAchievementService _achievements;
+    private readonly IStatsCache _cache;
 
     public StatsController(
         IStatsService stats,
         IEarningsService earnings,
         IMatchStatsService matchStats,
-        IAchievementService achievements)
+        IAchievementService achievements,
+        IStatsCache cache)
     {
         _stats = stats;
         _earnings = earnings;
         _matchStats = matchStats;
         _achievements = achievements;
+        _cache = cache;
     }
 
     /// <summary>GET /api/stats/earnings-by-season</summary>
@@ -184,7 +188,7 @@ public class StatsController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboardData()
     {
-        var result = await _stats.GetDashboardDataAsync();
+        var result = await _cache.GetOrCreateAsync("dashboard", () => _stats.GetDashboardDataAsync());
         return Ok(result);
     }
 
@@ -196,7 +200,7 @@ public class StatsController : ControllerBase
     [HttpGet("season")]
     public async Task<IActionResult> GetSeasonTotals([FromQuery] MatchPhase? phase = null)
     {
-        var result = await _stats.GetSeasonTotalsAsync(phase);
+        var result = await _cache.GetOrCreateAsync($"season-totals:{phase}", () => _stats.GetSeasonTotalsAsync(phase));
         return Ok(result);
     }
 
@@ -204,13 +208,13 @@ public class StatsController : ControllerBase
     /// <remarks>Returns all 27 achievements for a user with full occurrence context.</remarks>
     [HttpGet("users/{userId:int}/achievements")]
     public async Task<IActionResult> GetUserAchievements(int userId)
-        => Ok(await _achievements.GetUserAchievementsAsync(userId));
+        => Ok(await _cache.GetOrCreateAsync($"achievements:{userId}", () => _achievements.GetUserAchievementsAsync(userId)));
 
     /// <summary>GET /api/stats/achievements/holders</summary>
     /// <remarks>Returns, for every achievement, the IDs of users who have earned it.</remarks>
     [HttpGet("achievements/holders")]
     public async Task<IActionResult> GetAchievementHolders()
-        => Ok(await _achievements.GetAchievementHoldersAsync());
+        => Ok(await _cache.GetOrCreateAsync("achievement-holders", () => _achievements.GetAchievementHoldersAsync()));
 
     [HttpGet("financial-stats")]
     public async Task<IActionResult> GetFinancialStats()
