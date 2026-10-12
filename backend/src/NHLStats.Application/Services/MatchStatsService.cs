@@ -18,6 +18,7 @@ public class MatchStatsService : IMatchStatsService
     public async Task<IEnumerable<WeekGroupDto>> GetMatchesGroupedByWeekAsync(int seasonId)
     {
         var matches = await _db.Matches
+            .AsNoTracking()
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
             .Where(m => m.SeasonId == seasonId && m.MatchDate != null)
@@ -288,6 +289,7 @@ public class MatchStatsService : IMatchStatsService
     public async Task<IEnumerable<HeadToHeadMatchDto>> GetHeadToHeadAsync(int teamId, int hostedTeamId)
     {
         var matches = await _db.Matches
+            .AsNoTracking()
             .Include(m => m.HomeTeam)
             .Include(m => m.AwayTeam)
             .Include(m => m.Season)
@@ -328,7 +330,11 @@ public class MatchStatsService : IMatchStatsService
 
     public async Task<IEnumerable<SeasonMatchHistoryDto>> GetUserMatchHistoryAsync(int userId, int? seasonId = null)
     {
+        // Read-only, and Points/Goals/Penalties are sibling collections: split so they don't
+        // multiply into one row per point × goal × penalty combination.
         var query = _db.UserMatches
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(um => um.Match).ThenInclude(m => m!.HomeTeam)
             .Include(um => um.Match).ThenInclude(m => m!.AwayTeam)
             .Include(um => um.Match).ThenInclude(m => m!.Season)

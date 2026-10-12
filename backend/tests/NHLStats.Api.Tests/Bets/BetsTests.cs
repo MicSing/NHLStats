@@ -591,6 +591,35 @@ public class BetsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task List_all_bets_reflects_placing_and_cancelling_a_ticket()
+    {
+        // /api/betting/bets/all is cached server-side; placing or cancelling must invalidate it.
+        var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("All Bets Cache Season", opponentTeamId: 28);
+        bool Listed(JsonElement all, string id) => all.EnumerateArray().Any(b => b.GetProperty("id").GetString() == id);
+
+        await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/all");
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "TeamWin", teamId = 1, expectedOdds = homeOdds } }
+        });
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var betId = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+
+        var afterPlace = await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/all");
+        Listed(afterPlace, betId).Should().BeTrue();
+        // The viewer's own pending ticket is never anonymized.
+        afterPlace.EnumerateArray().Single(b => b.GetProperty("id").GetString() == betId)
+            .GetProperty("legs")[0].GetProperty("isAnonymized").GetBoolean().Should().BeFalse();
+
+        (await client.DeleteAsync($"/api/betting/bets/{betId}")).EnsureSuccessStatusCode();
+
+        var afterCancel = await client.GetFromJsonAsync<JsonElement>("/api/betting/bets/all");
+        Listed(afterCancel, betId).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Place_bet_with_matching_expected_odds_returns_201()
     {
         var (client, matchId, homeOdds) = await SetUpTeamWinMarketAsync("Expected Odds Match Season", opponentTeamId: 31);

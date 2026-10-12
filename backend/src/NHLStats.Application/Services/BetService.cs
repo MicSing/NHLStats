@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NHLStats.Application.Caching;
 using NHLStats.Application.DTOs;
 using NHLStats.Application.Interfaces;
 using NHLStats.Domain;
@@ -12,12 +13,14 @@ public class BetService : IBetService
     private readonly NhlStatsDbContext _db;
     private readonly IBettingBalanceService _balanceService;
     private readonly IBettingOddsService _oddsService;
+    private readonly IStatsCache? _cache;
 
-    public BetService(NhlStatsDbContext db, IBettingBalanceService balanceService, IBettingOddsService oddsService)
+    public BetService(NhlStatsDbContext db, IBettingBalanceService balanceService, IBettingOddsService oddsService, IStatsCache? cache = null)
     {
         _db = db;
         _balanceService = balanceService;
         _oddsService = oddsService;
+        _cache = cache;
     }
 
     private static string MakeShortId(Guid id) => "B-" + id.ToString("N").Substring(0, 6).ToUpperInvariant();
@@ -158,6 +161,25 @@ public class BetService : IBetService
 
     public async Task<IReadOnlyList<BetDto>> GetAllBetsAsync(string? currentLoginId)
     {
+        // The full ticket list is the same for every viewer (only the masking below differs), and
+        // several pages plus every "match completed" push re-request it — so it is cached until
+        // the next data change.
+        var bets = _cache != null
+            ? await _cache.GetOrCreateAsync("bets:all", LoadAllBetsAsync)
+            : await LoadAllBetsAsync();
+
+        return bets.Select(dto =>
+        {
+            if (dto.CreatedBy == currentLoginId) return dto;
+            var anonymizedLegs = dto.Legs
+                .Select(l => l.EvaluatedOn == null && dto.Status == BetStatus.Pending ? AnonymizeLeg(l) : l)
+                .ToList();
+            return dto with { Legs = anonymizedLegs };
+        }).ToList();
+    }
+
+    private async Task<IReadOnlyList<BetDto>> LoadAllBetsAsync()
+    {
         var bets = await _db.Bets
             .AsNoTracking()
             .Include(b => b.Legs)
@@ -176,15 +198,7 @@ public class BetService : IBetService
             .OrderByDescending(b => b.CreatedOn)
             .ToListAsync();
         var names = await ResolveNamesAsync(bets.Select(b => b.CreatedBy));
-        return bets.Select(b =>
-        {
-            var dto = ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy));
-            if (b.CreatedBy == currentLoginId) return dto;
-            var anonymizedLegs = dto.Legs
-                .Select(l => l.EvaluatedOn == null && b.Status == BetStatus.Pending ? AnonymizeLeg(l) : l)
-                .ToList();
-            return dto with { Legs = anonymizedLegs };
-        }).ToList();
+        return bets.Select(b => ToDto(b, b.Legs, names.GetValueOrDefault(b.CreatedBy, b.CreatedBy))).ToList();
     }
 
     public async Task<PlaceBetResult> PlaceBetAsync(string loginId, CreateBetDto dto)
