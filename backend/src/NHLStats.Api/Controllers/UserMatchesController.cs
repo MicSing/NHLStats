@@ -24,6 +24,13 @@ public class UserMatchesController : ControllerBase
     public async Task<IActionResult> GetByMatch(int seasonId, int matchId) =>
         Ok(await _service.GetByMatchAsync(matchId));
 
+    // ── GET api/seasons/{seasonId}/matches/{matchId}/usermatches/details ─────
+    // Points, goals and penalties for every user match in one call (instead of 3 per user).
+
+    [HttpGet("api/seasons/{seasonId:int}/matches/{matchId:int}/usermatches/details")]
+    public async Task<IActionResult> GetDetailsByMatch(int seasonId, int matchId) =>
+        Ok(await _service.GetDetailsByMatchAsync(matchId));
+
     // ── GET api/seasons/{seasonId}/usermatches ────────────────────────────────
 
     [HttpGet("api/seasons/{seasonId:int}/usermatches")]

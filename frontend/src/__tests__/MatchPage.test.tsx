@@ -200,4 +200,15 @@ describe('MatchPage', () => {
         )
         postSpy.mockRestore()
     })
+
+    test('loads all players\' points, goals and penalties in one request', async () => {
+        const getSpy = vi.spyOn(apiClient, 'get')
+        renderMatchPage()
+        await screen.findByText(/connor mcdavid/i)
+
+        const urls = getSpy.mock.calls.map(([url]) => String(url))
+        expect(urls.filter((u) => u.includes('/usermatches/details'))).toHaveLength(1)
+        expect(urls.filter((u) => /\/api\/usermatches\/\d+\/(points|goals|penalties)/.test(u))).toHaveLength(0)
+        getSpy.mockRestore()
+    })
 })

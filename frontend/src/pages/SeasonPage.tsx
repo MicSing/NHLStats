@@ -5,7 +5,7 @@ import type { Season } from '../types/season'
 import type { WeekGroup, UserSeasonStats, TopRosterPlayer, UserSeasonTotals, SeasonTotals, SeasonalUserData } from '../types/stats'
 import { CompletionType, MatchPhase } from '../types/match'
 import type { Match } from '../types/match'
-import type { UserMatch, UserMatchPoint, UserMatchGoal, UserMatchPenalty } from '../types/userMatch'
+import type { UserMatchDetails } from '../types/userMatch'
 import type { BetDto } from '../types/bet'
 import apiClient from '../services/apiClient'
 import { cacheService } from '../services/cacheService'
@@ -229,19 +229,12 @@ export default function SeasonPage() {
     const fetchMatchDetail = async (matchId: number) => {
         if (!seasonId || matchDetailCache.has(matchId)) return
         try {
-            const userMatches = await apiClient.get<UserMatch[]>(
-                `/api/seasons/${seasonId}/matches/${matchId}/usermatches`
+            const details = await apiClient.get<UserMatchDetails[]>(
+                `/api/seasons/${seasonId}/matches/${matchId}/usermatches/details`
             )
-            const userDetails = await Promise.all(
-                userMatches.map(async (um) => {
-                    const [points, goals, penalties] = await Promise.all([
-                        apiClient.get<UserMatchPoint[]>(`/api/usermatches/${um.id}/points`),
-                        apiClient.get<UserMatchGoal[]>(`/api/usermatches/${um.id}/goals`),
-                        apiClient.get<UserMatchPenalty[]>(`/api/usermatches/${um.id}/penalties`),
-                    ])
-                    return { userMatchId: um.id, userId: um.userId, points, goals, penalties }
-                })
-            )
+            const userDetails = details.map(({ userMatch: um, points, goals, penalties }) => (
+                { userMatchId: um.id, userId: um.userId, points, goals, penalties }
+            ))
             setMatchDetailCache((prev) => {
                 const next = new Map(prev)
                 next.set(matchId, { users: userDetails })

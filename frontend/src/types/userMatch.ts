@@ -53,3 +53,11 @@ export interface CreateUserMatchPenaltyDto {
     rosterPlayerId: number
     count: number
 }
+
+/** GET /api/seasons/{seasonId}/matches/{matchId}/usermatches/details — one entry per user match. */
+export interface UserMatchDetails {
+    userMatch: UserMatch
+    points: UserMatchPoint[]
+    goals: UserMatchGoal[]
+    penalties: UserMatchPenalty[]
+}
