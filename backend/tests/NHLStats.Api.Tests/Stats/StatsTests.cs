@@ -244,6 +244,33 @@ public class StatsTests : ApiTestBase
         GamesPlayed(playerC).Should().Be(0);
     }
 
+    [Fact]
+    public async Task SeasonTotals_reflect_a_write_made_after_they_were_served()
+    {
+        // /api/stats/season is cached server-side; any data change must invalidate it.
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Cache Invalidation Season");
+        var player = await CreateUserAsync(client, "Cache Invalidation Player");
+        await AssignUserAsync(client, seasonId, player);
+        var m1 = await CreateMatchAsync(client, seasonId, "2024-03-01T20:00:00");
+
+        async Task<int> GamesPlayedAsync()
+        {
+            var body = await client.GetFromJsonAsync<JsonElement>("/api/stats/season");
+            return body.GetProperty("usersData").EnumerateArray()
+                .Single(s => s.GetProperty("seasonId").GetInt32() == seasonId)
+                .GetProperty("usersData").EnumerateArray()
+                .Single(u => u.GetProperty("userId").GetInt32() == player)
+                .GetProperty("gamesPlayed").GetInt32();
+        }
+
+        (await GamesPlayedAsync()).Should().Be(0);
+
+        await CreateUserMatchAsync(client, seasonId, m1, player);
+
+        (await GamesPlayedAsync()).Should().Be(1);
+    }
+
     // ─── Money calculation — effective rate by date ───────────────────────────
 
     [Fact]

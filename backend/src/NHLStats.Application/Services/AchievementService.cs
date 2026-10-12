@@ -144,9 +144,10 @@ public class AchievementService : IAchievementService
         var holders = new Dictionary<string, List<int>>();
         var order = new List<string>();
 
+        var globals = await LoadGlobalsAsync();
         foreach (var uid in userIds)
         {
-            var result = await GetUserAchievementsAsync(uid);
+            var result = await ComputeUserAchievementsAsync(uid, globals);
             foreach (var a in result.Achievements)
             {
                 if (!holders.TryGetValue(a.Id, out var list))
@@ -163,7 +164,33 @@ public class AchievementService : IAchievementService
             order.Select(id => new AchievementHolderDto(id, holders[id])).ToList());
     }
 
-    public async Task<UserAchievementsDto> GetUserAchievementsAsync(int userId)
+    public async Task<UserAchievementsDto> GetUserAchievementsAsync(int userId) =>
+        await ComputeUserAchievementsAsync(userId, await LoadGlobalsAsync());
+
+    // Data every user's evaluation needs that doesn't depend on the user — loaded once and shared
+    // when evaluating all users (GetAchievementHoldersAsync).
+    private sealed record BetSummary(string CreatedBy, BetStatus Status, decimal Stake, List<int> SeasonIds, List<int> MatchIds);
+    private sealed record SeasonUserRow(int SeasonId, int UserId);
+    private sealed record UserSeasonMatchRow(int UserId, int SeasonId, int MatchId);
+    private sealed record MinusRow(int UserId, int SeasonId, int MatchId, int Count);
+    private sealed record DatedMatch(int Id, int SeasonId, int MatchNumber, DateTime Date);
+
+    private sealed record AchievementGlobals(
+        HashSet<int> CompleteSeasonIds,
+        List<BetSummary> AllBets,
+        List<SeasonUserRow> SeasonUserRows,
+        Dictionary<(int UserId, int SeasonId), int> UserMatchCountsPerSeason,
+        List<UserSeasonMatchRow> AllUserMatchesForWeeks,
+        List<(int UserId, int SeasonId, int Total)> AllGoalTotals,
+        List<(int UserId, int SeasonId, int Total)> AllPenaltyTotals,
+        List<(int UserId, int SeasonId, int Total)> AllPlusTotals,
+        List<MinusRow> AllMinusRows,
+        List<(int UserId, int SeasonId, int Total)> AllMinusTotals,
+        Dictionary<int, string> SeasonNames,
+        Dictionary<int, DateTime?> SeasonEndDates,
+        Dictionary<int, List<DatedMatch>> DatedMatchesBySeason);
+
+    private async Task<AchievementGlobals> LoadGlobalsAsync()
     {
         // ─── 0. Complete season IDs ───────────────────────────────────────────
         var completeSeasonIds = (await _db.Seasons
@@ -171,6 +198,166 @@ public class AchievementService : IAchievementService
             .Where(s => s.Status == SeasonStatus.Complete)
             .Select(s => s.Id)
             .ToListAsync()).ToHashSet();
+
+        // ─── 4. All bets (all users, for competitive bet achievements) ────────
+        // Load flat (SQLite doesn't support APPLY for nested collection projections).
+        var allLegRows = await _db.BetLegs
+            .AsNoTracking()
+            .Where(l => l.Bet!.Status != BetStatus.Cancelled
+                     && l.Match!.CompletionType != CompletionType.None
+                     && l.Match.CompletionType != CompletionType.InProgress
+                     && completeSeasonIds.Contains(l.Match.SeasonId))
+            .Select(l => new
+            {
+                l.BetId,
+                CreatedBy = l.Bet!.CreatedBy,
+                Status    = l.Bet!.Status,
+                Stake     = l.Bet!.Stake,
+                l.MatchId,
+                SeasonId  = l.Match!.SeasonId
+            })
+            .ToListAsync();
+
+        var allBets = allLegRows
+            .GroupBy(r => r.BetId)
+            .Select(g => new BetSummary(
+                g.First().CreatedBy,
+                g.First().Status,
+                g.First().Stake,
+                g.Select(r => r.SeasonId).Distinct().ToList(),
+                g.Select(r => r.MatchId).Distinct().ToList()))
+            .ToList();
+
+        // ─── 4c. Season users & match counts (for Lady Byng) ───────────────────
+        var seasonUserRows = await _db.SeasonUsers
+            .AsNoTracking()
+            .Where(su => completeSeasonIds.Contains(su.SeasonId))
+            .Select(su => new SeasonUserRow(su.SeasonId, su.UserId))
+            .ToListAsync();
+
+        var userMatchCountsPerSeason = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => completeSeasonIds.Contains(um.SeasonId)
+                      && um.Match!.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .GroupBy(um => new { um.UserId, um.SeasonId })
+            .Select(g => new { g.Key.UserId, g.Key.SeasonId, Count = g.Count() })
+            .ToDictionaryAsync(g => (g.UserId, g.SeasonId), g => g.Count);
+
+        var allUserMatchesForWeeks = await _db.UserMatches
+            .AsNoTracking()
+            .Where(um => completeSeasonIds.Contains(um.SeasonId)
+                      && um.Match!.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .Select(um => new UserSeasonMatchRow(um.UserId, um.SeasonId, um.MatchId))
+            .ToListAsync();
+
+        // ─── 7. All-user per-season totals (competitive achievements) ─────────
+        var allGoalRows = await _db.UserMatchGoals
+            .AsNoTracking()
+            .Where(g => g.UserMatch!.Match!.CompletionType != CompletionType.None
+                     && g.UserMatch.Match.CompletionType != CompletionType.InProgress
+                     && completeSeasonIds.Contains(g.UserMatch.SeasonId)
+                     && g.GoalType != GoalType.Shootout)
+            .Select(g => new { UserId = g.UserMatch!.UserId, SeasonId = g.UserMatch!.SeasonId, g.Count })
+            .ToListAsync();
+        var allGoalTotals = allGoalRows
+            .GroupBy(g => (g.UserId, g.SeasonId))
+            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
+            .ToList();
+
+        var allPenaltyRows = await _db.UserMatchPenalties
+            .AsNoTracking()
+            .Where(p => p.UserMatch!.Match!.CompletionType != CompletionType.None
+                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
+                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
+            .Select(p => new { UserId = p.UserMatch!.UserId, SeasonId = p.UserMatch!.SeasonId, p.Count })
+            .ToListAsync();
+        var allPenaltyTotals = allPenaltyRows
+            .GroupBy(p => (p.UserId, p.SeasonId))
+            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
+            .ToList();
+
+        var allPlusRows = await _db.UserMatchPoints
+            .AsNoTracking()
+            .Where(p => p.PointReason!.PointType == PointType.Positive
+                     && p.UserMatch!.Match!.CompletionType != CompletionType.None
+                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
+                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
+            .Select(p => new { UserId = p.UserMatch!.UserId, SeasonId = p.UserMatch!.SeasonId, p.Count })
+            .ToListAsync();
+        var allPlusTotals = allPlusRows
+            .GroupBy(p => (p.UserId, p.SeasonId))
+            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
+            .ToList();
+
+        var allMinusRows = await _db.UserMatchPoints
+            .AsNoTracking()
+            .Where(p => p.PointReason!.PointType == PointType.Negative
+                     && p.UserMatch!.Match!.CompletionType != CompletionType.None
+                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
+                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
+            .Select(p => new MinusRow(p.UserMatch!.UserId, p.UserMatch!.SeasonId, p.UserMatch!.MatchId, p.Count))
+            .ToListAsync();
+        var allMinusTotals = allMinusRows
+            .GroupBy(p => (p.UserId, p.SeasonId))
+            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
+            .ToList();
+
+        // ─── 8. Season names ──────────────────────────────────────────────────
+        var seasonNames = await _db.Seasons
+            .AsNoTracking()
+            .Select(s => new { s.Id, s.Name })
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        // ─── 8b. Season end dates (last played match of each complete season) ─
+        var seasonEndDates = await _db.Matches
+            .AsNoTracking()
+            .Where(m => completeSeasonIds.Contains(m.SeasonId)
+                     && m.MatchDate.HasValue
+                     && m.CompletionType != CompletionType.None
+                     && m.CompletionType != CompletionType.InProgress)
+            .GroupBy(m => m.SeasonId)
+            .Select(g => new { SeasonId = g.Key, LastDate = g.Max(m => m.MatchDate) })
+            .ToDictionaryAsync(g => g.SeasonId, g => g.LastDate);
+
+        // ─── Matches with a date, per season (for the week map) ──────────────
+        var datedMatches = await _db.Matches
+            .AsNoTracking()
+            .Where(m => m.MatchDate.HasValue)
+            .Select(m => new DatedMatch(m.Id, m.SeasonId, m.MatchNumber, m.MatchDate!.Value.Date))
+            .ToListAsync();
+
+        return new AchievementGlobals(
+            completeSeasonIds,
+            allBets,
+            seasonUserRows,
+            userMatchCountsPerSeason,
+            allUserMatchesForWeeks,
+            allGoalTotals,
+            allPenaltyTotals,
+            allPlusTotals,
+            allMinusRows,
+            allMinusTotals,
+            seasonNames,
+            seasonEndDates,
+            datedMatches.GroupBy(m => m.SeasonId).ToDictionary(grp => grp.Key, grp => grp.ToList()));
+    }
+
+    private async Task<UserAchievementsDto> ComputeUserAchievementsAsync(int userId, AchievementGlobals g)
+    {
+        var completeSeasonIds = g.CompleteSeasonIds;
+        var allBets = g.AllBets;
+        var seasonUserRows = g.SeasonUserRows;
+        var userMatchCountsPerSeason = g.UserMatchCountsPerSeason;
+        var allUserMatchesForWeeks = g.AllUserMatchesForWeeks;
+        var allGoalTotals = g.AllGoalTotals;
+        var allPenaltyTotals = g.AllPenaltyTotals;
+        var allPlusTotals = g.AllPlusTotals;
+        var allMinusRows = g.AllMinusRows;
+        var allMinusTotals = g.AllMinusTotals;
+        var seasonNames = g.SeasonNames;
+        var seasonEndDates = g.SeasonEndDates;
 
         // ─── 1. User goals ────────────────────────────────────────────────────
         var goals = await _db.UserMatchGoals
@@ -250,37 +437,6 @@ public class AchievementService : IAchievementService
             })
             .ToListAsync();
 
-        // ─── 4. All bets (all users, for competitive bet achievements) ────────
-        // Load flat (SQLite doesn't support APPLY for nested collection projections).
-        var allLegRows = await _db.BetLegs
-            .AsNoTracking()
-            .Where(l => l.Bet!.Status != BetStatus.Cancelled
-                     && l.Match!.CompletionType != CompletionType.None
-                     && l.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(l.Match.SeasonId))
-            .Select(l => new
-            {
-                l.BetId,
-                CreatedBy = l.Bet!.CreatedBy,
-                Status    = l.Bet!.Status,
-                Stake     = l.Bet!.Stake,
-                l.MatchId,
-                SeasonId  = l.Match!.SeasonId
-            })
-            .ToListAsync();
-
-        var allBets = allLegRows
-            .GroupBy(r => r.BetId)
-            .Select(g => new
-            {
-                CreatedBy = g.First().CreatedBy,
-                Status    = g.First().Status,
-                Stake     = g.First().Stake,
-                SeasonIds = g.Select(r => r.SeasonId).Distinct().ToList(),
-                MatchIds  = g.Select(r => r.MatchId).Distinct().ToList()
-            })
-            .ToList();
-
         // Resolve ApplicationUser.Id (string) → domain UserId (int)
         var userCreatedBy = await _db.Set<ApplicationUser>()
             .AsNoTracking()
@@ -325,105 +481,6 @@ public class AchievementService : IAchievementService
             .OrderBy(b => b.EvaluatedOn ?? b.CreatedOn)
             .ToList();
 
-        // ─── 4c. Season users & match counts (for Lady Byng) ───────────────────
-        var seasonUserRows = await _db.SeasonUsers
-            .AsNoTracking()
-            .Where(su => completeSeasonIds.Contains(su.SeasonId))
-            .Select(su => new { su.SeasonId, su.UserId })
-            .ToListAsync();
-
-        var userMatchCountsPerSeason = await _db.UserMatches
-            .AsNoTracking()
-            .Where(um => completeSeasonIds.Contains(um.SeasonId)
-                      && um.Match!.CompletionType != CompletionType.None
-                      && um.Match.CompletionType != CompletionType.InProgress)
-            .GroupBy(um => new { um.UserId, um.SeasonId })
-            .Select(g => new { g.Key.UserId, g.Key.SeasonId, Count = g.Count() })
-            .ToDictionaryAsync(g => (g.UserId, g.SeasonId), g => g.Count);
-
-        var allUserMatchesForWeeks = await _db.UserMatches
-            .AsNoTracking()
-            .Where(um => completeSeasonIds.Contains(um.SeasonId)
-                      && um.Match!.CompletionType != CompletionType.None
-                      && um.Match.CompletionType != CompletionType.InProgress)
-            .Select(um => new { um.UserId, um.SeasonId, um.MatchId })
-            .ToListAsync();
-
-        // ─── 7. All-user per-season totals (competitive achievements) ─────────
-        var allGoalRows = await _db.UserMatchGoals
-            .AsNoTracking()
-            .Where(g => g.UserMatch!.Match!.CompletionType != CompletionType.None
-                     && g.UserMatch.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(g.UserMatch.SeasonId)
-                     && g.GoalType != GoalType.Shootout)
-            .Select(g => new { UserId = g.UserMatch!.UserId, SeasonId = g.UserMatch!.SeasonId, g.Count })
-            .ToListAsync();
-        var allGoalTotals = allGoalRows
-            .GroupBy(g => (g.UserId, g.SeasonId))
-            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
-            .ToList();
-
-        var allPenaltyRows = await _db.UserMatchPenalties
-            .AsNoTracking()
-            .Where(p => p.UserMatch!.Match!.CompletionType != CompletionType.None
-                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
-            .Select(p => new { UserId = p.UserMatch!.UserId, SeasonId = p.UserMatch!.SeasonId, p.Count })
-            .ToListAsync();
-        var allPenaltyTotals = allPenaltyRows
-            .GroupBy(p => (p.UserId, p.SeasonId))
-            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
-            .ToList();
-
-        var allPlusRows = await _db.UserMatchPoints
-            .AsNoTracking()
-            .Where(p => p.PointReason!.PointType == PointType.Positive
-                     && p.UserMatch!.Match!.CompletionType != CompletionType.None
-                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
-            .Select(p => new { UserId = p.UserMatch!.UserId, SeasonId = p.UserMatch!.SeasonId, p.Count })
-            .ToListAsync();
-        var allPlusTotals = allPlusRows
-            .GroupBy(p => (p.UserId, p.SeasonId))
-            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
-            .ToList();
-
-        var allMinusRows = await _db.UserMatchPoints
-            .AsNoTracking()
-            .Where(p => p.PointReason!.PointType == PointType.Negative
-                     && p.UserMatch!.Match!.CompletionType != CompletionType.None
-                     && p.UserMatch.Match.CompletionType != CompletionType.InProgress
-                     && completeSeasonIds.Contains(p.UserMatch.SeasonId))
-            .Select(p => new
-            {
-                UserId   = p.UserMatch!.UserId,
-                SeasonId = p.UserMatch!.SeasonId,
-                MatchId  = p.UserMatch!.MatchId,
-                p.Count
-            })
-            .ToListAsync();
-        var allMinusTotals = allMinusRows
-            .GroupBy(p => (p.UserId, p.SeasonId))
-            .Select(g => (g.Key.UserId, g.Key.SeasonId, Total: g.Sum(x => x.Count)))
-            .ToList();
-
-        // ─── 8. Season names ──────────────────────────────────────────────────
-        var seasonNames = await _db.Seasons
-            .AsNoTracking()
-            .Select(s => new { s.Id, s.Name })
-            .ToDictionaryAsync(s => s.Id, s => s.Name);
-
-        // ─── 8b. Season end dates (last played match of each complete season) ─
-        var seasonEndDates = await _db.Matches
-            .AsNoTracking()
-            .Where(m => completeSeasonIds.Contains(m.SeasonId)
-                     && m.MatchDate.HasValue
-                     && m.CompletionType != CompletionType.None
-                     && m.CompletionType != CompletionType.InProgress)
-            .GroupBy(m => m.SeasonId)
-            .Select(g => new { SeasonId = g.Key, LastDate = g.Max(m => m.MatchDate) })
-            .ToDictionaryAsync(g => g.SeasonId, g => g.LastDate);
-
         // ─── 9. Global week map (matchId → week number within its season) ─────
         var relevantSeasonIds = goals.Select(g => g.SeasonId)
             .Concat(penalties.Select(p => p.SeasonId))
@@ -437,11 +494,9 @@ public class AchievementService : IAchievementService
         var matchNumberMap = new Dictionary<int, int>();
         if (relevantSeasonIds.Count > 0)
         {
-            var matchRows = await _db.Matches
-                .AsNoTracking()
-                .Where(m => relevantSeasonIds.Contains(m.SeasonId) && m.MatchDate.HasValue)
-                .Select(m => new { m.Id, m.SeasonId, m.MatchNumber, Date = m.MatchDate!.Value.Date })
-                .ToListAsync();
+            var matchRows = relevantSeasonIds
+                .SelectMany(sid => g.DatedMatchesBySeason.GetValueOrDefault(sid) ?? [])
+                .ToList();
 
             foreach (var sg in matchRows.GroupBy(m => m.SeasonId))
             {

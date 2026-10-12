@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.IO;
 using System.Text;
+using NHLStats.Application.Caching;
 using NHLStats.Application.Interfaces;
 using NHLStats.Application.Services;
 using NHLStats.Api.Hubs;
@@ -131,6 +132,9 @@ builder.Services.AddScoped<IMatchupService, MatchupService>();
 builder.Services.AddScoped<ITeamStatsService, TeamStatsService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IStatsCache, StatsCache>();
+builder.Services.AddSingleton<StatsCacheInvalidationInterceptor>();
 builder.Services.AddScoped<IUserPayoutService, UserPayoutService>();
 builder.Services.AddScoped<ISeasonEventBroadcaster, SignalRSeasonEventBroadcaster>();
 builder.Services.AddScoped<ICurrentActorProvider, HttpContextCurrentActorProvider>();
@@ -143,8 +147,9 @@ builder.Services.AddHttpClient<INhlScheduleClient, NhlScheduleClient>(client =>
 
 var sqlConn = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<NhlStatsDbContext>(options =>
-    options.UseSqlServer(sqlConn, sqlOptions => sqlOptions.EnableRetryOnFailure()));
+builder.Services.AddDbContext<NhlStatsDbContext>((sp, options) => options
+    .UseSqlServer(sqlConn, sqlOptions => sqlOptions.EnableRetryOnFailure())
+    .AddInterceptors(sp.GetRequiredService<StatsCacheInvalidationInterceptor>()));
 
 var app = builder.Build();
 

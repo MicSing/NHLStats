@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using NHLStats.Application.Caching;
 using NHLStats.Domain;
 
 namespace NHLStats.Api.Tests;
@@ -37,8 +38,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             if (descriptor != null)
                 services.Remove(descriptor);
 
-            services.AddDbContext<NhlStatsDbContext>(options =>
-                options.UseSqlite($"Data Source={_dbPath}"));
+            // Keep production's stats-cache invalidation hook — only the provider changes.
+            services.AddDbContext<NhlStatsDbContext>((sp, options) => options
+                .UseSqlite($"Data Source={_dbPath}")
+                .AddInterceptors(sp.GetRequiredService<StatsCacheInvalidationInterceptor>()));
         });
     }
 
