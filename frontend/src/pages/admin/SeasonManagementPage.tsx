@@ -34,22 +34,16 @@ export default function SeasonManagementPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [showAddModal, setShowAddModal] = useState(false)
-    const [addForm, setAddForm] = useState<CreateSeasonDto>({
+    const emptyAddForm = (): CreateSeasonDto => ({
         name: '',
         startedOn: new Date().toISOString().split('T')[0],
-        status: '',
+        status: 'Active',
         hostedTeamId: null,
         leagueType: LeagueType.NHL,
     })
+    const [addForm, setAddForm] = useState<CreateSeasonDto>(emptyAddForm)
 
-    const resetAddForm = () =>
-        setAddForm({
-            name: '',
-            startedOn: new Date().toISOString().split('T')[0],
-            status: '',
-            hostedTeamId: null,
-            leagueType: LeagueType.NHL,
-        })
+    const resetAddForm = () => setAddForm(emptyAddForm())
 
     const loadSeasonDetail = async (id: number) => {
         try {

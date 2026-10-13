@@ -32,7 +32,7 @@ export interface CreateSeasonDto {
     name: string
     hostedTeamId?: number | null
     startedOn: string
-    status?: string | null
+    status?: SeasonStatus | null
     parentSeasonId?: number | null
     leagueType: LeagueTypeValue
     nhlYear?: number | null
