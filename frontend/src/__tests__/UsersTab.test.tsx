@@ -20,6 +20,7 @@ const season: Season = {
     leagueType: 'NHL',
     nhlYear: null,
     console: null,
+    pointsEnabled: true,
 }
 
 const seasonDetail: SeasonDetail = {

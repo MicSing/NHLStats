@@ -258,7 +258,7 @@ export default function MatchPage() {
 
     const handleNeutralPointAdded = async (userMatchId: number, pointReasonId: number) => {
         const negativeReasonId = NEUTRAL_TO_NEGATIVE_MAP[pointReasonId]
-        if (!negativeReasonId) return
+        if (!negativeReasonId || season?.pointsEnabled === false) return
 
         const entry = userMatchData.find((d) => d.userMatch.id === userMatchId)
         if (!entry) return
@@ -384,6 +384,7 @@ export default function MatchPage() {
                             pointReasons={pointReasons}
                             allUserMatches={userMatchData.map((d) => d.userMatch)}
                             isAuth={!!token}
+                            pointsEnabled={season?.pointsEnabled ?? true}
                             onChanged={(extraId) => {
                                 void loadUserMatchData(userMatch.id)
                                 if (extraId !== undefined) void loadUserMatchData(extraId)

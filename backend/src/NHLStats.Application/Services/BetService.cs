@@ -212,6 +212,10 @@ public class BetService : IBetService
         var matches = await _db.Matches.AsNoTracking()
             .Where(m => matchIds.Contains(m.Id))
             .ToDictionaryAsync(m => m.Id);
+        var pointlessMatchIds = (await _db.Matches.AsNoTracking()
+            .Where(m => matchIds.Contains(m.Id) && !m.Season!.PointsEnabled)
+            .Select(m => m.Id)
+            .ToListAsync()).ToHashSet();
 
         var appUser = await _db.Set<ApplicationUser>()
             .AsNoTracking()
@@ -247,6 +251,8 @@ public class BetService : IBetService
                 return new PlaceBetResult(null, $"Match {legDto.MatchId} is in progress. Betting is locked.");
             if (match.CompletionType != CompletionType.None)
                 return new PlaceBetResult(null, $"Match {legDto.MatchId} is already completed. Betting is closed.");
+            if (pointlessMatchIds.Contains(legDto.MatchId))
+                return new PlaceBetResult(null, $"Match {legDto.MatchId} belongs to a season without plus/minus points. Betting is closed.");
 
             var validationError = await ValidateLegPayloadAsync(match, legDto.BetType, legDto.UserId, legDto.TeamId, userMatchIds.Contains(legDto.MatchId));
             if (validationError != null) return new PlaceBetResult(null, validationError);
@@ -481,6 +487,47 @@ public class BetService : IBetService
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<int> CancelOpenBetsForSeasonAsync(int seasonId)
+    {
+        // Legs on matches that are not finished yet; a finished match's legs are already settled.
+        var legs = await _db.BetLegs
+            .Include(l => l.Bet)
+                .ThenInclude(b => b!.Legs)
+            .Where(l => l.Match!.SeasonId == seasonId
+                        && (l.Match.CompletionType == CompletionType.None || l.Match.CompletionType == CompletionType.InProgress)
+                        && l.Status == BetLegStatus.Pending)
+            .ToListAsync();
+
+        if (legs.Count == 0) return 0;
+
+        var now = DateTime.UtcNow;
+        foreach (var leg in legs)
+        {
+            leg.Status = BetLegStatus.Cancelled;
+            leg.EvaluatedOn = now;
+        }
+
+        var affectedBets = legs
+            .Where(l => l.Bet != null)
+            .Select(l => l.Bet!)
+            .DistinctBy(b => b.Id)
+            .ToList();
+
+        foreach (var bet in affectedBets)
+        {
+            var newStatus = RollupStatus(bet.Legs);
+            if (newStatus != bet.Status)
+            {
+                bet.Status = newStatus;
+                bet.UpdatedOn = now;
+                bet.EvaluatedOn = now;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return affectedBets.Count;
     }
 
     public async Task EvaluateMatchBetsAsync(int matchId)

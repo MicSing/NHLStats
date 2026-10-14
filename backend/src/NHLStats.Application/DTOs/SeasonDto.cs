@@ -13,7 +13,8 @@ public record SeasonDto(
     int? ParentSeasonId,
     LeagueType LeagueType,
     int? NhlYear,
-    GamingConsole? Console);
+    GamingConsole? Console,
+    bool PointsEnabled = true);
 
 public record SeasonDetailDto(
     int Id,
@@ -26,7 +27,8 @@ public record SeasonDetailDto(
     List<SeasonUserDto> Users,
     LeagueType LeagueType,
     int? NhlYear,
-    GamingConsole? Console);
+    GamingConsole? Console,
+    bool PointsEnabled = true);
 
 public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position, bool IsActiveInSeason = true);
 
@@ -44,7 +46,8 @@ public record CreateSeasonDto(
     int? ParentSeasonId = null,
     LeagueType LeagueType = LeagueType.NHL,
     int? NhlYear = null,
-    GamingConsole? Console = null);
+    GamingConsole? Console = null,
+    bool PointsEnabled = true);
 
 public record UpdateSeasonDto(
     [Required] string Name,
@@ -54,7 +57,8 @@ public record UpdateSeasonDto(
     int? ParentSeasonId = null,
     LeagueType LeagueType = LeagueType.NHL,
     int? NhlYear = null,
-    GamingConsole? Console = null);
+    GamingConsole? Console = null,
+    bool PointsEnabled = true);
 
 /// <summary>A season-active player in position-wheel spin order, with the previous-season stats that ranked them.</summary>
 public record PositionWheelEntryDto(

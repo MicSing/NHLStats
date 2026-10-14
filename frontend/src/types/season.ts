@@ -16,6 +16,8 @@ export interface Season {
     leagueType: LeagueTypeValue
     nhlYear: number | null
     console: GamingConsoleValue | null
+    /** Whether players collect plus/minus points; without them the season's matches can't be bet on. */
+    pointsEnabled: boolean
 }
 
 export interface SeasonUser extends User {
@@ -37,6 +39,7 @@ export interface CreateSeasonDto {
     leagueType: LeagueTypeValue
     nhlYear?: number | null
     console?: GamingConsoleValue | null
+    pointsEnabled?: boolean
 }
 
 export type UpdateSeasonDto = CreateSeasonDto

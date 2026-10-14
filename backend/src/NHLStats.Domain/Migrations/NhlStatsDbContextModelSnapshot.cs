@@ -624,6 +624,9 @@ namespace NHLStats.Domain.Migrations
                     b.Property<int?>("ParentSeasonId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("PointsEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("StartedOn")
                         .HasColumnType("datetime2");
 

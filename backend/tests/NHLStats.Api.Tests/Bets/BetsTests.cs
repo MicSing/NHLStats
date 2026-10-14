@@ -793,4 +793,67 @@ public class BetsTests : ApiTestBase
         balanceAfter.Should().Be(balanceBefore + 1.00m,
             "available balance increases by the same 1.00€");
     }
+
+    // ── Seasons without plus/minus points ───────────────────────────────────
+
+    private static async Task DisableSeasonPointsAsync(HttpClient client, int seasonId, string name)
+    {
+        var resp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}", new
+        {
+            name,
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1,
+            pointsEnabled = false
+        });
+        resp.EnsureSuccessStatusCode();
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("pointsEnabled").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Place_bet_on_match_of_season_without_points_returns_400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        const string name = "No Points Betting Season";
+        var seasonId = await CreateSeasonAsync(client, name);
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+        await DisableSeasonPointsAsync(client, seasonId, name);
+
+        var resp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "HostedShutoutWin" } }
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Disabling_season_points_cancels_open_bets_on_its_matches()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        const string name = "Points Switched Off Season";
+        var seasonId = await CreateSeasonAsync(client, name);
+        var matchId = await CreateFutureMatchAsync(client, seasonId);
+        await SeedHostedTeamHistoryAsync(client, seasonId);
+        await EnsureUserLinkedAndSeedPointsAsync(client, seasonId);
+
+        var placeResp = await client.PostAsJsonAsync("/api/betting/bets", new
+        {
+            stake = 1.0,
+            legs = new[] { new { matchId, betType = "HostedShutoutWin" } }
+        });
+        placeResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var betId = (await placeResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        await DisableSeasonPointsAsync(client, seasonId, name);
+
+        var historyResp = await client.GetAsync($"/api/betting/bets/history?seasonId={seasonId}");
+        historyResp.EnsureSuccessStatusCode();
+        var history = await historyResp.Content.ReadFromJsonAsync<JsonElement>();
+        var ticket = history.EnumerateArray().Single(b => b.GetProperty("id").GetString() == betId);
+        ticket.GetProperty("status").GetString().Should().Be("Cancelled");
+    }
 }

@@ -27,6 +27,7 @@ export default function SeasonForm({
 }: SeasonFormProps) {
     const { t } = useTranslation()
     const set = (patch: Partial<CreateSeasonDto>) => onChange({ ...form, ...patch })
+    const pointsEnabled = form.pointsEnabled ?? true
 
     return (
         <form onSubmit={onSubmit}>
@@ -144,6 +145,31 @@ export default function SeasonForm({
                         <option value={GamingConsole.PlayStation}>{t('admin.seasons.consolePlayStation')}</option>
                         <option value={GamingConsole.Xbox}>{t('admin.seasons.consoleXbox')}</option>
                     </select>
+                </div>
+
+                <div className={`flex items-start justify-between gap-4 mb-4${inlineMode ? ' col-span-2' : ''}`}>
+                    <div>
+                        <span id="season-points-enabled-label" className="label">
+                            {t('admin.seasons.pointsEnabled')}
+                        </span>
+                        <p className="text-xs text-text-muted">{t('admin.seasons.pointsEnabledHint')}</p>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={pointsEnabled}
+                        aria-labelledby="season-points-enabled-label"
+                        onClick={() => set({ pointsEnabled: !pointsEnabled })}
+                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                            pointsEnabled ? 'bg-primary' : 'bg-border'
+                        }`}
+                    >
+                        <span
+                            className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                                pointsEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                    </button>
                 </div>
             </div>
 

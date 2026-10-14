@@ -209,6 +209,7 @@ public class BettingOddsService : IBettingOddsService
     {
         var upcomingMatchIds = await _db.Matches
             .Where(m => m.CompletionType == CompletionType.None)
+            .Where(m => m.Season!.PointsEnabled)
             .Select(m => m.Id)
             .ToListAsync();
 
@@ -229,6 +230,7 @@ public class BettingOddsService : IBettingOddsService
         var upcomingMatchIds = await _db.Matches
             .Where(m => m.CompletionType == CompletionType.None)
             .Where(m => !m.MatchDate.HasValue || m.MatchDate.Value > now)
+            .Where(m => m.Season!.PointsEnabled)
             .OrderBy(m => m.MatchDate == null)
             .ThenBy(m => m.MatchDate)
             .ThenByDescending(m => m.Season!.StartedOn)

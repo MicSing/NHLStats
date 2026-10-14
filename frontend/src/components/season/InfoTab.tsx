@@ -25,9 +25,12 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
         leagueType: season.leagueType,
         nhlYear: season.nhlYear,
         console: season.console,
+        pointsEnabled: season.pointsEnabled,
     })
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
+        const pointsEnabled = form.pointsEnabled ?? true
+        if (season.pointsEnabled && !pointsEnabled && !window.confirm(t('admin.seasons.pointsDisableConfirm'))) return
         try {
             const dto: UpdateSeasonDto = { ...form }
             await apiClient.put<Season>(`/api/seasons/${season.id}`, dto)
@@ -42,6 +45,7 @@ export default function InfoTab({ season, teams, onSeasonUpdated, onSeasonDelete
                 leagueType: form.leagueType,
                 nhlYear: form.nhlYear ?? null,
                 console: form.console ?? null,
+                pointsEnabled,
             })
         } catch {
             toast.error(t('toast.operationFailed'))

@@ -11,6 +11,9 @@ public interface IBetService
     Task<PlaceBetResult> PlaceBetAsync(string loginId, CreateBetDto dto);
     Task<(bool Success, string? Error)> CancelBetAsync(Guid betId, string loginId);
     Task CancelBetsForPlayerInMatchAsync(int matchId, int userId);
+
+    /// <summary>Cancels (refunds) every ticket with a pending leg on a not-yet-finished match of the season. Returns how many tickets changed.</summary>
+    Task<int> CancelOpenBetsForSeasonAsync(int seasonId);
     Task EvaluateMatchBetsAsync(int matchId);
     Task ResetMatchBetsAsync(int matchId);
     Task<int> RecalculateCorrelatedLegOddsAsync();

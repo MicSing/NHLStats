@@ -114,6 +114,40 @@ public class MatchesTests : ApiTestBase
     }
 
     [Fact]
+    public async Task GetFuture_skips_matches_of_seasons_without_points()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Future No Points Season",
+            startedOn = "2024-01-01T00:00:00",
+            hostedTeamId = 1,
+            pointsEnabled = false
+        });
+        seasonResp.EnsureSuccessStatusCode();
+        var seasonId = (await seasonResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var created = await CreateMatchAsync(client, seasonId, 1, 2);
+        var matchId = created.GetProperty("id").GetInt32();
+        var updateResp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = DateTime.UtcNow.AddDays(1).ToString("O"),
+            completionType = 0
+        });
+        updateResp.EnsureSuccessStatusCode();
+
+        var resp = await client.GetAsync("/api/matches/future?count=1000");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.EnumerateArray().Should().NotContain(m => m.GetProperty("id").GetInt32() == matchId);
+    }
+
+    [Fact]
     public async Task GetFuture_lists_logged_in_user_bet_via_active_endpoint()
     {
         var client = await CreateAuthenticatedClientAsync();

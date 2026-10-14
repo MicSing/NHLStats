@@ -92,6 +92,7 @@ public class MatchService : IMatchService
                 .ThenInclude(um => um.User)
             .Where(m => m.CompletionType == CompletionType.None)
             .Where(m => !m.MatchDate.HasValue || m.MatchDate.Value > now)
+            .Where(m => m.Season!.PointsEnabled)
             .OrderBy(m => m.MatchDate == null)
             .ThenBy(m => m.MatchDate)
             .ThenByDescending(m => m.Season!.StartedOn)
@@ -368,6 +369,13 @@ public class MatchService : IMatchService
             // Create UserMatchPoint records so reasons are visible in the UI.
             // Negative points → PointReason Id=1 ("Penalty", IsPositive=false)
             // Positive points → PointReason Id=9 ("Penalty", IsPositive=true)
+            // A season without plus/minus points keeps the players but records no points.
+            var pointsEnabled = await _db.Seasons
+                .Where(s => s.Id == seasonId)
+                .Select(s => (bool?)s.PointsEnabled)
+                .FirstOrDefaultAsync() ?? true;
+            if (!pointsEnabled) userPointsPairs.Clear();
+
             var pointEntries = new List<UserMatchPoint>();
             foreach (var (um, up) in userPointsPairs)
             {
