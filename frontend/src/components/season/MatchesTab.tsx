@@ -18,7 +18,7 @@ import CompletionBadge from '../CompletionBadge'
 import LoadingSpinner from '../LoadingSpinner'
 import useTable from '../../hooks/useTable'
 import { TableCard, TableHead, ActionCell, PrimaryButton, SecondaryButton } from './SeasonPrimitives'
-import { normalizeCompletionType } from './seasonUtils'
+import { normalizeCompletionType, teamsForLeague } from './seasonUtils'
 import BulkMatchCreator from './BulkMatchCreator'
 import PlayoffSeriesCreator from './PlayoffSeriesCreator'
 import { CreateMatchForm, EditMatchForm } from './MatchForms'
@@ -222,6 +222,12 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
         }
     }
 
+    const leagueTeams = teamsForLeague(teams, leagueType)
+    // Keep the edited match's own teams selectable even if they belong to another league.
+    const editTeams = editMatch
+        ? teams.filter((tm) => leagueTeams.includes(tm) || tm.id === editMatch.homeTeamId || tm.id === editMatch.awayTeamId)
+        : leagueTeams
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -368,7 +374,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
                     onClose={() => setShowAddModal(false)}
                 >
                     <CreateMatchForm
-                        teams={teams}
+                        teams={leagueTeams}
                         form={createForm}
                         onChange={setCreateForm}
                         onSubmit={(e) => void handleCreate(e)}
@@ -383,7 +389,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
                     onClose={() => setEditMatch(null)}
                 >
                     <EditMatchForm
-                        teams={teams}
+                        teams={editTeams}
                         form={editForm}
                         onChange={setEditForm}
                         onSubmit={(e) => void handleEdit(e)}
@@ -409,7 +415,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
                 >
                     <BulkMatchCreator
                         seasonId={seasonId}
-                        teams={teams}
+                        teams={leagueTeams}
                         seasonUsers={seasonUsers}
                         onSuccess={() => {
                             setShowBulkModal(false)
@@ -427,7 +433,7 @@ export default function MatchesTab({ seasonId, teams, seasonUsers, hostedTeamId,
                 >
                     <PlayoffSeriesCreator
                         seasonId={seasonId}
-                        teams={teams}
+                        teams={leagueTeams}
                         hostedTeamId={hostedTeamId}
                         leagueType={leagueType}
                         onSuccess={() => {

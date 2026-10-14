@@ -1,6 +1,6 @@
 import { CompletionType } from '../../types/match'
 import type { WeekGroup } from '../../types/stats'
-import type { LeagueTypeValue } from '../../types/team'
+import type { LeagueTypeValue, Team } from '../../types/team'
 
 export function normalizeCompletionType(value: CompletionType | string | number | null | undefined): CompletionType {
     if (value === null || value === undefined) return CompletionType.None
@@ -79,4 +79,11 @@ export function getPlayoffRoundName(round: number, leagueType: LeagueTypeValue, 
             default: return t('season.playoffRound', { number: round })
         }
     }
+}
+
+// Teams playing in the given league. Falls back to every team when none are tagged with that
+// league yet, so a season is never left without anything to pick.
+export function teamsForLeague(teams: Team[], leagueType: LeagueTypeValue): Team[] {
+    const leagueTeams = teams.filter((tm) => tm.leagueType === leagueType)
+    return leagueTeams.length > 0 ? leagueTeams : teams
 }
