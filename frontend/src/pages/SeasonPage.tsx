@@ -428,6 +428,7 @@ export default function SeasonPage() {
                                     isDesktop={isDesktop}
                                     hostedTeamId={currentSeason?.hostedTeamId ?? null}
                                     pendingOddsMatchIds={isAdmin ? pendingOddsMatchIds : []}
+                                    isAdmin={isAdmin}
                                 />
                             </div>
                         ) : (
@@ -468,6 +469,7 @@ export default function SeasonPage() {
                                             allMatches={allMatches}
                                             seasonId={seasonId}
                                             seasons={seasons}
+                                            isAdmin={isAdmin}
                                         />
                                     </div>
                                 </div>

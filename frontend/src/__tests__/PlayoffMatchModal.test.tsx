@@ -188,4 +188,25 @@ describe('PlayoffMatchModal', () => {
         expect(screen.queryByText('Summary table')).not.toBeInTheDocument()
         expect(screen.getByRole('heading', { level: 3, name: /goals|góly/i })).toBeInTheDocument()
     })
+
+    test('links to the match page only for admins', async () => {
+        vi.mocked(apiClient.get).mockImplementation(() => Promise.resolve([]) as never)
+
+        const { rerender } = render(
+            <MemoryRouter>
+                <PlayoffMatchModal match={sampleMatch} seasonId={1} onClose={vi.fn()} />
+            </MemoryRouter>
+        )
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { level: 3, name: /goals|góly/i })).toBeInTheDocument()
+        })
+        expect(screen.queryByRole('link', { name: /open match page|prejsť na stránku zápasu/i })).not.toBeInTheDocument()
+
+        rerender(
+            <MemoryRouter>
+                <PlayoffMatchModal match={sampleMatch} seasonId={1} isAdmin onClose={vi.fn()} />
+            </MemoryRouter>
+        )
+        expect(screen.getByRole('link', { name: /open match page|prejsť na stránku zápasu/i })).toBeInTheDocument()
+    })
 })

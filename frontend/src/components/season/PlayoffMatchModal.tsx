@@ -32,6 +32,8 @@ interface Props {
     summary?: ReactNode
     // Extra buttons/links rendered in the footer next to the match page link.
     footerActions?: ReactNode
+    // The match page is admin-only (stats editing), so the link to it is too.
+    isAdmin?: boolean
     onClose: () => void
 }
 
@@ -47,7 +49,7 @@ function isDecisive(match: Match): boolean {
     return ct === CompletionType.RegularTime || ct === CompletionType.Overtime || ct === CompletionType.Shootout
 }
 
-export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, hostedTeamId, summary, footerActions, onClose }: Props) {
+export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, hostedTeamId, summary, footerActions, isAdmin = false, onClose }: Props) {
     const { t } = useTranslation()
     const titleId = useId()
     const [loading, setLoading] = useState(false)
@@ -502,13 +504,15 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                 {/* Footer */}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-border bg-bg/40 text-xs">
                     <div className="flex flex-wrap items-center gap-3">
-                        <Link
-                            to={`/seasons/${seasonId}/matches/${match.id}`}
-                            className="text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition-colors"
-                        >
-                            <span>{t('season.playoffGoToMatch')}</span>
-                            <ArrowSquareOutIcon size={14} />
-                        </Link>
+                        {isAdmin && (
+                            <Link
+                                to={`/seasons/${seasonId}/matches/${match.id}`}
+                                className="text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition-colors"
+                            >
+                                <span>{t('season.playoffGoToMatch')}</span>
+                                <ArrowSquareOutIcon size={14} />
+                            </Link>
+                        )}
                         {footerActions}
                     </div>
                     <button

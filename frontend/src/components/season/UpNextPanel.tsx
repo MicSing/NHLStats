@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Match } from '../../types/match'
@@ -8,12 +9,21 @@ interface Props {
     allMatches: Match[]
     seasonId: number
     seasons: Season[]
+    isAdmin?: boolean
+}
+
+// The match page is admin-only (stats editing), so only admins get a link to it.
+function MatchLink({ to, isAdmin, className, children }: { to: string; isAdmin: boolean; className: string; children: ReactNode }) {
+    return isAdmin
+        ? <Link to={to} className={className}>{children}</Link>
+        : <div className={className}>{children}</div>
 }
 
 export default function UpNextPanel({
     allMatches,
     seasonId,
     seasons,
+    isAdmin = false,
 }: Props) {
     const { t } = useTranslation()
 
@@ -64,8 +74,9 @@ export default function UpNextPanel({
                 </div>
 
                 {/* Teams */}
-                <Link
+                <MatchLink
                     to={`/seasons/${seasonId}/matches/${upNext.id}`}
+                    isAdmin={isAdmin}
                     className="flex items-center justify-between relative z-10 group/link"
                 >
                     <div className="flex flex-col items-center gap-2 w-2/5">
@@ -103,7 +114,7 @@ export default function UpNextPanel({
                         )}
                         <span className="text-sm font-bold text-center leading-tight text-text-muted">{upNext.awayTeamName}</span>
                     </div>
-                </Link>
+                </MatchLink>
             </div>
 
             {/* Upcoming matches list */}
@@ -114,9 +125,10 @@ export default function UpNextPanel({
                     </h3>
                     <div className="space-y-2">
                         {upcoming.map((m) => (
-                            <Link
+                            <MatchLink
                                 key={m.id}
                                 to={`/seasons/${seasonId}/matches/${m.id}`}
+                                isAdmin={isAdmin}
                                 className="group flex items-center gap-3 bg-surface border border-border rounded p-2.5 hover:border-primary/50 transition-colors"
                             >
                                 <span className="text-[11px] font-bold text-text-muted w-6 shrink-0 tabular-nums">
@@ -125,7 +137,7 @@ export default function UpNextPanel({
                                 <span className="text-sm font-medium text-text-muted group-hover:text-text transition-colors truncate">
                                     {m.homeTeamName} {t('season.vs')} {m.awayTeamName}
                                 </span>
-                            </Link>
+                            </MatchLink>
                         ))}
                     </div>
                 </div>

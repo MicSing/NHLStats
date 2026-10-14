@@ -234,6 +234,7 @@ export default function WeeklyMatches({
                     seasonId={seasonId}
                     roundName={t('season.week', { number: openGroup.weekNumber })}
                     hostedTeamId={hostedTeamId}
+                    isAdmin={isAdmin}
                     onClose={onCloseMatch}
                     summary={
                         <div className="rounded-lg border border-border overflow-hidden">
