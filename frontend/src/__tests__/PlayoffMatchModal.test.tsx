@@ -163,4 +163,29 @@ describe('PlayoffMatchModal', () => {
         const urls = vi.mocked(apiClient.get).mock.calls.map(([url]) => String(url))
         expect(urls.some((u) => /\/api\/usermatches\/\d+\//.test(u))).toBe(false)
     })
+
+    test('opens on the summary tab when summary content is given', async () => {
+        vi.mocked(apiClient.get).mockImplementation(() => Promise.resolve([]) as never)
+
+        render(
+            <MemoryRouter>
+                <PlayoffMatchModal
+                    match={sampleMatch}
+                    seasonId={1}
+                    summary={<p>Summary table</p>}
+                    footerActions={<button type="button">Extra action</button>}
+                    onClose={vi.fn()}
+                />
+            </MemoryRouter>
+        )
+
+        expect(await screen.findByText('Summary table')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Extra action' })).toBeInTheDocument()
+        const statsTab = screen.getByRole('button', { name: /stats summary|súhrn štatistík/i })
+        expect(screen.getByRole('button', { name: /^summary$|^sumár$/i })).toBeInTheDocument()
+
+        await userEvent.click(statsTab)
+        expect(screen.queryByText('Summary table')).not.toBeInTheDocument()
+        expect(screen.getByRole('heading', { level: 3, name: /goals|góly/i })).toBeInTheDocument()
+    })
 })

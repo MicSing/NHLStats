@@ -255,6 +255,8 @@
         "playoffOddsPending": "odds…",
         "playoffVs": "vs",
         "playoffTimeline": "Timeline",
+        "matchDetails": "Match details",
+        "matchSummary": "Summary",
         "playoffStatsSummary": "Stats Summary",
         "playoffNoEventsNotice": "No event timeline recorded for this match."
     },

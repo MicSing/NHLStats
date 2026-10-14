@@ -102,14 +102,16 @@ describe('SeasonPage', () => {
             expect(screen.getByText(/3 penalties/i)).toBeInTheDocument()
         })
 
-        test('clicking a match expands it inline', async () => {
+        test('clicking a match opens its detail modal on the summary tab', async () => {
             const user = userEvent.setup()
             renderSeasonPage('/seasons/1')
-            // Click the expand button on the match card
-            const expandBtn = await screen.findByRole('button', { name: /▼/ })
-            await user.click(expandBtn)
-            // Expanded section shows the tickets column header (bet column was replaced by a tickets link)
-            expect(await screen.findAllByText(/tickets/i)).not.toHaveLength(0)
+            const openBtn = await screen.findByRole('button', { name: /match details/i })
+            await user.click(openBtn)
+            const dialog = await screen.findByRole('dialog')
+            expect(within(dialog).getByRole('button', { name: /^summary$/i })).toBeInTheDocument()
+            expect(within(dialog).getByRole('button', { name: /stats summary/i })).toBeInTheDocument()
+            // Summary tab shows the per-player table with its tickets column
+            expect(within(dialog).getByRole('columnheader', { name: /tickets/i })).toBeInTheDocument()
         })
     })
 

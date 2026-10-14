@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CaretDownIcon, ArrowsClockwiseIcon, PencilSimpleIcon, TicketIcon } from '@phosphor-icons/react'
+import { CaretRightIcon, ArrowsClockwiseIcon, TicketIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 import type { WeekGroup } from '../../types/stats'
 import type { Match } from '../../types/match'
@@ -9,6 +9,7 @@ import { CompletionType } from '../../types/match'
 import { teamLogoUrl } from '../../utils/teamLogoUrl'
 import CompletionBadge from '../CompletionBadge'
 import ExpandedMatchSection, { type MatchExpandDetail } from './ExpandedMatchSection'
+import PlayoffMatchModal from './PlayoffMatchModal'
 import { normalizeCompletionType, aggregateWeekUsers } from './seasonUtils'
 
 function StatsTooltip({
@@ -66,12 +67,13 @@ interface Props {
     allMatches: Match[]
     seasonId: number
     seasons: Season[]
-    expandedMatchId: number | null
+    openMatchId: number | null
     matchDetailCache: Map<number, MatchExpandDetail>
     reEvaluatingMatchId: number | null
     isAdmin: boolean
     allBets: BetDto[]
-    onToggleExpand: (matchId: number) => void
+    onOpenMatch: (matchId: number) => void
+    onCloseMatch: () => void
     onReEvaluateBets: (matchId: number) => void
 }
 
@@ -80,12 +82,13 @@ export default function WeeklyMatches({
     allMatches,
     seasonId,
     seasons,
-    expandedMatchId,
+    openMatchId,
     matchDetailCache,
     reEvaluatingMatchId,
     isAdmin,
     allBets,
-    onToggleExpand,
+    onOpenMatch,
+    onCloseMatch,
     onReEvaluateBets,
 }: Props) {
     const { t } = useTranslation()
@@ -95,6 +98,15 @@ export default function WeeklyMatches({
     const matchNumberById = new Map(allMatches.map((m) => [m.id, m.matchNumber]))
     const season = seasons.find((s) => s.id === seasonId)
     const hostedTeamId = season?.hostedTeamId ?? null
+
+    const openGroup = openMatchId != null ? weekGroups.find((g) => g.matches.some((m) => m.matchId === openMatchId)) : undefined
+    const openWeekMatch = openGroup?.matches.find((m) => m.matchId === openMatchId)
+    const openMatch = openMatchId != null ? allMatches.find((m) => m.id === openMatchId) ?? null : null
+    const openCompletionType = openWeekMatch ? normalizeCompletionType(openWeekMatch.completionType) : CompletionType.None
+    const openMatchCompleted =
+        openCompletionType === CompletionType.RegularTime ||
+        openCompletionType === CompletionType.Overtime ||
+        openCompletionType === CompletionType.Shootout
 
     return (
         <section aria-label="Weekly matches">
@@ -139,8 +151,6 @@ export default function WeeklyMatches({
                                     completionType === CompletionType.Overtime ||
                                     completionType === CompletionType.Shootout
                                 const matchNumber = matchNumberById.get(m.matchId)
-                                const isExpanded = expandedMatchId === m.matchId
-                                const detail = matchDetailCache.get(m.matchId)
                                 const homeLogo = teamLogoUrl(m.homeTeamShortName ?? '')
                                 const awayLogo = teamLogoUrl(m.awayTeamShortName ?? '')
                                 const homeWins = m.homeScore > m.awayScore
@@ -158,7 +168,7 @@ export default function WeeklyMatches({
                                     >
                                         <button
                                             type="button"
-                                            onClick={() => onToggleExpand(m.matchId)}
+                                            onClick={() => onOpenMatch(m.matchId)}
                                             className="p-2.5 sm:p-3 flex items-center justify-between w-full text-left hover:bg-bg/40 transition-colors group gap-1"
                                         >
                                             {/* Home team */}
@@ -202,66 +212,67 @@ export default function WeeklyMatches({
                                                     className="w-6 h-6 sm:w-7 sm:h-7 object-contain flex-shrink-0"
                                                     onError={(e) => { ; (e.target as HTMLImageElement).style.display = 'none' }}
                                                 />
-                                                <CaretDownIcon
+                                                <CaretRightIcon
                                                     size={16}
                                                     aria-hidden="true"
-                                                    className={`text-text-muted group-hover:text-text transition-all flex-shrink-0 duration-200 ml-0.5 ${isExpanded ? 'rotate-180' : ''}`}
+                                                    className="text-text-muted group-hover:text-text transition-colors flex-shrink-0 ml-0.5"
                                                 />
-                                                <span className="sr-only">{isExpanded ? '▲' : '▼'}</span>
+                                                <span className="sr-only">{t('season.matchDetails')}</span>
                                             </div>
                                         </button>
 
-                                        {isExpanded && (
-                                            <div>
-                                                <ExpandedMatchSection
-                                                    users={m.users ?? []}
-                                                    detail={detail}
-                                                    ticketCounts={allBets.reduce<Record<string, number>>((acc, bet) => {
-                                                        if (bet.legs.some(l => l.matchId === m.matchId)) {
-                                                             acc[bet.createdByName] = (acc[bet.createdByName] ?? 0) + 1
-                                                        }
-                                                        return acc
-                                                    }, {})}
-                                                />
-                                                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 sm:p-3 border-t border-border/50 bg-bg/30">
-                                                    <Link
-                                                        to={`/betting?tab=tickets&seasonId=${seasonId}&week=${seasonId}:${group.weekNumber}${matchNumber != null ? `&matchNumber=${matchNumber}` : ''}`}
-                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
-                                                    >
-                                                        <TicketIcon size={12} />
-                                                        <span>{t('season.viewTickets')}</span>
-                                                    </Link>
-                                                    {isAdmin && (
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            {isCompleted && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => onReEvaluateBets(m.matchId)}
-                                                                    disabled={reEvaluatingMatchId === m.matchId}
-                                                                    className="group flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
-                                                                >
-                                                                    <ArrowsClockwiseIcon size={12} />
-                                                                    <span>{reEvaluatingMatchId === m.matchId ? '…' : t('season.reEvaluateBets')}</span>
-                                                                </button>
-                                                            )}
-                                                            <Link
-                                                                to={`/seasons/${seasonId}/matches/${m.matchId}`}
-                                                                className="group flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
-                                                            >
-                                                                <PencilSimpleIcon size={12} />
-                                                                <span>{t('season.editMatch')}</span>
-                                                            </Link>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 )
                             })}
                     </div>
                 </div>
             ))}
+
+            {openMatch && openWeekMatch && openGroup && (
+                <PlayoffMatchModal
+                    match={openMatch}
+                    seasonId={seasonId}
+                    roundName={t('season.week', { number: openGroup.weekNumber })}
+                    hostedTeamId={hostedTeamId}
+                    onClose={onCloseMatch}
+                    summary={
+                        <div className="rounded-lg border border-border overflow-hidden">
+                            <ExpandedMatchSection
+                                users={openWeekMatch.users ?? []}
+                                detail={matchDetailCache.get(openWeekMatch.matchId)}
+                                ticketCounts={allBets.reduce<Record<string, number>>((acc, bet) => {
+                                    if (bet.legs.some(l => l.matchId === openWeekMatch.matchId)) {
+                                        acc[bet.createdByName] = (acc[bet.createdByName] ?? 0) + 1
+                                    }
+                                    return acc
+                                }, {})}
+                            />
+                        </div>
+                    }
+                    footerActions={
+                        <>
+                            <Link
+                                to={`/betting?tab=tickets&seasonId=${seasonId}&week=${seasonId}:${openGroup.weekNumber}&matchNumber=${openMatch.matchNumber}`}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-primary hover:text-primary"
+                            >
+                                <TicketIcon size={12} />
+                                <span>{t('season.viewTickets')}</span>
+                            </Link>
+                            {isAdmin && openMatchCompleted && (
+                                <button
+                                    type="button"
+                                    onClick={() => onReEvaluateBets(openWeekMatch.matchId)}
+                                    disabled={reEvaluatingMatchId === openWeekMatch.matchId}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border border-border rounded transition-colors hover:border-text hover:text-text disabled:opacity-50"
+                                >
+                                    <ArrowsClockwiseIcon size={12} />
+                                    <span>{reEvaluatingMatchId === openWeekMatch.matchId ? '…' : t('season.reEvaluateBets')}</span>
+                                </button>
+                            )}
+                        </>
+                    }
+                />
+            )}
         </section>
     )
 }
