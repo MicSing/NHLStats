@@ -378,6 +378,14 @@ public class UserMatchService : IUserMatchService
                reason.PointType == PointType.Positive ? count * config.PositivePointValue : 0m;
     }
 
+    public const string PointsDisabledError = "Plus/minus points are disabled for this season.";
+
+    private async Task<bool> ArePointsEnabledAsync(int seasonId) =>
+        await _db.Seasons
+            .Where(s => s.Id == seasonId)
+            .Select(s => (bool?)s.PointsEnabled)
+            .FirstOrDefaultAsync() ?? true;
+
     public async Task<(UserMatchPointDto? result, string? error)> AddPointAsync(
         int userMatchId, CreateUserMatchPointDto dto)
     {
@@ -391,6 +399,8 @@ public class UserMatchService : IUserMatchService
         var reason = await _db.PointReasons.FindAsync(dto.PointReasonId);
         if (reason == null)
             return (null, $"PointReason {dto.PointReasonId} not found.");
+        if (reason.PointType != PointType.Neutral && !await ArePointsEnabledAsync(userMatch.SeasonId))
+            return (null, PointsDisabledError);
 
         var amount = dto.Amount ?? await ComputePointAmountAsync(userMatchId, reason, dto.Count);
         var point = new UserMatchPoint
@@ -455,6 +465,8 @@ public class UserMatchService : IUserMatchService
         var newReason = await _db.PointReasons.FindAsync(dto.PointReasonId);
         if (newReason == null)
             return (null, $"PointReason {dto.PointReasonId} not found.");
+        if (newReason.PointType != PointType.Neutral && !await ArePointsEnabledAsync(userMatch.SeasonId))
+            return (null, PointsDisabledError);
 
         point.PointReasonId = dto.PointReasonId;
         point.Count = dto.Count;
@@ -486,6 +498,9 @@ public class UserMatchService : IUserMatchService
 
     public async Task ApplyMatchEndAutoPointsAsync(int matchId, int homeScore, int awayScore, int? hostedTeamId, int homeTeamId)
     {
+        var seasonId = await _db.Matches.Where(m => m.Id == matchId).Select(m => m.SeasonId).FirstOrDefaultAsync();
+        if (!await ArePointsEnabledAsync(seasonId)) return;
+
         bool hostedIsHome = homeTeamId == hostedTeamId;
         int hostedScore = hostedIsHome ? homeScore : awayScore;
         int opponentScore = hostedIsHome ? awayScore : homeScore;

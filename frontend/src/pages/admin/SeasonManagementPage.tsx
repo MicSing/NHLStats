@@ -40,6 +40,7 @@ export default function SeasonManagementPage() {
         status: 'Active',
         hostedTeamId: null,
         leagueType: LeagueType.NHL,
+        pointsEnabled: true,
     })
     const [addForm, setAddForm] = useState<CreateSeasonDto>(emptyAddForm)
 

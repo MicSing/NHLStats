@@ -11,11 +11,13 @@ public class SeasonsController : ControllerBase
 {
     private readonly ISeasonService _service;
     private readonly IPositionWheelService _positionWheel;
+    private readonly IBetService _betService;
 
-    public SeasonsController(ISeasonService service, IPositionWheelService positionWheel)
+    public SeasonsController(ISeasonService service, IPositionWheelService positionWheel, IBetService betService)
     {
         _service = service;
         _positionWheel = positionWheel;
+        _betService = betService;
     }
 
     [HttpGet]
@@ -44,7 +46,13 @@ public class SeasonsController : ControllerBase
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
         var updated = await _service.UpdateAsync(id, dto);
-        return updated == null ? NotFound() : Ok(updated);
+        if (updated == null) return NotFound();
+
+        // Without plus/minus points the season's matches can't be bet on, so open tickets are refunded.
+        if (!updated.PointsEnabled)
+            await _betService.CancelOpenBetsForSeasonAsync(id);
+
+        return Ok(updated);
     }
 
     [Authorize]

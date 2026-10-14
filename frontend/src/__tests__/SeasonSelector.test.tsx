@@ -16,6 +16,7 @@ const mockSeasons: Season[] = [
         leagueType: 'NHL',
         nhlYear: null,
         console: null,
+        pointsEnabled: true,
     },
     {
         id: 2,
@@ -28,6 +29,7 @@ const mockSeasons: Season[] = [
         leagueType: 'NHL',
         nhlYear: null,
         console: null,
+        pointsEnabled: true,
     },
 ]
 

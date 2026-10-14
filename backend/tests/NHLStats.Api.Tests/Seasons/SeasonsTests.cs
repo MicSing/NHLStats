@@ -51,6 +51,39 @@ public class SeasonsTests : ApiTestBase
         body.GetProperty("id").GetInt32().Should().BePositive();
     }
 
+    [Fact]
+    public async Task Create_defaults_to_points_enabled()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "Points Default Season",
+            startedOn = "2024-01-15T00:00:00"
+        });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("pointsEnabled").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Create_with_points_disabled_persists_flag()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var resp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name = "No Points Season",
+            startedOn = "2024-01-15T00:00:00",
+            pointsEnabled = false
+        });
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var id = (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var getResp = await client.GetAsync($"/api/seasons/{id}");
+        var season = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        season.GetProperty("pointsEnabled").GetBoolean().Should().BeFalse();
+    }
+
     // ── PUT /api/seasons/{id} ───────────────────────────────────────────────
 
     [Fact]

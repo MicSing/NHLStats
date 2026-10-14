@@ -324,6 +324,59 @@ public class UserMatchTests : ApiTestBase
         points[0].GetProperty("count").GetInt32().Should().Be(3);
     }
 
+    private async Task<int> CreatePointlessSeasonUserMatchAsync(HttpClient client, string name)
+    {
+        var seasonResp = await client.PostAsJsonAsync("/api/seasons", new
+        {
+            name,
+            startedOn = "2024-01-01T00:00:00",
+            pointsEnabled = false
+        });
+        seasonResp.EnsureSuccessStatusCode();
+        var seasonId = (await seasonResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var userId = await CreateUserAsync(client, $"{name} Player");
+        await AssignUserToSeasonAsync(client, seasonId, userId);
+        var matchId = await CreateMatchAsync(client, seasonId);
+
+        var umResp = await client.PostAsJsonAsync(
+            $"/api/seasons/{seasonId}/matches/{matchId}/usermatches",
+            new { userId });
+        umResp.EnsureSuccessStatusCode();
+        return (await umResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    [Theory]
+    [InlineData(1)]  // Penalty (Negative)
+    [InlineData(9)]  // Penalty (Positive)
+    public async Task AddPoint_plus_minus_reason_in_season_without_points_returns_400(int pointReasonId)
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var umId = await CreatePointlessSeasonUserMatchAsync(client, $"UM NoPoints {pointReasonId}");
+
+        var addResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{umId}/points",
+            new { pointReasonId, count = 1 });
+
+        addResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var points = await (await client.GetAsync($"/api/usermatches/{umId}/points"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        points.GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AddPoint_neutral_reason_in_season_without_points_returns_201()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var umId = await CreatePointlessSeasonUserMatchAsync(client, "UM NoPoints Neutral");
+
+        // PointReason 21 = "Offside" (Neutral)
+        var addResp = await client.PostAsJsonAsync(
+            $"/api/usermatches/{umId}/points",
+            new { pointReasonId = 21, count = 1 });
+
+        addResp.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
     [Fact]
     public async Task UpdatePoint_updates_point_reason_and_count()
     {

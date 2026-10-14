@@ -16,7 +16,7 @@ public class SeasonService : ISeasonService
         s.Id, s.Name, s.HostedTeamId,
         s.HostedTeam?.Name,
         s.StartedOn, s.Status, s.ParentSeasonId,
-        s.LeagueType, s.NhlYear, s.Console);
+        s.LeagueType, s.NhlYear, s.Console, s.PointsEnabled);
 
     private static SeasonDetailDto ToDetailDto(Season s) => new(
         s.Id, s.Name, s.HostedTeamId,
@@ -25,7 +25,7 @@ public class SeasonService : ISeasonService
         s.SeasonUsers?
             .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive))
             .ToList() ?? [],
-        s.LeagueType, s.NhlYear, s.Console);
+        s.LeagueType, s.NhlYear, s.Console, s.PointsEnabled);
 
     public async Task<IEnumerable<SeasonDto>> GetAllAsync() =>
         await _db.Seasons
@@ -56,7 +56,8 @@ public class SeasonService : ISeasonService
             ParentSeasonId = dto.ParentSeasonId,
             LeagueType = dto.LeagueType,
             NhlYear = dto.NhlYear,
-            Console = dto.Console
+            Console = dto.Console,
+            PointsEnabled = dto.PointsEnabled
         };
         _db.Seasons.Add(season);
         await _db.SaveChangesAsync();
@@ -76,6 +77,7 @@ public class SeasonService : ISeasonService
         season.LeagueType = dto.LeagueType;
         season.NhlYear = dto.NhlYear;
         season.Console = dto.Console;
+        season.PointsEnabled = dto.PointsEnabled;
         await _db.SaveChangesAsync();
         return ToDto(season);
     }

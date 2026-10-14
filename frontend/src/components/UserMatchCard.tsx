@@ -43,6 +43,8 @@ interface Props {
     pointReasons: PointReason[]
     allUserMatches: UserMatch[]
     isAuth: boolean
+    /** False in a season without plus/minus points: only neutral points can be recorded. */
+    pointsEnabled?: boolean
     onChanged: (extraUserMatchId?: number) => void
     onDeleted?: () => void
     onGoalAdded?: () => Promise<void>
@@ -61,6 +63,7 @@ export default function UserMatchCard({
     pointReasons,
     allUserMatches,
     isAuth,
+    pointsEnabled = true,
     onChanged,
     onDeleted,
     onGoalAdded,
@@ -371,12 +374,16 @@ export default function UserMatchCard({
                 </h2>
                 <div className="flex items-center gap-2 sm:gap-3">
                     <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-mono bg-bg px-2.5 sm:px-3 py-1 rounded-full border border-border">
-                        <span className="text-success font-bold">+{totalPlus}</span>
-                        <span className="text-border">|</span>
-                        <span className="text-danger font-bold">−{totalMinus}</span>
-                        {totalNeutral > 0 && (
+                        {pointsEnabled && (
                             <>
+                                <span className="text-success font-bold">+{totalPlus}</span>
                                 <span className="text-border">|</span>
+                                <span className="text-danger font-bold">−{totalMinus}</span>
+                            </>
+                        )}
+                        {(totalNeutral > 0 || !pointsEnabled) && (
+                            <>
+                                {pointsEnabled && <span className="text-border">|</span>}
                                 <span className="text-text-muted font-bold flex items-center gap-1">
                                     <span className="h-1.5 w-1.5 rounded-full border border-text-muted inline-block" />
                                     {totalNeutral}
@@ -561,7 +568,10 @@ export default function UserMatchCard({
                             <button
                                 type="button"
                                 disabled={actionInProgress}
-                                onClick={() => handleOpenGoalModal('PowerPlay')}
+                                onClick={() =>
+                                    // A PP goal awards a positive point to the player who drew the penalty.
+                                    pointsEnabled ? handleOpenGoalModal('PowerPlay') : void handleAddGoal('PowerPlay')
+                                }
                                 className="bg-border hover:bg-border/70 text-primary border border-border text-[11px] sm:text-xs py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
                             >
                                 PP
@@ -600,67 +610,72 @@ export default function UserMatchCard({
                             {t('userMatchCard.points')}
                         </h3>
 
-                        {/* Negative row */}
-                        <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
-                            <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-danger text-[10px] font-bold uppercase tracking-wider">
-                                <MinusCircleIcon size={13} />
-                                {t('common.negative')}
-                            </div>
-                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                                {(showMore.Negative ? negativeReasons.filter((r) => r.isActive) : sortByOrder(negativeReasons, NEGATIVE_ORDER))
-                                    .map((reason) => (
-                                        <button
-                                            key={reason.id}
-                                            type="button"
-                                            disabled={actionInProgress}
-                                            onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Negative')}`}
-                                        >
-                                            {reason.name}
-                                        </button>
-                                    ))}
-                                {negativeReasons.filter((r) => r.isActive).length > NEGATIVE_ORDER.length && (
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleShowMore('Negative')}
-                                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
-                                    >
-                                        {showMore.Negative ? t('common.showLess') : t('common.showMore')}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                        {pointsEnabled && (
+                            <>
+                                {/* Negative row */}
+                                <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
+                                    <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-danger text-[10px] font-bold uppercase tracking-wider">
+                                        <MinusCircleIcon size={13} />
+                                        {t('common.negative')}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                        {(showMore.Negative ? negativeReasons.filter((r) => r.isActive) : sortByOrder(negativeReasons, NEGATIVE_ORDER))
+                                            .map((reason) => (
+                                                <button
+                                                    key={reason.id}
+                                                    type="button"
+                                                    disabled={actionInProgress}
+                                                    onClick={() => void handleAddPoint(reason.id)}
+                                                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Negative')}`}
+                                                >
+                                                    {reason.name}
+                                                </button>
+                                            ))}
+                                        {negativeReasons.filter((r) => r.isActive).length > NEGATIVE_ORDER.length && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleShowMore('Negative')}
+                                                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                            >
+                                                {showMore.Negative ? t('common.showLess') : t('common.showMore')}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
-                        {/* Positive row */}
-                        <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
-                            <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-success text-[10px] font-bold uppercase tracking-wider">
-                                <PlusCircleIcon size={13} />
-                                {t('common.positive')}
-                            </div>
-                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                                {(showMore.Positive ? positiveReasons.filter((r) => r.isActive) : sortByOrder(positiveReasons, POSITIVE_ORDER))
-                                    .map((reason) => (
-                                        <button
-                                            key={reason.id}
-                                            type="button"
-                                            disabled={actionInProgress}
-                                            onClick={() => void handleAddPoint(reason.id)}
-                                            className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Positive')}`}
-                                        >
-                                            {reason.name}
-                                        </button>
-                                    ))}
-                                {positiveReasons.filter((r) => r.isActive).length > POSITIVE_ORDER.length && (
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleShowMore('Positive')}
-                                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
-                                    >
-                                        {showMore.Positive ? t('common.showLess') : t('common.showMore')}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                                {/* Positive row */}
+                                <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">
+                                    <div className="flex items-center gap-1.5 sm:w-24 flex-shrink-0 text-success text-[10px] font-bold uppercase tracking-wider">
+                                        <PlusCircleIcon size={13} />
+                                        {t('common.positive')}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                        {(showMore.Positive ? positiveReasons.filter((r) => r.isActive) : sortByOrder(positiveReasons, POSITIVE_ORDER))
+                                            .map((reason) => (
+                                                <button
+                                                    key={reason.id}
+                                                    type="button"
+                                                    disabled={actionInProgress}
+                                                    onClick={() => void handleAddPoint(reason.id)}
+                                                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold cursor-pointer transition-all active:scale-[0.98] border disabled:opacity-40 ${reasonChipClass('Positive')}`}
+                                                >
+                                                    {reason.name}
+                                                </button>
+                                            ))}
+                                        {positiveReasons.filter((r) => r.isActive).length > POSITIVE_ORDER.length && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleShowMore('Positive')}
+                                                className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold text-text-muted hover:text-text border border-dashed border-border hover:border-text-muted transition-all"
+                                            >
+                                                {showMore.Positive ? t('common.showLess') : t('common.showMore')}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                            </>
+                        )}
 
                         {/* Neutral row */}
                         <div className="bg-surface/50 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg flex flex-col sm:flex-row gap-1.5 sm:gap-2 sm:items-center">

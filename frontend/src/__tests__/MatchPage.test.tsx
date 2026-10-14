@@ -5,6 +5,31 @@ import { AuthProvider } from '../context/AuthContext'
 import { ToastProvider } from '../context/ToastContext'
 import apiClient from '../services/apiClient'
 import MatchPage from '../pages/MatchPage'
+import { rest } from 'msw'
+import { server } from '../mocks/server'
+
+const BASE = 'http://localhost:5000'
+
+function useSeasonWithoutPoints() {
+    server.use(
+        rest.get(`${BASE}/api/seasons/1`, (_req, res, ctx) =>
+            res(
+                ctx.json({
+                    id: 1,
+                    name: '2023-24',
+                    hostedTeamId: 1,
+                    hostedTeamName: 'Boston Bruins',
+                    startedOn: '2023-10-01T00:00:00',
+                    status: 'Active',
+                    parentSeasonId: null,
+                    leagueType: 'NHL',
+                    pointsEnabled: false,
+                    users: [],
+                }),
+            ),
+        ),
+    )
+}
 
 function renderMatchPage({ authenticated = true } = {}) {
     if (authenticated) {
@@ -210,5 +235,40 @@ describe('MatchPage', () => {
         expect(urls.filter((u) => u.includes('/usermatches/details'))).toHaveLength(1)
         expect(urls.filter((u) => /\/api\/usermatches\/\d+\/(points|goals|penalties)/.test(u))).toHaveLength(0)
         getSpy.mockRestore()
+    })
+
+    describe('season without plus/minus points', () => {
+        test('hides the Negative and Positive point rows but keeps Neutral', async () => {
+            useSeasonWithoutPoints()
+            renderMatchPage()
+            expect(await screen.findByText('Player One')).toBeInTheDocument()
+            expect(screen.getByText('Neutral')).toBeInTheDocument()
+            expect(screen.queryByText('Negative')).not.toBeInTheDocument()
+            expect(screen.queryByText('Positive')).not.toBeInTheDocument()
+            expect(screen.queryByText('+2')).not.toBeInTheDocument()
+        })
+
+        test('PP button records the goal directly without the point modal', async () => {
+            useSeasonWithoutPoints()
+            const user = userEvent.setup()
+            const postSpy = vi.spyOn(apiClient, 'post')
+            renderMatchPage()
+            await screen.findByText(/connor mcdavid/i)
+
+            await user.type(screen.getByPlaceholderText(/search player/i), 'Connor')
+            await user.click(await screen.findByRole('button', { name: /connor mcdavid/i }))
+            await user.click(screen.getByRole('button', { name: /^pp$/i }))
+
+            expect(screen.queryByText('Add Power Play Goal')).not.toBeInTheDocument()
+            expect(postSpy).toHaveBeenCalledWith(
+                expect.stringMatching(/\/api\/usermatches\/\d+\/goals$/),
+                expect.objectContaining({ goalType: 'PowerPlay' }),
+            )
+            expect(postSpy).not.toHaveBeenCalledWith(
+                expect.stringMatching(/\/points$/),
+                expect.anything(),
+            )
+            postSpy.mockRestore()
+        })
     })
 })

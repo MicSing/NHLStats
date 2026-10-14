@@ -14,6 +14,12 @@ public class Season
     public int? NhlYear { get; set; }
     public GamingConsole? Console { get; set; }
 
+    /// <summary>
+    /// Whether players collect plus/minus points in this season. When false, positive and negative
+    /// points can't be recorded and the season's matches are closed for betting.
+    /// </summary>
+    public bool PointsEnabled { get; set; } = true;
+
     public Team? HostedTeam { get; set; }
     public Season? ParentSeason { get; set; }
     public ICollection<SeasonUser> SeasonUsers { get; set; } = [];
