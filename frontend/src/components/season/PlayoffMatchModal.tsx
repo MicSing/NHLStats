@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from 'react'
+import { useEffect, useState, useId, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
@@ -10,6 +10,7 @@ import {
     ArrowSquareOutIcon,
     ListBulletsIcon,
     SquaresFourIcon,
+    TableIcon,
 } from '@phosphor-icons/react'
 import type { Match, MatchEvent } from '../../types/match'
 import { CompletionType } from '../../types/match'
@@ -27,8 +28,16 @@ interface Props {
     roundName?: string
     gameLabel?: string
     hostedTeamId?: number | null
+    // Optional first tab (e.g. the per-player table of a regular-season match).
+    summary?: ReactNode
+    // Extra buttons/links rendered in the footer next to the match page link.
+    footerActions?: ReactNode
+    // The match page is admin-only (stats editing), so the link to it is too.
+    isAdmin?: boolean
     onClose: () => void
 }
+
+type ModalTab = 'summary' | 'timeline' | 'stats'
 
 interface EnrichedItem<T> {
     item: T
@@ -40,12 +49,13 @@ function isDecisive(match: Match): boolean {
     return ct === CompletionType.RegularTime || ct === CompletionType.Overtime || ct === CompletionType.Shootout
 }
 
-export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, hostedTeamId, onClose }: Props) {
+export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabel, hostedTeamId, summary, footerActions, isAdmin = false, onClose }: Props) {
     const { t } = useTranslation()
     const titleId = useId()
     const [loading, setLoading] = useState(false)
     const [events, setEvents] = useState<MatchEvent[]>([])
-    const [activeTab, setActiveTab] = useState<'timeline' | 'stats'>('timeline')
+    const hasSummary = summary != null
+    const [activeTab, setActiveTab] = useState<ModalTab>(hasSummary ? 'summary' : 'timeline')
     const [goals, setGoals] = useState<EnrichedItem<UserMatchGoal>[]>([])
     const [penalties, setPenalties] = useState<EnrichedItem<UserMatchPenalty>[]>([])
     const [plusPoints, setPlusPoints] = useState<EnrichedItem<UserMatchPoint>[]>([])
@@ -80,10 +90,8 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                 if (cancelled) return
 
                 setEvents(matchEvents)
-                if (matchEvents.length > 0) {
-                    setActiveTab('timeline')
-                } else {
-                    setActiveTab('stats')
+                if (!hasSummary) {
+                    setActiveTab(matchEvents.length > 0 ? 'timeline' : 'stats')
                 }
 
                 const allGoals: EnrichedItem<UserMatchGoal>[] = []
@@ -126,7 +134,7 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
         return () => {
             cancelled = true
         }
-    }, [match?.id, seasonId])
+    }, [match?.id, seasonId, hasSummary])
 
     if (!match) return null
 
@@ -241,24 +249,40 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                     </div>
                 </div>
 
-                {/* Tab Switcher (when events exist) */}
-                {events.length > 0 && (
+                {/* Tab Switcher (when there is more than one view) */}
+                {(hasSummary || events.length > 0) && (
                     <div className="flex items-center gap-1 sm:gap-2 px-5 pt-2.5 pb-0 border-b border-border bg-bg/40">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('timeline')}
-                            className={`flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
-                                activeTab === 'timeline'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-text-muted hover:text-text'
-                            }`}
-                        >
-                            <ListBulletsIcon size={16} weight={activeTab === 'timeline' ? 'bold' : 'regular'} />
-                            <span>{t('season.playoffTimeline')}</span>
-                            <span className="text-[10px] font-mono bg-bg text-text-muted px-1.5 py-0.2 rounded border border-border">
-                                {events.length}
-                            </span>
-                        </button>
+                        {hasSummary && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('summary')}
+                                className={`flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
+                                    activeTab === 'summary'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-text-muted hover:text-text'
+                                }`}
+                            >
+                                <TableIcon size={16} weight={activeTab === 'summary' ? 'bold' : 'regular'} />
+                                <span>{t('season.matchSummary')}</span>
+                            </button>
+                        )}
+                        {events.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('timeline')}
+                                className={`flex items-center gap-2 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
+                                    activeTab === 'timeline'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-text-muted hover:text-text'
+                                }`}
+                            >
+                                <ListBulletsIcon size={16} weight={activeTab === 'timeline' ? 'bold' : 'regular'} />
+                                <span>{t('season.playoffTimeline')}</span>
+                                <span className="text-[10px] font-mono bg-bg text-text-muted px-1.5 py-0.2 rounded border border-border">
+                                    {events.length}
+                                </span>
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => setActiveTab('stats')}
@@ -276,7 +300,9 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
 
                 {/* Main Content: Timeline or 4 Columns */}
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1">
-                    {loading ? (
+                    {activeTab === 'summary' && hasSummary ? (
+                        summary
+                    ) : loading ? (
                         <div className="py-8">
                             <LoadingSpinner />
                         </div>
@@ -476,14 +502,19 @@ export default function PlayoffMatchModal({ match, seasonId, roundName, gameLabe
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-bg/40 text-xs">
-                    <Link
-                        to={`/seasons/${seasonId}/matches/${match.id}`}
-                        className="text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition-colors"
-                    >
-                        <span>{t('season.playoffGoToMatch')}</span>
-                        <ArrowSquareOutIcon size={14} />
-                    </Link>
+                <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-border bg-bg/40 text-xs">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {isAdmin && (
+                            <Link
+                                to={`/seasons/${seasonId}/matches/${match.id}`}
+                                className="text-primary hover:text-primary-hover font-semibold flex items-center gap-1.5 transition-colors"
+                            >
+                                <span>{t('season.playoffGoToMatch')}</span>
+                                <ArrowSquareOutIcon size={14} />
+                            </Link>
+                        )}
+                        {footerActions}
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}

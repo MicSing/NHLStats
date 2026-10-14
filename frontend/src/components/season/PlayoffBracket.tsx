@@ -33,6 +33,7 @@ interface Props {
     hostedTeamId?: number | null
     /** Ids of matches whose betting odds are still being calculated (admin view only). */
     pendingOddsMatchIds?: number[]
+    isAdmin?: boolean
 }
 
 function isDecisive(match: Match): boolean {
@@ -105,6 +106,7 @@ export default function PlayoffBracket({
     leagueType = 'NHL',
     hostedTeamId,
     pendingOddsMatchIds = [],
+    isAdmin = false,
 }: Props) {
     const { t } = useTranslation()
 
@@ -456,6 +458,7 @@ export default function PlayoffBracket({
                     roundName={activeSlot.name}
                     gameLabel={modalGameLabel}
                     hostedTeamId={hostedTeamId}
+                    isAdmin={isAdmin}
                     onClose={() => setModalMatch(null)}
                 />
             )}

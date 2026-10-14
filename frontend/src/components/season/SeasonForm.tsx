@@ -4,6 +4,7 @@ import type { LeagueTypeValue, Team } from '../../types/team'
 import { GamingConsole } from '../../types/gamingConsole'
 import type { GamingConsoleValue } from '../../types/gamingConsole'
 import type { CreateSeasonDto, SeasonStatus } from '../../types/season'
+import { teamsForLeague } from './seasonUtils'
 
 export interface SeasonFormProps {
     form: CreateSeasonDto
@@ -101,7 +102,7 @@ export default function SeasonForm({
                         }
                     >
                         <option value="">{t('common.none')}</option>
-                        {teams.map((tm) => (
+                        {teamsForLeague(teams, form.leagueType).map((tm) => (
                             <option key={tm.id} value={tm.id}>
                                 {tm.name}
                             </option>

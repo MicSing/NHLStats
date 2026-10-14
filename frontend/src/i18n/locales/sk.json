@@ -255,6 +255,8 @@
         "playoffOddsPending": "kurzy…",
         "playoffVs": "vs",
         "playoffTimeline": "Časová os",
+        "matchDetails": "Detail zápasu",
+        "matchSummary": "Sumár",
         "playoffStatsSummary": "Súhrn štatistík",
         "playoffNoEventsNotice": "Pre tento zápas nie je zaznamenaná časová os."
     },

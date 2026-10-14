@@ -5,7 +5,7 @@ import apiClient from '../../services/apiClient'
 import type { PlayoffStatus } from '../../types/match'
 import type { LeagueTypeValue, Team } from '../../types/team'
 import PlayoffSeriesCreator from './PlayoffSeriesCreator'
-import { getPlayoffRoundName } from './seasonUtils'
+import { getPlayoffRoundName, teamsForLeague } from './seasonUtils'
 
 interface Props {
     seasonId: number
@@ -42,8 +42,7 @@ export default function NextPlayoffSeriesPrompt({ seasonId, hostedTeamId, league
 
     if (!status || !canCreate || status.nextRound == null) return null
 
-    const leagueTeams = teams.filter((tm) => tm.leagueType === leagueType)
-    const selectableTeams = leagueTeams.length > 0 ? leagueTeams : teams
+    const selectableTeams = teamsForLeague(teams, leagueType)
     const hostedTeam = teams.find((tm) => tm.id === hostedTeamId)
 
     return (

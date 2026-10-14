@@ -54,7 +54,7 @@ export default function SeasonPage() {
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [loadingSeasons, setLoadingSeasons] = useState(true)
     const [loadingData, setLoadingData] = useState(false)
-    const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null)
+    const [openMatchId, setOpenMatchId] = useState<number | null>(null)
     const [matchDetailCache, setMatchDetailCache] = useState<Map<number, MatchExpandDetail>>(new Map())
     const [reEvaluatingMatchId, setReEvaluatingMatchId] = useState<number | null>(null)
     const [aggregatedEntries, setAggregatedEntries] = useState<AggEntry[]>([])
@@ -117,7 +117,7 @@ export default function SeasonPage() {
         if (!seasonId || !seasonTotals) return
 
         setLoadingData(true)
-        setExpandedMatchId(null)
+        setOpenMatchId(null)
         setMatchDetailCache(new Map())
         const seasonTopPlayers = seasonTotals.topRosterPlayers.find(s => s.seasonId === seasonId)
 
@@ -245,13 +245,9 @@ export default function SeasonPage() {
         }
     }
 
-    const toggleExpand = async (matchId: number) => {
-        if (expandedMatchId === matchId) {
-            setExpandedMatchId(null)
-        } else {
-            setExpandedMatchId(matchId)
-            await fetchMatchDetail(matchId)
-        }
+    const openMatch = async (matchId: number) => {
+        setOpenMatchId(matchId)
+        await fetchMatchDetail(matchId)
     }
 
     const reEvaluateBets = async (matchId: number) => {
@@ -432,6 +428,7 @@ export default function SeasonPage() {
                                     isDesktop={isDesktop}
                                     hostedTeamId={currentSeason?.hostedTeamId ?? null}
                                     pendingOddsMatchIds={isAdmin ? pendingOddsMatchIds : []}
+                                    isAdmin={isAdmin}
                                 />
                             </div>
                         ) : (
@@ -457,12 +454,13 @@ export default function SeasonPage() {
                                             allMatches={allMatches}
                                             seasonId={seasonId}
                                             seasons={seasons}
-                                            expandedMatchId={expandedMatchId}
+                                            openMatchId={openMatchId}
                                             matchDetailCache={matchDetailCache}
                                             reEvaluatingMatchId={reEvaluatingMatchId}
                                             isAdmin={isAdmin}
                                             allBets={allBets}
-                                            onToggleExpand={(matchId) => { void toggleExpand(matchId) }}
+                                            onOpenMatch={(matchId) => { void openMatch(matchId) }}
+                                            onCloseMatch={() => setOpenMatchId(null)}
                                             onReEvaluateBets={(matchId) => { void reEvaluateBets(matchId) }}
                                         />
                                     </div>
@@ -471,6 +469,7 @@ export default function SeasonPage() {
                                             allMatches={allMatches}
                                             seasonId={seasonId}
                                             seasons={seasons}
+                                            isAdmin={isAdmin}
                                         />
                                     </div>
                                 </div>
