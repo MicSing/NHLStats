@@ -68,6 +68,8 @@ export interface PositionWheelState {
     order: PositionWheelEntry[]
     currentSpinnerUserId: number | null
     availablePositions: SeasonUserPositionCode[]
+    /** True when the season does not collect plus/minus points, so players spin in random order. */
+    randomOrder: boolean
 }
 
 export interface PositionWheelSpinResult {
