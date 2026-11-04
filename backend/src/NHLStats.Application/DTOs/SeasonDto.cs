@@ -76,6 +76,7 @@ public record PositionWheelStateDto(
     string? PreviousSeasonName,
     IReadOnlyList<PositionWheelEntryDto> Order,
     int? CurrentSpinnerUserId,
-    IReadOnlyList<SeasonUserPosition> AvailablePositions);
+    IReadOnlyList<SeasonUserPosition> AvailablePositions,
+    bool RandomOrder = false);
 
 public record PositionWheelSpinResultDto(int UserId, SeasonUserPosition Position, PositionWheelStateDto State);

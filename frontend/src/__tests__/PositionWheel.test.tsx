@@ -18,6 +18,7 @@ const state: PositionWheelState = {
     ],
     currentSpinnerUserId: 2,
     availablePositions: ['LW', 'C', 'RW', 'LD', 'RD'],
+    randomOrder: false,
 }
 
 const afterSpin: PositionWheelState = {
@@ -40,6 +41,35 @@ describe('PositionWheel', () => {
         expect(await screen.findByTestId('wheel-spinner')).toHaveTextContent('Unlucky Ulrich')
         expect(screen.getByText('Rookie Rita')).toBeInTheDocument()
         expect(screen.getByRole('img', { name: /LW, C, RW, LD, RD/ })).toBeInTheDocument()
+    })
+
+    test('season without points shows random order and hides stats', async () => {
+        server.use(
+            rest.get(`${BASE}/api/seasons/1/position-wheel`, (_req, res, ctx) =>
+                res(ctx.json({
+                    ...state,
+                    previousSeasonId: null,
+                    previousSeasonName: null,
+                    randomOrder: true,
+                    order: state.order.map((e) => ({ ...e, hasPreviousStats: false, minusPoints: 0, plusPoints: 0, penalties: 0, goals: 0 })),
+                })),
+            ),
+        )
+        renderWithProviders(<PositionWheel seasonId={1} onPositionsChanged={() => {}} />)
+
+        expect(await screen.findByTestId('wheel-spinner')).toHaveTextContent('Unlucky Ulrich')
+        expect(screen.getByText(/random order|náhodné/i)).toBeInTheDocument()
+        expect(screen.queryByText(/no stats|bez štatistík/i)).not.toBeInTheDocument()
+        expect(screen.queryByText(/2024-25|alphabetical|abecedné/i)).not.toBeInTheDocument()
+    })
+
+    test('season with points shows stats order', async () => {
+        renderWithProviders(<PositionWheel seasonId={1} onPositionsChanged={() => {}} />)
+
+        await screen.findByTestId('wheel-spinner')
+        expect(screen.getByText(/2024-25/)).toBeInTheDocument()
+        expect(screen.getByText('−9 / +3 · F4 · G1')).toBeInTheDocument()
+        expect(screen.queryByText(/random order|náhodné/i)).not.toBeInTheDocument()
     })
 
     test('spinning assigns the server result once the wheel stops and moves to the next player', async () => {

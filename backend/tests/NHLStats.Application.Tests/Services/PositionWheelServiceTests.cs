@@ -55,9 +55,12 @@ public class PositionWheelServiceTests : IDisposable
         _connection.Dispose();
     }
 
-    private Season AddSeason(string name, DateTime startedOn, int? parentSeasonId = null)
+    private Season AddSeason(string name, DateTime startedOn, int? parentSeasonId = null, bool pointsEnabled = true)
     {
-        var season = new Season { Name = name, StartedOn = startedOn, ParentSeasonId = parentSeasonId };
+        var season = new Season
+        {
+            Name = name, StartedOn = startedOn, ParentSeasonId = parentSeasonId, PointsEnabled = pointsEnabled,
+        };
         _db.Seasons.Add(season);
         _db.SaveChanges();
         return season;
@@ -183,6 +186,76 @@ public class PositionWheelServiceTests : IDisposable
         var state = await _service.GetStateAsync(currentPlayoffs.Id);
 
         state!.PreviousSeasonId.Should().Be(_previous.Id);
+    }
+
+    [Fact]
+    public async Task GetState_SkipsPreviousSeasonsWithoutPoints()
+    {
+        var noPoints = AddSeason("No points", new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc), pointsEnabled: false);
+        var a = AddUser("A");
+        var b = AddUser("B");
+        AddStats(a, _previous, minus: 1);
+        AddStats(b, _previous, minus: 5);
+        AddStats(a, noPoints, penalties: 10);
+
+        var state = await _service.GetStateAsync(_current.Id);
+
+        state!.RandomOrder.Should().BeFalse();
+        state.PreviousSeasonId.Should().Be(_previous.Id);
+        state.Order.Select(x => x.Name).Should().Equal("B", "A");
+        state.Order[1].Penalties.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetState_SeasonWithoutPoints_UsesRandomOrderWithoutStats()
+    {
+        var noPoints = AddSeason("No points", new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), pointsEnabled: false);
+        var users = Enumerable.Range(0, 12).Select(i => AddUser($"P{i:00}", season: noPoints)).ToList();
+        for (var i = 0; i < users.Count; i++) AddStats(users[i], _current, minus: i);
+
+        var state = await _service.GetStateAsync(noPoints.Id);
+        var again = await _service.GetStateAsync(noPoints.Id);
+
+        state!.RandomOrder.Should().BeTrue();
+        state.PreviousSeasonId.Should().BeNull();
+        state.PreviousSeasonName.Should().BeNull();
+        state.Order.Should().HaveCount(12);
+        state.Order.Should().OnlyContain(e => !e.HasPreviousStats && e.MinusPoints == 0);
+        // Neither the stats order (P11 first) nor alphabetical.
+        state.Order.Select(x => x.Name).Should().NotEqual(users.Select(u => u.Name));
+        state.Order.Select(x => x.Name).Should().NotEqual(users.Select(u => u.Name).Reverse());
+        // Stable between reads, so the spinner does not jump around.
+        again!.Order.Select(x => x.UserId).Should().Equal(state.Order.Select(x => x.UserId));
+        state.CurrentSpinnerUserId.Should().Be(state.Order[0].UserId);
+    }
+
+    [Fact]
+    public async Task GetState_SeasonWithoutPoints_ShufflesDifferentlyPerSeason()
+    {
+        var first = AddSeason("No points 1", new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), pointsEnabled: false);
+        var second = AddSeason("No points 2", new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc), pointsEnabled: false);
+        var users = Enumerable.Range(0, 12).Select(i => AddUser($"P{i:00}", season: first)).ToList();
+        foreach (var u in users)
+            _db.SeasonUsers.Add(new SeasonUser { SeasonId = second.Id, UserId = u.Id, IsActive = true });
+        await _db.SaveChangesAsync();
+
+        var a = await _service.GetStateAsync(first.Id);
+        var b = await _service.GetStateAsync(second.Id);
+
+        b!.Order.Select(x => x.UserId).Should().NotEqual(a!.Order.Select(x => x.UserId));
+    }
+
+    [Fact]
+    public async Task Spin_SeasonWithoutPoints_FollowsRandomOrder()
+    {
+        var noPoints = AddSeason("No points", new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), pointsEnabled: false);
+        for (var i = 0; i < 4; i++) AddUser($"P{i}", season: noPoints);
+        var before = await _service.GetStateAsync(noPoints.Id);
+
+        var result = await _service.SpinAsync(noPoints.Id);
+
+        result!.UserId.Should().Be(before!.Order[0].UserId);
+        result.State.CurrentSpinnerUserId.Should().Be(before.Order[1].UserId);
     }
 
     [Fact]

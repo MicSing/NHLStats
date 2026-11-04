@@ -169,12 +169,18 @@ export default function PositionWheel({ seasonId, refreshKey, onPositionsChanged
         <section className="rounded-xl border border-border bg-surface p-4 space-y-4">
             <div>
                 <h3 className="text-base font-semibold">{t('admin.seasons.wheel.title')}</h3>
-                <p className="text-xs text-text-muted mt-1">{t('admin.seasons.wheel.description')}</p>
-                <p className="text-xs text-text-muted mt-1">
-                    {state.previousSeasonName
-                        ? t('admin.seasons.wheel.previousSeason', { name: state.previousSeasonName })
-                        : t('admin.seasons.wheel.noPreviousSeason')}
-                </p>
+                {state.randomOrder ? (
+                    <p className="text-xs text-text-muted mt-1">{t('admin.seasons.wheel.randomOrder')}</p>
+                ) : (
+                    <>
+                        <p className="text-xs text-text-muted mt-1">{t('admin.seasons.wheel.description')}</p>
+                        <p className="text-xs text-text-muted mt-1">
+                            {state.previousSeasonName
+                                ? t('admin.seasons.wheel.previousSeason', { name: state.previousSeasonName })
+                                : t('admin.seasons.wheel.noPreviousSeason')}
+                        </p>
+                    </>
+                )}
             </div>
 
             <div className="rounded-lg bg-bg border border-border px-4 py-3 text-center" aria-live="polite">
@@ -306,7 +312,7 @@ export default function PositionWheel({ seasonId, refreshKey, onPositionsChanged
                                 >
                                     <span className="w-5 text-text-muted tabular-nums">{i + 1}.</span>
                                     <span className={`flex-1 ${isCurrent ? 'font-semibold' : ''}`}>{entry.name}</span>
-                                    {entry.hasPreviousStats ? (
+                                    {state.randomOrder ? null : entry.hasPreviousStats ? (
                                         <span
                                             className="text-xs text-text-muted tabular-nums"
                                             title={t('admin.seasons.wheel.statsSummary', {

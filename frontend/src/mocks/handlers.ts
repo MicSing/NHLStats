@@ -55,6 +55,7 @@ const mockPositionWheelState = {
     order: [],
     currentSpinnerUserId: null,
     availablePositions: ['LW', 'C', 'RW', 'LD', 'RD'],
+    randomOrder: false,
 }
 
 const mockMatches = [

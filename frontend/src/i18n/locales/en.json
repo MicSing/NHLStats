@@ -845,7 +845,8 @@
             "activeInSeasonHint": "Only users active in the season are added to new matches.",
             "wheel": {
                 "title": "Position wheel",
-                "description": "Players spin in order of last season: most minus points, then fewest plus points, most penalties and fewest goals.",
+                "description": "Players spin in order of the last season with plus/minus points: most minus points, then fewest plus points, most penalties and fewest goals.",
+                "randomOrder": "This season does not count points, so players spin in random order.",
                 "previousSeason": "Order by season: {{name}}",
                 "noPreviousSeason": "No previous season – alphabetical order",
                 "spinner": "Now spinning",

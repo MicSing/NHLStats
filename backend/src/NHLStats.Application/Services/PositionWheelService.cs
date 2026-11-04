@@ -7,9 +7,10 @@ using NHLStats.Domain.Entities;
 namespace NHLStats.Application.Services;
 
 /// <summary>
-/// Wheel of fortune that assigns season positions. Season-active players spin in order of
-/// their previous-season stats: most minus points, fewest plus points, most penalties,
-/// fewest goals. Players without previous-season stats spin last.
+/// Wheel of fortune that assigns season positions. In a season that collects plus/minus points,
+/// season-active players spin in order of their stats from the last season that collected them:
+/// most minus points, fewest plus points, most penalties, fewest goals. Players without such
+/// stats spin last. In a season without points the spin order is random.
 /// </summary>
 public class PositionWheelService : IPositionWheelService
 {
@@ -56,33 +57,46 @@ public class PositionWheelService : IPositionWheelService
 
     private async Task<PositionWheelStateDto> BuildStateAsync(Season season)
     {
-        var previous = await FindPreviousMainSeasonAsync(season);
-        var stats = previous == null
-            ? new Dictionary<int, PreviousStats>()
-            : await LoadPreviousStatsAsync(previous.Id);
-
         var players = await _db.SeasonUsers
             .AsNoTracking()
             .Where(su => su.SeasonId == season.Id && su.IsActive)
             .Select(su => new { su.UserId, su.User!.Name, su.Position })
             .ToListAsync();
 
-        var order = players
-            .Select(p =>
-            {
-                var hasStats = stats.TryGetValue(p.UserId, out var s);
-                s ??= new PreviousStats();
-                return new PositionWheelEntryDto(
-                    p.UserId, p.Name, p.Position, hasStats, s.Minus, s.Plus, s.Penalties, s.Goals);
-            })
-            .OrderByDescending(e => e.HasPreviousStats)
-            .ThenByDescending(e => e.MinusPoints)
-            .ThenBy(e => e.PlusPoints)
-            .ThenByDescending(e => e.Penalties)
-            .ThenBy(e => e.Goals)
-            .ThenBy(e => e.Name, StringComparer.InvariantCultureIgnoreCase)
-            .ThenBy(e => e.UserId)
-            .ToList();
+        Season? previous = null;
+        List<PositionWheelEntryDto> order;
+        if (!season.PointsEnabled)
+        {
+            order = players
+                .Select(p => new PositionWheelEntryDto(p.UserId, p.Name, p.Position, false, 0, 0, 0, 0))
+                .OrderBy(e => ShuffleKey(season.Id, e.UserId))
+                .ThenBy(e => e.UserId)
+                .ToList();
+        }
+        else
+        {
+            previous = await FindPreviousSeasonWithPointsAsync(season);
+            var stats = previous == null
+                ? new Dictionary<int, PreviousStats>()
+                : await LoadPreviousStatsAsync(previous.Id);
+
+            order = players
+                .Select(p =>
+                {
+                    var hasStats = stats.TryGetValue(p.UserId, out var s);
+                    s ??= new PreviousStats();
+                    return new PositionWheelEntryDto(
+                        p.UserId, p.Name, p.Position, hasStats, s.Minus, s.Plus, s.Penalties, s.Goals);
+                })
+                .OrderByDescending(e => e.HasPreviousStats)
+                .ThenByDescending(e => e.MinusPoints)
+                .ThenBy(e => e.PlusPoints)
+                .ThenByDescending(e => e.Penalties)
+                .ThenBy(e => e.Goals)
+                .ThenBy(e => e.Name, StringComparer.InvariantCultureIgnoreCase)
+                .ThenBy(e => e.UserId)
+                .ToList();
+        }
 
         // Positions stay unique; once all are taken the wheel refills with the least-used ones.
         var taken = AllPositions.ToDictionary(p => p, p => order.Count(e => e.Position == p));
@@ -94,14 +108,27 @@ public class PositionWheelService : IPositionWheelService
             previous?.Name,
             order,
             order.FirstOrDefault(e => e.Position == null)?.UserId,
-            available);
+            available,
+            !season.PointsEnabled);
     }
 
     /// <summary>
-    /// Latest main (non-playoff) season started before this one. For a playoff season,
-    /// its own parent is skipped and the parent's start date is the reference.
+    /// Pseudo-random sort key (SplitMix64) for a player in a season. The shuffle stays the same
+    /// between requests, so the spin order does not jump around, but differs from season to season.
     /// </summary>
-    private async Task<Season?> FindPreviousMainSeasonAsync(Season season)
+    private static ulong ShuffleKey(int seasonId, int userId)
+    {
+        var z = ((ulong)(uint)seasonId << 32 | (uint)userId) + 0x9E3779B97F4A7C15UL;
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+        return z ^ (z >> 31);
+    }
+
+    /// <summary>
+    /// Latest main (non-playoff) season that collected plus/minus points and started before this one.
+    /// For a playoff season, its own parent is skipped and the parent's start date is the reference.
+    /// </summary>
+    private async Task<Season?> FindPreviousSeasonWithPointsAsync(Season season)
     {
         var referenceDate = season.StartedOn;
         if (season.ParentSeasonId is int parentId)
@@ -113,6 +140,7 @@ public class PositionWheelService : IPositionWheelService
         return await _db.Seasons
             .AsNoTracking()
             .Where(s => s.ParentSeasonId == null
+                && s.PointsEnabled
                 && s.Id != season.Id
                 && s.Id != season.ParentSeasonId
                 && s.StartedOn < referenceDate)
