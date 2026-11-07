@@ -26,7 +26,8 @@ PS5/Xbox ──HDMI──► splitter ──► TV
 | Kto je pod farbou | Live tracking: 1 analyzovaná snímka/s, čítanie čísla dresu, rozhodnutie podľa viacerých čítaní (nie jednej snímky). |
 | Pravidlo podľa pozície | Iba **kontrola**, a len pri hre 5 na 5 v riadnom hracom čase. V oslabení, presilovke, 4 na 4 a predĺžení neplatí (viď nižšie). |
 | Zápis do DB | Collector posiela iba návrhy. Automatický zápis iba ak sa zhodnú dva nezávislé zdroje. |
-| Buly | Primárne zo súhrnnej obrazovky po zápase (FO vyhraté/celkom podľa hráča). |
+| Asistencie | Štatistika **aj body**: každá potvrdená asistencia = 1 kladný bod (`PointReason` „Assist“, Positive) a peniaze podľa `MoneyConfig.PositivePointValue`. |
+| Buly | **Iba štatistika**, bez bodov. Primárne zo súhrnnej obrazovky po zápase (FO vyhraté/celkom podľa hráča). |
 | Autentifikácia Collectora | API kľúč zariadenia (nie JWT používateľa), iba na ingest endpointy. |
 | Jazyk UI hry | Angličtina (lepšie OCR). |
 
@@ -100,10 +101,15 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 ### 1.3 Asistencie
 - [ ] Entita `UserMatchAssist { Id, UserMatchId, RosterPlayerId, UserMatchGoalId?, Count }`
 - [ ] `MatchEventType.Assist` a `MatchEvent.UserMatchAssistId`
-- [ ] Rozhodnúť, či asistencia znamená aj `PointReason` (peniaze), alebo len štatistiku (otvorená otázka)
+- [ ] Nový seed `PointReason { Id=23, Name="Assist", PointType=Positive }`
+- [ ] Potvrdenie asistencie vytvorí v jednej transakcii `UserMatchAssist` aj `UserMatchPoint` (Assist, Count=1) a obe naviaže na `MatchEvent`
+- [ ] Zmazanie alebo zamietnutie asistencie zmaže aj jej bod
+- [ ] Asistencia hráča, ktorého ovládal počítač, sa nikomu nepripíše a bod nevzniká
+- [ ] Testy: bod vzniká iba po potvrdení, jedna asistencia = jeden bod, peniaze sa prepočítajú cez `MoneyConfig`, obe asistencie pri góle sa počítajú rovnako
 
 ### 1.4 Buly
 - [ ] `UserMatch.FaceoffsWon`, `UserMatch.FaceoffsTaken` (nullable, aby historické dáta zostali bez hodnoty)
+- [ ] **Iba štatistika:** nevytvára `UserMatchPoint` a nevstupuje do zárobkov
 
 ### 1.5 Striedania (voliteľné)
 - [ ] Entita `MatchShift { Id, MatchId, UserId, RosterPlayerId, Slot, Period, StartGameClock, EndGameClock, Strength }`
@@ -210,8 +216,9 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 
 ## Otvorené otázky
 
-- [ ] Je asistencia aj bodom za peniaze (`PointReason`), alebo len štatistikou?
-- [ ] Majú sa buly premietnuť do bodov?
+- [x] Je asistencia aj bodom za peniaze? **Áno**, 1 kladný bod za asistenciu
+- [x] Majú sa buly premietnuť do bodov? **Nie**, iba štatistika
+- [ ] Počíta sa prvá a druhá asistencia rovnako? (plán predpokladá, že áno)
 - [ ] Hrá niekedy viac používateľov rovnakú pozíciu?
 - [ ] Ukazuje hra nad indikátorom meno alebo číslo hráča?
 - [ ] Ako presne hra presúva pozície v oslabení a pri 3 na 3? (zistiť z nahrávok)
