@@ -161,7 +161,9 @@ public class StatsService : IStatsService
     }
 
     /// <summary>
-    /// Counts matches each user took part in per season. Legacy aggregated entries
+    /// Counts finished matches each user took part in per season. Users are
+    /// pre-registered to every match of the season, so scheduled (None) and
+    /// still-running (InProgress) matches are not games played. Legacy aggregated entries
     /// contribute their MatchesPlayed, except for the Playoff filter (they predate
     /// match-level phase tracking and represent regular-season play only).
     /// </summary>
@@ -169,7 +171,10 @@ public class StatsService : IStatsService
     {
         var matchCounts = await _db.UserMatches
             .AsNoTracking()
-            .Where(um => !phase.HasValue || (um.Match != null && um.Match.Phase == phase.Value))
+            .Where(um => um.Match != null
+                      && um.Match.CompletionType != CompletionType.None
+                      && um.Match.CompletionType != CompletionType.InProgress)
+            .Where(um => !phase.HasValue || um.Match!.Phase == phase.Value)
             .GroupBy(um => new { um.SeasonId, um.UserId })
             .Select(g => new { g.Key.SeasonId, g.Key.UserId, Count = g.Select(um => um.MatchId).Distinct().Count() })
             .ToListAsync();

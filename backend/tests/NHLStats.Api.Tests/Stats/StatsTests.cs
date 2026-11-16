@@ -85,6 +85,31 @@ public class StatsTests : ApiTestBase
         return matchId;
     }
 
+    private async Task<int> CreateScheduledMatchAsync(HttpClient client, int seasonId)
+    {
+        var resp = await client.PostAsJsonAsync($"/api/seasons/{seasonId}/matches", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2
+        });
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task SetInProgressAsync(HttpClient client, int seasonId, int matchId)
+    {
+        var resp = await client.PutAsJsonAsync($"/api/seasons/{seasonId}/matches/{matchId}", new
+        {
+            homeTeamId = 1,
+            awayTeamId = 2,
+            homeScore = 0,
+            awayScore = 0,
+            matchDate = (string?)null,
+            completionType = 4 // InProgress
+        });
+        resp.EnsureSuccessStatusCode();
+    }
+
     private async Task<int> CreateUserMatchAsync(HttpClient client, int seasonId, int matchId, int userId)
     {
         var resp = await client.PostAsJsonAsync(
@@ -242,6 +267,35 @@ public class StatsTests : ApiTestBase
         GamesPlayed(playerA).Should().Be(2);
         GamesPlayed(playerB).Should().Be(5); // 1 match + 4 aggregated
         GamesPlayed(playerC).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SeasonTotals_games_played_counts_only_finished_matches()
+    {
+        // Players are pre-registered to every match of the season, so a user match
+        // on a scheduled (or still running) match must not count as a game played.
+        var client = await CreateAuthenticatedClientAsync();
+        var seasonId = await CreateSeasonAsync(client, "Games Played Finished Only Season");
+        var player = await CreateUserAsync(client, "Games Played Finished Only Player");
+        await AssignUserAsync(client, seasonId, player);
+
+        var finished = await CreateMatchAsync(client, seasonId, "2024-02-01T20:00:00");
+        var scheduled = await CreateScheduledMatchAsync(client, seasonId);
+        var inProgress = await CreateScheduledMatchAsync(client, seasonId);
+        await SetInProgressAsync(client, seasonId, inProgress);
+
+        await CreateUserMatchAsync(client, seasonId, finished, player);
+        await CreateUserMatchAsync(client, seasonId, scheduled, player);
+        await CreateUserMatchAsync(client, seasonId, inProgress, player);
+
+        var body = await client.GetFromJsonAsync<JsonElement>("/api/stats/season");
+        var gamesPlayed = body.GetProperty("usersData").EnumerateArray()
+            .Single(s => s.GetProperty("seasonId").GetInt32() == seasonId)
+            .GetProperty("usersData").EnumerateArray()
+            .Single(u => u.GetProperty("userId").GetInt32() == player)
+            .GetProperty("gamesPlayed").GetInt32();
+
+        gamesPlayed.Should().Be(1);
     }
 
     [Fact]

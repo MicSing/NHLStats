@@ -507,6 +507,7 @@ public class MatchStatsService : IMatchStatsService
 
         var userMatches = await _db.UserMatches
             .AsNoTracking()
+            .Include(um => um.Match)
             .Include(um => um.Points).ThenInclude(p => p.PointReason)
             .ToListAsync();
 
@@ -514,8 +515,12 @@ public class MatchStatsService : IMatchStatsService
             .AsNoTracking()
             .ToListAsync();
 
+        // Users are pre-registered to every match of the season, so only finished
+        // matches count as played (not scheduled or still-running ones).
         var totalMatches = await _db.Matches
             .AsNoTracking()
+            .Where(m => m.CompletionType != CompletionType.None
+                     && m.CompletionType != CompletionType.InProgress)
             .GroupBy(m => m.SeasonId)
             .Select(g => new { SeasonId = g.Key, MatchCount = g.Count() })
             .ToDictionaryAsync(x => x.SeasonId, x => x.MatchCount);
@@ -548,7 +553,11 @@ public class MatchStatsService : IMatchStatsService
 
                 var totalPlus = (aggregatedDataForUser?.TotalPlus ?? 0) + totals.plus;
                 var totalMinus = (aggregatedDataForUser?.TotalMinus ?? 0) + totals.minus;
-                var matchesPlayed = (aggregatedDataForUser?.MatchesPlayed ?? 0) + userSeasonMatches.Select(um => um.MatchId).Distinct().Count();
+                var matchesPlayed = (aggregatedDataForUser?.MatchesPlayed ?? 0) + userSeasonMatches
+                    .Where(um => um.Match != null
+                              && um.Match.CompletionType != CompletionType.None
+                              && um.Match.CompletionType != CompletionType.InProgress)
+                    .Select(um => um.MatchId).Distinct().Count();
 
                 var name = allUsers.TryGetValue(userId, out var userName) ? userName : $"User {userId}";
 
