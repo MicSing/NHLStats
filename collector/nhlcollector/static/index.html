@@ -36,6 +36,8 @@
   .readings { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
   .readings dt { color: var(--muted); } .readings dd { margin: 0; font-family: ui-monospace, monospace; word-break: break-word; }
   .guess { font-size: 12px; color: var(--good); margin-top: 4px; }
+  .region.controlled { border-color: #a371f7; background: rgba(163,113,247,.08); }
+  .region.controlled span { background: #a371f7; top: auto; bottom: -22px; border-radius: 0 4px 4px 4px; }
   .region.flash { animation: flash .8s ease-out 2; }
   @keyframes flash { 50% { background: rgba(248,81,73,.45); border-color: var(--bad); } }
   .drawing { position: absolute; border: 2px dashed #fff; pointer-events: none; }
@@ -101,6 +103,7 @@
         <button class="ghost" data-cal="period">Tretina</button>
         <button class="ghost" data-cal="clock">Čas</button>
         <button class="ghost" data-cal="banner">Banner</button>
+        <button class="ghost" data-cal="controlled">Ovládaný hráč</button>
         <button class="ghost" id="calCancel" hidden>Zrušiť</button>
       </div>
       <p class="muted" id="frameErr"></p>
@@ -375,6 +378,9 @@ function renderReadings(s) {
   const rows = [
     ['Tretina', st.period, r.period], ['Čas', st.clock, r.clock],
     ['Skóre', st.score ? st.score.join(' : ') : null, r.score], ['Banner', null, r.banner],
+    ['Ovládaný hráč', r.controlledPlayer, r.controlled],
+    ['Hráči podľa farieb', (r.userPlayers || []).map(m =>
+      `${(s.users.find(u => u.userId === m.userId) || {}).name || m.userId} (${m.color}): ${m.player}, pred ${m.ago} s`).join(' · ') || null, null],
   ];
   $('#readings').innerHTML = rows.map(([k, v, raw]) =>
     `<dt>${k}</dt><dd>${esc(v ?? '–')}${raw && raw !== v ? ` <span class="muted">(OCR: ${esc(raw)})</span>` : ''}</dd>`).join('');

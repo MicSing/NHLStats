@@ -27,6 +27,8 @@ class VisionConfig:
     # The scoreboard lists the home team first (top row, or left). Set false if it shows the
     # away team first, so the app knows which team scored.
     home_first: bool = True
+    # The NHLStats user (name) playing on the streamed console: the controlled player is theirs.
+    controlled_user: str = ""
 
 
 @dataclass
@@ -36,6 +38,8 @@ class Config:
     vision: VisionConfig = field(default_factory=VisionConfig)
     # In-game names (gamertags) → NHLStats user / roster player, see config.example.toml.
     aliases: dict = field(default_factory=dict)
+    # NHLStats user → ring colour in the game ("Michal" = "green").
+    colors: dict = field(default_factory=dict)
     data_dir: Path = Path("collector-data")
 
 
@@ -54,4 +58,5 @@ def load_config(path: Path | None) -> Config:
     obs.password = os.environ.get("NHLSTATS_OBS_PASSWORD", obs.password)
 
     return Config(api=api, obs=obs, vision=VisionConfig(**raw.get("vision", {})),
-                  aliases=dict(raw.get("aliases", {})), data_dir=data_dir)
+                  aliases=dict(raw.get("aliases", {})), colors=dict(raw.get("colors", {})),
+                  data_dir=data_dir)

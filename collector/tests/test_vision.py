@@ -234,3 +234,46 @@ def test_away_first_scoreboard_and_alias_scorer(tmp_path):
     q = w.questions.open()[0]
     assert q.suggestion["kind"] == "goal" and q.suggestion["userId"] == 10
     assert q.text.startswith("Skóre 1:0")
+
+
+def test_ring_colour_memory_decides_the_scorers_user(tmp_path):
+    # By position Makar (D) would be Peter (LD); the green ring shows Michal skating with him.
+    script = [
+        {"period": "1st", "clock": "10:00", "score": "0 0", "tag:green": "X MAKAR"},
+        {"period": "1st", "clock": "09:59", "score": "0 0", "tag:green": "X MAKAR"},
+        {"period": "1st", "clock": "09:58", "score": "0 0", "tag:green": "X MAKAR"},
+        {"period": "1st", "clock": "09:50", "score": None, "banner": "MAKAR\nGOAL[3]"},
+        {"period": "1st", "clock": "09:50", "score": "1 0"},
+        {"period": "1st", "clock": "09:50", "score": "1 0"},
+    ]
+    frames = []
+    for i, step in enumerate(script):
+        img = Image.open(io.BytesIO(frame_for(step, i)))
+        ImageDraw.Draw(img).ellipse((140, 90, 165, 100), outline=(40, 200, 60), width=2)
+        frames.append(jpeg(img))
+    it = iter(frames)
+    w = FrameWatcher(lambda: next(it), RegionStore(tmp_path / "r.json"), QuestionQueue(), reader=FakeReader(script))
+    w.context = CTX
+    w.user_colors = {10: "green"}
+    w.ring_every = 1  # read the rings on every frame of this short script
+    for _ in script:
+        w.tick()
+    assert w.user_players[10]["rosterPlayerId"] == 2
+    q = w.questions.open()[0]
+    assert q.suggestion["rosterPlayerId"] == 2 and q.suggestion["userId"] == 10 and q.suggestion["userSure"]
+
+
+def test_controlled_player_is_the_scorer_when_no_banner(tmp_path):
+    script = [
+        {"period": "2nd", "clock": "08:00", "score": "1 1", "controlled": "> 29 N. MACKINNON"},
+        {"period": "2nd", "clock": "07:59", "score": "1 1", "controlled": "29 N. MACKINNON"},
+        {"period": "2nd", "clock": "07:40", "score": None},
+        {"period": "2nd", "clock": "07:40", "score": "2 1"},
+        {"period": "2nd", "clock": "07:40", "score": "2 1"},
+    ]
+    w, _ = watcher_with(script, tmp_path)
+    for _ in script:
+        w.tick()
+    q = w.questions.open()[0]
+    assert q.suggestion["rosterPlayerId"] == 1 and q.suggestion["userId"] == 10
+    assert "ovládaného" in q.text

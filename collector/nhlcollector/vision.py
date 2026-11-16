@@ -39,6 +39,8 @@ DEFAULT_REGIONS = [
     Region("clock", "Čas", 0.190, 0.045, 0.070, 0.031),
     Region("period", "Tretina", 0.190, 0.072, 0.063, 0.023),
     Region("banner", "Banner (gól / asistencie / nájazd)", 0.060, 0.030, 0.150, 0.072),
+    # Bottom left: number and name of the player the console is controlling ('33 H. DISPOSABLE').
+    Region("controlled", "Ovládaný hráč", 0.040, 0.920, 0.110, 0.042),
 ]
 
 
@@ -212,6 +214,17 @@ class FrameWatcher:
         self.context: dict = {"users": [], "roster": [], "hostedIsHome": True}
         self.aliases: list[dict] = []  # in-game names → user / roster player (config [aliases])
         self.home_first = True  # the scoreboard lists the home team first (top or left)
+        # The user playing on the streamed console: the controlled player belongs to them.
+        self.controlled_user_id: int | None = None
+        self.controlled: dict | None = None  # last controlled player: {"at", "label", "rosterPlayerId", ...}
+        # Ring colour → user (config [colors]); the watcher remembers which hockey player each
+        # user skated with last, read from the name tag under their ring.
+        self.user_colors: dict[int, str] = {}
+        self.user_players: dict[int, dict] = {}  # userId → {"rosterPlayerId", "label", "at"}
+        self._tag_candidates: dict[int, tuple[int, int]] = {}
+        self._ticks = 0
+        self.ring_every = 2  # read the rings every n-th frame: it's the slowest part
+        self._controlled_candidate: tuple[str, int] | None = None
         self.on_game_change: Callable[[str, object], None] | None = None
         self.latest: bytes | None = None
         self.latest_at: float | None = None
@@ -294,9 +307,18 @@ class FrameWatcher:
             self.banners.append((now, banner_text))
             self.banners = [(t, x) for t, x in self.banners if now - t < 30]
 
+        self._ticks += 1
+        if self.user_colors and self._ticks % self.ring_every == 1 % self.ring_every:
+            self._track_colors(image, now)
+        raw_controlled = r.read(image, self.regions.get("controlled"), "line")
+        self._track_controlled(raw_controlled, now)
+
         changes = self.game.feed(parse_period(raw_period), parse_clock(raw_clock), parse_score(raw_score))
         self.readings = {
-            "period": raw_period, "clock": raw_clock, "score": raw_score,
+            "period": raw_period, "clock": raw_clock, "score": raw_score, "controlled": raw_controlled,
+            "controlledPlayer": (self.controlled or {}).get("label"),
+            "userPlayers": [{"userId": uid, "color": self.user_colors.get(uid), "player": m["label"],
+                             "ago": round(now - m["at"])} for uid, m in self.user_players.items()],
             "banner": self.banners[-1][1] if self.banners else None,
             "state": {"period": self.game.period, "clock": self.game.clock,
                       "score": list(self.game.score) if self.game.score else None},
@@ -310,6 +332,87 @@ class FrameWatcher:
 
         if banner_text:
             self._on_banner(banner_text, frame)
+
+    def _track_controlled(self, text: str | None, now: float) -> None:
+        """
+        Remembers who the console controls. The box disappears during banners and replays, so the
+        last reading is the player who had the puck before the goal. A name counts after two equal reads.
+        """
+        from .ocr import find_controlled, parse_controlled, user_for_player
+
+        c = parse_controlled(text)
+        if not c:
+            return
+        key = f"{c['number']} {c['surname']}"
+        count = self._controlled_candidate[1] + 1 if self._controlled_candidate and self._controlled_candidate[0] == key else 1
+        self._controlled_candidate = (key, count)
+        if count < 2:
+            return
+        if self.controlled and self.controlled["key"] == key:
+            self.controlled["at"] = now
+            return
+        player = find_controlled(c, self.context.get("roster", []))
+        users = self.context.get("users", [])
+        mem_uid = self._user_by_memory(player["rosterPlayerId"]) if player else None
+        user = next((u for u in users if u["userId"] == self.controlled_user_id), None) \
+            or next((u for u in users if u["userId"] == mem_uid), None) \
+            or (user_for_player(player, users) if player else None)
+        self.controlled = {
+            "key": key, "at": now, "number": c["number"],
+            "label": f"{player['firstName']} {player['surname']}" if player else f"{c['number']} {c['initial']}. {c['surname']}",
+            "rosterPlayerId": player["rosterPlayerId"] if player else None,
+            "userId": user["userId"] if user else None,
+            "userSure": bool(user) and (self.controlled_user_id is not None or mem_uid is not None
+                                        or user_for_player(player, users) is not None),
+        }
+
+    def _track_colors(self, image, now: float) -> None:
+        """Reads the name tag under each user's ring and remembers the player once read twice in a row."""
+        from .ocr import find_controlled, match_alias
+        from .rings import find_rings, hue_band, tag_name
+
+        bands = {}
+        for uid, color in self.user_colors.items():
+            try:
+                bands[uid] = hue_band(color)
+            except ValueError:
+                continue
+        spots = find_rings(image, {str(uid): band for uid, band in bands.items()})
+        for key, (x, y, w, h) in spots.items():
+            uid = int(key)
+            name = tag_name(self.reader.read(image, Region(f"tag:{self.user_colors[uid]}", "", x, y, w, h), "tag"))
+            if not name:
+                continue
+            player = find_controlled({"surname": name.upper(), "initial": ""}, self.context.get("roster", []))
+            if not player:
+                alias = match_alias(name, self.aliases)
+                if alias and alias.get("rosterPlayerId"):
+                    player = next((p for p in self.context.get("roster", [])
+                                   if p["rosterPlayerId"] == alias["rosterPlayerId"]), None)
+            if not player:
+                continue
+            pid = player["rosterPlayerId"]
+            prev = self._tag_candidates.get(uid)
+            count = prev[1] + 1 if prev and prev[0] == pid else 1
+            self._tag_candidates[uid] = (pid, count)
+            if count < 2:
+                continue
+            self.user_players[uid] = {"rosterPlayerId": pid, "label": f"{player['firstName']} {player['surname']}", "at": now}
+            for other, mem in list(self.user_players.items()):
+                if other != uid and mem["rosterPlayerId"] == pid:
+                    del self.user_players[other]  # a player is skated by one user at a time
+
+    def _user_by_memory(self, roster_player_id, seconds: float = 300) -> int | None:
+        """The user who was last seen skating with this hockey player (by ring colour)."""
+        now = time.time()
+        hits = [(m["at"], uid) for uid, m in self.user_players.items()
+                if m["rosterPlayerId"] == roster_player_id and now - m["at"] < seconds]
+        return max(hits)[1] if hits else None
+
+    def _controlled_before(self, at: float, seconds: float = 30) -> dict | None:
+        """The controlled player seen last before `at` (the goal), if seen recently enough."""
+        c = self.controlled
+        return c if c and at - seconds <= c["at"] <= at + 1 and c.get("rosterPlayerId") else None
 
     def _recent_banner_text(self, seconds: float = 20) -> str:
         now = time.time()
@@ -344,10 +447,11 @@ class FrameWatcher:
         players = find_players(name, self.context.get("roster", []))
         if players:
             p = players[0]
-            user = user_for_player(p, self.context.get("users", []))
+            users = self.context.get("users", [])
+            # Who skated with this player: alias > ring colour memory > the only user at that position.
             alias = match_alias(name, self.aliases)
-            if alias and alias.get("userId"):
-                user = next((u for u in self.context.get("users", []) if u["userId"] == alias["userId"]), user)
+            uid = (alias or {}).get("userId") or self._user_by_memory(p["rosterPlayerId"])
+            user = next((u for u in users if u["userId"] == uid), None) if uid else user_for_player(p, users)
             return {"userId": user["userId"] if user else None, "rosterPlayerId": p["rosterPlayerId"],
                     "label": f"{p['firstName']} {p['surname']}", "userSure": user is not None}
         alias = match_alias(name, self.aliases)
@@ -373,9 +477,22 @@ class FrameWatcher:
             found = find_players(self._recent_banner_text(), self.context.get("roster", []))
             scorer = self._resolve(found[0]["surname"]) if found else None
             assist_names = [p["surname"] for p in found[1:]]
+        # Who the console controlled just before the goal (the banner time, else now).
+        controlled = self._controlled_before(goal["at"] if goal else time.time())
+        if controlled:
+            if not scorer:
+                scorer = {**controlled, "source": "controlled"}
+            elif scorer.get("rosterPlayerId") == controlled["rosterPlayerId"]:
+                # banner and controlled player agree: take the controlled player's user, it's surer
+                if controlled.get("userId"):
+                    scorer = {**scorer, "userId": controlled["userId"], "userSure": True}
+            else:
+                s["controlledLabel"] = controlled["label"]
         if scorer:
             s.update(rosterPlayerId=scorer["rosterPlayerId"], userId=scorer["userId"],
                      userSure=scorer["userSure"], scorerLabel=scorer["label"])
+            if scorer.get("source") == "controlled":
+                s["scorerSource"] = "controlled"
             s["assists"] = [{"userId": r["userId"], "rosterPlayerId": r["rosterPlayerId"]}
                             for n in assist_names[:2] if (r := self._resolve(n)) and r["userId"]]
         return s
@@ -385,7 +502,12 @@ class FrameWatcher:
         if s.get("kind") == "opp_goal":
             return f"Skóre {score}: gól súpera?"
         name = s.get("scorerLabel") or self._player_name(s.get("rosterPlayerId"))
-        return f"Skóre {score}: náš gól" + (f", strelec {name}?" if name else ". Kto skóroval?")
+        text = f"Skóre {score}: náš gól" + (f", strelec {name}?" if name else ". Kto skóroval?")
+        if s.get("scorerSource") == "controlled":
+            text += " (podľa ovládaného hráča)"
+        elif s.get("controlledLabel"):
+            text += f" Pred gólom bol ovládaný {s['controlledLabel']}."
+        return text
 
     def _player_name(self, roster_player_id) -> str | None:
         p = next((p for p in self.context.get("roster", []) if p["rosterPlayerId"] == roster_player_id), None)

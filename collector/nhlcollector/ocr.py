@@ -138,7 +138,7 @@ class TesseractReader:
             self.error = "Tesseract nie je nainštalovaný" if "not installed" in str(exc) or isinstance(exc, ImportError) else str(exc)
 
     def read(self, image, region, mode: str) -> str | None:
-        """Text in a region. Modes: 'clock', 'period', 'text' (banners) and 'score'."""
+        """Text in a region. Modes: 'clock', 'period', 'line' (one line of text), 'tag' (name tag on the ice), 'text' (banners), 'score'."""
         if not self.available:
             return None
         w, h = image.size
@@ -149,10 +149,12 @@ class TesseractReader:
                 return self._score(crop)
             if mode == "text":
                 return self._tess.image_to_string(clean_crop(crop), config="--psm 6").strip()
+            if mode == "tag":  # small name tag under a player's ring
+                return self._tess.image_to_string(tight(clean_crop(crop, scale=2)), config="--psm 7").strip()
             # Clock and period: one short line. Tesseract reads it best at the original size,
             # cropped tight (measured on EA NHL screenshots; 3x read '5:42' as '9:42').
             config = {"clock": "--psm 7 -c tessedit_char_whitelist=0123456789:",
-                      "period": "--psm 7"}[mode]
+                      "period": "--psm 7", "line": "--psm 7"}[mode]
             return self._tess.image_to_string(tight(clean_crop(crop, scale=1)), config=config).strip()
         except Exception as exc:  # noqa: BLE001
             log.warning("OCR failed: %s", exc)
@@ -295,6 +297,31 @@ def parse_banner(text: str | None) -> dict | None:
             if len(part) >= 3 and not part.isdigit():  # shorter bits are OCR noise ('GOAL[1]' read as 'IT')
                 names.append(part)
     return {"type": kind, "names": names}
+
+
+_CONTROLLED_RE = re.compile(r"(\d{1,2})\s+([A-Z])\s*[.,]?\s*([A-Z][A-Z'\- ]+[A-Z])", re.I)
+
+
+def parse_controlled(text: str | None) -> dict | None:
+    """
+    The controlled-player box, EA NHL bottom left: '33 H. DISPOSABLE' → {'number': 33,
+    'initial': 'H', 'surname': 'DISPOSABLE'}. None when no number + name is there.
+    """
+    if not text:
+        return None
+    m = _CONTROLLED_RE.search(fold(text))
+    if not m:
+        return None
+    return {"number": int(m.group(1)), "initial": m.group(2).upper(), "surname": m.group(3).strip().upper()}
+
+
+def find_controlled(c: dict, roster: list[dict]) -> dict | None:
+    """The roster player for a controlled-player reading: surname, with the initial deciding between namesakes."""
+    players = [p for p in find_players(c["surname"], roster) if _key(p["surname"]) == _key(c["surname"])] \
+        or find_players(c["surname"], roster)
+    if len(players) > 1:
+        players = [p for p in players if fold(p["firstName"])[:1].upper() == c["initial"]] or players
+    return players[0] if players else None
 
 
 def _key(name: str) -> str:

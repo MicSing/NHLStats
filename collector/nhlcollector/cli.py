@@ -14,6 +14,7 @@ from .outbox import Outbox
 from .recorder import Recorder
 from .session import CommandError
 from .ocr import TesseractReader, resolve_aliases
+from .rings import resolve_colors
 from .vision import FrameWatcher, QuestionQueue, RegionStore
 from .web import WebApp, start_web
 
@@ -131,6 +132,17 @@ def run(argv: list[str] | None = None) -> None:
     watcher = FrameWatcher(obs.grab_frame, RegionStore(cfg.data_dir / "regions.json"), QuestionQueue(), reader=reader)
     watcher.context = ctx
     watcher.home_first = cfg.vision.home_first
+    watcher.user_colors, color_warnings = resolve_colors(cfg.colors, ctx["users"])
+    for warning in color_warnings:
+        print(f"  {warning}")
+    if cfg.vision.controlled_user:
+        q = cfg.vision.controlled_user.strip().lower()
+        u = next((u for u in ctx["users"] if u["name"].lower() == q or str(u["userId"]) == q), None) \
+            or next((u for u in ctx["users"] if q in u["name"].lower()), None)
+        if u:
+            watcher.controlled_user_id = u["userId"]
+        else:
+            print(f"  [vision] controlled_user '{cfg.vision.controlled_user}' nie je v sezóne.")
     watcher.aliases, alias_warnings = resolve_aliases(cfg.aliases, ctx["users"], ctx["roster"])
     for warning in alias_warnings:
         print(f"  {warning}")

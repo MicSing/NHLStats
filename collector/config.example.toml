@@ -24,6 +24,16 @@ data_dir = "collector-data"
 [vision]
 # The scoreboard lists the home team first (top row or left). Set false if it shows the away team first.
 home_first = true
+# Optional: the NHLStats user playing on the streamed console. The controlled-player box
+# (bottom left, '33 H. DISPOSABLE') then always counts as theirs.
+# controlled_user = "Michal"
+
+[colors]
+# Ring colour of each user in the game: red, orange, yellow, green, cyan, blue, pink or "#rrggbb".
+# The app reads the name tag under each ring and remembers which hockey player each user skates
+# with, so a goal by that player is credited to the right user.
+# "Michal" = "green"
+# "Peter" = "yellow"
 
 [aliases]
 # Optional. Banners normally show the NHL player's name, which the app finds on the season roster.
