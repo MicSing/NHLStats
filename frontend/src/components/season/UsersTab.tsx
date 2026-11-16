@@ -9,6 +9,8 @@ import { useToast } from '../../context/ToastContext'
 import LoadingSpinner from '../LoadingSpinner'
 import { TableCard, PrimaryButton } from './SeasonPrimitives'
 import PositionWheel from './PositionWheel'
+import ColorSelect from '../ColorSelect'
+import { useColorName } from '../ringColors'
 
 export interface UsersTabProps {
     season: Season
@@ -20,6 +22,7 @@ export interface UsersTabProps {
 export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDetail }: UsersTabProps) {
     const { t } = useTranslation()
     const toast = useToast()
+    const colorName = useColorName()
     const [assignUserId, setAssignUserId] = useState<number | ''>('')
     const [assignPosition, setAssignPosition] = useState<SeasonUserPositionCode | ''>('')
 
@@ -57,6 +60,15 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
         }
     }
 
+    const handleChangeColor = async (userId: number, color: string | null) => {
+        try {
+            await apiClient.put(`/api/seasons/${season.id}/users/${userId}/color`, { color })
+            onRefreshDetail()
+        } catch {
+            toast.error(t('toast.operationFailed'))
+        }
+    }
+
     const handleToggleActive = async (userId: number, isActive: boolean) => {
         try {
             await apiClient.put(`/api/seasons/${season.id}/users/${userId}/active`, { isActive })
@@ -82,6 +94,7 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                             <tr className="text-left text-text-muted text-xs uppercase tracking-wider">
                                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                                 <th className="px-4 py-3 font-medium">{t('admin.seasons.position')}</th>
+                                <th className="px-4 py-3 font-medium">{t('colors.column')}</th>
                                 <th className="px-4 py-3 font-medium">{t('admin.seasons.activeInSeason')}</th>
                                 <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
                             </tr>
@@ -89,7 +102,7 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                         <tbody className="divide-y divide-border">
                             {seasonDetail.users.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-4 py-6 text-center text-text-muted text-sm">
+                                    <td colSpan={5} className="px-4 py-6 text-center text-text-muted text-sm">
                                         {t('admin.seasons.noUsersAssigned')}
                                     </td>
                                 </tr>
@@ -119,6 +132,15 @@ export default function UsersTab({ season, allUsers, seasonDetail, onRefreshDeta
                                                     </option>
                                                 ))}
                                             </select>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <ColorSelect
+                                                value={u.customColor ? (u.color ?? null) : null}
+                                                inherited={u.customColor ? null : u.color}
+                                                inheritLabel={t('colors.byPosition', { color: colorName(u.customColor ? null : u.color) })}
+                                                onChange={(c) => void handleChangeColor(u.id, c)}
+                                                ariaLabel={t('colors.colorFor', { name: u.name })}
+                                            />
                                         </td>
                                         <td className="px-4 py-3">
                                             <label className="flex items-center gap-2 cursor-pointer">

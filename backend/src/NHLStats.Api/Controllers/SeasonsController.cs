@@ -94,6 +94,15 @@ public class SeasonsController : ControllerBase
         return result == null ? NotFound() : Ok(result);
     }
 
+    [Authorize]
+    [HttpPut("{id:int}/users/{userId:int}/color")]
+    public async Task<IActionResult> UpdateUserColor(int id, int userId, UpdateSeasonUserColorDto dto)
+    {
+        var (season, error) = await _service.SetUserColorAsync(id, userId, dto.Color);
+        if (error != null) return BadRequest(new { error });
+        return season == null ? NotFound() : Ok(season);
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}/users/{userId:int}/active")]
     public async Task<IActionResult> SetUserActive(int id, int userId, UpdateSeasonUserActiveDto dto)

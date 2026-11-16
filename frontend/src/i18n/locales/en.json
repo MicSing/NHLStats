@@ -1277,12 +1277,25 @@
         "copy": "Copy",
         "copied": "Copied",
         "hideKey": "Hide",
-        "empty": "No keys yet.",
-        "colorsTitle": "Position colours for the Collector",
-        "colorsHint": "The colour of the ring the game draws under each position's player. The Collector uses it to tell which user skates with which player.",
-        "colorFor": "Colour for {{position}}",
-        "noColor": "no colour",
-        "colorsSaved": "Colour saved",
-        "color": { "red": "red", "orange": "orange", "yellow": "yellow", "green": "green", "cyan": "cyan", "blue": "blue", "pink": "pink" }
+        "empty": "No keys yet."
+    },
+    "colors": {
+        "column": "Colour",
+        "none": "no colour",
+        "saved": "Colour saved",
+        "colorFor": "Colour for {{name}}",
+        "byPosition": "by position ({{color}})",
+        "fromSeason": "from season ({{color}})",
+        "positionTitle": "Default position colours",
+        "positionHint": "The colour of the ring the game draws under each position's player. A season can change it per user and a match can change it again for that match only. The Collector uses it to tell who skates with which player.",
+        "matchTitle": "Player colours in this match",
+        "matchHint": "Everyone has their season colour. Change it here for this match only.",
+        "red": "red",
+        "orange": "orange",
+        "yellow": "yellow",
+        "green": "green",
+        "cyan": "cyan",
+        "blue": "blue",
+        "pink": "pink"
     }
 }

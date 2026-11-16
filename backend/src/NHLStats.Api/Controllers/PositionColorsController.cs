@@ -24,4 +24,21 @@ public class PositionColorsController : ControllerBase
         var (colors, error) = await _service.UpdateAsync(dto);
         return error != null ? BadRequest(new { error }) : Ok(colors);
     }
+
+    /// <summary>Each user's colour in a match and where it comes from (match, season or position).</summary>
+    [HttpGet("/api/matches/{matchId:int}/colors")]
+    public async Task<IActionResult> GetMatchColors(int matchId)
+    {
+        var colors = await _service.GetMatchColorsAsync(matchId);
+        return colors == null ? NotFound() : Ok(colors);
+    }
+
+    /// <summary>Sets a user's colour for this match only; null goes back to the season colour.</summary>
+    [HttpPut("/api/matches/{matchId:int}/users/{userId:int}/color")]
+    public async Task<IActionResult> SetMatchColor(int matchId, int userId, UpdateColorDto dto)
+    {
+        var (colors, error) = await _service.SetMatchColorAsync(matchId, userId, dto.Color);
+        if (error != null) return BadRequest(new { error });
+        return colors == null ? NotFound() : Ok(colors);
+    }
 }

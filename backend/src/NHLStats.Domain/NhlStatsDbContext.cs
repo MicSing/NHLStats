@@ -93,10 +93,12 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.SeasonId, x.UserId }).IsUnique();
             b.Property(x => x.Position).HasConversion<int?>();
+            b.Property(x => x.Color).HasMaxLength(16);
             b.Property(x => x.IsActive).HasDefaultValue(true);
             b.HasOne(x => x.Season).WithMany(s => s.SeasonUsers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.User).WithMany(u => u.SeasonUsers).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        modelBuilder.Entity<UserMatch>(b => b.Property(x => x.Color).HasMaxLength(16));
 
         modelBuilder.Entity<Match>(b =>
         {

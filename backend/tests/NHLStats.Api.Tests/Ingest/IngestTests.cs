@@ -468,31 +468,104 @@ public class IngestTests : ApiTestBase
     // ── position colours ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Position_colours_are_stored_and_reach_the_collector_context()
+    public async Task Position_colours_are_defaults_that_can_be_changed()
     {
         var admin = await CreateAuthenticatedClientAsync();
-        var s = await CreateMatchSetupAsync(admin, "Colour Season");
-        var (_, key) = await CreateApiKeyAsync(admin);
-
-        var put = await admin.PutAsJsonAsync("/api/admin/position-colors",
-            new { colors = new Dictionary<string, string?> { ["C"] = "green", ["LD"] = "#FFCC00" } });
-        put.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var all = await (await admin.GetAsync("/api/admin/position-colors")).Content.ReadFromJsonAsync<JsonElement>();
         all.GetArrayLength().Should().Be(5);
-        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "C").GetProperty("color").GetString().Should().Be("green");
-        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "LD").GetProperty("color").GetString().Should().Be("#ffcc00");
-        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").GetString().Should().Be("red"); // seeded default
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").GetString().Should().Be("red");
+
+        var put = await admin.PutAsJsonAsync("/api/admin/position-colors",
+            new { colors = new Dictionary<string, string?> { ["RW"] = "#FFCC00" } });
+        put.StatusCode.Should().Be(HttpStatusCode.OK);
+        all = await put.Content.ReadFromJsonAsync<JsonElement>();
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").GetString().Should().Be("#ffcc00");
+        (await admin.PutAsJsonAsync("/api/admin/position-colors", new { colors = new Dictionary<string, string?> { ["RW"] = "red" } }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Season_user_colour_follows_the_position_unless_set_and_reaches_the_collector()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Colour Season"); // user is C → yellow by default
+        var (_, key) = await CreateApiKeyAsync(admin);
+        var keyClient = CreateKeyClient(key);
+
+        async Task<string?> SeasonColor()
+        {
+            var users = await (await admin.GetAsync($"/api/seasons/{s.SeasonId}/users")).Content.ReadFromJsonAsync<JsonElement>();
+            var c = users.EnumerateArray().Single(u => u.GetProperty("id").GetInt32() == s.UserId).GetProperty("color");
+            return c.ValueKind == JsonValueKind.Null ? null : c.GetString();
+        }
+        async Task<string?> ContextColor()
+        {
+            var ctx = await (await keyClient.GetAsync($"/api/ingest/matches/{s.MatchId}/context")).Content.ReadFromJsonAsync<JsonElement>();
+            var c = ctx.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("userId").GetInt32() == s.UserId).GetProperty("color");
+            return c.ValueKind == JsonValueKind.Null ? null : c.GetString();
+        }
+
+        (await SeasonColor()).Should().Be("yellow");
+        (await ContextColor()).Should().Be("yellow");
+
+        // a new position brings its colour
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/position", new { position = "LD" })).EnsureSuccessStatusCode();
+        (await SeasonColor()).Should().Be("green");
+
+        // a colour set by hand stays when the position changes
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/color", new { color = "Pink" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/position", new { position = "RD" })).EnsureSuccessStatusCode();
+        (await SeasonColor()).Should().Be("pink");
+        (await ContextColor()).Should().Be("pink");
+
+        // clearing goes back to the position's colour
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/color", new { color = (string?)null }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await SeasonColor()).Should().Be("cyan");
+
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/color", new { color = "plaid" }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Match_colour_overrides_the_season_colour_for_that_match_only()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Match Colour Season"); // C → yellow
+        var (_, key) = await CreateApiKeyAsync(admin);
+
+        async Task<JsonElement> Colors() =>
+            (await (await admin.GetAsync($"/api/matches/{s.MatchId}/colors")).Content.ReadFromJsonAsync<JsonElement>())
+                .EnumerateArray().Single(u => u.GetProperty("userId").GetInt32() == s.UserId);
+
+        var c = await Colors();
+        c.GetProperty("color").GetString().Should().Be("yellow");
+        c.GetProperty("source").GetString().Should().Be("position");
+        c.GetProperty("seasonColor").GetString().Should().Be("yellow");
+
+        (await admin.PutAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{s.UserId}/color", new { color = "blue" })).EnsureSuccessStatusCode();
+        (await Colors()).GetProperty("source").GetString().Should().Be("season");
+
+        var put = await admin.PutAsJsonAsync($"/api/matches/{s.MatchId}/users/{s.UserId}/color", new { color = "red" });
+        put.StatusCode.Should().Be(HttpStatusCode.OK);
+        c = await Colors();
+        c.GetProperty("color").GetString().Should().Be("red");
+        c.GetProperty("source").GetString().Should().Be("match");
+        c.GetProperty("seasonColor").GetString().Should().Be("blue");
 
         var ctx = await (await CreateKeyClient(key).GetAsync($"/api/ingest/matches/{s.MatchId}/context")).Content.ReadFromJsonAsync<JsonElement>();
         ctx.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("userId").GetInt32() == s.UserId)
-            .GetProperty("color").GetString().Should().Be("green");
+            .GetProperty("color").GetString().Should().Be("red");
 
-        // clearing a colour
-        (await admin.PutAsJsonAsync("/api/admin/position-colors", new { colors = new Dictionary<string, string?> { ["C"] = null } }))
-            .StatusCode.Should().Be(HttpStatusCode.OK);
-        all = await (await admin.GetAsync("/api/admin/position-colors")).Content.ReadFromJsonAsync<JsonElement>();
-        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "C").GetProperty("color").ValueKind.Should().Be(JsonValueKind.Null);
+        // back to the season colour
+        (await admin.PutAsJsonAsync($"/api/matches/{s.MatchId}/users/{s.UserId}/color", new { color = (string?)null })).EnsureSuccessStatusCode();
+        (await Colors()).GetProperty("color").GetString().Should().Be("blue");
+
+        (await admin.PutAsJsonAsync($"/api/matches/{s.MatchId}/users/{s.UserId}/color", new { color = "plaid" }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await admin.PutAsJsonAsync($"/api/matches/{s.MatchId}/users/999999/color", new { color = "red" }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

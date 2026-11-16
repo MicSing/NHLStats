@@ -24,6 +24,10 @@ export interface SeasonUser extends User {
     position: SeasonUserPositionCode | null
     /** Only season-active users are added to new matches. */
     isActiveInSeason: boolean
+    /** Ring colour in the game: set for the season, else the position's default. */
+    color?: string | null
+    /** True when the colour was set for this season (not the position default). */
+    customColor?: boolean
 }
 
 export interface SeasonDetail extends Season {

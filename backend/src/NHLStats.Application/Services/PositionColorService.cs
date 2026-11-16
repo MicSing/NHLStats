@@ -52,8 +52,51 @@ public partial class PositionColorService : IPositionColorService
         return (await GetAllAsync(), null);
     }
 
+    public async Task<IReadOnlyList<MatchUserColorDto>?> GetMatchColorsAsync(int matchId)
+    {
+        var match = await _db.Matches.AsNoTracking().FirstOrDefaultAsync(m => m.Id == matchId);
+        if (match == null) return null;
+
+        var defaults = await GetMapAsync();
+        var seasonUsers = await _db.SeasonUsers.AsNoTracking()
+            .Where(su => su.SeasonId == match.SeasonId)
+            .ToDictionaryAsync(su => su.UserId);
+        var userMatches = await _db.UserMatches.AsNoTracking()
+            .Where(um => um.MatchId == matchId)
+            .Select(um => new { um.UserId, um.User!.Name, um.Color })
+            .ToListAsync();
+
+        return userMatches
+            .DistinctBy(um => um.UserId)
+            .OrderBy(um => um.Name)
+            .Select(um =>
+            {
+                seasonUsers.TryGetValue(um.UserId, out var su);
+                var positionColor = su?.Position is { } p ? defaults.GetValueOrDefault(p) : null;
+                var seasonColor = su?.Color ?? positionColor;
+                var (color, source) = um.Color != null ? (um.Color, "match")
+                    : su?.Color != null ? (su.Color, "season")
+                    : positionColor != null ? (positionColor, "position")
+                    : ((string?)null, (string?)null);
+                return new MatchUserColorDto(um.UserId, um.Name, su?.Position, color, source, seasonColor);
+            })
+            .ToList();
+    }
+
+    public async Task<(IReadOnlyList<MatchUserColorDto>? colors, string? error)> SetMatchColorAsync(int matchId, int userId, string? color)
+    {
+        var normalized = Normalize(color);
+        if (normalized == "")
+            return (null, $"Unknown colour '{color}'. Use {string.Join(", ", NamedColors)} or #rrggbb.");
+        var rows = await _db.UserMatches.Where(um => um.MatchId == matchId && um.UserId == userId).ToListAsync();
+        if (rows.Count == 0) return (null, null);
+        foreach (var um in rows) um.Color = normalized;
+        await _db.SaveChangesAsync();
+        return (await GetMatchColorsAsync(matchId), null);
+    }
+
     /// <summary>null for "clear", "" for invalid, otherwise the colour in lower case.</summary>
-    private static string? Normalize(string? value)
+    public static string? Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
         var c = value.Trim().ToLowerInvariant();

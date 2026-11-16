@@ -15,4 +15,6 @@ public interface ISeasonService
     Task<IEnumerable<SeasonUserDto>?> GetSeasonUsersAsync(int seasonId);
     Task<SeasonDetailDto?> UpdateUserPositionAsync(int seasonId, int userId, SeasonUserPosition? position);
     Task<SeasonDetailDto?> SetUserActiveAsync(int seasonId, int userId, bool isActive);
+    /// <summary>Sets (or with null clears) the user's ring colour. Error for an unknown colour.</summary>
+    Task<(SeasonDetailDto? season, string? error)> SetUserColorAsync(int seasonId, int userId, string? color);
 }

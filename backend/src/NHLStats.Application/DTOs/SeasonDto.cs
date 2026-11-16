@@ -30,13 +30,19 @@ public record SeasonDetailDto(
     GamingConsole? Console,
     bool PointsEnabled = true);
 
-public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position, bool IsActiveInSeason = true);
+/// <param name="Color">Ring colour in the game: set by hand, else the position's colour.</param>
+/// <param name="CustomColor">True when the colour was set by hand for this season.</param>
+public record SeasonUserDto(int Id, string Name, bool IsActive, SeasonUserPosition? Position, bool IsActiveInSeason = true,
+    string? Color = null, bool CustomColor = false);
 
 public record AssignSeasonUserDto(SeasonUserPosition? Position = null);
 
 public record UpdateSeasonUserPositionDto(SeasonUserPosition? Position);
 
 public record UpdateSeasonUserActiveDto(bool IsActive);
+
+/// <summary>Named colour (red, orange, yellow, green, cyan, blue, pink) or #rrggbb; null = the position's colour.</summary>
+public record UpdateSeasonUserColorDto(string? Color);
 
 public record CreateSeasonDto(
     [Required] string Name,

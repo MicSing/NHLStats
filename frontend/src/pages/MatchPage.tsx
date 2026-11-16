@@ -22,6 +22,7 @@ import MatchHeaderEditor from '../components/MatchHeaderEditor'
 import MatchQuickActionsBar from '../components/MatchQuickActionsBar'
 import MatchEventTimeline from '../components/MatchEventTimeline'
 import UserMatchCard from '../components/UserMatchCard'
+import MatchColorsPanel from '../components/MatchColorsPanel'
 import MatchProposalsPanel from '../components/MatchProposalsPanel'
 
 interface UserMatchData {
@@ -332,6 +333,9 @@ export default function MatchPage() {
                     isAuth={!!token}
                     onEventAdded={loadAll}
                 />
+
+                {/* Ring colours the Collector looks for in this match */}
+                {token && <MatchColorsPanel matchId={Number(matchId)} />}
 
                 {/* Events proposed by the Collector app, waiting for review */}
                 {token && (

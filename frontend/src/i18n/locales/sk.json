@@ -1311,12 +1311,25 @@
         "copy": "Kopírovať",
         "copied": "Skopírované",
         "hideKey": "Skryť",
-        "empty": "Zatiaľ žiadne kľúče.",
-        "colorsTitle": "Farby postov pre Collector",
-        "colorsHint": "Farba krúžku, ktorý hra kreslí pod hráčom každého postu. Collector podľa nej spozná, ktorý používateľ hrá s ktorým hokejistom.",
-        "colorFor": "Farba pre {{position}}",
-        "noColor": "bez farby",
-        "colorsSaved": "Farba uložená",
-        "color": { "red": "červená", "orange": "oranžová", "yellow": "žltá", "green": "zelená", "cyan": "tyrkysová", "blue": "modrá", "pink": "ružová" }
+        "empty": "Zatiaľ žiadne kľúče."
+    },
+    "colors": {
+        "column": "Farba",
+        "none": "bez farby",
+        "saved": "Farba uložená",
+        "colorFor": "Farba pre {{name}}",
+        "byPosition": "podľa postu ({{color}})",
+        "fromSeason": "zo sezóny ({{color}})",
+        "positionTitle": "Predvolené farby postov",
+        "positionHint": "Farba krúžku, ktorý hra kreslí pod hráčom každého postu. V sezóne ju môžeš používateľovi zmeniť a v detaile zápasu ešte raz len pre ten zápas. Collector podľa nej spozná, kto hrá s ktorým hokejistom.",
+        "matchTitle": "Farby hráčov v zápase",
+        "matchHint": "Každý má farbu zo sezóny. Tu ju zmeníš len pre tento zápas.",
+        "red": "červená",
+        "orange": "oranžová",
+        "yellow": "žltá",
+        "green": "zelená",
+        "cyan": "tyrkysová",
+        "blue": "modrá",
+        "pink": "ružová"
     }
 }

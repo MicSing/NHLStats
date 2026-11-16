@@ -70,23 +70,24 @@ public class MatchEventProposalService : IMatchEventProposalService
             .FirstOrDefaultAsync(m => m.Id == matchId);
         if (match == null) return null;
 
-        var positions = await _db.SeasonUsers
+        var seasonUsers = await _db.SeasonUsers
             .AsNoTracking()
             .Where(su => su.SeasonId == match.SeasonId)
-            .ToDictionaryAsync(su => su.UserId, su => su.Position);
+            .ToDictionaryAsync(su => su.UserId, su => new { su.Position, su.Color });
+        var positions = seasonUsers.ToDictionary(kv => kv.Key, kv => kv.Value.Position);
 
         // Users of this match (UserMatch rows); fall back to active season users before initialization.
         var users = await _db.UserMatches
             .AsNoTracking()
             .Where(um => um.MatchId == matchId)
-            .Select(um => new { um.UserId, um.User!.Name })
+            .Select(um => new { um.UserId, um.User!.Name, um.Color })
             .ToListAsync();
         if (users.Count == 0)
         {
             users = await _db.SeasonUsers
                 .AsNoTracking()
                 .Where(su => su.SeasonId == match.SeasonId && su.IsActive)
-                .Select(su => new { su.UserId, su.User!.Name })
+                .Select(su => new { su.UserId, su.User!.Name, Color = (string?)null })
                 .ToListAsync();
         }
 
@@ -115,8 +116,11 @@ public class MatchEventProposalService : IMatchEventProposalService
                 .Select(u =>
                 {
                     var position = positions.GetValueOrDefault(u.UserId);
-                    return new IngestUserDto(u.UserId, u.Name, position,
-                        position.HasValue ? colors.GetValueOrDefault(position.Value) : null);
+                    // the season's colour for this user, else the colour of their position
+                    var color = u.Color  // set for this match
+                                ?? seasonUsers.GetValueOrDefault(u.UserId)?.Color
+                                ?? (position.HasValue ? colors.GetValueOrDefault(position.Value) : null);
+                    return new IngestUserDto(u.UserId, u.Name, position, color);
                 })
                 .ToList(),
             roster);
