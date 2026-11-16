@@ -90,6 +90,8 @@ public class MatchEventProposalService : IMatchEventProposalService
                 .ToListAsync();
         }
 
+        var colors = await _db.PositionColors.AsNoTracking().ToDictionaryAsync(c => c.Position, c => c.Color);
+
         var hostedTeamId = match.Season?.HostedTeamId;
         var roster = await _db.SeasonRosterPlayers
             .AsNoTracking()
@@ -110,7 +112,12 @@ public class MatchEventProposalService : IMatchEventProposalService
             users
                 .DistinctBy(u => u.UserId)
                 .OrderBy(u => u.Name)
-                .Select(u => new IngestUserDto(u.UserId, u.Name, positions.GetValueOrDefault(u.UserId)))
+                .Select(u =>
+                {
+                    var position = positions.GetValueOrDefault(u.UserId);
+                    return new IngestUserDto(u.UserId, u.Name, position,
+                        position.HasValue ? colors.GetValueOrDefault(position.Value) : null);
+                })
                 .ToList(),
             roster);
     }

@@ -464,4 +464,45 @@ public class IngestTests : ApiTestBase
         var events = await (await admin.GetAsync($"/api/matches/{s.MatchId}/events")).Content.ReadFromJsonAsync<JsonElement>();
         events.EnumerateArray().Count(e => e.GetProperty("eventType").GetString() == "MatchEnd").Should().Be(1);
     }
+
+    // ── position colours ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Position_colours_are_stored_and_reach_the_collector_context()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Colour Season");
+        var (_, key) = await CreateApiKeyAsync(admin);
+
+        var put = await admin.PutAsJsonAsync("/api/admin/position-colors",
+            new { colors = new Dictionary<string, string?> { ["C"] = "green", ["LD"] = "#FFCC00" } });
+        put.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var all = await (await admin.GetAsync("/api/admin/position-colors")).Content.ReadFromJsonAsync<JsonElement>();
+        all.GetArrayLength().Should().Be(5);
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "C").GetProperty("color").GetString().Should().Be("green");
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "LD").GetProperty("color").GetString().Should().Be("#ffcc00");
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var ctx = await (await CreateKeyClient(key).GetAsync($"/api/ingest/matches/{s.MatchId}/context")).Content.ReadFromJsonAsync<JsonElement>();
+        ctx.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("userId").GetInt32() == s.UserId)
+            .GetProperty("color").GetString().Should().Be("green");
+
+        // clearing a colour
+        (await admin.PutAsJsonAsync("/api/admin/position-colors", new { colors = new Dictionary<string, string?> { ["C"] = null } }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        all = await (await admin.GetAsync("/api/admin/position-colors")).Content.ReadFromJsonAsync<JsonElement>();
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "C").GetProperty("color").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Position_colours_reject_unknown_colours_and_positions_and_need_admin()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        (await admin.PutAsJsonAsync("/api/admin/position-colors", new { colors = new Dictionary<string, string?> { ["C"] = "plaid" } }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await admin.PutAsJsonAsync("/api/admin/position-colors", new { colors = new Dictionary<string, string?> { ["G"] = "red" } }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Factory.CreateClient().GetAsync("/api/admin/position-colors")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

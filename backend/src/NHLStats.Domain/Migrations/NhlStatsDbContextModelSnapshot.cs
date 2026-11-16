@@ -715,6 +715,21 @@ namespace NHLStats.Domain.Migrations
                         });
                 });
 
+            modelBuilder.Entity("NHLStats.Domain.Entities.PositionColor", b =>
+                {
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Position");
+
+                    b.ToTable("PositionColors");
+                });
+
             modelBuilder.Entity("NHLStats.Domain.Entities.RosterPlayer", b =>
                 {
                     b.Property<int>("Id")

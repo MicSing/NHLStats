@@ -5,6 +5,7 @@ import apiClient from '../../services/apiClient'
 import AdminPageHeader from '../../components/AdminPageHeader'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
+import PositionColorsCard from '../../components/PositionColorsCard'
 import { useToast } from '../../context/ToastContext'
 import type { ApiKey, CreatedApiKey } from '../../types/collector'
 
@@ -143,6 +144,8 @@ export default function ApiKeysPage() {
                     </tbody>
                 </table>
             </div>
+
+            <PositionColorsCard />
         </div>
     )
 }

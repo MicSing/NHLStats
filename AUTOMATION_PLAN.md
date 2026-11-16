@@ -163,6 +163,7 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 - [x] Skóre (dva riadky pod sebou ako v EA NHL, alebo vedľa seba), čas, tretina; overené na screenshotoch EA NHL
 - [x] Automatický zápis zmeny tretiny, OT, SO a návrh konca zápasu (FINAL)
 - [x] Banner gólu a samostatný banner asistencií: strelec a asistenti zo súpisky (alebo prezývky z `[aliases]`), čas z okamihu bannera
+- [x] Farby krúžkov podľa postu uložené v NHLStats (admin → API kľúče), Collector si pamätá hráča každého používateľa
 - [x] Nájazdy: gól z bannera s predvyplneným strelcom, koniec nájazdov pripíše víťazovi gól
 - [ ] Overiť a doladiť oblasti na záznamoch z vlastných zápasov
 

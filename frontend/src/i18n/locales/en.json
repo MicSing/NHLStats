@@ -1277,6 +1277,12 @@
         "copy": "Copy",
         "copied": "Copied",
         "hideKey": "Hide",
-        "empty": "No keys yet."
+        "empty": "No keys yet.",
+        "colorsTitle": "Position colours for the Collector",
+        "colorsHint": "The colour of the ring the game draws under each position's player. The Collector uses it to tell which user skates with which player.",
+        "colorFor": "Colour for {{position}}",
+        "noColor": "no colour",
+        "colorsSaved": "Colour saved",
+        "color": { "red": "red", "orange": "orange", "yellow": "yellow", "green": "green", "cyan": "cyan", "blue": "blue", "pink": "pink" }
     }
 }

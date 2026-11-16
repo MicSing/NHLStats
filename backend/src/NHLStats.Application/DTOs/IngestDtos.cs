@@ -21,7 +21,8 @@ public record IngestMatchSummaryDto(
 public record IngestUserDto(
     int UserId,
     string Name,
-    SeasonUserPosition? Position);
+    SeasonUserPosition? Position,
+    string? Color = null);
 
 public record IngestRosterPlayerDto(
     int RosterPlayerId,

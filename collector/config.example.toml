@@ -31,7 +31,9 @@ controlled_box = false
 # controlled_user = "Michal"
 
 [colors]
-# Ring colour of each user in the game: red, orange, yellow, green, cyan, blue, pink or "#rrggbb".
+# Ring colours come from NHLStats: each user position (LW, C, RW, LD, RD) has its colour, set by
+# the admin on the API keys page. Only fill this in to override it for a user:
+# red, orange, yellow, green, cyan, blue, pink or "#rrggbb".
 # The app reads the name tag under each ring and remembers which hockey player each user skates
 # with, so a goal by that player is credited to the right user.
 # "Michal" = "green"

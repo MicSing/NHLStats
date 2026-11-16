@@ -125,6 +125,7 @@ builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 builder.Services.AddScoped<IUserMatchService, UserMatchService>();
 builder.Services.AddScoped<IMatchEventService, MatchEventService>();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<IPositionColorService, PositionColorService>();
 builder.Services.AddScoped<IMatchEventProposalService, MatchEventProposalService>();
 builder.Services.AddScoped<IBettingCalculator, BettingCalculator>();
 builder.Services.AddScoped<IBettingBalanceService, BettingBalanceService>();

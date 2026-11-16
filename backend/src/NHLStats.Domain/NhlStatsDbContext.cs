@@ -36,6 +36,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<UserSeasonEventDistribution> UserSeasonEventDistributions => Set<UserSeasonEventDistribution>();
     public DbSet<MatchEvent> MatchEvents => Set<MatchEvent>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<PositionColor> PositionColors => Set<PositionColor>();
     public DbSet<MatchEventProposal> MatchEventProposals => Set<MatchEventProposal>();
     public DbSet<UserMatchAssist> UserMatchAssists => Set<UserMatchAssist>();
     public DbSet<UserMatchFight> UserMatchFights => Set<UserMatchFight>();
@@ -241,6 +242,13 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.Property(x => x.Prefix).HasMaxLength(16).IsRequired();
             b.Property(x => x.KeyHash).HasMaxLength(64).IsRequired();
             b.HasIndex(x => x.KeyHash).IsUnique();
+        });
+
+        modelBuilder.Entity<PositionColor>(b =>
+        {
+            b.HasKey(x => x.Position);
+            b.Property(x => x.Position).HasConversion<int>().ValueGeneratedNever();
+            b.Property(x => x.Color).HasMaxLength(16).IsRequired();
         });
 
         // The database has Restrict on these (InitialCreate); state it so migrations stop proposing Cascade.

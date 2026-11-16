@@ -133,7 +133,13 @@ def run(argv: list[str] | None = None) -> None:
     watcher.context = ctx
     watcher.home_first = cfg.vision.home_first
     watcher.controlled_box = cfg.vision.controlled_box
-    watcher.user_colors, color_warnings = resolve_colors(cfg.colors, ctx["users"])
+    # Ring colours: per position from NHLStats (admin → API kľúče), [colors] in config.toml overrides.
+    watcher.user_colors = {u["userId"]: u["color"] for u in ctx["users"] if u.get("color")}
+    overrides, color_warnings = resolve_colors(cfg.colors, ctx["users"])
+    watcher.user_colors.update(overrides)
+    if watcher.user_colors:
+        names = {u["userId"]: u["name"] for u in ctx["users"]}
+        print("  Farby: " + ", ".join(f"{names.get(uid, uid)} {c}" for uid, c in watcher.user_colors.items()))
     for warning in color_warnings:
         print(f"  {warning}")
     if cfg.vision.controlled_user:

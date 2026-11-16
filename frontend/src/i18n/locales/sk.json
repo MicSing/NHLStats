@@ -1311,6 +1311,12 @@
         "copy": "Kopírovať",
         "copied": "Skopírované",
         "hideKey": "Skryť",
-        "empty": "Zatiaľ žiadne kľúče."
+        "empty": "Zatiaľ žiadne kľúče.",
+        "colorsTitle": "Farby postov pre Collector",
+        "colorsHint": "Farba krúžku, ktorý hra kreslí pod hráčom každého postu. Collector podľa nej spozná, ktorý používateľ hrá s ktorým hokejistom.",
+        "colorFor": "Farba pre {{position}}",
+        "noColor": "bez farby",
+        "colorsSaved": "Farba uložená",
+        "color": { "red": "červená", "orange": "oranžová", "yellow": "žltá", "green": "zelená", "cyan": "tyrkysová", "blue": "modrá", "pink": "ružová" }
     }
 }
