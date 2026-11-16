@@ -482,7 +482,7 @@ public class IngestTests : ApiTestBase
         all.GetArrayLength().Should().Be(5);
         all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "C").GetProperty("color").GetString().Should().Be("green");
         all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "LD").GetProperty("color").GetString().Should().Be("#ffcc00");
-        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").ValueKind.Should().Be(JsonValueKind.Null);
+        all.EnumerateArray().Single(c => c.GetProperty("position").GetString() == "RW").GetProperty("color").GetString().Should().Be("red"); // seeded default
 
         var ctx = await (await CreateKeyClient(key).GetAsync($"/api/ingest/matches/{s.MatchId}/context")).Content.ReadFromJsonAsync<JsonElement>();
         ctx.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("userId").GetInt32() == s.UserId)

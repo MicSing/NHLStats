@@ -249,6 +249,13 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Position);
             b.Property(x => x.Position).HasConversion<int>().ValueGeneratedNever();
             b.Property(x => x.Color).HasMaxLength(16).IsRequired();
+            // Ring colours in the game as the league plays it; admins can change them.
+            b.HasData(
+                new PositionColor { Position = SeasonUserPosition.C, Color = "yellow" },
+                new PositionColor { Position = SeasonUserPosition.LD, Color = "green" },
+                new PositionColor { Position = SeasonUserPosition.RD, Color = "cyan" },
+                new PositionColor { Position = SeasonUserPosition.LW, Color = "blue" },
+                new PositionColor { Position = SeasonUserPosition.RW, Color = "red" });
         });
 
         // The database has Restrict on these (InitialCreate); state it so migrations stop proposing Cascade.

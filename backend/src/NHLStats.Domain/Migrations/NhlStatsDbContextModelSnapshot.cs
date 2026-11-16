@@ -728,6 +728,33 @@ namespace NHLStats.Domain.Migrations
                     b.HasKey("Position");
 
                     b.ToTable("PositionColors");
+
+                    b.HasData(
+                        new
+                        {
+                            Position = 1,
+                            Color = "yellow"
+                        },
+                        new
+                        {
+                            Position = 3,
+                            Color = "green"
+                        },
+                        new
+                        {
+                            Position = 4,
+                            Color = "cyan"
+                        },
+                        new
+                        {
+                            Position = 0,
+                            Color = "blue"
+                        },
+                        new
+                        {
+                            Position = 2,
+                            Color = "red"
+                        });
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Entities.RosterPlayer", b =>
