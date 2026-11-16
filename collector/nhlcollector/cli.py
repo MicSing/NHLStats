@@ -11,7 +11,10 @@ from .api import ApiError, NhlStatsClient
 from .config import load_config
 from .obs import ObsBridge
 from .outbox import Outbox
-from .session import CommandError, MatchSession
+from .recorder import Recorder
+from .session import CommandError
+from .vision import FrameWatcher, QuestionQueue, RegionStore
+from .web import WebApp, start_web
 
 HELP = """
 Príkazy (Enter potvrdí). Čas z obrazovky môžeš pridať ako @12:34 kamkoľvek.
@@ -75,6 +78,7 @@ def run(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="nhlcollector", description="Zápis udalostí zápasu do NHLStats.")
     parser.add_argument("--config", type=Path, default=Path("config.toml"))
     parser.add_argument("--match", type=int, help="Id zápasu (inak sa vyberie zo zoznamu)")
+    parser.add_argument("--port", type=int, default=8787, help="Port lokálnej stránky (0 = vypnutá)")
     args = parser.parse_args(argv)
 
     cfg = load_config(args.config)
@@ -103,11 +107,11 @@ def run(argv: list[str] | None = None) -> None:
         print(f"OBS nepripojené ({obs.error}), udalosti sa zapisujú bez obrazu.")
 
     outbox = Outbox(cfg.data_dir / f"match-{match_id}" / "outbox.json")
-    session = MatchSession(match_id, ctx["users"], ctx["roster"])
+    recorder = Recorder(client, ctx, obs, outbox)
     stop = threading.Event()
 
     def flush(verbose: bool = False) -> None:
-        sent, error = outbox.flush(client, match_id)
+        sent, error = recorder.flush()
         if error and verbose:
             print(f"  (neodoslané, skúsim znova: {error})")
         elif sent and verbose:
@@ -119,12 +123,24 @@ def run(argv: list[str] | None = None) -> None:
 
     threading.Thread(target=background_flush, daemon=True).start()
     flush(verbose=True)
+
+    watcher = FrameWatcher(obs.grab_frame, RegionStore(cfg.data_dir / "regions.json"), QuestionQueue())
+    server = None
+    if args.port:
+        watcher.start()
+        try:
+            server = start_web(WebApp(recorder, watcher), args.port)
+            print(f"Lokálna stránka: http://localhost:{args.port}  (obraz, sledované oblasti, otázky)")
+            if not watcher.pillow:
+                print("  Detekcia zmeny skóre je vypnutá: chýba Pillow (pip install -e \".[vision]\").")
+        except OSError as exc:
+            print(f"Lokálnu stránku sa nepodarilo spustiť na porte {args.port}: {exc}")
     print(HELP)
 
     try:
         while True:
             try:
-                line = input(f"[{session.period_label}] > ").strip()
+                line = input(f"[{recorder.session.period_label}] > ").strip()
             except EOFError:
                 break
             cmd = line.split()[0].lower() if line else ""
@@ -148,21 +164,22 @@ def run(argv: list[str] | None = None) -> None:
                     print("  nič na zrušenie (odoslané udalosti zamietni v NHLStats)")
                 continue
             try:
-                event = session.parse(line)
+                event, display = recorder.record(line)
             except CommandError as exc:
                 print(f"  {exc}")
                 continue
             if event is None:
                 continue
-            display = event.pop("_display", None)
-            event["mediaRef"] = obs.capture(event["eventType"].lower())
-            outbox.add(event)
             print(f"  ✓ {event['eventType']}" + (" súpera" if event["isOpponent"] else "")
                   + (f" – {display}" if display else "")
                   + (f" ({event['eventSubtype']})" if event.get("eventSubtype") else ""))
-            flush(verbose=True)
+            if recorder.last_flush_error:
+                print(f"  (neodoslané, skúsim znova: {recorder.last_flush_error})")
     finally:
         stop.set()
+        watcher.stop()
+        if server:
+            server.shutdown()
         flush(verbose=True)
         if outbox.pending_count:
             print(f"Pozor: {outbox.pending_count} udalostí ešte nie je odoslaných. "

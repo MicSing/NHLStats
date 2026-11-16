@@ -136,6 +136,27 @@ class MatchSession:
                              if user and player else "neznámy hráč")
         return event
 
+    def make(self, event_type: str, *, is_opponent: bool = False, user_id: int | None = None,
+             roster_player_id: int | None = None, goal_type: str | None = None,
+             clock: str | None = None) -> dict:
+        """Builds an event from structured input (the web page's buttons) with the same checks as commands."""
+        if event_type not in ("Goal", "Penalty", "ShootoutGoal"):
+            raise CommandError(f"Typ '{event_type}' sa nedá zapísať tlačidlom.")
+        user = player = None
+        if not is_opponent and user_id is not None:
+            user = next((u for u in self.users if u["userId"] == user_id), None)
+            if user is None:
+                raise CommandError("Neznámy používateľ.")
+            player = next((p for p in self.roster if p["rosterPlayerId"] == roster_player_id), None)
+            if player is None:
+                raise CommandError("Vyber aj hráča zo súpisky.")
+        event = self._event(event_type, is_opponent=is_opponent, clock=clock, goal_type=goal_type,
+                            user_id=user["userId"] if user else None,
+                            roster_player_id=player["rosterPlayerId"] if player else None)
+        event["_display"] = (f"{user['name']} ({player['firstName']} {player['surname']})" if user and player
+                             else None if is_opponent else "neznámy hráč")
+        return event
+
     def _event(self, event_type: str, *, is_opponent: bool = False, subtype: str | None = None,
                goal_type: str | None = None, user_id: int | None = None,
                roster_player_id: int | None = None, clock: str | None = None) -> dict:

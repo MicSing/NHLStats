@@ -56,7 +56,9 @@ class Outbox:
     def flush(self, client: NhlStatsClient, match_id: int) -> tuple[int, str | None]:
         """Sends unsent events. Returns (number sent, connection error or None)."""
         with self._lock:
-            batch = [i["event"] for i in self._items if not i["sent"] and not i["error"]]
+            # Keys starting with "_" are local-only (e.g. display text for the web page).
+            batch = [{k: v for k, v in i["event"].items() if not k.startswith("_")}
+                     for i in self._items if not i["sent"] and not i["error"]]
         if not batch:
             return 0, None
         try:

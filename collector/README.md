@@ -23,7 +23,7 @@ Potrebuješ Python 3.11 alebo novší.
 cd collector
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e .
+pip install -e ".[vision]"      # vision = Pillow pre detekciu zmeny skóre
 cp config.example.toml config.toml
 ```
 
@@ -49,6 +49,20 @@ nhlcollector --match 123     # konkrétny zápas
 
 Hráčov zápasu (používateľov) treba mať v NHLStats pridaných do zápasu („Inicializovať používateľov“),
 inak sa gól používateľa nedá potvrdiť.
+
+## Lokálna stránka: čo appka vidí
+
+Po spustení otvor **http://localhost:8787** (iný port: `--port 9000`, vypnúť: `--port 0`). Stránka beží iba na tvojom počítači.
+
+- **Živý obraz z OBS** (asi 1 snímka za sekundu) s vyznačenými oblasťami, ktoré appka sleduje.
+- **Kalibrácia:** klikni na *Skóre* a ťahaj myšou po obraze tesne okolo čísel skóre, bez času zápasu (ten sa mení každú sekundu). Rovnako *Banner*, kde sa ukazuje gól a vylúčenie (ten zatiaľ appka iba zobrazuje). Uloží sa do `collector-data/regions.json`.
+- **Zmena skóre:** pruh ukazuje, ako veľmi sa oblasť skóre líši od posledného stabilného stavu. Keď prekročí prah (červená čiara, dá sa zmeniť) aspoň na 2 snímky, appka sa opýta.
+- **Otázky:** karta so snímkou z toho momentu a tlačidlami *Náš gól / Gól súpera / Náš trest / Trest súpera*. Pri našej udalosti vyberieš používateľa a hráča (hráči na jeho pozícii sú prví), pri góle typ (bežný, presilovka, oslabenie) a voliteľne čas. *Nič sa nestalo* otázku zahodí. *Zapísať udalosť* otvorí otázku ručne.
+- **Zapísané udalosti** so stavom: *neodoslané*, *čaká na potvrdenie*, *potvrdené*, *zamietnuté* (stav sa ťahá z NHLStats každých 5 s).
+- Periódy, koniec zápasu a príkazy ako v termináli.
+
+V testovacej fáze appka nerozpoznáva, kto skóroval: iba zistí, že sa skóre zmenilo, a opýta sa teba.
+Tvoje odpovede sú zároveň podklad na neskoršie automatické rozpoznávanie.
 
 ## Príkazy
 

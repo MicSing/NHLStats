@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -22,6 +24,8 @@ class ObsBridge:
         self.media_dir = media_dir.resolve()
         self._client = None
         self.error: str | None = None
+        # obs-websocket requests must not interleave: the preview thread and event capture share one socket.
+        self._lock = threading.Lock()
 
     def connect(self) -> bool:
         if not self.cfg.enabled:
@@ -43,15 +47,31 @@ class ObsBridge:
     def connected(self) -> bool:
         return self._client is not None
 
+    def _program_scene(self) -> str:
+        scene = self._client.get_current_program_scene()
+        return getattr(scene, "current_program_scene_name", None) or getattr(scene, "scene_name")
+
+    def grab_frame(self, width: int = 960, height: int = 540) -> bytes | None:
+        """JPEG of the current program output, for the live preview and the detectors."""
+        if self._client is None:
+            return None
+        with self._lock:
+            resp = self._client.get_source_screenshot(self._program_scene(), "jpg", width, height, 75)
+        data: str = getattr(resp, "image_data")
+        return base64.b64decode(data.split(",", 1)[1] if data.startswith("data:") else data)
+
     def capture(self, label: str) -> str | None:
         """Saves a screenshot (and the replay buffer) for an event; returns the screenshot file name."""
         if self._client is None:
             return None
+        with self._lock:
+            return self._capture_locked(label)
+
+    def _capture_locked(self, label: str) -> str | None:
         shot_name: str | None = None
         if self.cfg.screenshots:
             try:
-                scene = self._client.get_current_program_scene()
-                scene_name = getattr(scene, "current_program_scene_name", None) or getattr(scene, "scene_name")
+                scene_name = self._program_scene()
                 self.media_dir.mkdir(parents=True, exist_ok=True)
                 shot_name = f"{datetime.now():%Y%m%d-%H%M%S}-{label}.png"
                 self._client.save_source_screenshot(scene_name, "png", str(self.media_dir / shot_name), 1920, 1080, -1)

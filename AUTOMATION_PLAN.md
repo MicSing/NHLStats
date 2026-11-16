@@ -156,6 +156,7 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 - [x] `collector/`: pripojenie s API kľúčom, výber zápasu, kontext, zápis udalostí krátkymi príkazmi (`g 2 mack @12:34`)
 - [x] Outbox na disku: udalosti sa nestratia pri výpadku siete, opätovné odoslanie je idempotentné
 - [x] OBS cez obs-websocket: screenshot a Replay Buffer pri každej udalosti
+- [x] Lokálna stránka (`http://localhost:8787`): živý obraz z OBS, kalibrácia oblastí myšou, detekcia zmeny skóre, otázky „čo sa stalo?“ s tlačidlami, stav návrhov
 - [ ] Frontend obrazovka na API kľúče a frontu návrhov (Fáza 3)
 
 ### 4.1 Kostra
