@@ -21,11 +21,11 @@ PS5/Xbox ──HDMI──► splitter ──► TV
 | Rozhodnutie | Voľba |
 |-------------|-------|
 | Kde beží spracovanie | PC/Mac pri konzole (nie RPi). Ak je počítač inde, obraz sa posiela streamom (OBS/SRT) a pridá sa iba oneskorenie. |
-| Zdroj obrazu | HDMI splitter + USB capture karta (UVC). Na PS5 vypnúť HDCP. |
+| Zdroj obrazu | Xbox → USB capture karta → **OBS** (zdieľanie videa). Collector sa na OBS pripája cez vstavaný obs-websocket (screenshot a Replay Buffer pri udalosti, neskôr snímky na rozpoznávanie). Na Xboxe vypnúť HDCP. |
 | Identita používateľa | **Farba indikátora pod hráčom = ovládač = používateľ.** Farba sa nemení počas celého zápasu, NHL hráč pod ňou áno. |
 | Kto je pod farbou | Live tracking: 1 analyzovaná snímka/s, čítanie čísla dresu, rozhodnutie podľa viacerých čítaní (nie jednej snímky). |
 | Pravidlo podľa pozície | Iba **kontrola**, a len pri hre 5 na 5 v riadnom hracom čase. V oslabení, presilovke, 4 na 4 a predĺžení neplatí (viď nižšie). |
-| Zápis do DB | Collector posiela iba návrhy. Automatický zápis iba ak sa zhodnú dva nezávislé zdroje. |
+| Zápis do DB | Collector posiela iba návrhy do samostatnej tabuľky `MatchEventProposals` (nie stĺpce v `MatchEvent`), takže návrhy neovplyvnia skóre, poradie udalostí ani existujúci kód. Potvrdenie ide cez rovnaké služby ako ručný zápis. Automatický zápis iba ak sa zhodnú dva nezávislé zdroje. |
 | Nové údaje (asistencie, buly, striedania, čas na ľade) | **Iba štatistika.** Nevytvárajú `UserMatchPoint`, nevstupujú do zárobkov ani výplat. Peniaze sa rátajú ako doteraz. |
 | Kanadské body | Štatistika góly + asistencie (G + A) podľa používateľa |
 | Buly | Primárne zo súhrnnej obrazovky po zápase (FO vyhraté/celkom podľa hráča). |
@@ -126,14 +126,16 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 
 ## Fáza 2 — Backend: Ingest API
 
-- [ ] Autentifikácia cez API kľúč: hlavička `X-Api-Key`, kľúče uložené ako hash, správa kľúčov iba pre admina
-- [ ] `POST /api/ingest/matches/{matchId}/events`: dávka návrhov udalostí, idempotentná podľa `ClientEventId` (opakované odoslanie nevytvorí duplicitu)
+- [x] Autentifikácia cez API kľúč: hlavička `X-Api-Key`, kľúče uložené ako hash, správa kľúčov iba pre admina (`/api/admin/api-keys`)
+- [x] `POST /api/ingest/matches/{matchId}/events`: dávka návrhov udalostí, idempotentná podľa `ClientEventId` (opakované odoslanie nevytvorí duplicitu)
+- [x] `GET /api/ingest/matches` (otvorené zápasy), `GET /api/ingest/matches/{matchId}/events` (stav návrhov), `GET /api/ingest/whoami`
+- [x] Admin: `GET /api/matches/{matchId}/proposals`, `POST …/proposals/{id}/confirm` (s opravami), `POST …/proposals/{id}/reject`
 - [ ] `POST /api/ingest/matches/{matchId}/snapshots`: upload screenshotu k udalosti
 - [ ] `PUT /api/ingest/matches/{matchId}/lineup`: zostava z OCR
 - [ ] `POST /api/ingest/matches/{matchId}/summary`: súhrn po zápase (G/A/PIM/FO podľa hráča)
 - [ ] `POST /api/ingest/matches/{matchId}/shifts`: striedania (voliteľne)
-- [ ] `GET /api/ingest/matches/{matchId}/context`: Collector si stiahne roster, farby, pozície používateľov a zostavu
-- [ ] Integračné testy (`WebApplicationFactory`): bez kľúča 401, so zlým kľúčom 401, idempotencia, validácia hráčov a používateľov
+- [x] `GET /api/ingest/matches/{matchId}/context`: Collector si stiahne roster a pozície používateľov (farby a zostava po Fáze 1.1 a 1.2)
+- [x] Integračné testy (`WebApplicationFactory`): bez kľúča 401, so zlým kľúčom 401, idempotencia, validácia hráčov a používateľov
 
 ---
 
@@ -149,6 +151,12 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 ---
 
 ## Fáza 4 — Collector (Python, `collector/` v repe)
+
+### 4.0 Ručný zápis (hotové)
+- [x] `collector/`: pripojenie s API kľúčom, výber zápasu, kontext, zápis udalostí krátkymi príkazmi (`g 2 mack @12:34`)
+- [x] Outbox na disku: udalosti sa nestratia pri výpadku siete, opätovné odoslanie je idempotentné
+- [x] OBS cez obs-websocket: screenshot a Replay Buffer pri každej udalosti
+- [ ] Frontend obrazovka na API kľúče a frontu návrhov (Fáza 3)
 
 ### 4.1 Kostra
 - [ ] Python 3.12, OpenCV, `ultralytics` (YOLO), PaddleOCR alebo Tesseract, `rapidfuzz`, `httpx`

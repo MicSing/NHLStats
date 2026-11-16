@@ -1034,6 +1034,46 @@ Content-Type: application/json
 
 **Response:** `201 Created`
 
+## Ingest (Collector) Endpoints
+
+Machine clients such as the Collector app (`collector/`) authenticate with an API key in the
+`X-Api-Key` header instead of a JWT. API keys reach only `/api/ingest/*`; a JWT cannot call ingest endpoints.
+
+### API keys (Admin, JWT)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/admin/api-keys` | List keys (name, prefix, created/last used/revoked). Never returns the key or its hash. |
+| POST | `/api/admin/api-keys` | Body `{ "name": "Collector PC" }`. Response `{ apiKey, key }`; `key` (`nhls_…`) is shown only once. |
+| DELETE | `/api/admin/api-keys/{id}` | Revoke. |
+
+### Ingest (X-Api-Key)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/ingest/whoami` | Key id and name. |
+| GET | `/api/ingest/matches` | Unfinished matches of active seasons. |
+| GET | `/api/ingest/matches/{matchId}/context` | Match, users with positions, hosted team roster. |
+| POST | `/api/ingest/matches/{matchId}/events` | Body `{ "events": [ … ] }`, max 100. Idempotent per `clientEventId` and key. |
+| GET | `/api/ingest/matches/{matchId}/events` | Proposals for the match with review status. |
+
+Event fields: `clientEventId` (required, ≤64), `eventType` (`Goal`, `Penalty`, `PeriodChange`, `MatchEnd`, `ShootoutGoal`),
+`isOpponent`, `eventSubtype`, `goalType`, `userId`, `rosterPlayerId`, `period`, `gameClock`, `strength`,
+`confidence` (`Low`/`Medium`/`High`), `note`, `mediaRef`, `occurredAt`.
+Each event gets its own result `{ clientEventId, proposalId, duplicate, error }`; invalid events do not fail the batch.
+
+### Proposal review (Admin, JWT)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/matches/{matchId}/proposals?status=Proposed` | |
+| POST | `/api/matches/{matchId}/proposals/{id}/confirm` | Optional body `{ userId, rosterPlayerId, isOpponent, goalType, eventSubtype, clearUser }`. Replays the event through the manual-entry services and returns `matchEventId`. |
+| POST | `/api/matches/{matchId}/proposals/{id}/reject` | |
+
+A proposal changes nothing (score, points, stats, events) until it is confirmed.
+
+---
+
 ## Health Check
 
 ```

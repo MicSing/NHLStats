@@ -1,0 +1,22 @@
+# Copy to config.toml and fill in. config.toml is git-ignored.
+
+[api]
+# Production API or http://localhost:5267 for local development.
+url = "https://YOUR-API.azurewebsites.net"
+# API key created in NHLStats (admin → API kľúče). Can also be set via NHLSTATS_API_KEY.
+key = ""
+
+[obs]
+# OBS → Tools → WebSocket Server Settings. Leave enabled = false to run without OBS.
+enabled = true
+host = "localhost"
+port = 4455
+password = ""
+# Save a screenshot of the program output for every event.
+screenshots = true
+# Also save the Replay Buffer (OBS → Settings → Output → Replay Buffer must be enabled and running).
+replay_buffer = true
+
+[storage]
+# Where screenshots and the outbox (unsent events) are kept.
+data_dir = "collector-data"
