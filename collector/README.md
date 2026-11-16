@@ -76,7 +76,7 @@ S Tesseractom appka sama číta skóre, čas a tretinu a bannery gólov:
 
 - Každá udalosť dostane presný čas a tretinu. Zmena tretiny, predĺženie, nájazdy a koniec zápasu sa zapíšu samé.
 - Keď sa zmení skóre, appka vie, ktorý tím skóroval. Pri našom góle predvyplní strelca a asistencie z bannerov (gól a potom asistencie) a čas z okamihu, keď sa banner ukázal.
-- **Ovládaný hráč:** appka stále číta box vľavo dole (číslo a meno hráča, ktorého konzola práve ovláda). Keď banner strelca nemá alebo ho neprečíta, navrhne hráča, ktorý bol ovládaný tesne pred gólom.
+- **Ovládaný hráč (voliteľné):** niektoré herné režimy ukazujú vľavo dole box s číslom a menom ovládaného hráča. Ak ho máte, zapni `[vision] controlled_box = true`; appka ho potom stále číta. Keď banner strelca nemá alebo ho neprečíta, navrhne hráča, ktorý bol ovládaný tesne pred gólom.
 - **Farby používateľov:** v `config.toml` v časti `[colors]` nastav farbu krúžku každého používateľa. Appka číta menovku pod krúžkom a pamätá si, s ktorým hokejistom každý používateľ naposledy hral (päť minút). Gól alebo asistenciu toho hokejistu potom pripíše správnemu používateľovi. Pamäť vidno na stránke v časti *OCR*.
 - Meno v banneri hľadá na súpiske sezóny. Používateľa určí podľa farieb, a keď ich nepozná, podľa pozície. Ak banner ukazuje prezývky, nastav ich v `config.toml` v časti `[aliases]`.
 - Ak scoreboard ukazuje hostí hore a domácich dole, nastav `[vision] home_first = false`.

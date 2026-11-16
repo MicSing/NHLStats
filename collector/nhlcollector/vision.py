@@ -216,6 +216,8 @@ class FrameWatcher:
         self.home_first = True  # the scoreboard lists the home team first (top or left)
         # The user playing on the streamed console: the controlled player belongs to them.
         self.controlled_user_id: int | None = None
+        # Some game modes show the controlled player bottom left ('33 H. DISPOSABLE'); off by default.
+        self.controlled_box = False
         self.controlled: dict | None = None  # last controlled player: {"at", "label", "rosterPlayerId", ...}
         # Ring colour → user (config [colors]); the watcher remembers which hockey player each
         # user skated with last, read from the name tag under their ring.
@@ -310,7 +312,7 @@ class FrameWatcher:
         self._ticks += 1
         if self.user_colors and self._ticks % self.ring_every == 1 % self.ring_every:
             self._track_colors(image, now)
-        raw_controlled = r.read(image, self.regions.get("controlled"), "line")
+        raw_controlled = r.read(image, self.regions.get("controlled"), "line") if self.controlled_box else None
         self._track_controlled(raw_controlled, now)
 
         changes = self.game.feed(parse_period(raw_period), parse_clock(raw_clock), parse_score(raw_score))

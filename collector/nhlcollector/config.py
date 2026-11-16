@@ -29,6 +29,8 @@ class VisionConfig:
     home_first: bool = True
     # The NHLStats user (name) playing on the streamed console: the controlled player is theirs.
     controlled_user: str = ""
+    # Read the controlled-player box bottom left (only some game modes show it).
+    controlled_box: bool = False
 
 
 @dataclass

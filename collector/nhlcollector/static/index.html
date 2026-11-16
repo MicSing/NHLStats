@@ -103,7 +103,7 @@
         <button class="ghost" data-cal="period">Tretina</button>
         <button class="ghost" data-cal="clock">Čas</button>
         <button class="ghost" data-cal="banner">Banner</button>
-        <button class="ghost" data-cal="controlled">Ovládaný hráč</button>
+        <button class="ghost" data-cal="controlled" hidden>Ovládaný hráč</button>
         <button class="ghost" id="calCancel" hidden>Zrušiť</button>
       </div>
       <p class="muted" id="frameErr"></p>
@@ -228,6 +228,7 @@ function renderStage(s) {
     d.innerHTML = `<span>${esc(r.label)}</span>`;
     ov.appendChild(d);
   }
+  $('[data-cal="controlled"]').hidden = !s.regions.some(r => r.name === 'controlled');
   const det = s.detector;
   $('#detOn').checked = det.enabled;
   $('#detOn').disabled = !det.available;

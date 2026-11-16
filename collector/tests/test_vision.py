@@ -272,6 +272,7 @@ def test_controlled_player_is_the_scorer_when_no_banner(tmp_path):
         {"period": "2nd", "clock": "07:40", "score": "2 1"},
     ]
     w, _ = watcher_with(script, tmp_path)
+    w.controlled_box = True
     for _ in script:
         w.tick()
     q = w.questions.open()[0]

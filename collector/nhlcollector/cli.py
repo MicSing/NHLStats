@@ -132,6 +132,7 @@ def run(argv: list[str] | None = None) -> None:
     watcher = FrameWatcher(obs.grab_frame, RegionStore(cfg.data_dir / "regions.json"), QuestionQueue(), reader=reader)
     watcher.context = ctx
     watcher.home_first = cfg.vision.home_first
+    watcher.controlled_box = cfg.vision.controlled_box
     watcher.user_colors, color_warnings = resolve_colors(cfg.colors, ctx["users"])
     for warning in color_warnings:
         print(f"  {warning}")

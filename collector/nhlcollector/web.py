@@ -69,7 +69,8 @@ class WebApp:
             "detector": {"enabled": self.watcher.detector_enabled, "available": self.watcher.pillow,
                          "diff": round(self.watcher.detector.last_diff, 1),
                          "threshold": self.watcher.detector.threshold},
-            "regions": self.watcher.regions.all(),
+            "regions": [r for r in self.watcher.regions.all()
+                        if r["name"] != "controlled" or self.watcher.controlled_box],
             "server": {"flushError": r.last_flush_error, "statusError": self._status_error},
         }
 

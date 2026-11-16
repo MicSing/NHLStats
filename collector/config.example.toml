@@ -24,7 +24,9 @@ data_dir = "collector-data"
 [vision]
 # The scoreboard lists the home team first (top row or left). Set false if it shows the away team first.
 home_first = true
-# Optional: the NHLStats user playing on the streamed console. The controlled-player box
+# Some game modes show the controlled player bottom left ('33 H. DISPOSABLE'). Off by default.
+controlled_box = false
+# Optional, with controlled_box: the NHLStats user playing on the streamed console. The controlled-player box
 # (bottom left, '33 H. DISPOSABLE') then always counts as theirs.
 # controlled_user = "Michal"
 
