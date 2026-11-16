@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-PERIODS = ["P1", "P2", "P3", "OT"]
+PERIODS = ["P1", "P2", "P3", "OT", "SO"]
 CLOCK_RE = re.compile(r"^@(\d{1,2}:\d{2})$")
 GOAL_TYPES = {"pp": "PowerPlay", "sh": "ShortHanded"}
 FIGHT_LABELS = {"Won": "vyhral", "Lost": "prehral", "Draw": "nerozhodne"}
@@ -125,7 +125,7 @@ class MatchSession:
             return self._event("ShootoutGoal", is_opponent=True, clock=clock)
         if cmd == "n":
             if self.period_index + 1 >= len(PERIODS):
-                raise CommandError("Po predĺžení už ďalšia perióda nie je, použi 'end ot' alebo nájazdy.")
+                raise CommandError("Po nájazdoch už nič nie je, použi 'end so'.")
             self.period_index += 1
             return self._event("PeriodChange", subtype=PERIODS[self.period_index], clock=clock)
         if cmd == "end":
@@ -134,6 +134,25 @@ class MatchSession:
                 raise CommandError("Použi 'end', 'end ot' alebo 'end so'.")
             return self._event("MatchEnd", subtype=subtype, clock=clock)
         raise CommandError(f"Neznámy príkaz '{tokens[0]}'. Napíš 'h' pre pomoc.")
+
+    def set_period(self, label: str, clock: str | None = None) -> dict | None:
+        """Moves to a period read from the screen; returns its PeriodChange event, or None if nothing changed."""
+        if label not in PERIODS:
+            return None
+        index = PERIODS.index(label)
+        if index <= self.period_index:
+            return None
+        self.period_index = index
+        event = self._event("PeriodChange", subtype=label, clock=clock)
+        event["confidence"] = "High"
+        event["note"] = "Prečítané zo scoreboardu"
+        return event
+
+    def match_end(self, last_period: str | None) -> dict:
+        subtype = last_period if last_period in ("OT", "SO") else None
+        event = self._event("MatchEnd", subtype=subtype)
+        event["note"] = "Na scoreboarde je FINAL"
+        return event
 
     @staticmethod
     def _split_on(tokens: list[str], marker: str) -> list[list[str]]:

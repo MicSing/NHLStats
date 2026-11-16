@@ -473,6 +473,16 @@ public class MatchEventProposalService : IMatchEventProposalService
                 .Select(e => (int?)e.Id).FirstOrDefaultAsync(), null);
         }
 
+        // A shootout ends through EndShootoutAsync: it adds the deciding goal to the winner's score
+        // (AddEventAsync would only mark the match as finished).
+        if (p.EventType == MatchEventType.MatchEnd && p.EventSubtype == "SO")
+        {
+            var (_, soError) = await _matchEventService.EndShootoutAsync(p.MatchId);
+            if (soError != null) return (null, soError);
+            return (await _db.MatchEvents.Where(e => e.MatchId == p.MatchId && e.EventType == MatchEventType.MatchEnd)
+                .OrderByDescending(e => e.Id).Select(e => (int?)e.Id).FirstOrDefaultAsync(), null);
+        }
+
         var (evt, eventError) = await _matchEventService.AddEventAsync(
             p.MatchId, new CreateTeamMatchEventDto(p.EventType, p.IsOpponent, p.EventSubtype));
         if (eventError != null) return (null, eventError);

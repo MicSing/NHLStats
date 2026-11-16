@@ -67,6 +67,7 @@ def test_periods_advance_and_stamp_events():
     assert s.parse("o")["period"] == 1
     s.parse("n"); s.parse("n")
     assert s.parse("n")["eventSubtype"] == "OT"
+    assert s.parse("n")["eventSubtype"] == "SO"
     with pytest.raises(CommandError):
         s.parse("n")
 
@@ -116,3 +117,13 @@ def test_make_validates_assists_and_fight():
     with pytest.raises(CommandError):
         s.make("Fight", user_id=10)
     assert s.make("Fight", user_id=10, fight_outcome="Draw")["_display"].endswith("nerozhodne")
+
+
+def test_set_period_from_screen_skips_and_never_goes_back():
+    s = session()
+    e = s.set_period("P2")
+    assert e["eventSubtype"] == "P2" and e["confidence"] == "High" and s.period == 2
+    assert s.set_period("P1") is None
+    assert s.set_period("P2") is None
+    assert s.match_end("SO")["eventSubtype"] == "SO"
+    assert s.match_end("P3")["eventSubtype"] is None

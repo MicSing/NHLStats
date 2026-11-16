@@ -55,7 +55,7 @@ inak sa gól používateľa nedá potvrdiť.
 Po spustení otvor **http://localhost:8787** (iný port: `--port 9000`, vypnúť: `--port 0`). Stránka beží iba na tvojom počítači.
 
 - **Živý obraz z OBS** (asi 1 snímka za sekundu) s vyznačenými oblasťami, ktoré appka sleduje.
-- **Kalibrácia:** klikni na *Skóre* a ťahaj myšou po obraze tesne okolo čísel skóre, bez času zápasu (ten sa mení každú sekundu). Rovnako *Banner*, kde sa ukazuje gól a vylúčenie (ten zatiaľ appka iba zobrazuje). Uloží sa do `collector-data/regions.json`.
+- **Kalibrácia:** klikni na oblasť (*Skóre*, *Čas*, *Tretina*, *Banner*) a ťahaj myšou po obraze. Skóre označ tesne okolo čísel oboch tímov, bez času zápasu. Východzie oblasti sedia na scoreboard EA NHL vľavo hore (dva riadky tímov pod sebou, vpravo čas a pod ním tretina). Uloží sa do `collector-data/regions.json`.
 - **Zmena skóre:** pruh ukazuje, ako veľmi sa oblasť skóre líši od posledného stabilného stavu. Keď prekročí prah (červená čiara, dá sa zmeniť) aspoň na 2 snímky, appka sa opýta.
 - **Otázky:** karta so snímkou z toho momentu a tlačidlami *Náš gól / Gól súpera / Náš trest / Trest súpera*. Pri našej udalosti vyberieš používateľa a hráča (hráči na jeho pozícii sú prví), pri góle typ (bežný, presilovka, oslabenie) a voliteľne čas. *Nič sa nestalo* otázku zahodí. *Zapísať udalosť* otvorí otázku ručne.
 - **Zapísané udalosti** so stavom: *neodoslané*, *čaká na potvrdenie*, *potvrdené*, *zamietnuté* (stav sa ťahá z NHLStats každých 5 s).
@@ -63,6 +63,24 @@ Po spustení otvor **http://localhost:8787** (iný port: `--port 9000`, vypnúť
 
 V testovacej fáze appka nerozpoznáva, kto skóroval: iba zistí, že sa skóre zmenilo, a opýta sa teba.
 Tvoje odpovede sú zároveň podklad na neskoršie automatické rozpoznávanie.
+
+## Čítanie scoreboardu (OCR)
+
+S Tesseractom appka sama číta skóre, čas a tretinu a bannery gólov:
+
+1. Nainštaluj Tesseract: Windows inštalátor z github.com/UB-Mannheim/tesseract/wiki, `brew install tesseract` alebo `apt install tesseract-ocr`.
+2. `pip install -e ".[ocr]"`
+3. Po spustení stránka ukáže, čo appka prečítala (časť *OCR*). Ak čísla nesedia, dolaď oblasti v kalibrácii.
+
+Čo z toho vyplýva:
+
+- Každá udalosť dostane presný čas a tretinu. Zmena tretiny, predĺženie, nájazdy a koniec zápasu sa zapíšu samé.
+- Keď sa zmení skóre, appka vie, ktorý tím skóroval. Pri našom góle predvyplní strelca a asistencie z bannerov (gól a potom asistencie) a čas z okamihu, keď sa banner ukázal.
+- Meno v banneri hľadá na súpiske sezóny a používateľa určí podľa pozície. Ak banner ukazuje prezývky, nastav ich v `config.toml` v časti `[aliases]`.
+- Ak scoreboard ukazuje hostí hore a domácich dole, nastav `[vision] home_first = false`.
+- V nájazdoch sa pri góle z bannera opýta, či skóroval náš hráč, a predvyplní ho.
+
+Všetko sú len návrhy: na stránke ich potvrdíš alebo opravíš a v NHLStats ich ešte schváli admin.
 
 ## Príkazy
 

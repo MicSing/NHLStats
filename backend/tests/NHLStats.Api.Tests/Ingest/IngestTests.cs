@@ -443,4 +443,25 @@ public class IngestTests : ApiTestBase
         confirm.StatusCode.Should().Be(HttpStatusCode.OK);
         (await confirm.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("fightOutcome").GetString().Should().Be("Draw");
     }
+
+    [Fact]
+    public async Task Confirming_shootout_match_end_awards_the_extra_goal_to_the_shootout_winner()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Shootout End Season");
+        var (_, key) = await CreateApiKeyAsync(admin);
+        var results = await SubmitAsync(CreateKeyClient(key), s.MatchId,
+            new { clientEventId = "so1", eventType = "ShootoutGoal", userId = s.UserId, rosterPlayerId = s.RosterPlayerId },
+            new { clientEventId = "end", eventType = "MatchEnd", eventSubtype = "SO" });
+
+        foreach (var r in results.EnumerateArray())
+            (await admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/proposals/{r.GetProperty("proposalId").GetInt32()}/confirm", new { }))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var match = await GetMatchAsync(admin, s);
+        match.GetProperty("homeScore").GetInt32().Should().Be(1); // hosted team is home and won the shootout
+        match.GetProperty("awayScore").GetInt32().Should().Be(0);
+        var events = await (await admin.GetAsync($"/api/matches/{s.MatchId}/events")).Content.ReadFromJsonAsync<JsonElement>();
+        events.EnumerateArray().Count(e => e.GetProperty("eventType").GetString() == "MatchEnd").Should().Be(1);
+    }
 }

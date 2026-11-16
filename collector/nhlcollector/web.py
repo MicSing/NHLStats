@@ -58,8 +58,12 @@ class WebApp:
             "users": r.ctx["users"],
             "roster": r.ctx["roster"],
             "events": events,
-            "questions": [{"id": q.id, "kind": q.kind, "text": q.text, "createdAt": q.created_at}
+            "questions": [{"id": q.id, "kind": q.kind, "text": q.text, "createdAt": q.created_at,
+                           "suggestion": q.suggestion, "version": q.version}
                           for q in self.watcher.questions.open()],
+            "ocr": {"available": self.watcher.ocr,
+                    "error": getattr(self.watcher.reader, "error", None) if self.watcher.reader else "vypnuté",
+                    "readings": self.watcher.readings},
             "obs": {"connected": r.obs.connected, "error": r.obs.error},
             "frame": {"at": self.watcher.latest_at, "error": self.watcher.error},
             "detector": {"enabled": self.watcher.detector_enabled, "available": self.watcher.pillow,
@@ -90,6 +94,10 @@ class WebApp:
             return s.make("Penalty", user_id=user_id, roster_player_id=roster_player_id, clock=clock)
         if kind == "opp_penalty":
             return s.make("Penalty", is_opponent=True, clock=clock)
+        if kind == "so_goal":
+            return s.make("ShootoutGoal", user_id=user_id, roster_player_id=roster_player_id, clock=clock)
+        if kind == "opp_so_goal":
+            return s.make("ShootoutGoal", is_opponent=True, clock=clock)
         raise CommandError("Neznáma odpoveď.")
 
     def answer(self, qid: int, body: dict) -> dict:

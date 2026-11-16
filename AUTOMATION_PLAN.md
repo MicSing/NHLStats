@@ -157,7 +157,14 @@ Všetko cez TDD (testy v `backend/tests/`), migrácia cez `dotnet ef migrations 
 - [x] Outbox na disku: udalosti sa nestratia pri výpadku siete, opätovné odoslanie je idempotentné
 - [x] OBS cez obs-websocket: screenshot a Replay Buffer pri každej udalosti
 - [x] Lokálna stránka (`http://localhost:8787`): živý obraz z OBS, kalibrácia oblastí myšou, detekcia zmeny skóre, otázky „čo sa stalo?“ s tlačidlami, stav návrhov
-- [ ] Frontend obrazovka na API kľúče a frontu návrhov (Fáza 3)
+- [x] Frontend obrazovka na API kľúče a frontu návrhov (Fáza 3)
+
+### 4.0b OCR scoreboardu cez Tesseract (hotové, prvá verzia)
+- [x] Skóre (dva riadky pod sebou ako v EA NHL, alebo vedľa seba), čas, tretina; overené na screenshotoch EA NHL
+- [x] Automatický zápis zmeny tretiny, OT, SO a návrh konca zápasu (FINAL)
+- [x] Banner gólu a samostatný banner asistencií: strelec a asistenti zo súpisky (alebo prezývky z `[aliases]`), čas z okamihu bannera
+- [x] Nájazdy: gól z bannera s predvyplneným strelcom, koniec nájazdov pripíše víťazovi gól
+- [ ] Overiť a doladiť oblasti na záznamoch z vlastných zápasov
 
 ### 4.1 Kostra
 - [ ] Python 3.12, OpenCV, `ultralytics` (YOLO), PaddleOCR alebo Tesseract, `rapidfuzz`, `httpx`

@@ -13,6 +13,7 @@ from .obs import ObsBridge
 from .outbox import Outbox
 from .recorder import Recorder
 from .session import CommandError
+from .ocr import TesseractReader, resolve_aliases
 from .vision import FrameWatcher, QuestionQueue, RegionStore
 from .web import WebApp, start_web
 
@@ -126,13 +127,25 @@ def run(argv: list[str] | None = None) -> None:
     threading.Thread(target=background_flush, daemon=True).start()
     flush(verbose=True)
 
-    watcher = FrameWatcher(obs.grab_frame, RegionStore(cfg.data_dir / "regions.json"), QuestionQueue())
+    reader = TesseractReader()
+    watcher = FrameWatcher(obs.grab_frame, RegionStore(cfg.data_dir / "regions.json"), QuestionQueue(), reader=reader)
+    watcher.context = ctx
+    watcher.home_first = cfg.vision.home_first
+    watcher.aliases, alias_warnings = resolve_aliases(cfg.aliases, ctx["users"], ctx["roster"])
+    for warning in alias_warnings:
+        print(f"  {warning}")
+    watcher.on_game_change = recorder.on_game_change
+    recorder.game = watcher.game
     server = None
     if args.port:
         watcher.start()
         try:
             server = start_web(WebApp(recorder, watcher), args.port)
             print(f"Lokálna stránka: http://localhost:{args.port}  (obraz, sledované oblasti, otázky)")
+            if reader.available:
+                print("  Čítanie scoreboardu (OCR) zapnuté: tretina, čas, skóre a bannery.")
+            else:
+                print(f"  Čítanie scoreboardu vypnuté ({reader.error}). Pozri README, časť OCR.")
             if not watcher.pillow:
                 print("  Detekcia zmeny skóre je vypnutá: chýba Pillow (pip install -e \".[vision]\").")
         except OSError as exc:

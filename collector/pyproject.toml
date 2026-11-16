@@ -11,6 +11,8 @@ dependencies = [
 [project.optional-dependencies]
 # Pillow powers the scoreboard change detector; without it the page still shows the live picture.
 vision = ["Pillow>=10"]
+# Reading the scoreboard and banners; also needs the Tesseract program installed.
+ocr = ["Pillow>=10", "pytesseract>=0.3.10"]
 dev = ["pytest>=8", "Pillow>=10"]
 
 [project.scripts]

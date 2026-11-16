@@ -20,3 +20,14 @@ replay_buffer = true
 [storage]
 # Where screenshots and the outbox (unsent events) are kept.
 data_dir = "collector-data"
+
+[vision]
+# The scoreboard lists the home team first (top row or left). Set false if it shows the away team first.
+home_first = true
+
+[aliases]
+# Optional. Banners normally show the NHL player's name, which the app finds on the season roster.
+# If they show a nickname / gamertag instead, map it here to an NHLStats user (by name) and
+# optionally to a roster player (by surname). Small OCR mistakes are tolerated.
+# "PITTSY" = "Michal"
+# "WZRD" = { user = "Peter", player = "Makar" }

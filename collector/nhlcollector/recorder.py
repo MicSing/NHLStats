@@ -24,6 +24,20 @@ class Recorder:
         self.last_flush_error: str | None = None
         self._server_status: dict[int, str] = {}
         self._lock = threading.Lock()
+        self.game = None  # GameState from the frame watcher, when the scoreboard is being read
+
+    def on_game_change(self, kind: str, value) -> None:
+        """Period changes and the final whistle read from the scoreboard become proposals automatically."""
+        with self._lock:
+            if kind == "period":
+                event = self.session.set_period(value, clock=None)
+            elif kind == "final":
+                event = self.session.match_end(value)
+            else:
+                return
+        if event is not None:
+            event["_display"] = "automaticky zo scoreboardu"
+            self.record_event(event)
 
     def record(self, line: str, *, note: str | None = None) -> tuple[dict | None, str | None]:
         """Parses and records a command. Returns (event, display text); raises CommandError."""
@@ -39,6 +53,12 @@ class Recorder:
             display = event.pop("_display", None)
             if note:
                 event["note"] = note[:500]
+            # Exact time from the scoreboard when the operator didn't type one.
+            if self.game is not None:
+                if not event.get("gameClock") and self.game.clock:
+                    event["gameClock"] = self.game.clock
+            if event.get("period") is None and self.session.period is not None:
+                event["period"] = self.session.period
             event["mediaRef"] = self.obs.capture(event["eventType"].lower())
             event["_display"] = display  # kept locally for the web page, stripped before sending
             self.outbox.add(event)

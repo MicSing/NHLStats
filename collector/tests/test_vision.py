@@ -105,3 +105,132 @@ def test_question_queue_resolve_once():
     assert q.resolve(a.id, "answered", "Goal") is not None
     assert q.resolve(a.id, "dismissed") is None
     assert q.open() == []
+
+
+class FakeReader:
+    """Stands in for Tesseract: returns scripted text per region for each frame."""
+    available = True
+
+    def __init__(self, script):
+        self.script = iter(script)
+        self.current = {}
+
+    def read(self, image, region, mode):
+        if region.name == "period":  # period is read first on every tick
+            self.current = next(self.script)
+        return self.current.get(region.name)
+
+
+CTX = {
+    "hostedIsHome": True,
+    "users": [{"userId": 10, "name": "Michal", "position": "C"}, {"userId": 11, "name": "Peter", "position": "LD"}],
+    "roster": [{"rosterPlayerId": 1, "firstName": "Nathan", "surname": "MacKinnon", "position": "C"},
+               {"rosterPlayerId": 2, "firstName": "Cale", "surname": "Makar", "position": "D"}],
+}
+
+
+def frame_for(step, i):
+    img = frame("0:0", f"12:{i:02d}")
+    if step.get("banner"):  # a banner covers the scoreboard box, top left
+        shade = 240 - 60 * ("ASSIST" in step["banner"])  # a different banner looks different
+        ImageDraw.Draw(img).rectangle((19, 5, 68, 19), fill=(shade, shade, shade))
+    return jpeg(img)
+
+
+def watcher_with(script, tmp_path):
+    frames = iter([frame_for(step, i) for i, step in enumerate(script)])
+    w = FrameWatcher(lambda: next(frames), RegionStore(tmp_path / "r.json"), QuestionQueue(), reader=FakeReader(script))
+    w.context = CTX
+    changes = []
+    w.on_game_change = lambda kind, value: changes.append((kind, value))
+    return w, changes
+
+
+def test_ocr_score_change_suggests_scorer_and_assist_from_banner(tmp_path):
+    script = [
+        {"period": "1st", "clock": "15:00", "score": "0 0"},
+        {"period": "1st", "clock": "14:59", "score": "0 0"},
+        {"period": "1st", "clock": "14:58", "score": "1 0"},
+        {"period": "1st", "clock": "14:58", "score": "1 0", "banner": "GOAL MACKINNON  Assist: MAKAR"},
+    ]
+    w, changes = watcher_with(script, tmp_path)
+    for _ in script:
+        w.tick()
+    assert changes == [("period", "P1")]
+    assert w.game.clock == "14:58"
+    q = w.questions.open()[0]
+    assert q.suggestion["kind"] == "goal"
+    assert q.suggestion["rosterPlayerId"] == 1 and q.suggestion["userId"] == 10
+    assert q.suggestion["assists"] == [{"userId": 11, "rosterPlayerId": 2}]
+    assert "MacKinnon" in q.text
+
+
+def test_ocr_opponent_goal_and_final(tmp_path):
+    script = [
+        {"period": "OT", "clock": "4:00", "score": "2 2"},
+        {"period": "OT", "clock": "3:59", "score": "2 2"},
+        {"period": "OT", "clock": "3:10", "score": "2 3"},
+        {"period": "OT", "clock": "3:10", "score": "2 3"},
+        {"period": "FINAL", "clock": "", "score": "2 3"},
+        {"period": "FINAL", "clock": "", "score": "2 3"},
+    ]
+    w, changes = watcher_with(script, tmp_path)
+    for _ in script:
+        w.tick()
+    assert w.questions.open()[0].suggestion == {"kind": "opp_goal", "clock": "03:10"}
+    assert changes == [("period", "OT"), ("final", "OT")]
+
+
+def test_shootout_goal_banner_asks_with_shooter(tmp_path):
+    script = [
+        {"period": "SO", "clock": "", "score": "2 2"},
+        {"period": "SO", "clock": "", "score": "2 2"},
+        {"period": "SO", "clock": "", "score": "2 2", "banner": "MAKAR SCORES"},
+    ]
+    w, changes = watcher_with(script, tmp_path)
+    for _ in script:
+        w.tick()
+    q = w.questions.open()[-1]
+    assert q.kind == "shootout"
+    assert q.suggestion["kind"] == "so_goal" and q.suggestion["rosterPlayerId"] == 2 and q.suggestion["userId"] == 11
+
+
+def test_ea_style_goal_then_assists_banner_then_score(tmp_path):
+    # EA NHL: the goal banner covers the score, then an assists banner, then the new score shows.
+    script = [
+        {"period": "1st", "clock": "15:00", "score": "0 0"},
+        {"period": "1st", "clock": "14:59", "score": "0 0"},
+        {"period": "1st", "clock": "14:40", "score": None, "banner": "MACKINNON\nGOAL[1]"},
+        {"period": "1st", "clock": "14:40", "score": None, "banner": "MAKAR\nASSISTS"},
+        {"period": "1st", "clock": "14:40", "score": "1 0"},
+        {"period": "1st", "clock": "14:40", "score": "1 0"},
+    ]
+    w, changes = watcher_with(script, tmp_path)
+    w.banner_detector.cooldown = 0  # frames come every second in reality, here all at once
+    for _ in script:
+        w.tick()
+    q = w.questions.open()[0]
+    assert q.suggestion["kind"] == "goal"
+    assert q.suggestion["rosterPlayerId"] == 1 and q.suggestion["userId"] == 10
+    assert q.suggestion["assists"] == [{"userId": 11, "rosterPlayerId": 2}]
+    assert q.suggestion["clock"] == "14:40"
+
+
+def test_away_first_scoreboard_and_alias_scorer(tmp_path):
+    from nhlcollector.ocr import resolve_aliases
+
+    script = [
+        {"period": "2nd", "clock": "10:00", "score": "0 0"},
+        {"period": "2nd", "clock": "09:59", "score": "0 0"},
+        {"period": "2nd", "clock": "09:30", "score": None, "banner": "PITTS]\nGOAL IT]"},
+        {"period": "2nd", "clock": "09:30", "score": "0 1"},
+        {"period": "2nd", "clock": "09:30", "score": "0 1"},
+    ]
+    w, _ = watcher_with(script, tmp_path)
+    w.home_first = False  # bottom row is the home team, and we are home
+    w.aliases, _ = resolve_aliases({"PIŤŤŠY": "Michal"}, CTX["users"], CTX["roster"])
+    for _ in script:
+        w.tick()
+    q = w.questions.open()[0]
+    assert q.suggestion["kind"] == "goal" and q.suggestion["userId"] == 10
+    assert q.text.startswith("Skóre 1:0")
