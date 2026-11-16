@@ -113,6 +113,46 @@ namespace NHLStats.Domain.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("NHLStats.Domain.Entities.ApiKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("ApiKeys");
+                });
+
             modelBuilder.Entity("NHLStats.Domain.Entities.Bet", b =>
                 {
                     b.Property<Guid>("Id")
@@ -296,6 +336,10 @@ namespace NHLStats.Domain.Migrations
                     b.Property<int>("EventType")
                         .HasColumnType("int");
 
+                    b.Property<string>("GameClock")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<bool>("IsOpponent")
                         .HasColumnType("bit");
 
@@ -303,6 +347,9 @@ namespace NHLStats.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Period")
                         .HasColumnType("int");
 
                     b.Property<int?>("UserMatchGoalId")
@@ -326,6 +373,106 @@ namespace NHLStats.Domain.Migrations
                         .IsUnique();
 
                     b.ToTable("MatchEvents");
+                });
+
+            modelBuilder.Entity("NHLStats.Domain.Entities.MatchEventProposal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApiKeyId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Assist1RosterPlayerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Assist1UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Assist2RosterPlayerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Assist2UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClientEventId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Confidence")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventSubtype")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("FightOutcome")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GameClock")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int?>("GoalType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsOpponent")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MatchEventId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MediaRef")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("Period")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RosterPlayerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Strength")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId", "ClientEventId")
+                        .IsUnique();
+
+                    b.HasIndex("MatchId", "Status");
+
+                    b.ToTable("MatchEventProposals");
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Entities.MatchOdds", b =>
@@ -568,6 +715,48 @@ namespace NHLStats.Domain.Migrations
                         });
                 });
 
+            modelBuilder.Entity("NHLStats.Domain.Entities.PositionColor", b =>
+                {
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Position");
+
+                    b.ToTable("PositionColors");
+
+                    b.HasData(
+                        new
+                        {
+                            Position = 1,
+                            Color = "yellow"
+                        },
+                        new
+                        {
+                            Position = 3,
+                            Color = "green"
+                        },
+                        new
+                        {
+                            Position = 4,
+                            Color = "cyan"
+                        },
+                        new
+                        {
+                            Position = 0,
+                            Color = "blue"
+                        },
+                        new
+                        {
+                            Position = 2,
+                            Color = "red"
+                        });
+                });
+
             modelBuilder.Entity("NHLStats.Domain.Entities.RosterPlayer", b =>
                 {
                     b.Property<int>("Id")
@@ -684,6 +873,10 @@ namespace NHLStats.Domain.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -987,6 +1180,10 @@ namespace NHLStats.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Color")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<int>("MatchId")
                         .HasColumnType("int");
 
@@ -1005,6 +1202,77 @@ namespace NHLStats.Domain.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserMatches");
+                });
+
+            modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchAssist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("MatchEventId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MatchEventProposalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RosterPlayerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserMatchGoalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserMatchId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatchEventId");
+
+                    b.HasIndex("RosterPlayerId");
+
+                    b.HasIndex("UserMatchGoalId");
+
+                    b.HasIndex("UserMatchId");
+
+                    b.ToTable("UserMatchAssists");
+                });
+
+            modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchFight", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("MatchEventProposalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RosterPlayerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserMatchId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RosterPlayerId");
+
+                    b.HasIndex("UserMatchId");
+
+                    b.ToTable("UserMatchFights");
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchGoal", b =>
@@ -1448,6 +1716,25 @@ namespace NHLStats.Domain.Migrations
                     b.Navigation("UserMatchPoint");
                 });
 
+            modelBuilder.Entity("NHLStats.Domain.Entities.MatchEventProposal", b =>
+                {
+                    b.HasOne("NHLStats.Domain.Entities.ApiKey", "ApiKey")
+                        .WithMany()
+                        .HasForeignKey("ApiKeyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NHLStats.Domain.Entities.Match", "Match")
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApiKey");
+
+                    b.Navigation("Match");
+                });
+
             modelBuilder.Entity("NHLStats.Domain.Entities.MatchOdds", b =>
                 {
                     b.HasOne("NHLStats.Domain.Entities.Match", "Match")
@@ -1558,6 +1845,43 @@ namespace NHLStats.Domain.Migrations
                     b.Navigation("Season");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchAssist", b =>
+                {
+                    b.HasOne("NHLStats.Domain.Entities.RosterPlayer", "RosterPlayer")
+                        .WithMany()
+                        .HasForeignKey("RosterPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NHLStats.Domain.Entities.UserMatch", "UserMatch")
+                        .WithMany()
+                        .HasForeignKey("UserMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RosterPlayer");
+
+                    b.Navigation("UserMatch");
+                });
+
+            modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchFight", b =>
+                {
+                    b.HasOne("NHLStats.Domain.Entities.RosterPlayer", "RosterPlayer")
+                        .WithMany()
+                        .HasForeignKey("RosterPlayerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("NHLStats.Domain.Entities.UserMatch", "UserMatch")
+                        .WithMany()
+                        .HasForeignKey("UserMatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RosterPlayer");
+
+                    b.Navigation("UserMatch");
                 });
 
             modelBuilder.Entity("NHLStats.Domain.Entities.UserMatchGoal", b =>

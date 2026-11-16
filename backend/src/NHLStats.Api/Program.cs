@@ -11,6 +11,8 @@ using NHLStats.Application.Interfaces;
 using NHLStats.Application.Services;
 using NHLStats.Api.Hubs;
 using NHLStats.Api.Services;
+using NHLStats.Api.Authentication;
+using Microsoft.AspNetCore.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -88,7 +90,9 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5)
         };
-    });
+    })
+    // Machine clients (Collector app): X-Api-Key header. Only endpoints that name this scheme accept it.
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, _ => { });
 
 builder.Services.AddAuthorization();
 
@@ -120,6 +124,9 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRosterPlayerService, RosterPlayerService>();
 builder.Services.AddScoped<IUserMatchService, UserMatchService>();
 builder.Services.AddScoped<IMatchEventService, MatchEventService>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<IPositionColorService, PositionColorService>();
+builder.Services.AddScoped<IMatchEventProposalService, MatchEventProposalService>();
 builder.Services.AddScoped<IBettingCalculator, BettingCalculator>();
 builder.Services.AddScoped<IBettingBalanceService, BettingBalanceService>();
 builder.Services.AddScoped<IBettingOddsService, BettingOddsService>();

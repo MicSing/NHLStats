@@ -59,3 +59,35 @@ describe('UsersTab season activation', () => {
         expect(body).toEqual({ isActive: false })
     })
 })
+
+describe('UsersTab colours', () => {
+    const coloured: SeasonDetail = {
+        ...season,
+        users: [
+            { id: 1, name: 'Player One', isActive: true, position: 'C', isActiveInSeason: true, color: 'yellow', customColor: false },
+            { id: 2, name: 'Player Two', isActive: true, position: 'LD', isActiveInSeason: true, color: 'pink', customColor: true },
+        ],
+    }
+
+    test('shows the position colour as default and a season colour as set', () => {
+        renderWithProviders(<UsersTab season={season} allUsers={[]} seasonDetail={coloured} onRefreshDetail={() => {}} />)
+        expect(screen.getByLabelText('Colour for Player One')).toHaveValue('')
+        expect(screen.getByRole('option', { name: 'by position (yellow)' })).toBeInTheDocument()
+        expect(screen.getByLabelText('Colour for Player Two')).toHaveValue('pink')
+    })
+
+    test('changing the colour saves it for the season', async () => {
+        let body: unknown = null
+        server.use(
+            rest.put(`${BASE}/api/seasons/1/users/1/color`, async (req, res, ctx) => {
+                body = await req.json()
+                return res(ctx.json(coloured))
+            }),
+        )
+        const onRefresh = vi.fn()
+        renderWithProviders(<UsersTab season={season} allUsers={[]} seasonDetail={coloured} onRefreshDetail={onRefresh} />)
+        await userEvent.selectOptions(screen.getByLabelText('Colour for Player One'), 'green')
+        await waitFor(() => expect(onRefresh).toHaveBeenCalled())
+        expect(body).toEqual({ color: 'green' })
+    })
+})

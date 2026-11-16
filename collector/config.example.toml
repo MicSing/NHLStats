@@ -1,0 +1,47 @@
+# Copy to config.toml and fill in. config.toml is git-ignored.
+
+[api]
+# Production API or http://localhost:5267 for local development.
+url = "https://YOUR-API.azurewebsites.net"
+# API key created in NHLStats (admin → API kľúče). Can also be set via NHLSTATS_API_KEY.
+key = ""
+
+[obs]
+# OBS → Tools → WebSocket Server Settings. Leave enabled = false to run without OBS.
+enabled = true
+host = "localhost"
+port = 4455
+password = ""
+# Save a screenshot of the program output for every event.
+screenshots = true
+# Also save the Replay Buffer (OBS → Settings → Output → Replay Buffer must be enabled and running).
+replay_buffer = true
+
+[storage]
+# Where screenshots and the outbox (unsent events) are kept.
+data_dir = "collector-data"
+
+[vision]
+# The scoreboard lists the home team first (top row or left). Set false if it shows the away team first.
+home_first = true
+# Some game modes show the controlled player bottom left ('33 H. DISPOSABLE'). Off by default.
+controlled_box = false
+# Optional, with controlled_box: the NHLStats user playing on the streamed console. The controlled-player box
+# (bottom left, '33 H. DISPOSABLE') then always counts as theirs.
+# controlled_user = "Michal"
+
+[colors]
+# Ring colours come from NHLStats: the position's default, changed per season (Users tab) or per
+# match (match detail). Only fill this in to override it on this computer:
+# red, orange, yellow, green, cyan, blue, pink or "#rrggbb".
+# The app reads the name tag under each ring and remembers which hockey player each user skates
+# with, so a goal by that player is credited to the right user.
+# "Michal" = "green"
+# "Peter" = "yellow"
+
+[aliases]
+# Optional. Banners normally show the NHL player's name, which the app finds on the season roster.
+# If they show a nickname / gamertag instead, map it here to an NHLStats user (by name) and
+# optionally to a roster player (by surname). Small OCR mistakes are tolerated.
+# "PITTSY" = "Michal"
+# "WZRD" = { user = "Peter", player = "Makar" }

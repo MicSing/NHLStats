@@ -35,6 +35,11 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<UserSeasonAggregatedData> UserSeasonAggregatedData => Set<UserSeasonAggregatedData>();
     public DbSet<UserSeasonEventDistribution> UserSeasonEventDistributions => Set<UserSeasonEventDistribution>();
     public DbSet<MatchEvent> MatchEvents => Set<MatchEvent>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<PositionColor> PositionColors => Set<PositionColor>();
+    public DbSet<MatchEventProposal> MatchEventProposals => Set<MatchEventProposal>();
+    public DbSet<UserMatchAssist> UserMatchAssists => Set<UserMatchAssist>();
+    public DbSet<UserMatchFight> UserMatchFights => Set<UserMatchFight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,10 +93,12 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.SeasonId, x.UserId }).IsUnique();
             b.Property(x => x.Position).HasConversion<int?>();
+            b.Property(x => x.Color).HasMaxLength(16);
             b.Property(x => x.IsActive).HasDefaultValue(true);
             b.HasOne(x => x.Season).WithMany(s => s.SeasonUsers).HasForeignKey(x => x.SeasonId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.User).WithMany(u => u.SeasonUsers).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        modelBuilder.Entity<UserMatch>(b => b.Property(x => x.Color).HasMaxLength(16));
 
         modelBuilder.Entity<Match>(b =>
         {
@@ -163,14 +170,12 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
         {
             b.HasKey(x => x.Id);
             b.HasOne(x => x.UserMatch).WithMany(um => um.Goals).HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserMatchPenalty>(b =>
         {
             b.HasKey(x => x.Id);
             b.HasOne(x => x.UserMatch).WithMany(um => um.Penalties).HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<MoneyConfig>(b =>
@@ -225,10 +230,80 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.EventType).HasConversion<int>();
             b.HasIndex(x => new { x.MatchId, x.OrderIndex }).IsUnique();
+            b.Property(x => x.GameClock).HasMaxLength(16);
             b.HasOne(x => x.Match).WithMany(m => m.Events).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.UserMatchGoal).WithMany().HasForeignKey(x => x.UserMatchGoalId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.UserMatchPenalty).WithMany().HasForeignKey(x => x.UserMatchPenaltyId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.UserMatchPoint).WithMany().HasForeignKey(x => x.UserMatchPointId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApiKey>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Prefix).HasMaxLength(16).IsRequired();
+            b.Property(x => x.KeyHash).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => x.KeyHash).IsUnique();
+        });
+
+        modelBuilder.Entity<PositionColor>(b =>
+        {
+            b.HasKey(x => x.Position);
+            b.Property(x => x.Position).HasConversion<int>().ValueGeneratedNever();
+            b.Property(x => x.Color).HasMaxLength(16).IsRequired();
+            // Ring colours in the game as the league plays it; admins can change them.
+            b.HasData(
+                new PositionColor { Position = SeasonUserPosition.C, Color = "yellow" },
+                new PositionColor { Position = SeasonUserPosition.LD, Color = "green" },
+                new PositionColor { Position = SeasonUserPosition.RD, Color = "cyan" },
+                new PositionColor { Position = SeasonUserPosition.LW, Color = "blue" },
+                new PositionColor { Position = SeasonUserPosition.RW, Color = "red" });
+        });
+
+        // The database has Restrict on these (InitialCreate); state it so migrations stop proposing Cascade.
+        modelBuilder.Entity<UserMatchGoal>()
+            .HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserMatchPenalty>()
+            .HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+
+        // Statistics-only records (no money): assists and fights.
+        modelBuilder.Entity<UserMatchAssist>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasOne(x => x.UserMatch).WithMany().HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => x.UserMatchGoalId);
+            b.HasIndex(x => x.MatchEventId);
+        });
+
+        modelBuilder.Entity<UserMatchFight>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Outcome).HasConversion<int>();
+            b.HasOne(x => x.UserMatch).WithMany().HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchEventProposal>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.ClientEventId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.EventType).HasConversion<int>();
+            b.Property(x => x.GoalType).HasConversion<int?>();
+            b.Property(x => x.Status).HasConversion<int>();
+            b.Property(x => x.Confidence).HasConversion<int>();
+            b.Property(x => x.FightOutcome).HasConversion<int?>();
+            b.Property(x => x.EventSubtype).HasMaxLength(32);
+            b.Property(x => x.GameClock).HasMaxLength(16);
+            b.Property(x => x.Strength).HasMaxLength(16);
+            b.Property(x => x.Note).HasMaxLength(500);
+            b.Property(x => x.MediaRef).HasMaxLength(260);
+            b.HasIndex(x => new { x.ApiKeyId, x.ClientEventId }).IsUnique();
+            b.HasIndex(x => new { x.MatchId, x.Status });
+            // UserId / RosterPlayerId / MatchEventId are deliberately plain columns (no FK):
+            // proposals must never block deleting users, roster players or match events.
+            b.HasOne(x => x.Match).WithMany().HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.ApiKey).WithMany().HasForeignKey(x => x.ApiKeyId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Seed data: 32 NHL teams

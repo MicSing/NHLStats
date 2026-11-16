@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NHLStats Collector</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #182029; --panel-2: #1f2a35; --line: #2c3a48;
+    --text: #e6edf3; --muted: #8b9bab; --accent: #4cb2ff; --good: #3fb950;
+    --warn: #d29922; --bad: #f85149; --ice: #b9e3ff;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  .pill { padding: 2px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: 12px; }
+  .pill.ok { color: var(--good); } .pill.bad { color: var(--bad); } .pill.warn { color: var(--warn); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; overflow: hidden; user-select: none; }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .stage .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 20px; }
+  .overlay { position: absolute; inset: 0; }
+  .overlay.calibrating { cursor: crosshair; }
+  .region { position: absolute; border: 2px solid var(--accent); background: rgba(76,178,255,.08); pointer-events: none; }
+  .region.banner { border-color: var(--warn); background: rgba(210,153,34,.08); }
+  .region span { position: absolute; top: -22px; left: -2px; font-size: 11px; padding: 1px 6px; background: var(--accent); color: #001; border-radius: 4px 4px 4px 0; white-space: nowrap; }
+  .region.banner span { background: var(--warn); }
+  .region.period, .region.clock { border-color: var(--good); background: rgba(63,185,80,.08); }
+  .region.period span, .region.clock span { background: var(--good); }
+  .region.clock span { top: auto; bottom: -22px; border-radius: 0 4px 4px 4px; }
+  .readings { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  .readings dt { color: var(--muted); } .readings dd { margin: 0; font-family: ui-monospace, monospace; word-break: break-word; }
+  .guess { font-size: 12px; color: var(--good); margin-top: 4px; }
+  .region.controlled { border-color: #a371f7; background: rgba(163,113,247,.08); }
+  .region.controlled span { background: #a371f7; top: auto; bottom: -22px; border-radius: 0 4px 4px 4px; }
+  .region.flash { animation: flash .8s ease-out 2; }
+  @keyframes flash { 50% { background: rgba(248,81,73,.45); border-color: var(--bad); } }
+  .drawing { position: absolute; border: 2px dashed #fff; pointer-events: none; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .meter { flex: 1; min-width: 160px; height: 8px; background: var(--panel-2); border-radius: 4px; position: relative; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width .3s; }
+  .meter b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--bad); }
+  button, select, input { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  button { cursor: pointer; } button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #001; border-color: var(--accent); font-weight: 600; }
+  button.ghost { background: transparent; }
+  button.sel { border-color: var(--accent); background: rgba(76,178,255,.18); }
+  button:disabled { opacity: .5; cursor: default; }
+  .grid-btn { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .card { border: 1px solid var(--warn); background: rgba(210,153,34,.07); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .card img { width: 100%; border-radius: 4px; margin: 6px 0; display: block; }
+  .card .q { font-weight: 600; }
+  .form { margin-top: 8px; display: grid; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .a-row select { flex: 1; min-width: 0; }
+  .players { max-height: 180px; overflow: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .log { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow: auto; }
+  .log li { padding: 8px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .log .what { font-weight: 600; } .log .meta { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; align-self: start; white-space: nowrap; }
+  .badge.proposed { background: rgba(210,153,34,.18); color: var(--warn); }
+  .badge.confirmed { background: rgba(63,185,80,.18); color: var(--good); }
+  .badge.rejected, .badge.error { background: rgba(248,81,73,.18); color: var(--bad); }
+  .badge.pending { background: var(--panel-2); color: var(--muted); }
+  .side { display: grid; gap: 16px; align-content: start; }
+  .row { display: flex; gap: 8px; }
+  .row input { flex: 1; }
+  .err { color: var(--bad); font-size: 12px; min-height: 1em; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Collector</h1>
+  <span class="pill" id="period">–</span>
+  <span class="pill" id="obs">OBS</span>
+  <span class="pill" id="server">server</span>
+</header>
+<main>
+  <div style="display:grid; gap:16px; align-content:start">
+    <section>
+      <h2>Čo appka vidí</h2>
+      <div class="stage" id="stage">
+        <img id="frame" alt="Obraz z OBS">
+        <div class="empty" id="empty">Čakám na obraz z OBS…</div>
+        <div class="overlay" id="overlay"></div>
+      </div>
+      <div class="toolbar">
+        <span class="muted">Zmena skóre</span>
+        <div class="meter" title="Rozdiel oproti poslednému stabilnému stavu; červená čiara je prah"><i id="meterFill"></i><b id="meterMark"></b></div>
+        <span class="muted" id="diffText">–</span>
+        <label class="muted">prah <input type="number" id="thr" min="1" max="100" step="0.5" style="width:70px"></label>
+        <label class="muted"><input type="checkbox" id="detOn" checked> detekcia</label>
+      </div>
+      <div class="toolbar">
+        <span class="muted">Kalibrácia: vyber oblasť a ťahaj myšou po obraze. Skóre označ tesne okolo čísel, bez času.</span>
+        <button class="ghost" data-cal="score">Skóre</button>
+        <button class="ghost" data-cal="period">Tretina</button>
+        <button class="ghost" data-cal="clock">Čas</button>
+        <button class="ghost" data-cal="banner">Banner</button>
+        <button class="ghost" data-cal="controlled" hidden>Ovládaný hráč</button>
+        <button class="ghost" id="calCancel" hidden>Zrušiť</button>
+      </div>
+      <p class="muted" id="frameErr"></p>
+    </section>
+    <section>
+      <h2>Čo appka prečítala</h2>
+      <p class="muted" id="ocrStatus"></p>
+      <dl class="readings" id="readings"></dl>
+    </section>
+  </div>
+
+  <div class="side">
+    <section>
+      <h2>Otázky</h2>
+      <div id="questions"><p class="muted">Zatiaľ nič. Keď sa zmení skóre, appka sa tu opýta, čo sa stalo.</p></div>
+      <button class="ghost" id="askNow">Zapísať udalosť</button>
+    </section>
+    <section>
+      <h2>Zápas</h2>
+      <div class="toolbar" style="margin-top:0">
+        <button id="nextPeriod">Ďalšia perióda</button>
+        <button data-cmd="end">Koniec</button>
+        <button data-cmd="end ot">Koniec OT</button>
+        <button data-cmd="end so">Koniec SO</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="cmd" placeholder="príkaz, napr. g 2 mack @12:34">
+        <button id="cmdSend">OK</button>
+      </div>
+      <div class="err" id="cmdErr"></div>
+    </section>
+    <section>
+      <h2>Zapísané udalosti</h2>
+      <ul class="log" id="log"></ul>
+    </section>
+  </div>
+</main>
+
+<template id="tplQuestion">
+  <div class="card">
+    <div class="q"></div>
+    <div class="muted when"></div>
+    <img alt="Snímka v čase otázky">
+    <div class="grid-btn kinds">
+      <button data-kind="goal">Náš gól</button>
+      <button data-kind="opp_goal">Gól súpera</button>
+      <button data-kind="penalty">Náš trest</button>
+      <button data-kind="opp_penalty">Trest súpera</button>
+      <button data-kind="fight">Bitka</button>
+      <button data-kind="so_goal">Náš nájazd – gól</button>
+      <button data-kind="opp_so_goal">Nájazd súpera – gól</button>
+    </div>
+    <div class="guess" hidden></div>
+    <div class="form" hidden>
+      <div class="muted">Kto? (používateľ)</div>
+      <div class="chips users"></div>
+      <div class="muted pl" hidden>Ktorý hráč?</div>
+      <input class="search" placeholder="hľadať hráča" hidden>
+      <div class="players" hidden></div>
+      <div class="chips outcome" hidden>
+        <button data-out="Won">Vyhral</button><button data-out="Lost">Prehral</button><button data-out="Draw">Nerozhodne</button>
+      </div>
+      <div class="assists" hidden>
+        <div class="muted">Asistencie (nepovinné, najviac 2)</div>
+        <div class="row a-row" data-i="0"><select class="a-user"></select><select class="a-player"></select></div>
+        <div class="row a-row" data-i="1"><select class="a-user"></select><select class="a-player"></select></div>
+      </div>
+      <div class="chips gtypes" hidden>
+        <button data-gt="">Bežný</button><button data-gt="PowerPlay">Presilovka</button><button data-gt="ShortHanded">Oslabenie</button>
+      </div>
+      <input class="clock" placeholder="čas z obrazovky, napr. 12:34 (nepovinné)">
+      <div class="row"><button class="primary save">Uložiť</button><button class="ghost back">Späť</button></div>
+      <div class="err"></div>
+    </div>
+    <div class="row" style="margin-top:6px"><button class="ghost none">Nič sa nestalo</button></div>
+  </div>
+</template>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+let state = null, calibrating = null, drawStart = null, lastQuestionIds = new Set();
+const lastVersions = new Map();
+const openForms = new Map(); // question id -> form state, so polling doesn't wipe a half-filled answer
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+const typeNames = { Goal: 'Gól', Penalty: 'Trest', ShootoutGoal: 'Nájazd', PeriodChange: 'Perióda', MatchEnd: 'Koniec zápasu', Fight: 'Bitka' };
+const gtNames = { PowerPlay: 'presilovka', ShortHanded: 'oslabenie' };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderHeader(s) {
+  $('#title').textContent = `Zápas #${s.match.number}  ${s.match.home} – ${s.match.away}`;
+  $('#period').textContent = s.period;
+  const obs = $('#obs');
+  obs.textContent = s.obs.connected ? 'OBS pripojené' : `OBS: ${s.obs.error || 'nepripojené'}`;
+  obs.className = 'pill ' + (s.obs.connected ? 'ok' : 'bad');
+  const srv = $('#server');
+  const err = s.server.flushError || s.server.statusError;
+  srv.textContent = err ? 'server nedostupný' : 'server OK';
+  srv.className = 'pill ' + (err ? 'bad' : 'ok');
+  srv.title = err || '';
+}
+
+function renderStage(s) {
+  const hasFrame = !!s.frame.at;
+  $('#empty').hidden = hasFrame;
+  $('#empty').textContent = s.obs.connected ? 'Čakám na obraz z OBS…' : 'OBS nie je pripojené, obraz nie je k dispozícii. Udalosti môžeš zapisovať aj tak.';
+  if (hasFrame) $('#frame').src = '/api/frame.jpg?t=' + s.frame.at;
+  $('#frameErr').textContent = s.frame.error ? 'Chyba obrazu: ' + s.frame.error : '';
+  const ov = $('#overlay');
+  ov.querySelectorAll('.region').forEach(e => e.remove());
+  for (const r of s.regions) {
+    const d = document.createElement('div');
+    d.className = 'region ' + r.name;
+    d.dataset.name = r.name;
+    Object.assign(d.style, { left: r.x * 100 + '%', top: r.y * 100 + '%', width: r.w * 100 + '%', height: r.h * 100 + '%' });
+    d.innerHTML = `<span>${esc(r.label)}</span>`;
+    ov.appendChild(d);
+  }
+  $('[data-cal="controlled"]').hidden = !s.regions.some(r => r.name === 'controlled');
+  const det = s.detector;
+  $('#detOn').checked = det.enabled;
+  $('#detOn').disabled = !det.available;
+  const max = Math.max(det.threshold * 2.5, 1);
+  $('#meterFill').style.width = Math.min(det.diff / max * 100, 100) + '%';
+  $('#meterFill').style.background = det.diff > det.threshold ? 'var(--bad)' : 'var(--accent)';
+  $('#meterMark').style.left = det.threshold / max * 100 + '%';
+  $('#diffText').textContent = det.available ? `${det.diff}` : 'nedostupná (pip install Pillow)';
+  if (document.activeElement !== $('#thr')) $('#thr').value = det.threshold;
+}
+
+function playersFor(user, query) {
+  const pos = user ? (['LD', 'RD'].includes(user.position) ? 'D' : user.position) : null;
+  const q = (query || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const fold = p => `${p.firstName} ${p.surname}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const list = state.roster.filter(p => !q || fold(p).includes(q));
+  const has = p => pos && (p.position || '').split(',').map(x => x.trim()).includes(pos);
+  return list.sort((a, b) => (has(b) - has(a)) || a.surname.localeCompare(b.surname));
+}
+
+function buildCard(q) {
+  const el = $('#tplQuestion').content.firstElementChild.cloneNode(true);
+  const sug = q.suggestion || {};
+  const fromSuggestion = () => ({
+    kind: sug.kind || null,
+    userId: sug.kind === 'goal' || sug.kind === 'so_goal' ? (sug.userId ?? undefined) : undefined,
+    rosterPlayerId: sug.rosterPlayerId ?? null, goalType: '', clock: sug.clock || '', search: '', outcome: null,
+    assists: [0, 1].map(i => ({ ...(sug.assists?.[i] || {}) })), touched: false,
+  });
+  const f = openForms.get(q.id) || fromSuggestion();
+  openForms.set(q.id, f);
+  el.dataset.id = q.id;
+  $('.q', el).textContent = q.text;
+  if (q.suggestion) {
+    const g = $('.guess', el);
+    g.hidden = false;
+    g.textContent = 'Predvyplnené podľa obrazu' + (sug.kind === 'goal' && sug.userId === null && sug.rosterPlayerId ? ' (používateľa nepoznám, vyber ho)' : '') + '. Skontroluj a ulož.';
+  }
+  $('.when', el).textContent = new Date(q.createdAt * 1000).toLocaleTimeString('sk-SK');
+  const img = $('img', el);
+  if (q.kind === 'manual' && !state.frame.at) img.remove(); else img.src = `/api/questions/${q.id}/frame.jpg`;
+  img.onerror = () => img.remove();
+
+  const form = $('.form', el), err = $('.err', el);
+  function paint() {
+    const own = f.kind === 'goal' || f.kind === 'penalty' || f.kind === 'fight' || f.kind === 'so_goal';
+    const isFight = f.kind === 'fight';
+    form.hidden = !f.kind;
+    $('.kinds', el).hidden = !!f.kind;
+    $('.users', el).hidden = !own;
+    form.querySelector('.muted').hidden = !own;
+    const users = $('.users', el); users.innerHTML = '';
+    if (own) {
+      for (const u of isFight ? state.users : [...state.users, { userId: null, name: 'Neznámy / počítač' }]) {
+        const b = document.createElement('button');
+        b.textContent = u.name + (u.position ? ` · ${u.position}` : '');
+        b.className = f.userId === u.userId ? 'sel' : '';
+        b.onclick = () => { f.userId = u.userId; if (u.userId === null) f.rosterPlayerId = null; paint(); };
+        users.appendChild(b);
+      }
+    }
+    const user = state.users.find(u => u.userId === f.userId);
+    const showPlayers = own && !!user;
+    $('.pl', el).hidden = $('.search', el).hidden = $('.players', el).hidden = !showPlayers;
+    if (showPlayers) {
+      const box = $('.players', el); box.innerHTML = '';
+      for (const p of playersFor(user, f.search).slice(0, 40)) {
+        const b = document.createElement('button');
+        b.textContent = `${p.surname} ${p.firstName[0]}.` + (p.position ? ` · ${p.position}` : '');
+        b.className = f.rosterPlayerId === p.rosterPlayerId ? 'sel' : '';
+        b.onclick = () => { f.rosterPlayerId = p.rosterPlayerId; paint(); };
+        box.appendChild(b);
+      }
+    }
+    const isGoal = f.kind === 'goal' || f.kind === 'opp_goal';
+    $('.gtypes', el).hidden = !isGoal;
+    $('.outcome', el).hidden = !isFight;
+    $('.outcome', el).querySelectorAll('button').forEach(b => b.className = b.dataset.out === f.outcome ? 'sel' : '');
+    $('.assists', el).hidden = f.kind !== 'goal';
+    if (f.kind === 'goal') {
+      el.querySelectorAll('.a-row').forEach(row => {
+        const a = f.assists[+row.dataset.i];
+        const us = $('.a-user', row), ps = $('.a-player', row);
+        us.innerHTML = '<option value="">– nikto –</option>' + state.users.map(u => `<option value="${u.userId}" ${a.userId === u.userId ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+        const au = state.users.find(u => u.userId === a.userId);
+        ps.hidden = !au;
+        ps.innerHTML = '<option value="">hráč…</option>' + (au ? playersFor(au, '').map(p => `<option value="${p.rosterPlayerId}" ${a.rosterPlayerId === p.rosterPlayerId ? 'selected' : ''}>${esc(p.surname)} ${esc(p.firstName[0])}.${p.position ? ' · ' + esc(p.position) : ''}</option>`).join('') : '');
+        us.onchange = () => { a.userId = us.value ? +us.value : undefined; a.rosterPlayerId = undefined; paint(); };
+        ps.onchange = () => { a.rosterPlayerId = ps.value ? +ps.value : undefined; paint(); };
+      });
+    }
+    $('.gtypes', el).querySelectorAll('button').forEach(b => b.className = b.dataset.gt === f.goalType ? 'sel' : '');
+    const assistIncomplete = f.kind === 'goal' && f.assists.some(a => a.userId && !a.rosterPlayerId);
+    $('.save', el).disabled = isFight
+      ? (!f.userId || !f.outcome)
+      : (own && (f.userId === undefined || (f.userId !== null && !f.rosterPlayerId))) || assistIncomplete;
+  }
+  $('.search', el).value = f.search;
+  $('.search', el).oninput = e => { f.search = e.target.value; paint(); };
+  $('.clock', el).value = f.clock;
+  $('.clock', el).oninput = e => f.clock = e.target.value;
+  el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { f.kind = b.dataset.kind; paint(); });
+  el.querySelectorAll('[data-gt]').forEach(b => b.onclick = () => { f.goalType = b.dataset.gt; paint(); });
+  el.querySelectorAll('[data-out]').forEach(b => b.onclick = () => { f.outcome = b.dataset.out; paint(); });
+  $('.back', el).onclick = () => { f.kind = null; f.userId = undefined; paint(); };
+  $('.save', el).onclick = async () => {
+    try {
+      await api(`/api/questions/${q.id}/answer`, {
+        kind: f.kind, userId: f.userId ?? null, rosterPlayerId: f.rosterPlayerId,
+        goalType: f.goalType || null, clock: f.clock.trim() || null,
+        fightOutcome: f.outcome, assists: f.kind === 'goal' ? f.assists.filter(a => a.userId && a.rosterPlayerId) : [],
+      });
+      openForms.delete(q.id); refresh();
+    } catch (e) { err.textContent = e.message; }
+  };
+  $('.none', el).onclick = async () => { await api(`/api/questions/${q.id}/answer`, { kind: 'none' }); openForms.delete(q.id); refresh(); };
+  el.addEventListener('click', () => { f.touched = true; }, true);
+  el.addEventListener('input', () => { f.touched = true; }, true);
+  paint();
+  return el;
+}
+
+function renderQuestions(s) {
+  const box = $('#questions');
+  const ids = new Set(s.questions.map(q => q.id));
+  const same = ids.size === lastQuestionIds.size && [...ids].every(i => lastQuestionIds.has(i));
+  const refreshed = s.questions.filter(q => (lastVersions.get(q.id) ?? q.version) !== q.version && !openForms.get(q.id)?.touched);
+  refreshed.forEach(q => openForms.delete(q.id));
+  s.questions.forEach(q => lastVersions.set(q.id, q.version));
+  if (same && !refreshed.length) return; // don't rebuild cards the user may be filling in
+  const fresh = [...ids].some(i => !lastQuestionIds.has(i));
+  lastQuestionIds = ids;
+  box.innerHTML = '';
+  if (!s.questions.length) { box.innerHTML = '<p class="muted">Zatiaľ nič. Keď sa zmení skóre, appka sa tu opýta, čo sa stalo.</p>'; return; }
+  for (const q of [...s.questions].reverse()) box.appendChild(buildCard(q));
+  if (fresh) {
+    document.querySelectorAll('.region.score').forEach(r => r.classList.add('flash'));
+    document.title = '❗ Otázka – Collector';
+  }
+}
+
+function renderReadings(s) {
+  const o = s.ocr;
+  $('#ocrStatus').textContent = o.available
+    ? 'OCR zapnuté. Ak sa hodnoty nezhodujú s obrazom, posuň oblasti (Tretina, Čas, Skóre, Banner).'
+    : `OCR vypnuté: ${o.error || 'nedostupné'}. Appka vtedy iba sleduje zmenu skóre a pýta sa.`;
+  const r = o.readings || {}, st = r.state || {};
+  const rows = [
+    ['Tretina', st.period, r.period], ['Čas', st.clock, r.clock],
+    ['Skóre', st.score ? st.score.join(' : ') : null, r.score], ['Banner', null, r.banner],
+    ['Ovládaný hráč', r.controlledPlayer, r.controlled],
+    ['Hráči podľa farieb', (r.userPlayers || []).map(m =>
+      `${(s.users.find(u => u.userId === m.userId) || {}).name || m.userId} (${m.color}): ${m.player}, pred ${m.ago} s`).join(' · ') || null, null],
+  ];
+  $('#readings').innerHTML = rows.map(([k, v, raw]) =>
+    `<dt>${k}</dt><dd>${esc(v ?? '–')}${raw && raw !== v ? ` <span class="muted">(OCR: ${esc(raw)})</span>` : ''}</dd>`).join('');
+}
+
+function renderLog(s) {
+  const ul = $('#log'); ul.innerHTML = '';
+  if (!s.events.length) { ul.innerHTML = '<li class="muted">Zatiaľ nič.</li>'; return; }
+  for (const e of s.events) {
+    const li = document.createElement('li');
+    let what = (typeNames[e.type] || e.type) + (e.opponent ? ' súpera' : '');
+    if (e.subtype) what += ` (${e.subtype})`;
+    if (e.goalType && gtNames[e.goalType]) what += `, ${gtNames[e.goalType]}`;
+    const meta = [e.display, e.period ? `perióda ${e.period}` : null, e.clock, e.at ? new Date(e.at).toLocaleTimeString('sk-SK') : null].filter(Boolean).join(' · ');
+    li.innerHTML = `<span class="what">${esc(what)}</span><span class="badge ${esc(e.status)}">${esc(e.statusLabel)}</span><span class="meta">${esc(meta)}</span>`;
+    ul.appendChild(li);
+  }
+}
+
+async function refresh() {
+  try {
+    state = await api('/api/state');
+    renderHeader(state); renderStage(state); renderQuestions(state); renderReadings(state); renderLog(state);
+    if (!state.questions.length) document.title = 'NHLStats Collector';
+  } catch (e) {
+    $('#server').textContent = 'Collector neodpovedá'; $('#server').className = 'pill bad';
+  }
+}
+
+// ── calibration ───────────────────────────────────────────────────────
+const ov = $('#overlay');
+document.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+  calibrating = b.dataset.cal; ov.classList.add('calibrating'); $('#calCancel').hidden = false;
+  document.querySelectorAll('[data-cal]').forEach(x => x.classList.toggle('sel', x === b));
+});
+function endCal() { calibrating = null; drawStart = null; ov.classList.remove('calibrating'); $('#calCancel').hidden = true; document.querySelectorAll('[data-cal]').forEach(x => x.classList.remove('sel')); ov.querySelector('.drawing')?.remove(); }
+$('#calCancel').onclick = endCal;
+const rel = e => { const r = ov.getBoundingClientRect(); return { x: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), y: Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1) }; };
+ov.addEventListener('pointerdown', e => {
+  if (!calibrating) return;
+  drawStart = rel(e); ov.setPointerCapture(e.pointerId);
+  const d = document.createElement('div'); d.className = 'drawing'; ov.appendChild(d);
+});
+ov.addEventListener('pointermove', e => {
+  if (!drawStart) return;
+  const p = rel(e), d = ov.querySelector('.drawing');
+  Object.assign(d.style, { left: Math.min(p.x, drawStart.x) * 100 + '%', top: Math.min(p.y, drawStart.y) * 100 + '%', width: Math.abs(p.x - drawStart.x) * 100 + '%', height: Math.abs(p.y - drawStart.y) * 100 + '%' });
+});
+ov.addEventListener('pointerup', async e => {
+  if (!drawStart) return;
+  const p = rel(e), box = { x: Math.min(p.x, drawStart.x), y: Math.min(p.y, drawStart.y), w: Math.abs(p.x - drawStart.x), h: Math.abs(p.y - drawStart.y) };
+  const name = calibrating; endCal();
+  if (box.w > 0.01 && box.h > 0.01) { await api(`/api/regions/${name}`, box); refresh(); }
+});
+
+// ── actions ───────────────────────────────────────────────────────────
+async function command(line) {
+  $('#cmdErr').textContent = '';
+  try { await api('/api/command', { line }); $('#cmd').value = ''; refresh(); }
+  catch (e) { $('#cmdErr').textContent = e.message; }
+}
+$('#cmdSend').onclick = () => command($('#cmd').value);
+$('#cmd').onkeydown = e => { if (e.key === 'Enter') command($('#cmd').value); };
+$('#nextPeriod').onclick = () => command('n');
+document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { if (confirm(`Zapísať „${b.textContent}“?`)) command(b.dataset.cmd); });
+$('#askNow').onclick = async () => { await api('/api/ask', {}); refresh(); };
+$('#detOn').onchange = e => api('/api/detector', { enabled: e.target.checked });
+$('#thr').onchange = e => { const v = parseFloat(e.target.value); if (v > 0) api('/api/detector', { enabled: $('#detOn').checked, threshold: v }); };
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

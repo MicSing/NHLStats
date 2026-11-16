@@ -103,7 +103,8 @@
         "moneyConfig": "Sadzby bodov",
         "expenses": "Výdavky",
         "payouts": "Výplaty",
-        "pointsManagement": "Body"
+        "pointsManagement": "Body",
+        "apiKeys": "API kľúče"
     },
     "layout": {
         "appName": "NHL Stats",
@@ -1249,5 +1250,86 @@
             "loginPromptTitle": "Máš účet v aplikácii?",
             "loginPromptSubtitle": "Prihlás sa a získaj prístup k svojim tipom, štatistikám a achievementom."
         }
+    },
+    "collector": {
+        "title": "Návrhy z Collectora",
+        "hint": "Udalosti zapísané appkou Collector. Nič sa nezmení, kým ich nepotvrdíš.",
+        "opponent": "(súper)",
+        "unknownPlayer": "Neznámy / počítač",
+        "period": "{{period}}. perióda",
+        "confirm": "Potvrdiť",
+        "reject": "Zamietnuť",
+        "edit": "Upraviť",
+        "confirmed": "Udalosť potvrdená",
+        "opponentEvent": "Súper",
+        "user": "Používateľ",
+        "player": "Hráč",
+        "choosePlayer": "Vyber hráča",
+        "assists": "Asistencie",
+        "fightOutcomeLabel": "Výsledok bitky",
+        "fightOutcome": {
+            "Won": "vyhral",
+            "Lost": "prehral",
+            "Draw": "nerozhodne"
+        },
+        "goalTypeLabel": "Typ gólu",
+        "type": {
+            "Goal": "Gól",
+            "Penalty": "Trest",
+            "ShootoutGoal": "Gól v nájazdoch",
+            "PeriodChange": "Perióda",
+            "MatchEnd": "Koniec zápasu",
+            "Fight": "Bitka"
+        },
+        "goalType": {
+            "Regular": "Bežný",
+            "PowerPlay": "presilovka",
+            "ShortHanded": "oslabenie"
+        },
+        "confidence": {
+            "High": "vysoká istota",
+            "Medium": "stredná istota",
+            "Low": "nízka istota"
+        }
+    },
+    "apiKeys": {
+        "title": "API kľúče",
+        "description": "Kľúče pre appky, ktoré posielajú dáta do NHL Stats, napr. Collector. Kľúč vie iba posielať návrhy udalostí, potvrdzuje ich admin pri zápase.",
+        "name": "Názov",
+        "namePlaceholder": "napr. Collector PC",
+        "create": "Vytvoriť kľúč",
+        "prefix": "Kľúč",
+        "created": "Vytvorený",
+        "lastUsed": "Naposledy použitý",
+        "status": "Stav",
+        "active": "Aktívny",
+        "revoked": "Zrušený",
+        "revoke": "Zrušiť",
+        "revokeConfirm": "Zrušiť kľúč „{{name}}“? Appka, ktorá ho používa, prestane fungovať.",
+        "createdTitle": "Kľúč „{{name}}“ je vytvorený",
+        "createdHint": "Skopíruj ho teraz a vlož do nastavení Collectora. Znova sa už neukáže.",
+        "copy": "Kopírovať",
+        "copied": "Skopírované",
+        "hideKey": "Skryť",
+        "empty": "Zatiaľ žiadne kľúče."
+    },
+    "colors": {
+        "column": "Farba",
+        "none": "bez farby",
+        "saved": "Farba uložená",
+        "colorFor": "Farba pre {{name}}",
+        "byPosition": "podľa postu ({{color}})",
+        "fromSeason": "zo sezóny ({{color}})",
+        "positionTitle": "Predvolené farby postov",
+        "positionHint": "Farba krúžku, ktorý hra kreslí pod hráčom každého postu. V sezóne ju môžeš používateľovi zmeniť a v detaile zápasu ešte raz len pre ten zápas. Collector podľa nej spozná, kto hrá s ktorým hokejistom.",
+        "matchTitle": "Farby hráčov v zápase",
+        "matchHint": "Každý má farbu zo sezóny. Tu ju zmeníš len pre tento zápas.",
+        "red": "červená",
+        "orange": "oranžová",
+        "yellow": "žltá",
+        "green": "zelená",
+        "cyan": "tyrkysová",
+        "blue": "modrá",
+        "pink": "ružová"
     }
 }

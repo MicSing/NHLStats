@@ -18,12 +18,20 @@ public class SeasonService : ISeasonService
         s.StartedOn, s.Status, s.ParentSeasonId,
         s.LeagueType, s.NhlYear, s.Console, s.PointsEnabled);
 
-    private static SeasonDetailDto ToDetailDto(Season s) => new(
+    private static SeasonUserDto ToUserDto(SeasonUser su, IReadOnlyDictionary<SeasonUserPosition, string> colors) => new(
+        su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive,
+        su.Color ?? (su.Position.HasValue ? colors.GetValueOrDefault(su.Position.Value) : null),
+        su.Color != null);
+
+    private Task<Dictionary<SeasonUserPosition, string>> PositionColorsAsync() =>
+        _db.PositionColors.AsNoTracking().ToDictionaryAsync(c => c.Position, c => c.Color);
+
+    private static SeasonDetailDto ToDetailDto(Season s, IReadOnlyDictionary<SeasonUserPosition, string> colors) => new(
         s.Id, s.Name, s.HostedTeamId,
         s.HostedTeam?.Name,
         s.StartedOn, s.Status, s.ParentSeasonId,
         s.SeasonUsers?
-            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive))
+            .Select(su => ToUserDto(su, colors))
             .ToList() ?? [],
         s.LeagueType, s.NhlYear, s.Console, s.PointsEnabled);
 
@@ -42,7 +50,7 @@ public class SeasonService : ISeasonService
                 .ThenInclude(su => su.User)
             .FirstOrDefaultAsync(s => s.Id == id);
 
-        return season == null ? null : ToDetailDto(season);
+        return season == null ? null : ToDetailDto(season, await PositionColorsAsync());
     }
 
     public async Task<SeasonDto> CreateAsync(CreateSeasonDto dto)
@@ -132,6 +140,21 @@ public class SeasonService : ISeasonService
         return await GetByIdAsync(seasonId);
     }
 
+    public async Task<(SeasonDetailDto? season, string? error)> SetUserColorAsync(int seasonId, int userId, string? color)
+    {
+        var su = await _db.SeasonUsers
+            .FirstOrDefaultAsync(x => x.SeasonId == seasonId && x.UserId == userId);
+        if (su == null) return (null, null);
+
+        var normalized = PositionColorService.Normalize(color);
+        if (normalized == "")
+            return (null, $"Unknown colour '{color}'. Use {string.Join(", ", PositionColorService.NamedColors)} or #rrggbb.");
+        su.Color = normalized;
+        await _db.SaveChangesAsync();
+
+        return (await GetByIdAsync(seasonId), null);
+    }
+
     public async Task<bool> RemoveUserAsync(int seasonId, int userId)
     {
         var su = await _db.SeasonUsers
@@ -148,10 +171,11 @@ public class SeasonService : ISeasonService
         var seasonExists = await _db.Seasons.AnyAsync(s => s.Id == seasonId);
         if (!seasonExists) return null;
 
-        return await _db.SeasonUsers
+        var colors = await PositionColorsAsync();
+        var users = await _db.SeasonUsers
             .Where(su => su.SeasonId == seasonId)
             .Include(su => su.User)
-            .Select(su => new SeasonUserDto(su.User!.Id, su.User.Name, su.User.IsActive, su.Position, su.IsActive))
             .ToListAsync();
+        return users.Select(su => ToUserDto(su, colors)).ToList();
     }
 }

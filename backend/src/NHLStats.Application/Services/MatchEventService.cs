@@ -79,7 +79,9 @@ public class MatchEventService : IMatchEventService
             pointReasonName,
             pointType,
             goalType,
-            e.CreatedAt);
+            e.CreatedAt,
+            e.Period,
+            e.GameClock);
     }
 
     public async Task<IEnumerable<MatchEventDto>> GetEventsByMatchAsync(int matchId)
@@ -276,6 +278,11 @@ public class MatchEventService : IMatchEventService
             }
             match.CompletionType = CompletionType.InProgress;
         }
+
+        // Assists recorded with this goal (through the Collector) go with it.
+        _db.UserMatchAssists.RemoveRange(await _db.UserMatchAssists
+            .Where(a => a.MatchEventId == evt.Id || (evt.UserMatchGoalId.HasValue && a.UserMatchGoalId == evt.UserMatchGoalId))
+            .ToListAsync());
 
         _db.MatchEvents.Remove(evt);
         await _db.SaveChangesAsync();

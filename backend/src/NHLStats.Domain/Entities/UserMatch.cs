@@ -6,6 +6,8 @@ public class UserMatch
     public int UserId { get; set; }
     public int MatchId { get; set; }
     public int SeasonId { get; set; }
+    /// <summary>Ring colour set by hand for this match only. Null: the user's season colour.</summary>
+    public string? Color { get; set; }
 
     public User? User { get; set; }
     public Match? Match { get; set; }

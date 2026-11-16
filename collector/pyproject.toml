@@ -1,0 +1,32 @@
+[project]
+name = "nhlcollector"
+version = "0.1.0"
+description = "Records NHL game events (keyboard now, video recognition later) and sends them to NHLStats as proposals."
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "obsws-python>=1.7",
+]
+
+[project.optional-dependencies]
+# Pillow powers the scoreboard change detector; without it the page still shows the live picture.
+vision = ["Pillow>=10"]
+# Reading the scoreboard and banners; also needs the Tesseract program installed.
+ocr = ["Pillow>=10", "pytesseract>=0.3.10"]
+dev = ["pytest>=8", "Pillow>=10"]
+
+[project.scripts]
+nhlcollector = "nhlcollector.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["nhlcollector"]
+
+[tool.setuptools.package-data]
+nhlcollector = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
