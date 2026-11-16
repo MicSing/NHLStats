@@ -2,7 +2,7 @@ import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import {
     HouseIcon, TrophyIcon, ChartLineIcon, TargetIcon, CurrencyDollarIcon, BookOpenIcon,
     UsersIcon, ShieldIcon, FlagBannerIcon,
-    TagIcon, WalletIcon,
+    TagIcon, WalletIcon, KeyIcon,
 } from '@phosphor-icons/react'
 
 export interface NavItem {
@@ -34,6 +34,7 @@ export const adminTopNavItems: NavItem[] = [
     { to: '/admin/seasons', labelKey: 'nav.adminSeasons', icon: TrophyIcon },
     { to: '/admin/point-reasons', labelKey: 'nav.pointReasons', icon: TagIcon },
     { to: '/admin/teams', labelKey: 'nav.teams', icon: ShieldIcon },
+    { to: '/admin/api-keys', labelKey: 'nav.apiKeys', icon: KeyIcon },
 ]
 
 export const adminNavGroups: NavGroup[] = []

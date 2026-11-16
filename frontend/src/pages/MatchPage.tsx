@@ -22,6 +22,7 @@ import MatchHeaderEditor from '../components/MatchHeaderEditor'
 import MatchQuickActionsBar from '../components/MatchQuickActionsBar'
 import MatchEventTimeline from '../components/MatchEventTimeline'
 import UserMatchCard from '../components/UserMatchCard'
+import MatchProposalsPanel from '../components/MatchProposalsPanel'
 
 interface UserMatchData {
     userMatch: UserMatch
@@ -331,6 +332,16 @@ export default function MatchPage() {
                     isAuth={!!token}
                     onEventAdded={loadAll}
                 />
+
+                {/* Events proposed by the Collector app, waiting for review */}
+                {token && (
+                    <MatchProposalsPanel
+                        matchId={Number(matchId)}
+                        userMatches={userMatchData.map((d) => d.userMatch)}
+                        roster={roster.filter((r) => !season?.hostedTeamId || r.teamId === season.hostedTeamId)}
+                        onConfirmed={loadAll}
+                    />
+                )}
 
                 {/* Action bar */}
                 {token && (

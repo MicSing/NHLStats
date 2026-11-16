@@ -103,7 +103,8 @@
         "moneyConfig": "Point Rates",
         "expenses": "Expenses",
         "payouts": "Payouts",
-        "pointsManagement": "Points"
+        "pointsManagement": "Points",
+        "apiKeys": "API Keys"
     },
     "layout": {
         "appName": "NHL Stats",
@@ -1215,5 +1216,59 @@
             "loginPromptTitle": "Have an account?",
             "loginPromptSubtitle": "Sign in to access your bets, stats, and achievements."
         }
+    },
+    "collector": {
+        "title": "Proposals from Collector",
+        "hint": "Events recorded by the Collector app. Nothing changes until you confirm them.",
+        "opponent": "(opponent)",
+        "unknownPlayer": "Unknown / computer",
+        "period": "Period {{period}}",
+        "confirm": "Confirm",
+        "reject": "Reject",
+        "edit": "Edit",
+        "confirmed": "Event confirmed",
+        "opponentEvent": "Opponent",
+        "user": "User",
+        "player": "Player",
+        "choosePlayer": "Choose player",
+        "goalTypeLabel": "Goal type",
+        "type": {
+            "Goal": "Goal",
+            "Penalty": "Penalty",
+            "ShootoutGoal": "Shootout goal",
+            "PeriodChange": "Period",
+            "MatchEnd": "Match end"
+        },
+        "goalType": {
+            "Regular": "Regular",
+            "PowerPlay": "power play",
+            "ShortHanded": "short-handed"
+        },
+        "confidence": {
+            "High": "high confidence",
+            "Medium": "medium confidence",
+            "Low": "low confidence"
+        }
+    },
+    "apiKeys": {
+        "title": "API Keys",
+        "description": "Keys for apps that send data to NHL Stats, such as the Collector. A key can only submit event proposals; an admin confirms them on the match page.",
+        "name": "Name",
+        "namePlaceholder": "e.g. Collector PC",
+        "create": "Create key",
+        "prefix": "Key",
+        "created": "Created",
+        "lastUsed": "Last used",
+        "status": "Status",
+        "active": "Active",
+        "revoked": "Revoked",
+        "revoke": "Revoke",
+        "revokeConfirm": "Revoke key \"{{name}}\"? The app using it will stop working.",
+        "createdTitle": "Key \"{{name}}\" created",
+        "createdHint": "Copy it now and put it in the Collector config. It will not be shown again.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "hideKey": "Hide",
+        "empty": "No keys yet."
     }
 }

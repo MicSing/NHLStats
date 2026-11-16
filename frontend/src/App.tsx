@@ -14,6 +14,7 @@ import SeasonManagementPage from './pages/admin/SeasonManagementPage'
 import PointReasonsPage from './pages/admin/PointReasonsPage'
 import AdminFinancePage from './pages/admin/FinancePage'
 import TeamsPage from './pages/admin/TeamsPage'
+import ApiKeysPage from './pages/admin/ApiKeysPage'
 import SeasonPage from './pages/SeasonPage'
 import MatchPage from './pages/MatchPage'
 import DashboardPage from './pages/DashboardPage'
@@ -71,6 +72,7 @@ function App() {
                     <Route path="payouts" element={<Navigate to="/admin/finance" replace />} />
                     <Route path="aggregated-points" element={<Navigate to="/admin/seasons" replace />} />
                     <Route path="teams" element={<TeamsPage />} />
+                    <Route path="api-keys" element={<ApiKeysPage />} />
                     <Route path="points" element={<Navigate to="/admin/finance" replace />} />
                   </Route>
 
