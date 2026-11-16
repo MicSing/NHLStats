@@ -37,6 +37,8 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
     public DbSet<MatchEvent> MatchEvents => Set<MatchEvent>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<MatchEventProposal> MatchEventProposals => Set<MatchEventProposal>();
+    public DbSet<UserMatchAssist> UserMatchAssists => Set<UserMatchAssist>();
+    public DbSet<UserMatchFight> UserMatchFights => Set<UserMatchFight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -225,6 +227,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasKey(x => x.Id);
             b.Property(x => x.EventType).HasConversion<int>();
             b.HasIndex(x => new { x.MatchId, x.OrderIndex }).IsUnique();
+            b.Property(x => x.GameClock).HasMaxLength(16);
             b.HasOne(x => x.Match).WithMany(m => m.Events).HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(x => x.UserMatchGoal).WithMany().HasForeignKey(x => x.UserMatchGoalId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne(x => x.UserMatchPenalty).WithMany().HasForeignKey(x => x.UserMatchPenaltyId).OnDelete(DeleteBehavior.Restrict);
@@ -240,6 +243,30 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.HasIndex(x => x.KeyHash).IsUnique();
         });
 
+        // The database has Restrict on these (InitialCreate); state it so migrations stop proposing Cascade.
+        modelBuilder.Entity<UserMatchGoal>()
+            .HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserMatchPenalty>()
+            .HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+
+        // Statistics-only records (no money): assists and fights.
+        modelBuilder.Entity<UserMatchAssist>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasOne(x => x.UserMatch).WithMany().HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => x.UserMatchGoalId);
+            b.HasIndex(x => x.MatchEventId);
+        });
+
+        modelBuilder.Entity<UserMatchFight>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Outcome).HasConversion<int>();
+            b.HasOne(x => x.UserMatch).WithMany().HasForeignKey(x => x.UserMatchId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.RosterPlayer).WithMany().HasForeignKey(x => x.RosterPlayerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<MatchEventProposal>(b =>
         {
             b.HasKey(x => x.Id);
@@ -248,6 +275,7 @@ public class NhlStatsDbContext : IdentityDbContext<ApplicationUser, AppRole, str
             b.Property(x => x.GoalType).HasConversion<int?>();
             b.Property(x => x.Status).HasConversion<int>();
             b.Property(x => x.Confidence).HasConversion<int>();
+            b.Property(x => x.FightOutcome).HasConversion<int?>();
             b.Property(x => x.EventSubtype).HasMaxLength(32);
             b.Property(x => x.GameClock).HasMaxLength(16);
             b.Property(x => x.Strength).HasMaxLength(16);

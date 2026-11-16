@@ -236,7 +236,7 @@ public class IngestTests : ApiTestBase
         var (_, key) = await CreateApiKeyAsync(admin);
 
         var results = await SubmitAsync(CreateKeyClient(key), s.MatchId,
-            new { clientEventId = "g1", eventType = "Goal", userId = s.UserId, rosterPlayerId = s.RosterPlayerId, confidence = "Medium" });
+            new { clientEventId = "g1", eventType = "Goal", userId = s.UserId, rosterPlayerId = s.RosterPlayerId, confidence = "Medium", period = 2, gameClock = "05:07" });
         var proposalId = results[0].GetProperty("proposalId").GetInt32();
 
         var confirm = await admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/proposals/{proposalId}/confirm", new { });
@@ -249,6 +249,8 @@ public class IngestTests : ApiTestBase
         var evt = events.EnumerateArray().Single(e => e.GetProperty("id").GetInt32() == matchEventId);
         evt.GetProperty("eventType").GetString().Should().Be("Goal");
         evt.GetProperty("rosterPlayerId").GetInt32().Should().Be(s.RosterPlayerId);
+        evt.GetProperty("period").GetInt32().Should().Be(2);
+        evt.GetProperty("gameClock").GetString().Should().Be("05:07");
 
         (await GetMatchAsync(admin, s)).GetProperty("homeScore").GetInt32().Should().Be(1);
 
@@ -326,5 +328,119 @@ public class IngestTests : ApiTestBase
     {
         var resp = await Factory.CreateClient().GetAsync("/api/matches/1/proposals");
         resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // ── assists and fights (statistics only) ─────────────────────────────────
+
+    private async Task<(int userId, int rosterPlayerId)> AddSecondPlayerAsync(HttpClient admin, Setup s, string name)
+    {
+        var userResp = await admin.PostAsJsonAsync("/api/users", new { name });
+        var userId = (await userResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        (await admin.PostAsJsonAsync($"/api/seasons/{s.SeasonId}/users/{userId}", new { position = "LD" })).EnsureSuccessStatusCode();
+        var rosterResp = await admin.PostAsJsonAsync($"/api/seasons/{s.SeasonId}/roster", new { firstName = "Cale", surname = "Makar", position = "D", teamId = 1 });
+        var rosterPlayerId = (await rosterResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        (await admin.PostAsync($"/api/seasons/{s.SeasonId}/matches/{s.MatchId}/usermatches/initialize", null)).EnsureSuccessStatusCode();
+        return (userId, rosterPlayerId);
+    }
+
+    private static async Task<int> CountPointsAsync(HttpClient admin, Setup s)
+    {
+        var ums = await (await admin.GetAsync($"/api/seasons/{s.SeasonId}/matches/{s.MatchId}/usermatches/details")).Content.ReadFromJsonAsync<JsonElement>();
+        return ums.EnumerateArray().Sum(u => u.GetProperty("points").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Confirmed_goal_with_assists_records_assists_as_stats_only()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Assist Season");
+        var (user2, makar) = await AddSecondPlayerAsync(admin, s, "Assist Season Defender");
+        var (_, key) = await CreateApiKeyAsync(admin);
+
+        var results = await SubmitAsync(CreateKeyClient(key), s.MatchId, new
+        {
+            clientEventId = "goal-with-assist", eventType = "Goal", userId = s.UserId, rosterPlayerId = s.RosterPlayerId,
+            assists = new[] { new { userId = user2, rosterPlayerId = makar } }
+        });
+        var proposalId = results[0].GetProperty("proposalId").GetInt32();
+
+        var proposals = await (await admin.GetAsync($"/api/matches/{s.MatchId}/proposals")).Content.ReadFromJsonAsync<JsonElement>();
+        proposals[0].GetProperty("assists")[0].GetProperty("playerName").GetString().Should().Be("Cale Makar");
+
+        var pointsBefore = await CountPointsAsync(admin, s);
+        (await admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/proposals/{proposalId}/confirm", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await CountPointsAsync(admin, s)).Should().Be(pointsBefore, "assists are statistics only");
+
+        var stats = await (await admin.GetAsync($"/api/seasons/{s.SeasonId}/collector-stats")).Content.ReadFromJsonAsync<JsonElement>();
+        var scorer = stats.EnumerateArray().Single(x => x.GetProperty("userId").GetInt32() == s.UserId);
+        var assister = stats.EnumerateArray().Single(x => x.GetProperty("userId").GetInt32() == user2);
+        scorer.GetProperty("goals").GetInt32().Should().Be(1);
+        assister.GetProperty("assists").GetInt32().Should().Be(1);
+        assister.GetProperty("points").GetInt32().Should().Be(1);
+
+        // Deleting the goal event removes its assist too.
+        var events = await (await admin.GetAsync($"/api/matches/{s.MatchId}/events")).Content.ReadFromJsonAsync<JsonElement>();
+        (await admin.DeleteAsync($"/api/matches/{s.MatchId}/events/{events[0].GetProperty("id").GetInt32()}")).EnsureSuccessStatusCode();
+        stats = await (await admin.GetAsync($"/api/seasons/{s.SeasonId}/collector-stats")).Content.ReadFromJsonAsync<JsonElement>();
+        stats.EnumerateArray().Single(x => x.GetProperty("userId").GetInt32() == user2).GetProperty("assists").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Assists_on_opponent_goal_or_more_than_two_are_refused()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Assist Validation Season");
+        var (_, key) = await CreateApiKeyAsync(admin);
+        var a = new { userId = s.UserId, rosterPlayerId = s.RosterPlayerId };
+
+        var results = await SubmitAsync(CreateKeyClient(key), s.MatchId,
+            new { clientEventId = "opp", eventType = "Goal", isOpponent = true, assists = new[] { a } },
+            new { clientEventId = "three", eventType = "Goal", assists = new[] { a, a, a } });
+        results[0].GetProperty("error").GetString().Should().Contain("our goals");
+        results[1].GetProperty("error").GetString().Should().Contain("2 assists");
+    }
+
+    [Fact]
+    public async Task Confirmed_fight_is_counted_by_outcome_without_points_or_events()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Fight Season");
+        var (_, key) = await CreateApiKeyAsync(admin);
+
+        var results = await SubmitAsync(CreateKeyClient(key), s.MatchId,
+            new { clientEventId = "fight-1", eventType = "Fight", userId = s.UserId, rosterPlayerId = s.RosterPlayerId, fightOutcome = "Won" },
+            new { clientEventId = "fight-2", eventType = "Fight", userId = s.UserId, fightOutcome = "Lost" },
+            new { clientEventId = "fight-bad", eventType = "Fight", userId = s.UserId });
+        results[2].GetProperty("error").GetString().Should().Contain("outcome");
+
+        var pointsBefore = await CountPointsAsync(admin, s);
+        foreach (var r in results.EnumerateArray().Take(2))
+            (await admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/proposals/{r.GetProperty("proposalId").GetInt32()}/confirm", new { }))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await CountPointsAsync(admin, s)).Should().Be(pointsBefore);
+        var events = await (await admin.GetAsync($"/api/matches/{s.MatchId}/events")).Content.ReadFromJsonAsync<JsonElement>();
+        events.GetArrayLength().Should().Be(0);
+
+        var stats = await (await admin.GetAsync($"/api/seasons/{s.SeasonId}/collector-stats")).Content.ReadFromJsonAsync<JsonElement>();
+        var me = stats.EnumerateArray().Single(x => x.GetProperty("userId").GetInt32() == s.UserId);
+        me.GetProperty("fightsWon").GetInt32().Should().Be(1);
+        me.GetProperty("fightsLost").GetInt32().Should().Be(1);
+        me.GetProperty("fightsDraw").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Admin_can_correct_fight_outcome_on_confirm()
+    {
+        var admin = await CreateAuthenticatedClientAsync();
+        var s = await CreateMatchSetupAsync(admin, "Fight Fix Season");
+        var (_, key) = await CreateApiKeyAsync(admin);
+        var results = await SubmitAsync(CreateKeyClient(key), s.MatchId,
+            new { clientEventId = "f", eventType = "Fight", userId = s.UserId, fightOutcome = "Won" });
+
+        var confirm = await admin.PostAsJsonAsync($"/api/matches/{s.MatchId}/proposals/{results[0].GetProperty("proposalId").GetInt32()}/confirm",
+            new { fightOutcome = "Draw" });
+        confirm.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await confirm.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("fightOutcome").GetString().Should().Be("Draw");
     }
 }

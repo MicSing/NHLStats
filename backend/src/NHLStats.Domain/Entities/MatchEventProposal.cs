@@ -24,6 +24,14 @@ public class MatchEventProposal
     public int? UserId { get; set; }
     public int? RosterPlayerId { get; set; }
 
+    /// <summary>Up to two assists on a goal, each by a user's roster player (plain columns, no FK).</summary>
+    public int? Assist1UserId { get; set; }
+    public int? Assist1RosterPlayerId { get; set; }
+    public int? Assist2UserId { get; set; }
+    public int? Assist2RosterPlayerId { get; set; }
+    /// <summary>For <see cref="MatchEventType.Fight"/>: outcome from the user's point of view.</summary>
+    public FightOutcome? FightOutcome { get; set; }
+
     public int? Period { get; set; }
     /// <summary>Game clock as shown on screen, e.g. "12:34".</summary>
     public string? GameClock { get; set; }

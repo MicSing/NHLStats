@@ -38,6 +38,9 @@ public record IngestMatchContextDto(
 
 // ─── Event proposals ─────────────────────────────────────────────────────────
 
+/// <summary>An assist on a goal by a user's roster player.</summary>
+public record IngestAssistDto(int UserId, int RosterPlayerId);
+
 public record IngestEventDto(
     string ClientEventId,
     MatchEventType EventType,
@@ -46,6 +49,8 @@ public record IngestEventDto(
     GoalType? GoalType = null,
     int? UserId = null,
     int? RosterPlayerId = null,
+    List<IngestAssistDto>? Assists = null,
+    FightOutcome? FightOutcome = null,
     int? Period = null,
     string? GameClock = null,
     string? Strength = null,
@@ -62,6 +67,8 @@ public record IngestEventResultDto(
     bool Duplicate,
     string? Error);
 
+public record ProposalAssistDto(int UserId, string? UserName, int RosterPlayerId, string? PlayerName);
+
 public record MatchEventProposalDto(
     int Id,
     int MatchId,
@@ -75,6 +82,8 @@ public record MatchEventProposalDto(
     string? UserName,
     int? RosterPlayerId,
     string? PlayerName,
+    IReadOnlyList<ProposalAssistDto> Assists,
+    FightOutcome? FightOutcome,
     int? Period,
     string? GameClock,
     string? Strength,
@@ -97,4 +106,19 @@ public record ConfirmProposalDto(
     bool? IsOpponent = null,
     GoalType? GoalType = null,
     string? EventSubtype = null,
-    bool ClearUser = false);
+    bool ClearUser = false,
+    /// <summary>Replaces the proposed assists when set (an empty list removes them).</summary>
+    List<IngestAssistDto>? Assists = null,
+    FightOutcome? FightOutcome = null);
+
+// ─── Statistics recorded through the Collector (no money) ────────────────────
+
+public record UserCollectorStatsDto(
+    int UserId,
+    string UserName,
+    int Goals,
+    int Assists,
+    int Points,
+    int FightsWon,
+    int FightsLost,
+    int FightsDraw);

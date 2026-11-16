@@ -268,6 +268,9 @@ public class UserMatchService : IUserMatchService
         _db.UserMatchGoals.RemoveRange(goals);
         _db.UserMatchPenalties.RemoveRange(penalties);
         _db.MatchEvents.RemoveRange(events);
+        // Collector statistics belong to the match's events too.
+        _db.UserMatchAssists.RemoveRange(await _db.UserMatchAssists.Where(a => userMatchIds.Contains(a.UserMatchId)).ToListAsync());
+        _db.UserMatchFights.RemoveRange(await _db.UserMatchFights.Where(f => userMatchIds.Contains(f.UserMatchId)).ToListAsync());
 
         await _db.SaveChangesAsync();
     }
@@ -659,6 +662,8 @@ public class UserMatchService : IUserMatchService
         var evt = await _db.MatchEvents.FirstOrDefaultAsync(e => e.UserMatchGoalId == goalId);
         if (evt != null) _db.MatchEvents.Remove(evt);
 
+        // Assists on this goal go with it.
+        _db.UserMatchAssists.RemoveRange(await _db.UserMatchAssists.Where(a => a.UserMatchGoalId == goalId).ToListAsync());
         _db.UserMatchGoals.Remove(goal);
         await _db.SaveChangesAsync();
         return true;

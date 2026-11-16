@@ -21,7 +21,8 @@ public class MatchEventProposalService : IMatchEventProposalService
         MatchEventType.Penalty,
         MatchEventType.PeriodChange,
         MatchEventType.MatchEnd,
-        MatchEventType.ShootoutGoal
+        MatchEventType.ShootoutGoal,
+        MatchEventType.Fight
     ];
 
     private readonly NhlStatsDbContext _db;
@@ -154,6 +155,12 @@ public class MatchEventProposalService : IMatchEventProposalService
             else if (!AllowedTypes.Contains(e.EventType)) error = $"Event type {e.EventType} cannot be proposed.";
             else if (e.UserId.HasValue && !seasonUserIds.Contains(e.UserId.Value)) error = $"User {e.UserId} is not in this season.";
             else if (e.RosterPlayerId.HasValue && !seasonRosterIds.Contains(e.RosterPlayerId.Value)) error = $"RosterPlayer {e.RosterPlayerId} is not in this season's roster.";
+            else if (e.Assists is { Count: > 2 }) error = "At most 2 assists per goal.";
+            else if (e.Assists is { Count: > 0 } && (e.EventType != MatchEventType.Goal || e.IsOpponent)) error = "Assists can only be recorded on our goals.";
+            else if (e.Assists?.FirstOrDefault(a => !seasonUserIds.Contains(a.UserId) || !seasonRosterIds.Contains(a.RosterPlayerId)) is { } badAssist)
+                error = $"Assist user {badAssist.UserId} / player {badAssist.RosterPlayerId} is not in this season.";
+            else if (e.EventType == MatchEventType.Fight && (e.IsOpponent || !e.UserId.HasValue || !e.FightOutcome.HasValue))
+                error = "A fight needs the user who fought and its outcome (Won, Lost, Draw).";
 
             if (error != null)
             {
@@ -183,6 +190,11 @@ public class MatchEventProposalService : IMatchEventProposalService
                 GoalType = e.GoalType,
                 UserId = e.IsOpponent ? null : e.UserId,
                 RosterPlayerId = e.IsOpponent ? null : e.RosterPlayerId,
+                Assist1UserId = e.Assists?.ElementAtOrDefault(0)?.UserId,
+                Assist1RosterPlayerId = e.Assists?.ElementAtOrDefault(0)?.RosterPlayerId,
+                Assist2UserId = e.Assists?.ElementAtOrDefault(1)?.UserId,
+                Assist2RosterPlayerId = e.Assists?.ElementAtOrDefault(1)?.RosterPlayerId,
+                FightOutcome = e.EventType == MatchEventType.Fight ? e.FightOutcome : null,
                 Period = e.Period,
                 GameClock = Trunc(e.GameClock, 16),
                 Strength = Trunc(e.Strength, 16),
@@ -222,8 +234,10 @@ public class MatchEventProposalService : IMatchEventProposalService
 
     private async Task<List<MatchEventProposalDto>> ToDtosAsync(List<MatchEventProposal> proposals)
     {
-        var userIds = proposals.Where(p => p.UserId.HasValue).Select(p => p.UserId!.Value).Distinct().ToList();
-        var rosterIds = proposals.Where(p => p.RosterPlayerId.HasValue).Select(p => p.RosterPlayerId!.Value).Distinct().ToList();
+        var userIds = proposals.SelectMany(p => new[] { p.UserId, p.Assist1UserId, p.Assist2UserId })
+            .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        var rosterIds = proposals.SelectMany(p => new[] { p.RosterPlayerId, p.Assist1RosterPlayerId, p.Assist2RosterPlayerId })
+            .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var users = await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Name);
         var players = await _db.RosterPlayers.AsNoTracking().Where(r => rosterIds.Contains(r.Id))
             .ToDictionaryAsync(r => r.Id, r => $"{r.FirstName} {r.Surname}".Trim());
@@ -233,8 +247,18 @@ public class MatchEventProposalService : IMatchEventProposalService
             p.EventType, p.IsOpponent, p.EventSubtype, p.GoalType,
             p.UserId, p.UserId.HasValue ? users.GetValueOrDefault(p.UserId.Value) : null,
             p.RosterPlayerId, p.RosterPlayerId.HasValue ? players.GetValueOrDefault(p.RosterPlayerId.Value) : null,
+            AssistsOf(p).Select(a => new ProposalAssistDto(a.UserId, users.GetValueOrDefault(a.UserId), a.RosterPlayerId, players.GetValueOrDefault(a.RosterPlayerId))).ToList(),
+            p.FightOutcome,
             p.Period, p.GameClock, p.Strength, p.Confidence, p.Note, p.MediaRef, p.OccurredAt,
             p.Status, p.MatchEventId, p.CreatedAt, p.ResolvedAt)).ToList();
+    }
+
+    private static List<IngestAssistDto> AssistsOf(MatchEventProposal p)
+    {
+        var list = new List<IngestAssistDto>(2);
+        if (p.Assist1UserId.HasValue && p.Assist1RosterPlayerId.HasValue) list.Add(new(p.Assist1UserId.Value, p.Assist1RosterPlayerId.Value));
+        if (p.Assist2UserId.HasValue && p.Assist2RosterPlayerId.HasValue) list.Add(new(p.Assist2UserId.Value, p.Assist2RosterPlayerId.Value));
+        return list;
     }
 
     public async Task<(MatchEventProposalDto? result, string? error, bool notFound)> RejectAsync(int matchId, int proposalId)
@@ -268,15 +292,140 @@ public class MatchEventProposalService : IMatchEventProposalService
         }
         if (dto.GoalType.HasValue) p.GoalType = dto.GoalType;
         if (dto.EventSubtype != null) p.EventSubtype = dto.EventSubtype;
+        if (dto.FightOutcome.HasValue) p.FightOutcome = dto.FightOutcome;
+        if (dto.Assists != null)
+        {
+            if (dto.Assists.Count > 2) return (null, "At most 2 assists per goal.", false);
+            p.Assist1UserId = dto.Assists.ElementAtOrDefault(0)?.UserId;
+            p.Assist1RosterPlayerId = dto.Assists.ElementAtOrDefault(0)?.RosterPlayerId;
+            p.Assist2UserId = dto.Assists.ElementAtOrDefault(1)?.UserId;
+            p.Assist2RosterPlayerId = dto.Assists.ElementAtOrDefault(1)?.RosterPlayerId;
+        }
+        if (p.IsOpponent) { p.Assist1UserId = p.Assist1RosterPlayerId = p.Assist2UserId = p.Assist2RosterPlayerId = null; }
 
-        var (matchEventId, error) = await ApplyAsync(p);
-        if (error != null) return (null, error, false);
+        // Check everything that can fail before writing anything, so a refused confirm leaves no partial records.
+        var assistUserMatches = new List<(int userMatchId, int rosterPlayerId)>();
+        foreach (var a in p.EventType == MatchEventType.Goal ? AssistsOf(p) : [])
+        {
+            var umId = await _db.UserMatches.Where(um => um.MatchId == p.MatchId && um.UserId == a.UserId)
+                .Select(um => (int?)um.Id).FirstOrDefaultAsync();
+            if (umId == null) return (null, $"Assist: user {a.UserId} has no entry in match {p.MatchId}.", false);
+            if (!await IsInSeasonRosterAsync(p.MatchId, a.RosterPlayerId))
+                return (null, $"Assist: player {a.RosterPlayerId} is not in this season's roster.", false);
+            assistUserMatches.Add((umId.Value, a.RosterPlayerId));
+        }
+
+        int? matchEventId;
+        if (p.EventType == MatchEventType.Fight)
+        {
+            var (fightError, _) = await ApplyFightAsync(p);
+            if (fightError != null) return (null, fightError, false);
+            matchEventId = null;
+        }
+        else
+        {
+            var (eventId, error) = await ApplyAsync(p);
+            if (error != null) return (null, error, false);
+            matchEventId = eventId;
+        }
+
+        // Keep when it happened on the resulting match event.
+        if (matchEventId.HasValue && (p.Period.HasValue || p.GameClock != null))
+        {
+            var evt = await _db.MatchEvents.FindAsync(matchEventId.Value);
+            if (evt != null)
+            {
+                evt.Period = p.Period;
+                evt.GameClock = p.GameClock;
+            }
+        }
+
+        if (assistUserMatches.Count > 0)
+        {
+            var goalId = matchEventId.HasValue
+                ? await _db.MatchEvents.Where(e => e.Id == matchEventId).Select(e => e.UserMatchGoalId).FirstOrDefaultAsync()
+                : null;
+            foreach (var (userMatchId, rosterPlayerId) in assistUserMatches)
+            {
+                _db.UserMatchAssists.Add(new UserMatchAssist
+                {
+                    UserMatchId = userMatchId,
+                    RosterPlayerId = rosterPlayerId,
+                    UserMatchGoalId = goalId,
+                    MatchEventId = matchEventId,
+                    MatchEventProposalId = p.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+        }
 
         p.Status = ProposalStatus.Confirmed;
         p.MatchEventId = matchEventId;
         p.ResolvedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return ((await ToDtosAsync([p]))[0], null, false);
+    }
+
+    private async Task<bool> IsInSeasonRosterAsync(int matchId, int rosterPlayerId)
+    {
+        var seasonId = await _db.Matches.Where(m => m.Id == matchId).Select(m => m.SeasonId).FirstAsync();
+        return await _db.SeasonRosterPlayers.AnyAsync(srp => srp.SeasonId == seasonId && srp.RosterPlayerId == rosterPlayerId);
+    }
+
+    private async Task<(string? error, int? fightId)> ApplyFightAsync(MatchEventProposal p)
+    {
+        if (!p.UserId.HasValue || !p.FightOutcome.HasValue)
+            return ("A fight needs the user who fought and its outcome.", null);
+        var userMatchId = await _db.UserMatches.Where(um => um.MatchId == p.MatchId && um.UserId == p.UserId.Value)
+            .Select(um => (int?)um.Id).FirstOrDefaultAsync();
+        if (userMatchId == null) return ($"User {p.UserId} has no entry in match {p.MatchId}.", null);
+        if (p.RosterPlayerId.HasValue && !await IsInSeasonRosterAsync(p.MatchId, p.RosterPlayerId.Value))
+            return ($"RosterPlayer {p.RosterPlayerId} is not in this season's roster.", null);
+
+        var fight = new UserMatchFight
+        {
+            UserMatchId = userMatchId.Value,
+            RosterPlayerId = p.RosterPlayerId,
+            Outcome = p.FightOutcome.Value,
+            MatchEventProposalId = p.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.UserMatchFights.Add(fight);
+        await _db.SaveChangesAsync();
+        return (null, fight.Id);
+    }
+
+    // ─── Statistics (no money) ────────────────────────────────────────────────
+
+    public async Task<IEnumerable<UserCollectorStatsDto>> GetSeasonStatsAsync(int seasonId)
+    {
+        var users = await _db.SeasonUsers.AsNoTracking().Where(su => su.SeasonId == seasonId)
+            .Select(su => new { su.UserId, su.User!.Name }).ToListAsync();
+        var goals = await _db.UserMatchGoals.AsNoTracking()
+            .Where(g => g.UserMatch!.SeasonId == seasonId && g.GoalType != GoalType.Shootout)
+            .GroupBy(g => g.UserMatch!.UserId).Select(g => new { UserId = g.Key, Count = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+        var assists = await _db.UserMatchAssists.AsNoTracking()
+            .Where(a => a.UserMatch!.SeasonId == seasonId)
+            .GroupBy(a => a.UserMatch!.UserId).Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count);
+        var fights = await _db.UserMatchFights.AsNoTracking()
+            .Where(f => f.UserMatch!.SeasonId == seasonId)
+            .GroupBy(f => new { f.UserMatch!.UserId, f.Outcome }).Select(g => new { g.Key.UserId, g.Key.Outcome, Count = g.Count() })
+            .ToListAsync();
+
+        int F(int userId, FightOutcome o) => fights.Where(f => f.UserId == userId && f.Outcome == o).Sum(f => f.Count);
+
+        return users
+            .Select(u =>
+            {
+                var g = goals.GetValueOrDefault(u.UserId);
+                var a = assists.GetValueOrDefault(u.UserId);
+                return new UserCollectorStatsDto(u.UserId, u.Name, g, a, g + a,
+                    F(u.UserId, FightOutcome.Won), F(u.UserId, FightOutcome.Lost), F(u.UserId, FightOutcome.Draw));
+            })
+            .OrderByDescending(x => x.Points).ThenBy(x => x.UserName)
+            .ToList();
     }
 
     private async Task<(int? matchEventId, string? error)> ApplyAsync(MatchEventProposal p)

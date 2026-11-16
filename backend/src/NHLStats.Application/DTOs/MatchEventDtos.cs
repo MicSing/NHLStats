@@ -19,7 +19,9 @@ public record MatchEventDto(
     string? PointReasonName,
     PointType? PointType,
     GoalType? GoalType,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? Period = null,
+    string? GameClock = null);
 
 public record CreateTeamMatchEventDto(
     MatchEventType EventType,
