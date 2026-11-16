@@ -114,4 +114,46 @@ public class MatchStatsServiceTests : IDisposable
         // MatchesPlayed = 5 (agg) + 1 (matches) = 6
         userResult.MatchesPlayed.Should().Be(6);
     }
+    [Fact]
+    public async Task GetAllTimePlusMinusTrendAsync_ShouldCountOnlyFinishedMatchesAsPlayed()
+    {
+        // Players are pre-registered to every match of the season; only finished
+        // matches count towards matches played and the season's match total.
+        var user = new User { Name = "Registered" };
+        _db.Users.Add(user);
+        var homeTeam = new Team { Name = "Home", ShortName = "HOM" };
+        var awayTeam = new Team { Name = "Away", ShortName = "AWY" };
+        _db.Teams.AddRange(homeTeam, awayTeam);
+        var season = new Season { Name = "Season P", StartedOn = new DateTime(2025, 1, 1) };
+        _db.Seasons.Add(season);
+        await _db.SaveChangesAsync();
+        _db.SeasonUsers.Add(new SeasonUser { SeasonId = season.Id, UserId = user.Id });
+
+        var completions = new[]
+        {
+            CompletionType.RegularTime, CompletionType.Overtime, CompletionType.Shootout,
+            CompletionType.InProgress, CompletionType.None, CompletionType.None
+        };
+        var matches = completions.Select((c, i) => new Match
+        {
+            SeasonId = season.Id,
+            MatchNumber = i + 1,
+            HomeTeamId = homeTeam.Id,
+            AwayTeamId = awayTeam.Id,
+            CompletionType = c,
+            MatchDate = c == CompletionType.None ? null : new DateTime(2025, 1, 2 + i)
+        }).ToList();
+        _db.Matches.AddRange(matches);
+        await _db.SaveChangesAsync();
+        _db.UserMatches.AddRange(matches.Select(m => new UserMatch
+        {
+            SeasonId = season.Id, UserId = user.Id, MatchId = m.Id
+        }));
+        await _db.SaveChangesAsync();
+
+        var seasonResult = (await _service.GetAllTimePlusMinusTrendAsync()).Single();
+
+        seasonResult.TotalPeriodMatches.Should().Be(3);
+        seasonResult.Users.Single(u => u.UserId == user.Id).MatchesPlayed.Should().Be(3);
+    }
 }
