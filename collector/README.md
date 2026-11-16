@@ -71,6 +71,8 @@ Tvoje odpovede sú zároveň podklad na neskoršie automatické rozpoznávanie.
 | `g 2 mack` | náš gól: používateľ č. 2, hráč podľa časti mena (`pp` / `sh` pre presilovku / oslabenie) |
 | `g` | náš gól bez strelca, doplníš ho pri potvrdení |
 | `o` | gól súpera (`o pp`, `o sh`) |
+| `g 2 mack a 1 kadri a 3 rant` | gól s asistenciami (najviac 2, `a <používateľ> <hráč>`) |
+| `f 2 makar w` | bitka: `w` vyhral, `l` prehral, `d` nerozhodne (hráč je nepovinný) |
 | `p 3 kadri` | náš trest |
 | `po` | trest súpera |
 | `so 1 rantanen` / `soo` | gól v nájazdoch náš / súpera |
@@ -101,6 +103,10 @@ Kým nie je hotová obrazovka vo frontende, dá sa to cez API (JWT admina):
 Potvrdenie ide rovnakou cestou ako ručný zápis v aplikácii: gól používateľa vytvorí gól hráča a zvýši skóre,
 trest vytvorí trest, gól a trest súpera a periódy idú ako udalosti tímu.
 Body za gól v presilovke alebo oslabení (výber príjemcu bodu) zatiaľ treba pridať ručne.
+
+**Asistencie a bitky sú iba štatistika**: nevytvárajú body ani peniaze. Súčty (góly, asistencie,
+kanadské body G + A, bitky vyhraté/prehraté/nerozhodné) sú na `GET /api/seasons/{seasonId}/collector-stats`.
+Tretina a čas z hodín sa po potvrdení uložia aj k udalosti v NHLStats.
 
 ## Testy
 

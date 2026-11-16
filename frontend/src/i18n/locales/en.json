@@ -1231,13 +1231,21 @@
         "user": "User",
         "player": "Player",
         "choosePlayer": "Choose player",
+        "assists": "Assists",
+        "fightOutcomeLabel": "Fight outcome",
+        "fightOutcome": {
+            "Won": "won",
+            "Lost": "lost",
+            "Draw": "draw"
+        },
         "goalTypeLabel": "Goal type",
         "type": {
             "Goal": "Goal",
             "Penalty": "Penalty",
             "ShootoutGoal": "Shootout goal",
             "PeriodChange": "Period",
-            "MatchEnd": "Match end"
+            "MatchEnd": "Match end",
+            "Fight": "Fight"
         },
         "goalType": {
             "Regular": "Regular",

@@ -3,7 +3,7 @@ import { CheckIcon, PencilSimpleIcon, RobotIcon, XIcon } from '@phosphor-icons/r
 import { useTranslation } from 'react-i18next'
 import apiClient from '../services/apiClient'
 import { useToast } from '../context/ToastContext'
-import type { ConfirmProposalDto, MatchEventProposal } from '../types/collector'
+import type { ConfirmProposalDto, FightOutcome, MatchEventProposal } from '../types/collector'
 import type { UserMatch } from '../types/userMatch'
 import type { RosterPlayer } from '../types/roster'
 
@@ -22,9 +22,10 @@ interface EditState {
     userId: number | ''
     rosterPlayerId: number | ''
     goalType: MatchEventProposal['goalType']
+    fightOutcome: FightOutcome | null
 }
 
-const ATTRIBUTABLE = new Set(['Goal', 'Penalty', 'ShootoutGoal'])
+const ATTRIBUTABLE = new Set(['Goal', 'Penalty', 'ShootoutGoal', 'Fight'])
 
 /**
  * Review queue for events the Collector app proposed for this match
@@ -59,19 +60,21 @@ export default function MatchProposalsPanel({ matchId, userMatches, roster, onCo
         const side = p.isOpponent ? ` ${t('collector.opponent')}` : ''
         const sub = p.eventSubtype && p.eventType !== 'Goal' && p.eventType !== 'Penalty' ? ` (${p.eventSubtype})` : ''
         const gt = p.goalType === 'PowerPlay' || p.goalType === 'ShortHanded' ? `, ${t(`collector.goalType.${p.goalType}`)}` : ''
-        return `${type}${side}${sub}${gt}`
+        const fight = p.eventType === 'Fight' && p.fightOutcome ? `: ${t(`collector.fightOutcome.${p.fightOutcome}`)}` : ''
+        return `${type}${side}${sub}${gt}${fight}`
     }
 
     const who = (p: MatchEventProposal) => {
         if (!ATTRIBUTABLE.has(p.eventType) || p.isOpponent) return null
         if (p.userName && p.playerName) return `${p.userName} · ${p.playerName}`
+        if (p.userName) return p.userName
         return t('collector.unknownPlayer')
     }
 
     const startEdit = (p: MatchEventProposal) =>
         setEditing((e) => ({
             ...e,
-            [p.id]: { isOpponent: p.isOpponent, userId: p.userId ?? '', rosterPlayerId: p.rosterPlayerId ?? '', goalType: p.goalType },
+            [p.id]: { isOpponent: p.isOpponent, userId: p.userId ?? '', rosterPlayerId: p.rosterPlayerId ?? '', goalType: p.goalType, fightOutcome: p.fightOutcome },
         }))
 
     const act = async (p: MatchEventProposal, action: 'confirm' | 'reject') => {
@@ -87,6 +90,7 @@ export default function MatchProposalsPanel({ matchId, userMatches, roster, onCo
                         userId: edit.userId === '' ? null : edit.userId,
                         rosterPlayerId: edit.rosterPlayerId === '' ? null : edit.rosterPlayerId,
                         goalType: edit.goalType,
+                        ...(p.eventType === 'Fight' ? { fightOutcome: edit.fightOutcome } : {}),
                     }
                     : {}
                 await apiClient.post(`/api/matches/${matchId}/proposals/${p.id}/confirm`, body)
@@ -166,17 +170,22 @@ export default function MatchProposalsPanel({ matchId, userMatches, roster, onCo
                                     </button>
                                 </div>
                             </div>
+                            {p.assists?.length > 0 && (
+                                <div className="text-sm text-text-muted">
+                                    {t('collector.assists')}: {p.assists.map((a) => `${a.userName ?? ''} · ${a.playerName ?? ''}`).join(', ')}
+                                </div>
+                            )}
                             {meta && <div className="text-xs text-text-muted">{meta}{p.note ? ` · ${p.note}` : ''}</div>}
                             {edit && (
                                 <div className="flex flex-wrap gap-2 items-center bg-bg rounded-lg p-2">
-                                    <label className="flex items-center gap-1 text-sm">
+                                    {p.eventType !== 'Fight' && <label className="flex items-center gap-1 text-sm">
                                         <input
                                             type="checkbox"
                                             checked={edit.isOpponent}
                                             onChange={(e) => setEditing((s) => ({ ...s, [p.id]: { ...edit, isOpponent: e.target.checked } }))}
                                         />
                                         {t('collector.opponentEvent')}
-                                    </label>
+                                    </label>}
                                     {!edit.isOpponent && (
                                         <>
                                             <select
@@ -204,6 +213,18 @@ export default function MatchProposalsPanel({ matchId, userMatches, roster, onCo
                                                 </select>
                                             )}
                                         </>
+                                    )}
+                                    {p.eventType === 'Fight' && (
+                                        <select
+                                            aria-label={t('collector.fightOutcomeLabel')}
+                                            value={edit.fightOutcome ?? 'Won'}
+                                            onChange={(e) => setEditing((s) => ({ ...s, [p.id]: { ...edit, fightOutcome: e.target.value as FightOutcome } }))}
+                                            className="bg-surface border border-border rounded px-2 py-1 text-sm"
+                                        >
+                                            <option value="Won">{t('collector.fightOutcome.Won')}</option>
+                                            <option value="Lost">{t('collector.fightOutcome.Lost')}</option>
+                                            <option value="Draw">{t('collector.fightOutcome.Draw')}</option>
+                                        </select>
                                     )}
                                     {p.eventType === 'Goal' && (
                                         <select

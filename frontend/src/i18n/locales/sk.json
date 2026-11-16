@@ -1265,13 +1265,21 @@
         "user": "Používateľ",
         "player": "Hráč",
         "choosePlayer": "Vyber hráča",
+        "assists": "Asistencie",
+        "fightOutcomeLabel": "Výsledok bitky",
+        "fightOutcome": {
+            "Won": "vyhral",
+            "Lost": "prehral",
+            "Draw": "nerozhodne"
+        },
         "goalTypeLabel": "Typ gólu",
         "type": {
             "Goal": "Gól",
             "Penalty": "Trest",
             "ShootoutGoal": "Gól v nájazdoch",
             "PeriodChange": "Perióda",
-            "MatchEnd": "Koniec zápasu"
+            "MatchEnd": "Koniec zápasu",
+            "Fight": "Bitka"
         },
         "goalType": {
             "Regular": "Bežný",

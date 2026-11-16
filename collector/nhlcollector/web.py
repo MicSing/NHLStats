@@ -79,7 +79,11 @@ class WebApp:
         user_id = body.get("userId")
         roster_player_id = body.get("rosterPlayerId")
         if kind == "goal":
-            return s.make("Goal", user_id=user_id, roster_player_id=roster_player_id, goal_type=goal_type, clock=clock)
+            return s.make("Goal", user_id=user_id, roster_player_id=roster_player_id, goal_type=goal_type, clock=clock,
+                          assists=[a for a in body.get("assists") or [] if a.get("userId")])
+        if kind == "fight":
+            return s.make("Fight", user_id=user_id, roster_player_id=roster_player_id,
+                          fight_outcome=body.get("fightOutcome"), clock=clock)
         if kind == "opp_goal":
             return s.make("Goal", is_opponent=True, goal_type=goal_type, clock=clock)
         if kind == "penalty":

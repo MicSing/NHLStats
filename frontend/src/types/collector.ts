@@ -1,5 +1,13 @@
 export type ProposalStatus = 'Proposed' | 'Confirmed' | 'Rejected'
 export type ProposalConfidence = 'Low' | 'Medium' | 'High'
+export type FightOutcome = 'Won' | 'Lost' | 'Draw'
+
+export interface ProposalAssist {
+    userId: number
+    userName: string | null
+    rosterPlayerId: number
+    playerName: string | null
+}
 
 /** An event suggested by the Collector app; it changes nothing until an admin confirms it. */
 export interface MatchEventProposal {
@@ -7,7 +15,7 @@ export interface MatchEventProposal {
     matchId: number
     clientEventId: string
     apiKeyName: string | null
-    eventType: 'Goal' | 'Penalty' | 'PeriodChange' | 'MatchEnd' | 'ShootoutGoal'
+    eventType: 'Goal' | 'Penalty' | 'PeriodChange' | 'MatchEnd' | 'ShootoutGoal' | 'Fight'
     isOpponent: boolean
     eventSubtype: string | null
     goalType: 'Regular' | 'PowerPlay' | 'ShortHanded' | 'Shootout' | null
@@ -15,6 +23,8 @@ export interface MatchEventProposal {
     userName: string | null
     rosterPlayerId: number | null
     playerName: string | null
+    assists: ProposalAssist[]
+    fightOutcome: FightOutcome | null
     period: number | null
     gameClock: string | null
     strength: string | null
@@ -34,6 +44,7 @@ export interface ConfirmProposalDto {
     isOpponent?: boolean | null
     goalType?: MatchEventProposal['goalType']
     clearUser?: boolean
+    fightOutcome?: FightOutcome | null
 }
 
 export interface ApiKey {

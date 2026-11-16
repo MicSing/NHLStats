@@ -49,6 +49,7 @@
   .card .q { font-weight: 600; }
   .form { margin-top: 8px; display: grid; gap: 8px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .a-row select { flex: 1; min-width: 0; }
   .players { max-height: 180px; overflow: auto; display: flex; flex-wrap: wrap; gap: 6px; }
   .muted { color: var(--muted); font-size: 12px; }
   .log { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow: auto; }
@@ -135,6 +136,7 @@
       <button data-kind="opp_goal">Gól súpera</button>
       <button data-kind="penalty">Náš trest</button>
       <button data-kind="opp_penalty">Trest súpera</button>
+      <button data-kind="fight">Bitka</button>
     </div>
     <div class="form" hidden>
       <div class="muted">Kto? (používateľ)</div>
@@ -142,6 +144,14 @@
       <div class="muted pl" hidden>Ktorý hráč?</div>
       <input class="search" placeholder="hľadať hráča" hidden>
       <div class="players" hidden></div>
+      <div class="chips outcome" hidden>
+        <button data-out="Won">Vyhral</button><button data-out="Lost">Prehral</button><button data-out="Draw">Nerozhodne</button>
+      </div>
+      <div class="assists" hidden>
+        <div class="muted">Asistencie (nepovinné, najviac 2)</div>
+        <div class="row a-row" data-i="0"><select class="a-user"></select><select class="a-player"></select></div>
+        <div class="row a-row" data-i="1"><select class="a-user"></select><select class="a-player"></select></div>
+      </div>
       <div class="chips gtypes" hidden>
         <button data-gt="">Bežný</button><button data-gt="PowerPlay">Presilovka</button><button data-gt="ShortHanded">Oslabenie</button>
       </div>
@@ -165,7 +175,7 @@ async function api(path, body) {
   return data;
 }
 
-const typeNames = { Goal: 'Gól', Penalty: 'Trest', ShootoutGoal: 'Nájazd', PeriodChange: 'Perióda', MatchEnd: 'Koniec zápasu' };
+const typeNames = { Goal: 'Gól', Penalty: 'Trest', ShootoutGoal: 'Nájazd', PeriodChange: 'Perióda', MatchEnd: 'Koniec zápasu', Fight: 'Bitka' };
 const gtNames = { PowerPlay: 'presilovka', ShortHanded: 'oslabenie' };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -220,7 +230,7 @@ function playersFor(user, query) {
 
 function buildCard(q) {
   const el = $('#tplQuestion').content.firstElementChild.cloneNode(true);
-  const f = openForms.get(q.id) || { kind: null, userId: undefined, rosterPlayerId: null, goalType: '', clock: '', search: '' };
+  const f = openForms.get(q.id) || { kind: null, userId: undefined, rosterPlayerId: null, goalType: '', clock: '', search: '', outcome: null, assists: [{}, {}] };
   openForms.set(q.id, f);
   el.dataset.id = q.id;
   $('.q', el).textContent = q.text;
@@ -231,14 +241,15 @@ function buildCard(q) {
 
   const form = $('.form', el), err = $('.err', el);
   function paint() {
-    const own = f.kind === 'goal' || f.kind === 'penalty';
+    const own = f.kind === 'goal' || f.kind === 'penalty' || f.kind === 'fight';
+    const isFight = f.kind === 'fight';
     form.hidden = !f.kind;
     $('.kinds', el).hidden = !!f.kind;
     $('.users', el).hidden = !own;
     form.querySelector('.muted').hidden = !own;
     const users = $('.users', el); users.innerHTML = '';
     if (own) {
-      for (const u of [...state.users, { userId: null, name: 'Neznámy / počítač' }]) {
+      for (const u of isFight ? state.users : [...state.users, { userId: null, name: 'Neznámy / počítač' }]) {
         const b = document.createElement('button');
         b.textContent = u.name + (u.position ? ` · ${u.position}` : '');
         b.className = f.userId === u.userId ? 'sel' : '';
@@ -261,8 +272,26 @@ function buildCard(q) {
     }
     const isGoal = f.kind === 'goal' || f.kind === 'opp_goal';
     $('.gtypes', el).hidden = !isGoal;
+    $('.outcome', el).hidden = !isFight;
+    $('.outcome', el).querySelectorAll('button').forEach(b => b.className = b.dataset.out === f.outcome ? 'sel' : '');
+    $('.assists', el).hidden = f.kind !== 'goal';
+    if (f.kind === 'goal') {
+      el.querySelectorAll('.a-row').forEach(row => {
+        const a = f.assists[+row.dataset.i];
+        const us = $('.a-user', row), ps = $('.a-player', row);
+        us.innerHTML = '<option value="">– nikto –</option>' + state.users.map(u => `<option value="${u.userId}" ${a.userId === u.userId ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+        const au = state.users.find(u => u.userId === a.userId);
+        ps.hidden = !au;
+        ps.innerHTML = '<option value="">hráč…</option>' + (au ? playersFor(au, '').map(p => `<option value="${p.rosterPlayerId}" ${a.rosterPlayerId === p.rosterPlayerId ? 'selected' : ''}>${esc(p.surname)} ${esc(p.firstName[0])}.${p.position ? ' · ' + esc(p.position) : ''}</option>`).join('') : '');
+        us.onchange = () => { a.userId = us.value ? +us.value : undefined; a.rosterPlayerId = undefined; paint(); };
+        ps.onchange = () => { a.rosterPlayerId = ps.value ? +ps.value : undefined; paint(); };
+      });
+    }
     $('.gtypes', el).querySelectorAll('button').forEach(b => b.className = b.dataset.gt === f.goalType ? 'sel' : '');
-    $('.save', el).disabled = own && (f.userId === undefined || (f.userId !== null && !f.rosterPlayerId));
+    const assistIncomplete = f.kind === 'goal' && f.assists.some(a => a.userId && !a.rosterPlayerId);
+    $('.save', el).disabled = isFight
+      ? (!f.userId || !f.outcome)
+      : (own && (f.userId === undefined || (f.userId !== null && !f.rosterPlayerId))) || assistIncomplete;
   }
   $('.search', el).value = f.search;
   $('.search', el).oninput = e => { f.search = e.target.value; paint(); };
@@ -270,12 +299,14 @@ function buildCard(q) {
   $('.clock', el).oninput = e => f.clock = e.target.value;
   el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { f.kind = b.dataset.kind; paint(); });
   el.querySelectorAll('[data-gt]').forEach(b => b.onclick = () => { f.goalType = b.dataset.gt; paint(); });
+  el.querySelectorAll('[data-out]').forEach(b => b.onclick = () => { f.outcome = b.dataset.out; paint(); });
   $('.back', el).onclick = () => { f.kind = null; f.userId = undefined; paint(); };
   $('.save', el).onclick = async () => {
     try {
       await api(`/api/questions/${q.id}/answer`, {
         kind: f.kind, userId: f.userId ?? null, rosterPlayerId: f.rosterPlayerId,
         goalType: f.goalType || null, clock: f.clock.trim() || null,
+        fightOutcome: f.outcome, assists: f.kind === 'goal' ? f.assists.filter(a => a.userId && a.rosterPlayerId) : [],
       });
       openForms.delete(q.id); refresh();
     } catch (e) { err.textContent = e.message; }

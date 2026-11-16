@@ -19,6 +19,8 @@ from .web import WebApp, start_web
 HELP = """
 Príkazy (Enter potvrdí). Čas z obrazovky môžeš pridať ako @12:34 kamkoľvek.
   g 2 mack        náš gól: používateľ č. 2, hráč podľa časti mena   (g 2 mack pp / sh)
+  g 2 mack a 1 kadri a 3 rant   gól s asistenciami (najviac 2)
+  f 2 makar w     bitka: w vyhral, l prehral, d nerozhodne (hráč je nepovinný)
   g               náš gól, strelca doplníš pri potvrdení
   o               gól súpera                                         (o pp / o sh)
   p 3 kadri       náš trest

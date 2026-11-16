@@ -104,3 +104,14 @@ def test_cross_site_post_is_refused(web):
     base, submitted, _ = web
     status, _ = call(base, "/api/command", {"line": "o"}, headers={"Origin": "https://evil.example"})
     assert status == 403 and submitted == []
+
+
+def test_answer_goal_with_assist_and_fight(web):
+    base, submitted, questions = web
+    q = questions.ask("manual", "?", None)
+    status, _ = call(base, f"/api/questions/{q.id}/answer", {"kind": "goal", "userId": 10, "rosterPlayerId": 4,
+                                                             "assists": [{"userId": 10, "rosterPlayerId": 4}, {"userId": None}]})
+    assert status == 200 and submitted[-1]["assists"] == [{"userId": 10, "rosterPlayerId": 4}]
+    q = questions.ask("manual", "?", None)
+    status, _ = call(base, f"/api/questions/{q.id}/answer", {"kind": "fight", "userId": 10, "fightOutcome": "Won"})
+    assert status == 200 and submitted[-1]["eventType"] == "Fight" and submitted[-1]["fightOutcome"] == "Won"

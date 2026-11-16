@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from './testUtils'
 import MatchProposalsPanel from '../components/MatchProposalsPanel'
@@ -17,7 +17,7 @@ function proposal(overrides: Partial<MatchEventProposal> = {}): MatchEventPropos
     return {
         id: 1, matchId: 7, clientEventId: 'c1', apiKeyName: 'Collector PC', eventType: 'Goal', isOpponent: false,
         eventSubtype: null, goalType: 'Regular', userId: 10, userName: 'Michal', rosterPlayerId: 4,
-        playerName: 'Nazem Kadri', period: 2, gameClock: '12:34', strength: null, confidence: 'Medium',
+        playerName: 'Nazem Kadri', assists: [], fightOutcome: null, period: 2, gameClock: '12:34', strength: null, confidence: 'Medium',
         note: null, mediaRef: null, occurredAt: null, status: 'Proposed', matchEventId: null,
         createdAt: '2026-11-16T14:00:00Z', resolvedAt: null, ...overrides,
     }
@@ -82,5 +82,30 @@ describe('MatchProposalsPanel', () => {
         await userEvent.click(await screen.findByRole('button', { name: /reject/i }))
         await waitFor(() => expect(postMock).toHaveBeenCalledWith('/api/matches/7/proposals/1/reject', {}))
         expect(onConfirmed).not.toHaveBeenCalled()
+    })
+})
+
+describe('MatchProposalsPanel – assists and fights', () => {
+    beforeEach(() => {
+        getMock.mockReset()
+        postMock.mockReset()
+    })
+
+    test('shows assists on a goal and lets the admin fix a fight outcome', async () => {
+        getMock.mockResolvedValueOnce([
+            proposal({ assists: [{ userId: 11, userName: 'Peter', rosterPlayerId: 6, playerName: 'Cale Makar' }] }),
+            proposal({ id: 2, eventType: 'Fight', goalType: null, rosterPlayerId: null, playerName: null, fightOutcome: 'Won' }),
+        ]).mockResolvedValue([])
+        postMock.mockResolvedValue({})
+        renderWithProviders(<MatchProposalsPanel matchId={7} userMatches={userMatches} roster={roster} onConfirmed={vi.fn()} />)
+
+        expect(await screen.findByText(/Assists: Peter · Cale Makar/)).toBeInTheDocument()
+        const fight = screen.getByTestId('proposal-2')
+        expect(fight).toHaveTextContent('Fight: won')
+
+        await userEvent.click(within(fight).getByRole('button', { name: /edit/i }))
+        await userEvent.selectOptions(within(fight).getByLabelText('Fight outcome'), 'Draw')
+        await userEvent.click(within(fight).getByRole('button', { name: /confirm/i }))
+        await waitFor(() => expect(postMock).toHaveBeenCalledWith('/api/matches/7/proposals/2/confirm', expect.objectContaining({ fightOutcome: 'Draw' })))
     })
 })

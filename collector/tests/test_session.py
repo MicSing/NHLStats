@@ -81,3 +81,38 @@ def test_match_end_variants():
 def test_unknown_command():
     with pytest.raises(CommandError):
         session().parse("zzz")
+
+
+def test_goal_with_assists():
+    e = session().parse("g 1 kadri a 2 mackenzie")
+    assert e["assists"] == [{"userId": 11, "rosterPlayerId": 2}]
+    assert "asist." in e["_display"]
+    with pytest.raises(CommandError):
+        session().parse("g 1 kadri a 2 mackenzie a 1 mack a 2 mackenzie")
+    with pytest.raises(CommandError):
+        session().parse("g 1 kadri a 2")
+
+
+def test_goal_without_assists_sends_none():
+    assert session().parse("g 1 kadri")["assists"] is None
+
+
+def test_fight_with_outcome():
+    e = session().parse("f 2 mackenzie w")
+    assert e["eventType"] == "Fight" and e["fightOutcome"] == "Won"
+    assert e["userId"] == 11 and e["rosterPlayerId"] == 2
+    e = session().parse("f 1 l")
+    assert e["fightOutcome"] == "Lost" and e["rosterPlayerId"] is None
+    with pytest.raises(CommandError):
+        session().parse("f 1 kadri")
+
+
+def test_make_validates_assists_and_fight():
+    s = session()
+    e = s.make("Goal", user_id=10, roster_player_id=4, assists=[{"userId": 11, "rosterPlayerId": 2}])
+    assert e["assists"] == [{"userId": 11, "rosterPlayerId": 2}]
+    with pytest.raises(CommandError):
+        s.make("Goal", is_opponent=True, assists=[{"userId": 11, "rosterPlayerId": 2}])
+    with pytest.raises(CommandError):
+        s.make("Fight", user_id=10)
+    assert s.make("Fight", user_id=10, fight_outcome="Draw")["_display"].endswith("nerozhodne")
